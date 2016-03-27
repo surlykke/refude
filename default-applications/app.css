@@ -1,0 +1,130 @@
+html, body {
+    height: 100%;
+}
+.mainContainer {
+    height: 100%;
+}
+.heading {
+    flex: 0;
+    font-size: large;
+    font-weight: bold;
+    padding:6px;
+    padding-bottom: 6px;
+}
+.subheading {
+    font-weight: bold;
+    padding: 6px;
+    padding-left: 16px;
+}
+.heading2 {
+    font-weight: bold;
+    padding: 4px;
+    padding-top: 10px;
+}
+.line {
+    padding:2px;
+    padding-left: 10px;
+}
+.mainBox {
+    display: flex;
+    flex-direction: column;
+    height: 90%;
+    width: 98%;
+    padding: 8px;
+}
+.searchBox {
+    flex: 0;
+    border:solid;
+    border-width: 1px;
+    border-color: lightgrey;
+    border-radius: 5px;
+    padding: 6px;
+    margin: 6px;
+}
+.searchBox input {
+    border-style: none;
+    width: 100%;
+    height: 28px;
+}
+.contentBox {
+    flex: 1;
+    height:100%;
+    overflow: auto;
+    border:solid;
+    border-width: 1px;
+    border-color: lightgrey;
+    border-radius: 5px;
+    padding: 6px;
+    margin: 6px;
+}
+.subtypes {
+    margin-top: 5px;
+    margin-bottom: 5px;
+    margin-left: 16px;
+}
+.mimetypeDetails {
+    display: flex;
+    margin-top: 7px;
+    margin-bottom: 12px;
+    margin-left: 12px;
+    padding: 3px;
+    border: solid;
+    border-radius: 5px;
+    border-width: 1px;
+    border-color: lightgrey;
+}
+.mimetypeIcon {
+    margin-right: 8px;
+}
+.mimetypeData {
+    line-height: 150%;
+}
+.closed {
+    display: none;
+}
+.arrowRight::before {
+    content: "\25B8";
+}
+.arrowDown::before {
+    content: "\25BE";
+}
+.none {
+    color: grey;
+    font-style: italic;
+    padding-left: 20px;
+}
+.selected {
+    background-color: lightblue;
+}
+.buttonBox a {
+    float: right;
+    width: 60px;
+    margin: 10px;
+}
+.button {
+    display: inline-block;
+    height: 18px;
+    width: 18px;
+    border-style: none;
+    border-radius: 2px;
+    background-size: 16px 16px; 
+    background-repeat: no-repeat;
+    background-position: right;
+}
+.editable {
+    display: inline-block;
+    margin: 8px;
+    padding-right: 25px;
+    border: solid;
+    border-style: outset;
+    border-color: grey;
+    border-width: 1px;
+    border-radius: 4px;
+    background-image: url('img/pencil.png');
+    background-position: right;
+    background-repeat: no-repeat;
+}
+.search {
+    background-image: url('img/search.svg');
+}
+/* ------------------------------------------------*/

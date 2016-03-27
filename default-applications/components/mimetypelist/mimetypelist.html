@@ -1,0 +1,56 @@
+<div class="mainBox">
+    <div class="heading">
+        Edit mimetypes
+        <div class="button search" style="float: right;" ng-click="search = true"></div>
+    </div>
+    <div class="searchBox" ng-show="search">
+        <input type="text" placeholder="Enter a file ending or mimetype"/>
+    </div>
+    <div class="contentBox">
+        <div ng-repeat="typeName in ($ctrl.types)" 
+             ng-init="typeExpanded = false" >
+            <div ng-click="typeExpanded = !typeExpanded"
+                 ng-class="typeExpanded ? 'arrowDown':'arrowRight'">
+                {{ typeName }}
+            </div>
+
+            <div class="subtypes"
+                 ng-class=" typeExpanded ? '' : 'closed'">
+                <div class="subtype"
+                     ng-repeat="subtypeName in $ctrl.root.mimetypes[typeName]"
+                     ng-init="subtypeExpanded = false">
+                    {{ mimetype = typeName + '/' + subtypeName; ""; }}
+                    <div ng-click="subtypeExpanded = !subtypeExpanded; $ctrl.getMimetype(mimetype);"
+                         ng-class="subtypeExpanded ? 'arrowDown':'arrowRight'">
+                        {{ subtypeName }} 
+                    </div>
+
+                    <div ng-class="subtypeExpanded ? 'mimetypeDetails' : 'closed'">
+                        {{ mimetypeObj = $ctrl.mimetype[mimetype]; "";}}
+                        <div class="mimetypeIcon">
+                            <img width="50" height="50" src="img/calculator-16.png" alt="icon"/> 
+                        </div>
+                        <div class="mimetypeData">
+                            <div> 
+                                <b>{{ mimetypeObj.comment}}</b>
+                            </div>
+                            <div ng-show='$ctrl.mimetype[mimetype]'>
+                                <b>Patterns: </b>
+                                {{mimetypeObj.globs.join(", ")}}
+                            </div>
+                            <div>
+                                <b>Default application: </b>
+                                <div class="editable" ng-click="$ctrl.mt = mimetype">
+                                    {{
+                                        application = $ctrl.application[mimetypeObj.defaultApplication];
+                                        application ? application.Name : 'none'
+                                    }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>                
+    </div>
+</div>

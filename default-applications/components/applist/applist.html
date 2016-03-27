@@ -1,0 +1,30 @@
+<div class="mainBox" style="position:relative;">
+    <div class="heading">
+        Vælg en applikation for: 
+    </div>
+    <div class="subheading">
+        {{$ctrl.mimetypeData[$ctrl.mt].comment}}
+    </div>
+    <div class="contentBox">
+        <div ng-repeat="mimetype in $ctrl.mimetypes">
+            <div class="heading2">
+                {{ mimetype !== "__others" ?
+                   "Applikationer der kan håndtere " + $ctrl.mimetypeData[mimetype].comment :
+                   "Andre applikationer" }}
+            </div> 
+            <div class="none" ng-if="$ctrl.associatedApps[mimetype].length < 1">Ingen fundet</div>
+            <div ng-repeat="app in $ctrl.associatedApps[mimetype]" 
+                 ng-click="$ctrl.selectApp(app)" 
+                 ng-class="$ctrl.selectedApp === app ? 'line selected' : 'line'">
+                {{ $ctrl.appData[app].Name }}
+            </div>
+        </div>
+    </div>
+    <div class="buttonBox">
+        <button type="submit" ng-disabled="!$ctrl.selectedApp" accesskey="o"  ng-click="$ctrl.setDefaultApp()">
+            <u>O</u>k
+        </button>
+        <button type="submit" accesskey="c" ng-click="$ctrl.mt = null"><u>C</u>ancel</button>
+    </div>
+</div>
+
