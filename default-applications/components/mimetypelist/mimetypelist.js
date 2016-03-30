@@ -1,5 +1,6 @@
 function mimetypelistController($http) {
     var ctrl = this;
+
     var host = "http://localhost:7938/"; 
     // root contains a map topleveltype -> list of subtypes for that topleveltype 
     ctrl.root = {};
@@ -18,12 +19,18 @@ function mimetypelistController($http) {
     $http.get(host + "mimetypes").success(function(data) {
         ctrl.root = data;
         ctrl.types = Object.keys(ctrl.root.mimetypes);
-        /*ctrl.types.forEach(function(type) {
-            ctrl.root.mimetypes[type].forEach(function(subtype) {
-                ctrl.getMimetype(type + '/' + subtype);
-            });
-        });*/
     });
+
+    ctrl.getIcon = function(iconName, img) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', host + "theme-icon/default/" + iconName, true);
+        xhr.responseType = 'blob';
+        xhr.onload = function(e) {
+            img.src = window.URL.createObjectURL(this.response);
+        };
+
+        xhr.send();
+    };
 
     ctrl.getMimetype = function(mimetype) {
         var url = host + "mimetypes/" + mimetype
@@ -37,6 +44,8 @@ function mimetypelistController($http) {
                 $http.get(appUrl).success(function(appObj) {
                     ctrl.application[appId] = appObj;
                 });
+                var img = document.getElementById(mimetype);
+                ctrl.getIcon("hejsa", img);
             }
         });
     };

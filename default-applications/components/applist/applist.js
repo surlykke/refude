@@ -14,10 +14,6 @@ function applistController($scope, $http) {
     };
 
     ctrl.setDefaultApp = function() {
-        if (! ctrl.selectedApp) {
-            return;
-        }
-
         $http.patch(host + "/mimetypes/" + ctrl.mt, {"defaultApplication" : ctrl.selectedApp});
         ctrl.mt = null;
     };
@@ -41,7 +37,12 @@ function applistController($scope, $http) {
                         getAppdata(app);
                     }
                 }); 
-                
+
+                if (mimetype === ctrl.mt) {
+                    console.log("Setting selectedApp to:", ctrl.mimetypeData[ctrl.mt].defaultApplication);
+                    ctrl.selectedApp = ctrl.mimetypeData[ctrl.mt].defaultApplication;
+                }
+
                 mimetypeData.subclassOf.forEach(getMimetype);
             });
         }
