@@ -4,16 +4,21 @@
 
 Refude is a desktop environment - or will be, sometime in the future - sorta. 
 The idea is to create applications that offer functionality which is useful in a 
-desktop environment. Examples of such functionality could be: Application menu, application starter, battery monitor, desktop notifications...
+desktop environment. Examples of such functionality could be: Application menu, application starter, battery monitor, desktop notifications etc.
 
-The idea of Refude is *not* to create a classical desktop: There wont be a desktop with widgets or a panel. Focus is on functionality that can be used in different desktop setups. For example you might want to use Refude applications if you run a lightweight setup with just a window manager (like Fluxbox, Openbox or something like that).
+The idea of Refude is *not* to create a classical desktop: There wont be a desktop with widgets or a panel. Focus is on functionality that can be used in different desktop setups. 
+
+For example you might want to use Refude applications if you run a lightweight setup with just a window manager (like Fluxbox, Openbox or something like that).
 
 Right now I work on an an application to set default applications. 
-It works with mimetypes and desktopfiles as defined by freedesktop.org 
+
+It works with mimetypes and desktopfiles as defined by freedesktop.org (FDO) 
 (see [desktop entry specification](https://specifications.freedesktop.org/desktop-entry-spec/latest/index.html) 
 and [mimetype associations](https://specifications.freedesktop.org/mime-apps-spec/latest/) and references therein). 
 
 The application will show a list of known mimetypes, and allow you to set a default application for each mimetype, choosing from the applications you have installed on your system.
+
+I plan to add implementations of xdg-open and xdg-mime that (unlike the implementations from FDO !) adhere to these standards. With that in place, you can open a document from your file manager or browser or some other program, and provided that program uses xdg-open to open the document, it should open in the application you chose.
 
 ## How is it implemented?
 
@@ -40,3 +45,4 @@ Then run the app in chrome:
 chromium --silent-launch --load-and-launch-app=/path../to../refude/default-applications/
 ```
 
+As you can see, this is very much work in progress. Right now (march 2016) search is not working, and mimetype icons neither. Hopefuly it will be sorted out soon.
