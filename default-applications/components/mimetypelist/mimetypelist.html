@@ -8,7 +8,7 @@
 -->
 
     <div class="heading">
-        Edit mimetypes
+        Edit mimetypes Yeeehar
         <div class="button search" style="float: right;" ng-click="search = true"></div>
     </div>
     <div class="searchBox" ng-show="search">
@@ -25,7 +25,7 @@
             <div class="subtypes"
                  ng-class=" typeExpanded ? '' : 'closed'">
                 <div class="subtype"
-                     ng-repeat="subtypeName in $ctrl.root.mimetypes[typeName]"
+                     ng-repeat="subtypeName in $ctrl.root.mimetypes[typeName].sort()"
                      ng-init="subtypeExpanded = false">
                     {{ mimetype = typeName + '/' + subtypeName; ""; }}
                     <div ng-click="subtypeExpanded = !subtypeExpanded; $ctrl.getMimetype(mimetype);"

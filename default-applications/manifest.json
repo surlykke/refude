@@ -1,6 +1,6 @@
 {
-  "name": "Hello World!",
-  "description": "My first Chrome App.",
+  "name": "Default applications",
+  "description": "Tool to set default applications for your desktop",
   "version": "0.1",
   "manifest_version": 2,
   "app": {

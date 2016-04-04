@@ -41,7 +41,7 @@ function mimetypelistController($http) {
     };
 
     ctrl.getMimetype = function(mimetype) {
-        var url = host + "mimetypes/" + mimetype
+        var url = host + "mimetype/" + mimetype
         console.log("Fetching '" + url + "'\n");
         $http.get(url).success(function(mimetypeObj) {
             ctrl.mimetype[mimetype] = mimetypeObj;
