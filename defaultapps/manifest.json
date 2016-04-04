@@ -1,6 +1,5 @@
 {
-  "name": "Default applications",
-  "description": "Tool to set default applications for your desktop",
+  "name": "RefudeDefaultApps - Set default applications for your desktop",
   "version": "0.1",
   "manifest_version": 2,
   "app": {
