@@ -29,9 +29,12 @@ function mimetypelistController($http) {
         ctrl.types = Object.keys(ctrl.root.mimetypes);
     });
 
-    ctrl.getIcon = function(iconName, img) {
+    ctrl.getIcon = function(iconNames, img) {
         var xhr = new XMLHttpRequest();
-        xhr.open('GET', host + "theme-icon/default/" + iconName, true);
+        var url = host + "icons/icon?" + iconNames.map(function(iconName) { return "name=" +iconName; }).join('&');
+        url = url+"&size=72";
+        console.log("Calling: ", url);
+        xhr.open('GET', url, true);
         xhr.responseType = 'blob';
         xhr.onload = function(e) {
             img.src = window.URL.createObjectURL(this.response);
@@ -41,7 +44,7 @@ function mimetypelistController($http) {
     };
 
     ctrl.getMimetype = function(mimetype) {
-        var url = host + "mimetype/" + mimetype
+        var url = host + "mimetypes/" + mimetype
         console.log("Fetching '" + url + "'\n");
         $http.get(url).success(function(mimetypeObj) {
             ctrl.mimetype[mimetype] = mimetypeObj;
@@ -52,10 +55,10 @@ function mimetypelistController($http) {
                 $http.get(appUrl).success(function(appObj) {
                     ctrl.application[appId] = appObj;
                 });
-                var img = document.getElementById(mimetype);
-                ctrl.getIcon("hejsa", img);
             }
-        });
+            var img = document.getElementById(mimetype);
+            ctrl.getIcon([mimetypeObj.icon, mimetypeObj.genericIcon], img);
+         });
     };
 
     ctrl.selectMt = function(type, subtype) {

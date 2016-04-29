@@ -22,7 +22,7 @@ function applistController($scope, $http) {
     };
 
     ctrl.setDefaultApp = function() {
-        $http.patch(host + "/mimetype/" + ctrl.mt, {"defaultApplication" : ctrl.selectedApp});
+        $http.patch(host + "/mimetypes/" + ctrl.mt, {"defaultApplication" : ctrl.selectedApp});
         ctrl.mt = null;
     };
 
@@ -33,7 +33,7 @@ function applistController($scope, $http) {
         else {
             ctrl.mimetypes.splice(-1, 0, mimetype);
             ctrl.associatedApps[mimetype] = [];
-            $http.get(host + "/mimetype/" + mimetype).success(function(mimetypeData) {
+            $http.get(host + "/mimetypes/" + mimetype).success(function(mimetypeData) {
                 ctrl.mimetypeData[mimetype] = mimetypeData;
                 mimetypeData.associatedApplications.forEach(function(app) {
                     ctrl.associatedApps[mimetype].push(app);
