@@ -22,12 +22,21 @@ function mimetypelistController($http) {
     // --
     ctrl.application = {};
 
+    ctrl.getMimetypes = function() {
+        var url = host + "mimetypes";
+        if (ctrl.searchTerm && "" !== ctrl.searchTerm) {
+            url = url + "?search=" + ctrl.searchTerm;
+        }
+        $http.get(url).success(function(data) {
+            ctrl.root = data;
+            ctrl.types = Object.keys(ctrl.root.mimetypes);
+        });     
+    };
+
     // Collect info from server
     console.log("Fetching: '" + host + "mimetypes'" );
-    $http.get(host + "mimetypes").success(function(data) {
-        ctrl.root = data;
-        ctrl.types = Object.keys(ctrl.root.mimetypes);
-    });
+    ctrl.getMimetypes();
+    
 
     ctrl.getIcon = function(iconNames, img) {
         var xhr = new XMLHttpRequest();
@@ -47,6 +56,7 @@ function mimetypelistController($http) {
         var url = host + "mimetypes/" + mimetype
         console.log("Fetching '" + url + "'\n");
         $http.get(url).success(function(mimetypeObj) {
+            console.log("Received mimetypeObj:", mimetypeObj)
             ctrl.mimetype[mimetype] = mimetypeObj;
             if (mimetypeObj.defaultApplication) {
                 var appId = mimetypeObj.defaultApplication;

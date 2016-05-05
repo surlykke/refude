@@ -12,7 +12,10 @@
         <div class="button search" style="float: right;" ng-click="search = true"></div>
     </div>
     <div class="searchBox" ng-show="search">
-        <input type="text" placeholder="Enter a file ending or mimetype"/>
+        <input type="text"
+               ng-model="$ctrl.searchTerm"
+               ng-change="$ctrl.getMimetypes()" 
+               placeholder="Enter a file ending or mimetype"/>
     </div>
     <div class="contentBox">
         <div ng-repeat="typeName in ($ctrl.types)" 
