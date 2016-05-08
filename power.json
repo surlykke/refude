@@ -1,0 +1,18 @@
+{
+	"currentState" : "loggedin",
+	"availableStates" : {
+		"poweredoff" : {
+			"description": "Power off the machine", 
+			"icon": ""
+		},
+		"suspended" : {
+			"description": ""
+		},
+		"hibernated", 
+		"restarting", 
+		"logged"
+	}
+}
+
+{
+	"currentSessionState" : "loggedIn

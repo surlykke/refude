@@ -1,0 +1,13 @@
+{
+  "name": "Refude Do - Start programs and more",
+  "version": "0.1",
+  "manifest_version": 2,
+  "app": {
+    "background": {
+      "scripts": ["loadApp.js"]
+    }
+  },
+  "permissions": [
+      "http://localhost:*/*"
+  ]
+}

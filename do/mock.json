@@ -1,0 +1,16 @@
+{
+  [
+	{
+	  "234" : {
+		"Description" : "Chrome - dmi",
+		"icon": "chromium",
+
+	},
+	{
+	  "222" : {
+		"Description" : "Qterminal - 3",
+		"icon" : "qterminal",
+	  }
+	}
+  ]
+}

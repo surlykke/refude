@@ -1,0 +1,1 @@
+Figure out to do long-running operations in background with angular

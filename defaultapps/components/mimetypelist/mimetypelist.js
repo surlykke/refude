@@ -34,7 +34,6 @@ function mimetypelistController($http) {
     };
 
     // Collect info from server
-    console.log("Fetching: '" + host + "mimetypes'" );
     ctrl.getMimetypes();
     
 
@@ -42,7 +41,6 @@ function mimetypelistController($http) {
         var xhr = new XMLHttpRequest();
         var url = host + "icons/icon?" + iconNames.map(function(iconName) { return "name=" +iconName; }).join('&');
         url = url+"&size=72";
-        console.log("Calling: ", url);
         xhr.open('GET', url, true);
         xhr.responseType = 'blob';
         xhr.onload = function(e) {
@@ -54,18 +52,15 @@ function mimetypelistController($http) {
 
     ctrl.getMimetype = function(mimetype) {
         var url = host + "mimetypes/" + mimetype
-        console.log("Fetching '" + url + "'\n");
         $http.get(url).success(function(mimetypeObj) {
-            console.log("Received mimetypeObj:", mimetypeObj)
             ctrl.mimetype[mimetype] = mimetypeObj;
-            if (mimetypeObj.defaultApplication) {
-                var appId = mimetypeObj.defaultApplication;
-                var appUrl = host + "desktopentry/" + appId;
-                console.log("Fetching '" + appUrl + "'");
+            var appId = mimetypeObj.defaultApplications[0];
+            if (appId) {
+                var appUrl = host + "desktopentries/" + appId;
                 $http.get(appUrl).success(function(appObj) {
                     ctrl.application[appId] = appObj;
                 });
-            }
+            }           
             var img = document.getElementById(mimetype);
             ctrl.getIcon([mimetypeObj.icon, mimetypeObj.genericIcon], img);
          });
@@ -77,8 +72,6 @@ function mimetypelistController($http) {
 
     ctrl.evtSource = new EventSource(host + "notify");
     ctrl.evtSource.addEventListener("mimetype-updated", function(event) {
-        console.log("mimetype-updated: ", event);
-        console.log("data: ", event.data);
         ctrl.mimetype[event.data] = null;
         ctrl.getMimetype(event.data);
     });

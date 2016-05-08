@@ -47,8 +47,7 @@ function applistController($scope, $http) {
                 }); 
 
                 if (mimetype === ctrl.mt) {
-                    console.log("Setting selectedApp to:", ctrl.mimetypeData[ctrl.mt].defaultApplication);
-                    ctrl.selectedApp = ctrl.mimetypeData[ctrl.mt].defaultApplication;
+                    ctrl.selectedApp = ctrl.mimetypeData[ctrl.mt].defaultApplications[0];
                 }
 
                 mimetypeData.subclassOf.forEach(getMimetype);
@@ -57,7 +56,7 @@ function applistController($scope, $http) {
     };
 
     getAppdata = function(appId) {
-        $http.get(host + "/desktopentry/" + appId).success(function(appData) {
+        $http.get(host + "/desktopentries/" + appId).success(function(appData) {
             ctrl.appData[appId] = appData;
         });
     };
@@ -66,8 +65,11 @@ function applistController($scope, $http) {
     
     $scope.$watch('mt', function() {
         if (ctrl.mt) {
-            $http.get(host + "/handlers").success(function(data) {
-                ctrl.associatedApps["__others"] = data.fileHandlers.sort();
+            var url = host + "/desktopentries?handles=urls";
+            console.log("Fetching: ", url);
+            $http.get(url).success(function(data) {
+                console.log("Got:", data);
+                ctrl.associatedApps["__others"] = data.desktopEntries.sort();
                 ctrl.associatedApps["__others"].forEach(getAppdata);
                 getMimetype(ctrl.mt);
             });

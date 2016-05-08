@@ -53,7 +53,7 @@
                                 <b>Default application: </b>
                                 <div class="editable" ng-click="$ctrl.mt = mimetype">
                                     {{
-                                        application = $ctrl.application[mimetypeObj.defaultApplication];
+                                        application = $ctrl.application[mimetypeObj.defaultApplications[0]];
                                         application ? application.Name : 'none'
                                     }}
                                 </div>
