@@ -6,8 +6,9 @@
 * Please refer to the LICENSE file for a copy of the license.
 */
 
-(function(angular) {
-    var appConfigModule = angular.module('appConfig', ['ngAria']).controller('mainCtrl', function() {
-        this.mt = null;
-    });
-})(window.angular);
+doModule.directive('test', function() {
+  return {
+    scope: true,
+    templateUrl: 'components/test/test.html'
+  };
+});

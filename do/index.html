@@ -9,16 +9,15 @@
 
 <html>
     <head>
-        <title>Do</title>
+        <title>Refude Do</title>
         <meta charset="UTF-8">
         <script src="angular.js"></script>
         <script src="angular-aria.js"></script>
-        <script src="do.js"></script>
-        <link rel="stylesheet" href="do.css"/>
+        <script src="index.js"></script>
+        <script src="components/commandlist/commandlist.js"></script>
+        <link rel="stylesheet" href="app.css"/>
     </head>
-    <body ng-app="do" ng-controller="mainCtrl as ctrl">
-        <div>
-            <input type="text" placeholder="Enter something"/>
-        </div>
+    <body ng-app="do" ng-controller="doCtrl as ctrl">
+        <commandlist></commandlist>
     </body>
 </html>

@@ -6,9 +6,8 @@
 * Please refer to the LICENSE file for a copy of the license.
 */
 
-
 chrome.app.runtime.onLaunched.addListener(function (launchData) {
-    chrome.app.window.create('do.html', {
+    chrome.app.window.create('index.html', {
         'id': 'org.restfulipc.refude.Do',
         'outerBounds': {
             'width': 460,
