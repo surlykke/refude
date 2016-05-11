@@ -7,13 +7,13 @@
 */
 
 chrome.app.runtime.onLaunched.addListener(function (launchData) {
-    chrome.app.window.create('index.html', {
+    chrome.app.window.create('do.html', {
         'id': 'org.restfulipc.refude.Do',
         'outerBounds': {
-            'width': 460,
+            'width': 300,
             'height': 300,
-            'minWidth': 460,
-            'minHeight': 300
+            'minWidth': 180,
+            'minHeight': 200
         }
     });
 });

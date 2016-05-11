@@ -1,0 +1,52 @@
+html, body {
+    height: 100%;
+}
+.mainBox {
+    display: flex;
+    flex-direction: column;
+    height: 90%;
+    width: 98%;
+}
+.searchBox {
+    flex: 0;
+    width: 100%;
+    padding-bottom: 10px;
+}
+.searchBox input {
+    border-radius: 6px;
+    outline-style: none;
+    width: 100%;
+    height: 28px;
+}
+.contentBox {
+    flex: 1;
+    height:100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 6px;
+}
+.command {
+    display: table-row;
+    padding: 2px;
+}
+.selected {
+    background-color: lightskyblue;
+}
+.commandIcon {
+    height: 35px;
+    width: 35px;
+    display: table-cell;
+    padding: 3px;
+    vertical-align: top;
+}
+.commandIcon img {
+    border-style: none;
+}
+.commandDesc {
+    display: table-cell;
+    padding: 3px;
+    width: 100%;
+}
+.commandComment {
+    font-size: smaller;
+}
