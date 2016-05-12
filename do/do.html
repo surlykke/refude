@@ -16,13 +16,16 @@
         <link rel="stylesheet" href="do.css"/>
     </head>
     <body ng-app="do" ng-controller="doCtrl as ctrl">
-        <div class="mainBox">
+        <div class="mainBox" ng-keydown="onKeyDown($event)">
         <div class="searchBox">
             <input type="search" autofocus 
-                   ng-model="searchTerm" ng-change="ctrl.search()"/>
+                   ng-model="searchTerm" ng-change="search()"/>
         </div>
-        <div class="contentBox">
-            <div class="command" ng-class="ctrl.clazz(command)" ng-repeat="command in commands">
+        <div class="contentBox" id="contentBox">
+            <div ng-repeat="command in commands" 
+                 ng-click="selectCommand(command.Id)"
+                 class='command {{selected(command) ? "selected" : ""}}' 
+                 id="{{command.Id}}">
                 <div class="commandIcon">
                     <img ng-src='{{iconUrls[command.Icon] || "../../img/1x1.png"}}'
                          height="32" width="32" alt=" " border="0"/>

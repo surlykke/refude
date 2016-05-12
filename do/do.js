@@ -10,12 +10,63 @@ function doController($http, $scope) {
     $scope.commands = [];
     $scope.searchTerm = "";
 
-    var selectedCommand = null;
-    var ctrl = this;
-    var iconQueue = [];
-    var fetcherIsWorking = false;
+    $scope.search = function() {
+        if ($scope.searchTerm === null) {
+            $scope.searchTerm = "";
+        }
+        
+        if ($scope.searchTerm.trim() === "") {
+            $scope.commands = [];
+        }
+        else {
+            var url = "http://localhost:7938/desktopentries/commands?search=" + $scope.searchTerm;
+            $http.get(url).success(function(data) {
+                $scope.commands = data.commands;
+              
+                // If the last selected command is no longer there, set selected command to first in list
+                if (selectedIndex() < 0 && $scope.commands.length > 0) {
+                    selectedCommandId = $scope.commands[0].Id;
+                }
+                console.log("Set selectedCommand to " + selectedCommandId) ;
+
+                $scope.commands.forEach(function(command) { requestIcon(command.Icon);});
+            });
+        }
+    };
+
+    $scope.selected = function(command) {
+        return  selectedCommandId === command.Id;
+    };
+
+    $scope.onKeyDown = function($event) {
+        index = selectedIndex();
+        if (index > -1) {
+            if ($event.keyIdentifier === "Down" && index < $scope.commands.length - 1) {
+                selectedCommandId = $scope.commands[index + 1].Id;
+            }
+            else if ($event.keyIdentifier === "Up" && index > 0) {
+                selectedCommandId = $scope.commands[index - 1].Id;
+            }
+            else if ($event.keyIdentifier === "Enter" && selectedCommandId) {
+                $scope.selectCommand(selectedCommandId);
+            }
+        } 
+
+        scrollSelectedCommandIntoView();
+    };
+
+    $scope.selectCommand = function(commandId) {
+        console.log("Selected ", commandId);
+    };
+
+
+    selectedCommandId = null;
+
+    // Icon cache - TODO move to directive...
+    iconQueue = [];
+    fetcherIsWorking = false;
     
-    var fetcher = function() {
+    fetcher = function() {
         if (iconQueue.length > 0) {
             fetcherIsWorking = true;
             var iconName = iconQueue.shift();
@@ -34,7 +85,6 @@ function doController($http, $scope) {
 
             }
             else {
-                console.log("have it");
                 fetcher();
             }
         }
@@ -43,46 +93,39 @@ function doController($http, $scope) {
         }
     };
 
-    ctrl.requestIcon = function(iconName) {
+    requestIcon = function(iconName) {
         iconQueue.push(iconName);
         if (!fetcherIsWorking) {
             fetcher();
         }
     };
 
-    ctrl.requestIcon("application-x-executable");
+    // ---------------- end of icon cache ------------------------
 
-    ctrl.search = function() {
-        if ($scope.searchTerm === null) {
-            $scope.searchTerm = "";
-        }
-        
-        if ($scope.searchTerm.trim() === "") {
-            $scope.commands = [];
-        }
-        else {
-            var url = "http://localhost:7938/desktopentries/commands?search=" + $scope.searchTerm;
-            $http.get(url).success(function(data) {
-                $scope.commands = data.commands;
-               
-                if (selectedCommand) {
-                    selectedCommand = $scope.commands.find(function(cmd) { return selectedCommand.Id === cmd.Id; }) || null;
-                    console.log("find command returned: ", selectedCommand);
-                }
-                if (selectedCommand === null && $scope.commands.length > 0) {
-                    selectedCommand = $scope.commands[0];
-                }
-                console.log("Set selectedCommand to " + selectedCommand.Id) ;
-                $scope.commands.forEach(function(command, index) {
-                    ctrl.requestIcon(command.Icon);
-                });
-            });
+    selectedIndex = function() {
+        return $scope.commands.findIndex(c =>  c.Id === selectedCommandId );
+    };
+
+    scrollSelectedCommandIntoView = function() {
+        if (selectedCommandId) {
+            contentDiv = document.getElementById("contentBox");
+            commandDiv = document.getElementById(selectedCommandId);
+            contentDivRect = contentDiv.getBoundingClientRect(); 
+            commandDivRect = commandDiv.getBoundingClientRect();
+            console.log("commandDivRect:", commandDivRect);
+            console.log("contentDivRect:", contentDivRect);
+            console.log("commandDiv.scrollTop:", commandDiv.scrollTop)
+            console.log("contentDiv.scrollTop:", contentDiv.scrollTop);
+            if (commandDivRect.top < contentDivRect.top) {
+                contentDiv.scrollTop = contentDiv.scrollTop - (contentDivRect.top - commandDivRect.top + 15);
+            }
+            else if (commandDivRect.bottom > contentDivRect.bottom) {
+                contentDiv.scrollTop = contentDiv.scrollTop + (commandDivRect.bottom - contentDivRect.bottom + 15);
+            }
+            //document.getElementById(commandId).scrollIntoView(false);
         }
     };
 
-    ctrl.clazz = function(command) {
-        return  selectedCommand && selectedCommand.Id === command.Id ? "selected" : "";
-    };
 };
 
 
