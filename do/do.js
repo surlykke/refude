@@ -5,11 +5,9 @@
 * It is distributed under the GPL v2 license.
 * Please refer to the LICENSE file for a copy of the license.
 */
-function doController($http, $scope) {
+function doController($http, $scope, $window) {
     $scope.iconUrls = {};
-    $scope.commands = [];
-    $scope.searchTerm = "";
-
+    $scope.commands = []; $scope.searchTerm = ""; 
     $scope.search = function() {
         if ($scope.searchTerm === null) {
             $scope.searchTerm = "";
@@ -57,6 +55,17 @@ function doController($http, $scope) {
 
     $scope.selectCommand = function(commandId) {
         console.log("Selected ", commandId);
+        url = "http://localhost:7938/desktopentries/commands/" + commandId;
+        $http.post(url); /*
+                function(data) {
+                    console.log("success");
+                }, 
+                function(data) {
+                    console.log("Could not execute command", data);
+                });*/
+        $window.close(); 
+
+        /**/
     };
 
 
@@ -131,9 +140,8 @@ function doController($http, $scope) {
 
 var doModule = angular.module('do', []);
 
-doModule.controller('doCtrl', doController);
+doModule.controller('doCtrl', ['$http', '$scope', '$window', doController]);
 
 doModule.config([ '$compileProvider', function ($compileProvider) {
-    console.log("Correcting whitelist");
     $compileProvider.imgSrcSanitizationWhitelist(/^\s*((https?|ftp|file|blob|chrome-extension):|data:image\/)/);
 }]);
