@@ -12,7 +12,7 @@ makeIconCache = function ($http, resource) {
         urls: {},
         requestIcon: function (iconName) {
             if (!(iconName in cache.urls)) {
-                cache[iconName] = null;
+                cache.urls[iconName] = null;
                 var url = resource + "?name=" + iconName;
                 $http.get(url, {responseType: 'blob'}).then(
                         function success(response) {
