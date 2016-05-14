@@ -44,6 +44,10 @@ function doController($http, $scope, $window) {
     };
 
     $scope.onKeyDown = function ($event) {
+        console.log("keyDown: ", $event);
+        if ($event.code === "Escape") {
+            $window.close();
+        }
         index = selectedIndex();
         if (index > -1) {
             if ($event.keyIdentifier === "Down" && index < $scope.commands.length - 1) {
