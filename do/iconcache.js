@@ -6,17 +6,16 @@
  * Please refer to the LICENSE file for a copy of the license.
  */
 
-makeIconCache = function ($http, resource) {
+makeIconCache = function ($http) {
 
     var cache = {
         urls: {},
-        requestIcon: function (iconName) {
-            if (!(iconName in cache.urls)) {
-                cache.urls[iconName] = null;
-                var url = resource + "?name=" + iconName;
+        requestIcon: function (url) {
+            if (!(url in cache.urls)) {
+                cache.urls[url] = null;
                 $http.get(url, {responseType: 'blob', headers: {'accept': 'image/png'}}).then(
                         function success(response) {
-                            cache.urls[iconName] = window.URL.createObjectURL(response.data);
+                            cache.urls[url] = window.URL.createObjectURL(response.data);
                         }
                 );
             }

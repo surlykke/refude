@@ -6,13 +6,14 @@
  * Please refer to the LICENSE file for a copy of the license.
  */
 
-
 function doController($http, $scope, $window) {
-    $scope.iconCache = makeIconCache($http, "http://localhost:7938/icons/icon");
+    $scope.iconCache = makeIconCache($http);
 
     $scope.commands = [];
 
     $scope.searchTerm = "";
+
+    
 
     $scope.search = function () {
         if ($scope.searchTerm === null) {
@@ -23,24 +24,36 @@ function doController($http, $scope, $window) {
             $scope.commands = [];
         } 
         else {
-            var url = "http://localhost:7938/desktopentries/commands?search=" + $scope.searchTerm;
+            var url = commandsSearchUrl()  + $scope.searchTerm;
             $http.get(url).success(function (data) {
                 $scope.commands = data.commands;
 
                 // If the last selected command is no longer there, set selected command to first in list
                 if (selectedIndex() < 0 && $scope.commands.length > 0) {
-                    selectedCommandId = $scope.commands[0].Id;
+                    selectedCommand = $scope.commands[0];
                 }
 
                 $scope.commands.forEach(function (command) {
-                    $scope.iconCache.requestIcon(command.Icon);
+                    $scope.iconCache.requestIcon($scope.iconUrl(command));
                 });
             });
         }
     };
 
-    $scope.selected = function (command) {
-        return  selectedCommandId === command.Id;
+    $scope.iconUrl = function(command) {
+        if (command.hasOwnProperty("Icon")) {
+            return "http://localhost:7938/icons/icon?name=" + command.Icon;
+        }
+        else if (command._links.hasOwnProperty("icon")) {
+            return "http://localhost:7938" + command._links.icon.href;
+        }
+        else {
+            return null;
+        }
+    };
+
+    $scope.selected = function(command) {
+        return  selectedCommand === command;
     };
 
     $scope.onKeyDown = function ($event) {
@@ -51,37 +64,42 @@ function doController($http, $scope, $window) {
         index = selectedIndex();
         if (index > -1) {
             if ($event.keyIdentifier === "Down" && index < $scope.commands.length - 1) {
-                selectedCommandId = $scope.commands[index + 1].Id;
+                selectedCommand = $scope.commands[index + 1];
             } 
 	    else if ($event.keyIdentifier === "Up" && index > 0) {
-                selectedCommandId = $scope.commands[index - 1].Id;
+                selectedCommand = $scope.commands[index - 1];
             } 
-            else if ($event.keyIdentifier === "Enter" && selectedCommandId) {
-                $scope.selectCommand(selectedCommandId);
+            else if ($event.keyIdentifier === "Enter" && selectedCommand) {
+                executeCommand(selectedCommand);
             }
         }
 
         scrollSelectedCommandIntoView();
     };
 
-    $scope.selectCommand = function (commandId) {
-        console.log("Selected ", commandId);
-        url = "http://localhost:7938/desktopentries/commands/" + commandId;
-        $http.post(url);
-        $window.close();
+    commandsSearchUrl = function() {
+        return "http://localhost:7938/desktopentries/commands?search=";
+    };
+   
+    executeCommand = function (command) {
+        console.log("Selected ", command);
+        console.log("Posting against: ", command._links.execute.href);
+        $http.post("http://localhost:7938" + command._links.execute.href).then(
+            $window.close 
+        );
     };
 
 
-    selectedCommandId = null;
+    selectedCommand = null;
 
     selectedIndex = function () {
-        return $scope.commands.findIndex(c => c.Id === selectedCommandId);
+        return $scope.commands.findIndex(c => c === selectedCommand);
     };
 
     scrollSelectedCommandIntoView = function () {
-        if (selectedCommandId) {
+        if (selectedCommand) {
             contentDiv = document.getElementById("contentBox");
-            commandDiv = document.getElementById(selectedCommandId);
+            commandDiv = document.getElementById(selectedCommand._links.self.href);
             if (!(contentDiv && commandDiv)) {
                 return;
             }
