@@ -13,7 +13,20 @@ function doController($http, $scope, $window) {
 
     $scope.searchTerm = "";
 
-    
+    $http.get("http://localhost:7938/runningapplications").then(
+        function(response) {
+            console.log("Got runningapplications", response.data);
+            $scope.commands = response.data.commands;
+
+            $scope.commands.forEach(function (command) {
+                $scope.iconCache.requestIcon($scope.iconUrl(command));
+            });
+
+            if ($scope.commands.length > 0) {
+                selectedCommand = $scope.commands[0];
+            }
+        }
+    );
 
     $scope.search = function () {
         if ($scope.searchTerm === null) {
@@ -80,7 +93,7 @@ function doController($http, $scope, $window) {
     commandsSearchUrl = function() {
         return "http://localhost:7938/desktopentries/commands?search=";
     };
-   
+  
     executeCommand = function (command) {
         console.log("Selected ", command);
         console.log("Posting against: ", command._links.execute.href);
