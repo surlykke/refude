@@ -15,11 +15,11 @@ function doController($http, $scope, $window) {
 
     $http.get("http://localhost:7938/runningapplications").then(
         function(response) {
-            console.log("Got runningapplications", response.data);
-            $scope.commands = response.data.commands;
-
-            $scope.commands.forEach(function (command) {
-                $scope.iconCache.requestIcon($scope.iconUrl(command));
+            response.data.commands.forEach(function (command) {
+                if ("Refude Do" !== command.Name) {
+                    $scope.commands.push(command);
+                    $scope.iconCache.requestIcon($scope.iconUrl(command));
+                }
             });
 
             if ($scope.commands.length > 0) {
@@ -40,16 +40,18 @@ function doController($http, $scope, $window) {
             clean = true;
             commandsSearchUrls($scope.searchTerm).forEach(function(url) {
                 $http.get(url).success(function (data) {
-                    console.log("url ", url, " returned ", data);
+                    
                     if (clean) {
-                        console.log("overwrite...");
-                        $scope.commands = data.commands;
+                        $scope.commands = [];
                         clean = false;
                     }
-                    else {
-                        console.log("concat..");
-                        $scope.commands = $scope.commands.concat(data.commands);
-                    }
+                    
+                    data.commands.forEach(function(command) {
+                        console.log("Consider: ", command.Name);
+                        if ("Refude Do" !== command.Name) {
+                            $scope.commands.push(command);
+                        }
+                    }); 
 
                     // If the last selected command is no longer there, set selected command to first in list
                     if (selectedIndex() < 0 && $scope.commands.length > 0) {
