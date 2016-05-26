@@ -10,7 +10,7 @@ function doController($http, $scope, $window) {
     $scope.iconCache = makeIconCache($http);
 
     $scope.commands = [];
-
+    clean = true;
     $scope.searchTerm = "";
 
     $http.get("http://localhost:7938/runningapplications").then(
@@ -37,18 +37,29 @@ function doController($http, $scope, $window) {
             $scope.commands = [];
         } 
         else {
-            var url = commandsSearchUrl()  + $scope.searchTerm;
-            $http.get(url).success(function (data) {
-                $scope.commands = data.commands;
+            clean = true;
+            commandsSearchUrls($scope.searchTerm).forEach(function(url) {
+                $http.get(url).success(function (data) {
+                    console.log("url ", url, " returned ", data);
+                    if (clean) {
+                        console.log("overwrite...");
+                        $scope.commands = data.commands;
+                        clean = false;
+                    }
+                    else {
+                        console.log("concat..");
+                        $scope.commands = $scope.commands.concat(data.commands);
+                    }
 
-                // If the last selected command is no longer there, set selected command to first in list
-                if (selectedIndex() < 0 && $scope.commands.length > 0) {
-                    selectedCommand = $scope.commands[0];
-                }
+                    // If the last selected command is no longer there, set selected command to first in list
+                    if (selectedIndex() < 0 && $scope.commands.length > 0) {
+                        selectedCommand = $scope.commands[0];
+                    }
 
-                $scope.commands.forEach(function (command) {
-                    $scope.iconCache.requestIcon($scope.iconUrl(command));
-                });
+                    $scope.commands.forEach(function (command) {
+                        $scope.iconCache.requestIcon($scope.iconUrl(command));
+                    });
+                })
             });
         }
     };
@@ -90,8 +101,9 @@ function doController($http, $scope, $window) {
         scrollSelectedCommandIntoView();
     };
 
-    commandsSearchUrl = function() {
-        return "http://localhost:7938/desktopentries/commands?search=";
+    commandsSearchUrls = function(searchTerm) {
+        return ["http://localhost:7938/desktopentries/commands?search=" + searchTerm,
+                "http://localhost:7938/runningapplications?search=" + searchTerm];
     };
   
     executeCommand = function (command) {
