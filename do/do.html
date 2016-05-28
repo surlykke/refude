@@ -13,30 +13,36 @@
         <meta charset="UTF-8">
         <script src="angular.js"></script>
         <script src="iconcache.js"></script>
+        <script src="commandlist.js"></script>
         <script src="do.js"></script>
         <link rel="stylesheet" href="do.css"/>
     </head>
     <body ng-app="do" ng-controller="doCtrl as ctrl">
         <div class="mainBox" ng-keydown="onKeyDown($event)">
-        <div class="searchBox">
-            <input type="search" autofocus 
-                   ng-model="searchTerm" ng-change="search()"/>
-        </div>
-        <div class="contentBox" id="contentBox">
-            <div ng-repeat="command in commands" 
-                 ng-click="selectCommand(command.Id)"
-                 class='command {{selected(command) ? "selected" : ""}}' 
-                 id="{{command._links.self.href}}">
-                <div class="commandIcon">
-                    <img ng-src='{{iconCache.urls[iconUrl(command)] || "../../img/1x1.png"}}'
-                         height="32" width="32" alt=" " border="0"/>
-                </div>
-                <div class="commandDesc">
-                    <div class="commandName">{{command.Name}}</div>
-                    <div class="commandComment">{{command.Comment}}</div>
+            <div class="searchBox">
+                <input type="search" autofocus 
+                       ng-model="searchTerm" ng-change="search()"/>
+            </div>
+            <div class="contentBox" id="contentBox">
+                <div ng-repeat="command in commandList.commands" 
+                     ng-click="selectCommand(command.Id)"
+                     class='command {{command === commandList.selectedCommand ? "selected" : ""}}' 
+                     id="{{command._links.self.href}}">
+                    <div class="commandIcon">
+                        <img ng-src='{{iconCache.urls[commandList.iconUrl(command)] || "../../img/1x1.png"}}'
+                             height="32" width="32" alt=" " border="0"/>
+                    </div>
+                    <div class="commandDesc">
+                        <div class="commandName">{{command.Name}}</div>
+                        <div class="commandComment"> {{command.Comment}} </div>
+                        <div ng-if='command.hasOwnProperty("geometry")' class="commandComment">
+                            <b>running</b>
+                        </div>
+                     </div>
                 </div>
             </div>
         </div>
-        </div>
+        <canvas id="outlines" class="outlines"></canvas>
+
     </body>
 </html>

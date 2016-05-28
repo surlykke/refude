@@ -8,99 +8,32 @@
 
 function doController($http, $scope, $window) {
     $scope.iconCache = makeIconCache($http);
-
-    $scope.commands = [];
-    clean = true;
+    $scope.commandList = makeCommandList($http, $scope.iconCache);
     $scope.searchTerm = "";
 
-    $http.get("http://localhost:7938/runningapplications").then(
-        function(response) {
-            response.data.commands.forEach(function (command) {
-                if ("Refude Do" !== command.Name) {
-                    $scope.commands.push(command);
-                    $scope.iconCache.requestIcon($scope.iconUrl(command));
-                }
-            });
-
-            if ($scope.commands.length > 0) {
-                selectedCommand = $scope.commands[0];
-            }
-        }
-    );
-
-    $scope.search = function () {
-        if ($scope.searchTerm === null) {
-            $scope.searchTerm = "";
-        }
-
-        if ($scope.searchTerm.trim() === "") {
-            $scope.commands = [];
-        } 
-        else {
-            clean = true;
-            commandsSearchUrls($scope.searchTerm).forEach(function(url) {
-                $http.get(url).success(function (data) {
-                    
-                    if (clean) {
-                        $scope.commands = [];
-                        clean = false;
-                    }
-                    
-                    data.commands.forEach(function(command) {
-                        console.log("Consider: ", command.Name);
-                        if ("Refude Do" !== command.Name) {
-                            $scope.commands.push(command);
-                        }
-                    }); 
-
-                    // If the last selected command is no longer there, set selected command to first in list
-                    if (selectedIndex() < 0 && $scope.commands.length > 0) {
-                        selectedCommand = $scope.commands[0];
-                    }
-
-                    $scope.commands.forEach(function (command) {
-                        $scope.iconCache.requestIcon($scope.iconUrl(command));
-                    });
-                })
-            });
-        }
-    };
-
-    $scope.iconUrl = function(command) {
-        if (command.hasOwnProperty("Icon")) {
-            return "http://localhost:7938/icons/icon?name=" + command.Icon;
-        }
-        else if (command._links.hasOwnProperty("icon")) {
-            return "http://localhost:7938" + command._links.icon.href;
-        }
-        else {
-            return null;
-        }
-    };
-
-    $scope.selected = function(command) {
-        return  selectedCommand === command;
+    $scope.search = function() {
+        $scope.commandList.get(commandsSearchUrls($scope.searchTerm));
     };
 
     $scope.onKeyDown = function ($event) {
-        console.log("keyDown: ", $event);
         if ($event.code === "Escape") {
             $window.close();
         }
-        index = selectedIndex();
-        if (index > -1) {
-            if ($event.keyIdentifier === "Down" && index < $scope.commands.length - 1) {
-                selectedCommand = $scope.commands[index + 1];
-            } 
-	    else if ($event.keyIdentifier === "Up" && index > 0) {
-                selectedCommand = $scope.commands[index - 1];
-            } 
-            else if ($event.keyIdentifier === "Enter" && selectedCommand) {
-                executeCommand(selectedCommand);
-            }
+        if ($event.keyIdentifier === "Down") {
+            $scope.commandList.selectNext();
+        }
+	    else if ($event.keyIdentifier === "Up") {
+            $scope.commandList.selectPrevious();
+        }
+        else if ($event.keyIdentifier === "Enter" && $scope.commandList.isSelectionValid()) {
+            executeCommand($scope.commandList.selectedCommand);
         }
 
         scrollSelectedCommandIntoView();
+    };
+
+    $scope.running = function(command) { 
+        return command.hasOwnProperty("geometry");
     };
 
     commandsSearchUrls = function(searchTerm) {
@@ -109,34 +42,28 @@ function doController($http, $scope, $window) {
     };
   
     executeCommand = function (command) {
-        console.log("Selected ", command);
-        console.log("Posting against: ", command._links.execute.href);
         $http.post("http://localhost:7938" + command._links.execute.href).then(
             $window.close 
         );
     };
 
-
-    selectedCommand = null;
-
-    selectedIndex = function () {
-        return $scope.commands.findIndex(c => c === selectedCommand);
-    };
-
+    /**
+     * There is a scroll into view 
+     */
     scrollSelectedCommandIntoView = function () {
-        if (selectedCommand) {
-            contentDiv = document.getElementById("contentBox");
-            commandDiv = document.getElementById(selectedCommand._links.self.href);
+        if ($scope.commandList.selectedCommand) {
+            var contentDiv = document.getElementById("contentBox");
+            var commandDiv = document.getElementById($scope.commandList.selectedCommand._links.self.href);
             if (!(contentDiv && commandDiv)) {
                 return;
             }
 
-            contentTop = contentDiv.getBoundingClientRect().top;
-            commandTop = commandDiv.getBoundingClientRect().top;
-            contentBottom = contentDiv.getBoundingClientRect().bottom;
-            commandBottom = commandDiv.getBoundingClientRect().bottom;
+            var contentTop = contentDiv.getBoundingClientRect().top;
+            var commandTop = commandDiv.getBoundingClientRect().top;
+            var contentBottom = contentDiv.getBoundingClientRect().bottom;
+            var commandBottom = commandDiv.getBoundingClientRect().bottom;
 
-            delta = null;
+            var delta = null;
             if (commandTop < contentTop) {
                 // So command is (partly) above content view - we move the view upwards
                 delta = commandTop - contentTop - 15;
@@ -149,6 +76,8 @@ function doController($http, $scope, $window) {
             }
         }
     };
+        
+    $scope.commandList.get(["http://localhost:7938/runningapplications"]);
 };
 
 

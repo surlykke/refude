@@ -14,9 +14,9 @@ makeIconCache = function ($http) {
             if (!(url in cache.urls)) {
                 cache.urls[url] = null;
                 $http.get(url, {responseType: 'blob', headers: {'accept': 'image/png'}}).then(
-                        function success(response) {
-                            cache.urls[url] = window.URL.createObjectURL(response.data);
-                        }
+                    function success(response) {
+                        cache.urls[url] = window.URL.createObjectURL(response.data);
+                    }
                 );
             }
         }

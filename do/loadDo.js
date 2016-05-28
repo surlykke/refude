@@ -12,8 +12,8 @@ chrome.app.runtime.onLaunched.addListener(function (launchData) {
         'outerBounds': {
             'width': 300,
             'height': 300,
-            'minWidth': 180,
-            'minHeight': 200
+            'minWidth': 300,
+            'minHeight': 300
         }
     });
 });
