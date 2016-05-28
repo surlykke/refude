@@ -16,13 +16,14 @@ function doController($http, $scope, $window) {
     };
 
     $scope.onKeyDown = function ($event) {
+        console.log("keydown: ", $event);
         if ($event.code === "Escape") {
             $window.close();
         }
-        if ($event.keyIdentifier === "Down") {
+        if ($event.keyIdentifier === "Down" || ($event.code === "Tab" && !$event.shiftKey)) {
             $scope.commandList.selectNext();
         }
-	    else if ($event.keyIdentifier === "Up") {
+	    else if ($event.keyIdentifier === "Up" || ($event.code === "Tab" && $event.shiftKey)) {
             $scope.commandList.selectPrevious();
         }
         else if ($event.keyIdentifier === "Enter" && $scope.commandList.isSelectionValid()) {
