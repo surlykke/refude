@@ -5,7 +5,7 @@
  * It is distributed under the GPL v2 license.
  * Please refer to the LICENSE file for a copy of the license.
  */
-makeCommandList = function($http, iconCache) {
+makeCommandList = function($scope, $http, iconCache) {
     var searchCounter = 0;
     var _addCommands = function(response) {
         response.data.commands.forEach(function(command) {
@@ -40,6 +40,7 @@ makeCommandList = function($http, iconCache) {
                     if (!commandList.isSelectionValid()) {
                         commandList.selectFirst();
                     }
+                    $scope.$apply();
                 });
         },
         selectFirst: function () {

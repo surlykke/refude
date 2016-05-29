@@ -8,17 +8,25 @@
 
 function doController($http, $scope, $window) {
     $scope.iconCache = makeIconCache($http);
-    $scope.commandList = makeCommandList($http, $scope.iconCache);
-    console.log("Watching:", $scope.commandList);
+    $scope.commandList = makeCommandList($scope, $http, $scope.iconCache);
     
     $scope.searchTerm = "";
 
     $scope.search = function() {
-        $scope.commandList.get(commandsSearchUrls($scope.searchTerm));
+        $scope.searchTerm = $scope.searchTerm ? $scope.searchTerm.trim() : ""; 
+        if ($scope.searchTerm === "") {
+            $scope.commandList.get(["http://localhost:7938/runningapplications"]);
+        }
+        else { 
+            var searchUrls = [
+                "http://localhost:7938/desktopentries/commands?search=" + $scope.searchTerm,
+                "http://localhost:7938/runningapplications?search=" + $scope.searchTerm
+            ];
+            $scope.commandList.get(searchUrls);
+        }
     };
 
     $scope.onKeyDown = function ($event) {
-        console.log("keydown: ", $event);
         if ($event.code === "Escape") {
             $window.close();
         }
@@ -39,21 +47,12 @@ function doController($http, $scope, $window) {
         return command.hasOwnProperty("geometry");
     };
 
-
-
-    var commandsSearchUrls = function(searchTerm) {
-        return ["http://localhost:7938/desktopentries/commands?search=" + searchTerm,
-                "http://localhost:7938/runningapplications?search=" + searchTerm];
-    };
-  
     var executeCommand = function (command) {
         $http.post("http://localhost:7938" + command._links.execute.href).then(
             $window.close 
         );
     };
 
-    /**
-     */
     var scrollSelectedCommandIntoView = function () {
         if ($scope.commandList.selectedCommand) {
             var contentDiv = document.getElementById("contentBox");
@@ -85,47 +84,42 @@ function doController($http, $scope, $window) {
 
     $http.get("http://localhost:7938/display").then(function(response) { 
         displayGeometry = response.data.geometry; 
-        $scope.commandList.get(["http://localhost:7938/runningapplications"]);
+        $scope.search();
     });
+    
 
     var drawOutline = function(command) {
-        var display = document.getElementById("display");
-        var selectedDiv = document.getElementById("selectedWindow"); 
+        var display = document.getElementById("disp");
+        var currentWindowDiv = document.getElementById("currentWindow"); 
         if (command && command.hasOwnProperty("geometry")) {
-            display.style.display = "inline";
-            selectedDiv.style.display = "inline"; 
-            var contentRect = document.getElementById("contentBox").getBoundingClientRect();
+            currentWindowDiv.style.display = "inline"; 
+            var contentRect = display.getBoundingClientRect();
 
-            var availableWidth = Math.min(contentRect.right - contentRect.left - 100, 200);
-            var availableHeight = contentRect.bottom - contentRect.top - 60;
-            var scale = Math.min(availableWidth/displayGeometry.w, availableHeight/displayGeometry.h);
-            var offsetX = contentRect.right - contentRect.left - availableWidth - 30;
-            var offsetY = 50;
+            var width = contentRect.right - contentRect.left;
+            var height = contentRect.bottom - contentRect.top;
+            var scale = Math.min(width/displayGeometry.w, height/displayGeometry.h);
             
-            placeDiv(display,     offsetX, offsetY, displayGeometry, scale);
-            placeDiv(selectedDiv, offsetX, offsetY, command.geometry, scale);
+            placeDiv(currentWindowDiv, 0, 0, command.geometry, scale);
         }
         else {
-            display.style.display = "none";
-            selectedDiv.style.display = "none";
+            currentWindowDiv.style.display = "none";
         }
     };
   
     var placeDiv = function(div, offsetX, offsetY, geometry, scale) {
         var convertToPix = function(val) {
             var result =  "" + Math.round(val) + "px";
-            console.log("convert", val, result);
             return result; 
         };
-        console.log("placeDiv", offsetX, offsetY, geometry, scale);
         div.style.left = convertToPix(offsetX + geometry.x*scale);
         div.style.top = convertToPix(offsetY + geometry.y*scale);
         div.style.width = convertToPix(geometry.w*scale);
         div.style.height = convertToPix(geometry.h*scale);
     };
 
-
    $scope.$watch('commandList.selectedCommand',drawOutline, true); 
+   $scope.$watch('commandList.commands', scrollSelectedCommandIntoView, true); 
+   $scope.$watch('commandList.selectedCommand', scrollSelectedCommandIntoView, true); 
 };
 
 
