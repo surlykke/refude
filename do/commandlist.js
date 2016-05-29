@@ -32,6 +32,11 @@ makeCommandList = function($http, iconCache) {
                     }
                     commandList.commands = [];
                     responses.forEach(_addCommands);
+
+                    commandList.commands.sort(function(c1, c2) { 
+                        return c2.lastActivated - c1.lastActivated; 
+                    });
+                    
                     if (!commandList.isSelectionValid()) {
                         commandList.selectFirst();
                     }
