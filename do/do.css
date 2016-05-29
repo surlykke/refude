@@ -1,29 +1,22 @@
 html, body {
     height: 100%;
 }
-.mainBox {
-    display: flex;
-    flex-direction: column;
-    height: 90%;
-    width: 98%;
-}
-.searchBox {
-    flex: 0;
-    width: 100%;
-    padding-bottom: 10px;
-}
-.searchBox input {
+.searchInput  {
     border-radius: 6px;
     outline-style: none;
-    width: 100%;
     height: 28px;
+    width: 310px;
+    margin: 6px;
 }
 .contentBox {
-    flex: 1;
-    height:100%;
+    position: absolute;
+    left: 10px;
+    top: 50px;
+    height: calc(100% - 80px);
+    width: 300px;
+    padding: 6px;
     overflow-y: auto;
     overflow-x: hidden;
-    padding: 6px;
 }
 .command {
     display: table-row;
@@ -44,6 +37,7 @@ html, body {
 }
 .commandDesc {
     display: table-cell;
+    white-space: nowrap;
     padding: 3px;
     width: 100%;
 }
@@ -52,13 +46,22 @@ html, body {
 }
 .display {
     position: absolute;
-    background-color: black;
-    opacity: 0.2;
-    z-index: 10;
+    left: 330px;
+    top: 15px;
+    width: calc(100% - 340px);
+    min-width: 200px;
+    height: calc(100% - 33px);
+    border: solid 1px lightgrey;
 }
-.selectedWindow {
+.runningApp {
     position: absolute;
-    background-color: black;
-    opacity: 0.2;
-    z-index: 20;
+    border: solid 1px black;
+    background-color: grey;
+    opacity: 0.4;
+}
+.runningAppTitle {
+    background-color: lightblue;
+    font-size: xx-small;
+    text-align: center;
+    opacity: 1;
 }

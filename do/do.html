@@ -17,32 +17,29 @@
         <script src="do.js"></script>
         <link rel="stylesheet" href="do.css"/>
     </head>
-    <body ng-app="do" ng-controller="doCtrl as ctrl">
-        <div class="mainBox" ng-keydown="onKeyDown($event)">
-            <div class="searchBox">
-                <input type="search" autofocus 
-                       ng-model="searchTerm" ng-change="search()"/>
-            </div>
-            <div class="contentBox" id="contentBox">
-                <div ng-repeat="command in commandList.commands" 
-                     ng-click="selectCommand(command.Id)"
-                     class='command {{command === commandList.selectedCommand ? "selected" : ""}}' 
-                     id="{{command._links.self.href}}">
-                    <div class="commandIcon">
-                        <img ng-src='{{iconCache.urls[commandList.iconUrl(command)] || "../../img/1x1.png"}}'
-                             height="32" width="32" alt=" " border="0"/>
-                    </div>
-                    <div class="commandDesc">
-                        <div class="commandName">{{command.Name}}</div>
-                        <div class="commandComment"> {{command.Comment}} </div>
-                        <div ng-if='command.hasOwnProperty("geometry")' class="commandComment">
-                            <b>running</b>
-                        </div>
+    <body ng-app="do" ng-controller="doCtrl as ctrl" ng-keydown="onKeyDown($event)">
+        <input type="search" autofocus class="searchInput" ng-model="searchTerm" ng-change="commandList.search()" />
+        <div class="contentBox" id="contentBox">
+            <div ng-repeat="command in commandList.commands" 
+                    ng-click="selectCommand(command.Id)"
+                    class='command {{command === commandList.selectedCommand ? "selected" : ""}}' 
+                    id="{{command._links.self.href}}">
+                <div class="commandIcon">
+                    <img ng-src='{{iconCache.urls[commandList.iconUrl(command)] || "../../img/1x1.png"}}'
+                            height="32" width="32" alt=" " border="0"/>
+                </div>
+                <div class="commandDesc">
+                    <div class="commandName">{{command.Name}}</div>
+                    <div class="commandComment"> {{command.Comment}} </div>
+                    <div ng-if='command.hasOwnProperty("geometry")' class="commandComment">
+                        <b>running</b>
                     </div>
                 </div>
-                <div id="display" class="display"></div>
-                <div id="selectedWindow" class="selectedWindow"></div>
-
+            </div>
+        </div>
+        <div id="disp" class="display">
+            <div ng-repeat="app in commandList.runningApps" class="runningApp" ng-style="style(app, $index)">
+                <div class="runningAppTitle">{{app.Name}}</div>
             </div>
         </div>
     </body>
