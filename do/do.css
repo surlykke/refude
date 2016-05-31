@@ -62,6 +62,6 @@ html, body {
 .runningAppTitle {
     background-color: lightblue;
     font-size: xx-small;
-    text-align: center;
+    vertical-align: central;
     opacity: 1;
 }

@@ -39,7 +39,10 @@
         </div>
         <div id="disp" class="display">
             <div ng-repeat="app in commandList.runningApps" class="runningApp" ng-style="style(app, $index)">
-                <div class="runningAppTitle">{{app.Name}}</div>
+                <div class="runningAppTitle">
+                    <img ng-src="{{iconCache.urls[commandList.iconUrl(app)]}}" height="10" width="10" alt =" "/>
+                    {{app.Name}}
+                </div>
             </div>
         </div>
     </body>
