@@ -1,0 +1,14 @@
+{
+  "name": "Refude Power",
+  "version": "0.1",
+  "manifest_version": 2,
+  "app": {
+    "background": {
+      "scripts": ["loadPower.js"]
+    }
+  },
+  "permissions": [
+      "http://localhost:*/*",
+	  "background"
+  ]
+}

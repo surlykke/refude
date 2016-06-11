@@ -35,6 +35,28 @@ function doController($q, $http, $scope, $window) {
         return command.hasOwnProperty("geometry");
     };
 
+    $scope.iconUrl = function(command) {
+        return $scope.iconCache.urls[$scope.iconUrlExt(command)] || "../../img/1x1.png";
+    };
+
+    $scope.iconUrlExt = function(command) {
+        if (command.hasOwnProperty("Icon")) {
+            return "http://localhost:7938/icons/icon?name=" + command.Icon;
+        } else if (command._links.hasOwnProperty("icon")) {
+            return "http://localhost:7938" + command._links.icon.href;
+        } else {
+            return null;
+        }
+    };
+    
+    $scope.imgClass = function(command) {
+        return "commandIcon" + ($scope.running(command) ? " running" : "");
+    };
+   
+    $scope.commandClass = function(command) {
+        return "command" + (command === $scope.commandList.selectedCommand ? " selected" : "");
+    };
+
     $scope.style = function(runningApp, index) {
         if (!runningApp.hasOwnProperty("geometry")) {
             return {"display" : "none"};

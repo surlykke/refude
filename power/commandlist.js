@@ -47,7 +47,7 @@ makeCommandList = function ($scope, $q, $http, runningAppsUrl, otherUrls) {
                                 else {
                                     commandList.commands.push(cmd);
                                 }
-                                $scope.iconCache.requestIcon($scope.iconUrlExt(cmd));
+                                $scope.iconCache.requestIcon(commandList.iconUrl(cmd));
                             });
                         });
 
@@ -78,6 +78,15 @@ makeCommandList = function ($scope, $q, $http, runningAppsUrl, otherUrls) {
         },
         isSelectionValid: function () {
             return commandList.commands.indexOf(commandList.selectedCommand) > -1;
+        },
+        iconUrl: function (command) {
+            if (command.hasOwnProperty("Icon")) {
+                return "http://localhost:7938/icons/icon?name=" + command.Icon;
+            } else if (command._links.hasOwnProperty("icon")) {
+                return "http://localhost:7938" + command._links.icon.href;
+            } else {
+                return null;
+            }
         }
     };
 

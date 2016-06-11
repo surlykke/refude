@@ -22,16 +22,16 @@
         <div class="contentBox" id="contentBox">
             <div ng-repeat="command in commandList.commands" 
                     ng-click="selectCommand(command.Id)"
-                    class='command {{command === commandList.selectedCommand ? "selected" : ""}}' 
+                    class="{{commandClass(command)}}" 
                     id="{{command._links.self.href}}">
-                <div class="commandIcon">
-                    <img ng-src='{{iconCache.urls[commandList.iconUrl(command)] || "../../img/1x1.png"}}'
+                <div class="{{imgClass(command)}}">
+                    <img ng-src='{{iconUrl(command)}}'
                             height="32" width="32" alt=" " border="0"/>
                 </div>
                 <div class="commandDesc">
                     <div class="commandName">{{command.Name}}</div>
                     <div class="commandComment"> {{command.Comment}} </div>
-                    <div ng-if='command.hasOwnProperty("geometry")' class="commandComment">
+                    <div ng-if='running(command)' class="commandComment">
                         <b>running</b>
                     </div>
                 </div>
@@ -40,7 +40,7 @@
         <div id="disp" class="display">
             <div ng-repeat="app in commandList.runningApps" class="runningApp" ng-style="style(app, $index)">
                 <div class="runningAppTitle">
-                    <img ng-src="{{iconCache.urls[commandList.iconUrl(app)]}}" height="10" width="10" alt =" "/>
+                    <img ng-src="{{commandList.iconUrl(app)}}" height="10" width="10" alt =" "/>
                     {{app.Name}}
                 </div>
             </div>

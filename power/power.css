@@ -35,9 +35,6 @@ html, body {
 .commandIcon img {
     border-style: none;
 }
-.running img {
-    -webkit-filter: drop-shadow(5px 5px 3px grey);
-}
 .commandDesc {
     display: table-cell;
     white-space: nowrap;
