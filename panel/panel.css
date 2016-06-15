@@ -1,0 +1,55 @@
+.body, .html {
+}
+.content {
+    -webkit-app-region: drag;
+    display: table;
+    height: 20px;
+    font-size: 16px;
+}
+.time {
+    display: table-cell; 
+    margin-right : 14px;
+    vertical-align: middle;
+}
+.battery {
+    width: 50px;
+    display: table-cell;
+    padding-left: 12px;
+    vertical-align: middle;
+}
+.battery meter {
+    height: 100%;
+    width: 100%; 
+}
+.batteryDotOuter {
+    display: table-cell;
+    vertical-align: middle;
+    width: 4px;
+}
+.batteryDotInner {
+    display: inline-block; 
+    background-image:  
+    linear-gradient(
+      to bottom,
+      #A0A0A0,
+      #E0E0E0 20%,
+      #A0A0A0
+    );
+    background-color: lightgrey;
+    height: 50%;
+    width: 100%;
+}
+.state {
+    display: table-cell;
+    padding-left: 6px;
+    vertical-align: middle;
+}
+.debug {
+    padding-top: 20px;
+}
+.charge {
+    float: left;
+}
+.stateSelect {
+    float: left;
+}

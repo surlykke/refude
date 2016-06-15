@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<!--
+ Copyright (c) 2015, 2016 Christian Surlykke
+
+ This file is part of the refude project. 
+ It is distributed under the GPL v2 license.
+ Please refer to the LICENSE file for a copy of the license.
+-->
+
+<html>
+    <head>
+        <title>Refude Panel</title>
+        <meta charset="UTF-8">
+        <script src="angular.js"></script>
+        <script src="panel.js"></script>
+        <link rel="stylesheet" href="panel.css"/>
+    </head>
+    <body ng-app="panel" ng-controller="panelCtrl as ctrl">
+        <div class="content">
+            <div class="time">{{time}}</div>
+            <div class="battery">
+                <meter ng-attr-value="{{charge}}" min="0" max="100"></meter>
+            </div>
+            <div class="batteryDotOuter">
+                <div class="batteryDotInner"></div>
+            </div>
+            <div class="state">
+                {{stateSymbol[state]}}
+            </div>
+        </div>
+        <div style="clear: both;"></div>
+        <div class="debug">
+            <div class="charge">
+                <input type="number" name="charge" ng-model="charge" value="50" min="0" max="100"/>
+            </div>
+            <div class="stateSelect">
+                <select name="selectState" ng-model="state">
+                    <option ng-repeat="i in [0, 1, 2, 3]" value="{{i}}" ng-selected="state === i">{{i}}</option>
+                </select>
+            </div>
+        </div>
+    </body>
+</html>
+
