@@ -10,6 +10,7 @@ chrome.app.runtime.onLaunched.addListener(function (launchData) {
     chrome.app.window.create('panel.html', {
         'id': 'org.restfulipc.refude.Panel',
         'frame' : 'none',
+        'alwaysOnTop' : true,
         'outerBounds': {
             'width': 600,
             'height': 100,
