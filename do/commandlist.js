@@ -29,11 +29,12 @@ makeCommandList = function ($scope, $q, $http, runningAppsUrl, otherUrls) {
             $q.all(listOfPromises).then(
                     function (responses) {
                         if (temp < searchCounter) {
-                            // So another search has been started - we discard results
+                            // So another search has been started - we discard results of this one
                             return;
                         }
-           
+          
                         commandList.runningApps = [];
+                        var otherCommands = [];
                         commandList.commands = [];
 
                         responses.forEach(function (response, index) {
@@ -41,24 +42,29 @@ makeCommandList = function ($scope, $q, $http, runningAppsUrl, otherUrls) {
                                 if (index === 0) {
                                     if ("Refude Do" !== cmd.Name) {
                                         commandList.runningApps.push(cmd);
-                                        commandList.commands.push(cmd);
                                     }
                                 } 
                                 else {
-                                    commandList.commands.push(cmd);
+                                    otherCommands.push(cmd);
                                 }
                                 $scope.iconCache.requestIcon($scope.iconUrlExt(cmd));
                             });
                         });
 
-                        commandList.commands.sort(function (c1, c2) {
+                        otherCommands.sort(function (c1, c2) {
                             return c2.lastActivated - c1.lastActivated;
+                        });
+                       
+                        commandList.runningApps.forEach(function(cmd) {
+                            commandList.commands.push(cmd);
+                        });
+                        otherCommands.forEach(function(cmd) {
+                            commandList.commands.push(cmd);
                         });
 
                         if (!commandList.isSelectionValid()) {
                             commandList.selectFirst();
                         }
-                        //$scope.$apply();
                     });
                 },
         selectFirst: function () {
