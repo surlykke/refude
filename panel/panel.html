@@ -19,7 +19,12 @@
         <div class="content">
             <div class="time">{{time}}</div>
             <div class="battery">
-                <meter ng-attr-value="{{charge}}" min="0" max="100"></meter>
+                <meter ng-attr-value="{{charge}}" 
+                       min="0" 
+                       max="100" 
+                       ng-attr-low="{{low()}}" 
+                       ng-attr-high="{{high()}}" 
+                       ng-attr-optimum="{{high() + 1}}"></meter>
             </div>
             <div class="batteryDotOuter">
                 <div class="batteryDotInner"></div>

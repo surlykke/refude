@@ -9,7 +9,9 @@
 function panelController($scope, $interval, $http) {
     $scope.charge = 50;
     $scope.state = 3;
-    $scope.stateSymbol = ['\u25CF', '\u002B', '\u2212', '\u25CB']
+    $scope.low = function() { return  $scope.state >= 2 ? 10 : 0; };
+    $scope.high = function() { return $scope.state >= 2 ? 30 : 0; };
+    $scope.stateSymbol = ['\u25CF', '\u002B', '\u2212', '\u25CB'];
     $interval(function() {
         $scope.time = new Date().toLocaleTimeString();
     });
