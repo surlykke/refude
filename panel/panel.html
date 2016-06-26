@@ -19,29 +19,19 @@
         <div class="content">
             <div class="time">{{time}}</div>
             <div class="battery">
-                <meter ng-attr-value="{{charge}}" 
+                <meter class="battery-body" 
+                       ng-attr-value="{{charge}}" 
                        min="0" 
                        max="100" 
                        ng-attr-low="{{low()}}" 
                        ng-attr-high="{{high()}}" 
                        ng-attr-optimum="{{high() + 1}}"></meter>
-            </div>
-            <div class="batteryDotOuter">
-                <div class="batteryDotInner"></div>
+                <meter class="battery-positive-pole" min="0" max="0" value="0"></meter>
             </div>
             <div class="state">
                 {{stateSymbol[state]}}
             </div>
-        </div>
-        <div style="clear: both;"></div>
-        <div class="debug">
-            <div class="charge">
-                <input type="number" name="charge" ng-model="charge" value="50" min="0" max="100"/>
-            </div>
-            <div class="stateSelect">
-                <select name="selectState" ng-model="state">
-                    <option ng-repeat="i in [0, 1, 2, 3]" value="{{i}}" ng-selected="state === i">{{i}}</option>
-                </select>
+            <div class="menu">
             </div>
         </div>
     </body>

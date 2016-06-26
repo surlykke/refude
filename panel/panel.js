@@ -10,22 +10,33 @@ function panelController($scope, $interval, $http) {
     $scope.stateSymbol = ['\u25CF', '\u002B', '\u2212', '\u25CB', '?'];
 
     var updateBatteryInfo = function(event) {
-        if (event.type === "error") {
-            $scope.charge = 0;
-            $scope.state = 4;
-        }
-        else {
-            $http.get("http://localhost:7939/devices/battery_BAT0").then(function(response) {
-                $scope.charge = response.data.Percentage;
-                $scope.state = response.data.State;
-                $scope.low = function() { return  $scope.state >= 2 ? 10 : 0; };
-                $scope.high = function() { return $scope.state >= 2 ? 30 : 0; };
-            });
-        }
+        console.log("Ind i updateBatteryInfo: ");
+        $http.get("http://localhost:7939/devices/battery_BAT0").then(function(response) {
+            $scope.charge = response.data.Percentage;
+            $scope.state = response.data.State;
+            $scope.low = function() { return  $scope.state >= 2 ? 10 : 0; };
+            $scope.high = function() { return $scope.state >= 2 ? 30 : 0; };
+        });
     };
 
     var evtSource = new EventSource("http://localhost:7939/notify");
-    evtSource.onmessage = evtSource.onerror = evtSource.onopen = updateBatteryInfo; 
+    evtSource.onerror = function(event) {
+        console.log("Error:", event);
+        $scope.charge = 0;
+        $scope.state = 4;
+    };
+
+
+    evtSource.onopen = function(event) {
+        console.log("open", event);
+        updateBatteryInfo();
+    }; 
+
+
+    evtSource.addEventListener("resource-updated", function(e) {
+        console.log("update:", e);
+        updateBatteryInfo();
+    });
 
     $interval(function() { 
         $scope.time = new Date().toLocaleTimeString();

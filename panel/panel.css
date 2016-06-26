@@ -1,55 +1,48 @@
-.body, .html {
+.body,.html {
+    margin: 0px;
 }
 .content {
     -webkit-app-region: drag;
     display: table;
-    height: 20px;
-    font-size: 16px;
+    table-layout: fixed;
+    font-size: 9.5vw;
+}
+.time, .battery, .state, .menu {
+    display: table-cell; 
 }
 .time {
-    display: table-cell; 
-    margin-right : 14px;
-    vertical-align: middle;
+    width: 35%
 }
 .battery {
-    width: 50px;
-    display: table-cell;
-    padding-left: 12px;
-    vertical-align: middle;
+    width: 25%;
 }
-.battery meter {
+.time, .state {
+    border-right: 3vw solid transparent;
+}
+.battery {
+    position: relative;
+}
+.battery-body {
+    position: absolute;
+    left: 0%;
+    top: 0%;
     height: 100%;
-    width: 100%; 
+    width: 93%; 
 }
-.batteryDotOuter {
-    display: table-cell;
-    vertical-align: middle;
-    width: 4px;
-}
-.batteryDotInner {
-    display: inline-block; 
-    background-image:  
-    linear-gradient(
-      to bottom,
-      #A0A0A0,
-      #E0E0E0 20%,
-      #A0A0A0
-    );
-    background-color: lightgrey;
-    height: 50%;
-    width: 100%;
+.battery-positive-pole {
+    position: absolute;
+    left: 93%;
+    top: 30%;
+    height: 40%;
+    width: 7%;
 }
 .state {
-    display: table-cell;
-    padding-left: 6px;
-    vertical-align: middle;
+    width: 10%;
+    border-left: 1vw solid transparent;
 }
-.debug {
-    padding-top: 20px;
-}
-.charge {
-    float: left;
-}
-.stateSelect {
-    float: left;
+.menu {
+    width: 10%;
+    -webkit-app-region: no-drag;
+    border-radius: 3px;
+    border: solid 1px lightgrey;
 }
