@@ -37,6 +37,7 @@ html, body {
 }
 .running img {
     -webkit-filter: drop-shadow(5px 5px 3px grey);
+    overflow: visible;
 }
 .commandDesc {
     display: table-cell;
