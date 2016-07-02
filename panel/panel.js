@@ -6,12 +6,11 @@
  * Please refer to the LICENSE file for a copy of the license.
  */
 
-function panelController($scope, $interval, $http) {
+function panelController($scope, $timeout, $http) {
     $scope.stateSymbol = ['\u25CF', '\u002B', '\u2212', '\u25CB', '?'];
 
     var updateBatteryInfo = function(event) {
-        console.log("Ind i updateBatteryInfo: ");
-        $http.get("http://localhost:7939/devices/battery_BAT0").then(function(response) {
+        $http.get("http://localhost:8080/power/devices/battery_BAT0").then(function(response) {
             $scope.charge = response.data.Percentage;
             $scope.state = response.data.State;
             $scope.low = function() { return  $scope.state >= 2 ? 10 : 0; };
@@ -19,7 +18,7 @@ function panelController($scope, $interval, $http) {
         });
     };
 
-    var evtSource = new EventSource("http://localhost:7939/notify");
+    var evtSource = new EventSource("http://localhost:8080/power/notify");
     evtSource.onerror = function(event) {
         console.log("Error:", event);
         $scope.charge = 0;
@@ -34,18 +33,20 @@ function panelController($scope, $interval, $http) {
 
 
     evtSource.addEventListener("resource-updated", function(e) {
-        console.log("update:", e);
         updateBatteryInfo();
     });
 
-    $interval(function() { 
-        $scope.time = new Date().toLocaleTimeString();
-    });
+    var setclock = function() {
+        var now = new Date();
+        $scope.time = now.toLocaleTimeString();
+        $timeout(setclock, 1000 - now.getMilliseconds() + 3); // Just after next turn of second..
+    };
 
+    setclock();
 };
 
 var panelModule = angular.module('panel', []);
-panelModule.controller('panelCtrl', ['$scope', '$interval', '$http', panelController]);
+panelModule.controller('panelCtrl', ['$scope', '$timeout', '$http', panelController]);
 panelModule.config(['$compileProvider', function ($compileProvider) {
     $compileProvider.imgSrcSanitizationWhitelist(/^\s*((https?|ftp|file|blob|chrome-extension):|data:image\/)/);
 }]);
