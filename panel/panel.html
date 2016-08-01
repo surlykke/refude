@@ -16,24 +16,7 @@
         <link rel="stylesheet" href="panel.css"/>
     </head>
     <body ng-app="panel" ng-controller="panelCtrl as ctrl">
-        <div class="content">
-            <div class="time">{{time}}</div>
-            <div class="battery">
-                <meter class="battery-body" 
-                       ng-attr-value="{{charge}}" 
-                       min="0" 
-                       max="100" 
-                       ng-attr-low="{{low()}}" 
-                       ng-attr-high="{{high()}}" 
-                       ng-attr-optimum="{{high() + 1}}"></meter>
-                <meter class="battery-positive-pole" min="0" max="0" value="0"></meter>
-            </div>
-            <div class="state">
-                {{stateSymbol[state]}}
-            </div>
-            <div class="menu">
-            </div>
-        </div>
+        <div class="time">{{time}}</div>
     </body>
 </html>
 

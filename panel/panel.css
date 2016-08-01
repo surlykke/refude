@@ -1,48 +1,16 @@
 .body,html {
     margin: 0px;
 }
-.content {
-    -webkit-app-region: drag;
-    display: table;
-    table-layout: fixed;
-    font-size: 9.5vw;
-}
-.time, .battery, .state, .menu {
-    display: table-cell; 
-}
+
 .time {
-    width: 35%
-}
-.battery {
-    width: 25%;
-}
-.time, .state {
-    border-right: 3vw solid transparent;
-}
-.battery {
-    position: relative;
-}
-.battery-body {
+    -webkit-app-region: drag;
     position: absolute;
-    left: 0%;
-    top: 0%;
+    top: 0px;
+    left: 0px;
+    width: 100%;
     height: 100%;
-    width: 93%; 
-}
-.battery-positive-pole {
-    position: absolute;
-    left: 93%;
-    top: 30%;
-    height: 40%;
-    width: 7%;
-}
-.state {
-    width: 10%;
-    border-left: 1vw solid transparent;
-}
-.menu {
-    width: 10%;
-    -webkit-app-region: no-drag;
-    border-radius: 3px;
-    border: solid 1px lightgrey;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18vw;
 }
