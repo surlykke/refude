@@ -27,27 +27,28 @@ var makeItemList = function ($http, iconCache) {
         },
         filter: function() {
             var selectedUrl = obj.selectedUrl();
-
             var searchTerm = obj.searchTerm ? obj.searchTerm.trim() : "";            
-            if (searchTerm === "") {
-                obj.filteredItems = obj.windows;
-                obj.filteredWindows = obj.windows;
-            }
-            else { 
-                obj.filteredItems = [];
-                obj.filteredWindows = [];
-                obj.windows.forEach(function(window) {
-                    if (window.name.toLowerCase().includes(searchTerm.toLowerCase())) {
-                        obj.filteredItems.push(window);
-                        obj.filteredWindows.push(window);
-                    }
-                });
-                obj.applications.forEach(function(app) {
-                    if (app.name.toLowerCase().includes(searchTerm.toLowerCase())) {
-                        obj.filteredItems.push(app);
-                    }
-                });
-            }
+            obj.filteredWindows = [];
+            obj.filteredItems = [];
+            
+            obj.windows.forEach(function(window) {
+                if (window.name === "Refude Do") {
+                    return;
+                }
+                if (window.state.includes("Above")) {
+                    return;
+                }
+                if (searchTerm === "" || window.name.toLowerCase().includes(searchTerm.toLowerCase())) {
+                    obj.filteredItems.push(window);
+                    obj.filteredWindows.push(window);
+                }
+            });
+
+            obj.applications.forEach(function(app) {
+                if (searchTerm !== "" && app.name.toLowerCase().includes(searchTerm.toLowerCase())) {
+                    obj.filteredItems.push(app);
+                }
+            });
         
             selectedIndex = obj.filteredItems.findIndex(item=>item.url === selectedUrl);
             if (selectedIndex === -1 && obj.filteredItems.length > 0) {
@@ -107,7 +108,8 @@ var makeItemList = function ($http, iconCache) {
                 return  {
                     name: window.Name,
                     id: window.Id,
-                    comment: "running",
+                    state : window.State,
+                    comment: window.State.join(" "),
                     isAWindow: true,
                     geometry: window.geometry,
                     url: "http://localhost:7938/wm-service/windows/" + window.Id,
