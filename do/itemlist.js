@@ -8,7 +8,9 @@
 var makeItemList = function ($http, iconCache) {
     var selectedIndex = -1;
     var obj = {
+        searchTerm: "",
         windows: [],
+        history : {},
         applications: [],
         filteredWindows: [],
         filteredItems: [],
@@ -23,10 +25,10 @@ var makeItemList = function ($http, iconCache) {
                 selectedIndex = (selectedIndex + obj.filteredItems.length - 1) % obj.filteredItems.length;
             }
         },
-        filter: function(searchTerm) {
+        filter: function() {
             var selectedUrl = obj.selectedUrl();
 
-            var searchTerm = searchTerm ? searchTerm.trim() : "";
+            var searchTerm = obj.searchTerm ? obj.searchTerm.trim() : "";            
             if (searchTerm === "") {
                 obj.filteredItems = obj.windows;
                 obj.filteredWindows = obj.windows;
@@ -54,7 +56,46 @@ var makeItemList = function ($http, iconCache) {
             obj.filteredItems.forEach(function(item) {
                 iconCache.requestIcon(item.iconUrl);
             });
-        } 
+        },
+        getApplications: function() {
+            $http.get("http://localhost:7938/desktop-service/applications").then(function(response) {
+                obj.applications = response.data.map(function(app) {
+                    return { 
+                        name: app.Name,
+                        id : app.applicationId,
+                        comment: app.Comment, 
+                        url : "http://localhost:7938/desktop-service/applications/" + app.applicationId,
+                        iconUrl: "http://localhost:7938/icon-service/icons/icon?name=" + app.Icon
+                    };
+                });
+                obj.sortApplications();
+                if (obj.searchTerm) {
+                    obj.filter();
+                }
+            });
+        },
+        sortApplications : function() {
+            obj.applications.sort(function(app1, app2) {
+                time1 = obj.history[app1.url] || 0;
+                time2 = obj.history[app2.url] || 0;
+                return time2 - time1;
+            });
+        },
+        getHistory : function() {
+            chrome.storage.local.get(function(history) {
+                console.log("Got history: ", history); 
+                obj.history = history;
+                obj.getApplications();
+            });
+        },
+        updateHistoryWithActivation: function() {
+            var url = obj.selectedUrl();
+            var time = new Date().getTime();
+            var item = {};
+            item[obj.selectedUrl()] = new Date().getTime();
+            console.log("Setting history: ", item);
+            chrome.storage.local.set(item);
+        }            
     };
 
     
@@ -76,38 +117,27 @@ var makeItemList = function ($http, iconCache) {
             obj.filter();
         });
     };
-    
+
+    obj.getHistory();
+
     var evtSource = new EventSource("http://localhost:7938/wm-service/notify");
 
     var eventHandler = function(event) {
         getWindows();
     };
 
-    $http.get("http://localhost:7938/desktop-service/applications").then(function(response) {
-        obj.applications = response.data.map(function(app) {
-            return { 
-                name: app.Name,
-                id : app.applicationId,
-                comment: app.Comment, 
-                url : "http://localhost:7938/desktop-service/applications/" + app.applicationId,
-                iconUrl: "http://localhost:7938/icon-service/icons/icon?name=" + app.Icon
-            };
-        });
+    evtSource.onerror = function(event) {
+        obj.windows = [];
+        obj.filter();
+    };
 
-        evtSource.onerror = function(event) {
-            obj.windows = [];
-            obj.filter();
-        };
+    evtSource.onopen = function(event) {
+        getWindows();
+    }; 
 
-
-        evtSource.onopen = function(event) {
-            getWindows();
-        }; 
-
-        evtSource.addEventListener("resource-updated", eventHandler);
-        evtSource.addEventListener("resource-added", eventHandler);
-        evtSource.addEventListener("resource-removed", eventHandler);
-    });
+    evtSource.addEventListener("resource-updated", eventHandler);
+    evtSource.addEventListener("resource-added", eventHandler);
+    evtSource.addEventListener("resource-removed", eventHandler);
 
     return obj;
 };

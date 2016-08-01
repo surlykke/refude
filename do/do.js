@@ -9,12 +9,12 @@
 function doController($q, $http, $scope, $window) {
     $scope.iconCache = makeIconCache($http);
     $scope.itemList = makeItemList($http, $scope.iconCache); 
-    $scope.searchTerm = "";
 
     var execute = function () {
         var url = $scope.itemList.selectedUrl();
         if (url) {
             $http.post(url).then( function(response) {
+                $scope.itemList.updateHistoryWithActivation();
                 $window.close();
             });
         }
@@ -100,7 +100,7 @@ function doController($q, $http, $scope, $window) {
         scale = Math.min(width/displayGeometry.w, height/displayGeometry.h);
     };
   
-    $http.get("http://localhost:7938/windowmanager-service/display").then(function(response) { 
+    $http.get("http://localhost:7938/wm-service/display").then(function(response) { 
         calculateGeometry(response.data.geometry);
     });
 

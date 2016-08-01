@@ -18,7 +18,11 @@
         <link rel="stylesheet" href="do.css"/>
     </head>
     <body ng-app="do" ng-controller="doCtrl as ctrl" ng-keydown="onKeyDown($event)">
-        <input type="search" autofocus class="searchInput" ng-model="searchTerm"  ng-change="itemList.filter(searchTerm)"/>
+        <input type="search" 
+               autofocus 
+               class="searchInput" 
+               ng-model="itemList.searchTerm"  
+               ng-change="itemList.filter()"/>
         
         <div class="contentBox" id="contentBox">
            <div ng-repeat="item in itemList.filteredItems" 
