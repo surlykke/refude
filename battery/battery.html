@@ -1,0 +1,21 @@
+<html>
+    <head>
+        <title>Refude Battery</title>
+        <meta charset="UTF-8">
+        <script src="angular.js"></script>
+        <script src="battery.js"></script>
+        <link rel="stylesheet" href="battery.css"/>
+    </head>
+    <body ng-app="battery" ng-controller="batteryCtrl as ctrl">
+        <meter class="batterybody"
+                ng-attr-value="{{charge}}" 
+                min="0" 
+                max="100" 
+                ng-attr-low="{{low()}}" 
+                ng-attr-high="{{high()}}" 
+                ng-attr-optimum="{{high() + 1}}"> 
+        </meter>
+        <meter class="batterypole" value="0" min="0" max="100"></meter>
+        <div class="state">{{stateStr()}}</div>
+    </body>
+</html>
