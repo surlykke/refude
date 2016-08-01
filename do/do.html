@@ -13,35 +13,35 @@
         <meta charset="UTF-8">
         <script src="angular.js"></script>
         <script src="iconcache.js"></script>
-        <script src="commandlist.js"></script>
+        <script src="itemlist.js"></script>
         <script src="do.js"></script>
         <link rel="stylesheet" href="do.css"/>
     </head>
     <body ng-app="do" ng-controller="doCtrl as ctrl" ng-keydown="onKeyDown($event)">
-        <input type="search" autofocus class="searchInput" ng-model="searchTerm" ng-change="commandList.search()" />
+        <input type="search" autofocus class="searchInput" ng-model="searchTerm"  ng-change="itemList.filter(searchTerm)"/>
+        
         <div class="contentBox" id="contentBox">
-            <div ng-repeat="command in commandList.commands" 
-                    ng-click="selectCommand(command.Id)"
-                    class="{{commandClass(command)}}" 
-                    id="{{command._links.self.href}}">
-                <div class="{{imgClass(command)}}">
-                    <img ng-src='{{iconUrl(command)}}'
-                            height="32" width="32" alt=" " border="0"/>
+           <div ng-repeat="item in itemList.filteredItems" 
+                    ng-click="select(item.url)"
+                    ng-dblclick="" 
+                    class="item {{selectedClass(item)}}" 
+                    id="{{item.url}}">
+                <div class="itemIcon {{windowClass(item)}}">
+                    <img ng-src='{{iconUrl(item)}}' height="32" width="32" alt=" " border="0"/>
                 </div>
-                <div class="commandDesc">
-                    <div class="commandName">{{command.Name}}</div>
-                    <div class="commandComment"> {{command.Comment}} </div>
-                    <div ng-if='running(command)' class="commandComment">
-                        <b>running</b>
-                    </div>
+                <div class="itemDesc">
+                    <div class="itemName">{{item.name}}</div>
+                    <div class="itemComment"> {{item.comment}} </div>
                 </div>
             </div>
         </div>
+
+        <!-- graphical depiction of open windows -->
         <div id="disp" class="display">
-            <div ng-repeat="app in commandList.runningApps" class="runningApp" ng-style="style(app, $index)">
-                <div class="runningAppTitle">
-                    <img ng-src="{{iconUrl(app)}}" height="10" width="10" alt =" "/>
-                    {{app.Name}}
+            <div ng-repeat="window in itemList.filteredWindows" class="window" ng-style="style(window, $index)">
+                <div class="windowTitle">
+                    <img ng-src="{{iconUrl(window)}}" height="10" width="10" alt =" "/>
+                    {{window.Name}}
                 </div>
             </div>
         </div>

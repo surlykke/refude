@@ -8,67 +8,57 @@
 
 function doController($q, $http, $scope, $window) {
     $scope.iconCache = makeIconCache($http);
-    $scope.commandList = makeCommandList($scope, $q, $http, 
-                                         "http://localhost:7938/runningapplications",
-                                         ["http://localhost:7938/desktopentries/commands"]);
-    
+    $scope.itemList = makeItemList($http, $scope.iconCache); 
     $scope.searchTerm = "";
 
+    var execute = function () {
+        var url = $scope.itemList.selectedUrl();
+        if (url) {
+            $http.post(url).then( function(response) {
+                $window.close();
+            });
+        }
+    };
+
+    var keyActions = {
+        ArrowDown : $scope.itemList.next,
+        ArrowUp :  $scope.itemList.previous,
+        Enter : execute, 
+        " " : execute
+    };
+
     $scope.onKeyDown = function ($event) {
-        if ($event.code === "Escape") {
-            $window.close();
+        if ($event.key === "Tab") {
+            action = keyActions[$event.shiftKey ? "ArrowUp" : "ArrowDown"];
         }
-        if ($event.keyIdentifier === "Down" || ($event.code === "Tab" && !$event.shiftKey)) {
-            $scope.commandList.selectNext();
-        }
-	    else if ($event.keyIdentifier === "Up" || ($event.code === "Tab" && $event.shiftKey)) {
-            $scope.commandList.selectPrevious();
-        }
-        else if ($event.keyIdentifier === "Enter" && $scope.commandList.isSelectionValid()) {
-            executeCommand($scope.commandList.selectedCommand);
+        else {
+            action = keyActions[$event.key];
         }
 
-        scrollSelectedCommandIntoView();
+        if (action) action();
     };
 
-    $scope.running = function(command) { 
-        return command.hasOwnProperty("geometry");
-    };
-
-    $scope.iconUrl = function(command) {
-        return $scope.iconCache.urls[$scope.iconUrlExt(command)] || "../../img/1x1.png";
-    };
-
-    $scope.iconUrlExt = function(command) {
-        if (command.hasOwnProperty("Icon")) {
-            return "http://localhost:7938/icons/icon?name=" + command.Icon;
-        } else if (command._links.hasOwnProperty("icon")) {
-            return "http://localhost:7938" + command._links.icon.href;
-        } else {
-            return null;
-        }
-    };
-    
-    $scope.imgClass = function(command) {
-        return "commandIcon" + ($scope.running(command) ? " running" : "");
+    $scope.iconUrl = function(item) {
+        return $scope.iconCache.urls[item.iconUrl] || "../../img/1x1.png";
     };
    
-    $scope.commandClass = function(command) {
-        return "command" + (command === $scope.commandList.selectedCommand ? " selected" : "");
+    $scope.windowClass = function(item) {
+        return item.isAWindow ? "windowItem" : "";
     };
 
-    $scope.style = function(runningApp, index) {
-        if (!runningApp.hasOwnProperty("geometry")) {
-            return {"display" : "none"};
-        }
-        var geometry = runningApp.geometry;
-        var selected = runningApp === $scope.commandList.selectedCommand;
-        var z_index = selected ? $scope.commandList.runningApps.length : index; 
+    $scope.selectedClass  = function(item) {
+        return item.url === $scope.itemList.selectedUrl() ? "selected" : "";
+    };
+
+    $scope.style = function(window, index) {
+        var geometry = window.geometry;
+        var selected = window.url === $scope.itemList.selectedUrl();
+        var z_index = selected ? $scope.itemList.filteredWindows.length : index; 
         var res = {
-            "left" : convertToPx(scale*geometry.x),
-            "top" : convertToPx(scale*geometry.y),
-            "width" : convertToPx(scale*geometry.w),
-            "height" : convertToPx(scale*geometry.h),
+            "left" : "" + Math.round(scale*geometry.x) + "px",
+            "top" : "" + Math.round(scale*geometry.y) + "px",
+            "width" : "" + Math.round(scale*geometry.w) + "px",
+            "height" : "" + Math.round(scale*geometry.h) + "px",
             "z-index" : z_index
         };
         if (selected) {
@@ -77,41 +67,23 @@ function doController($q, $http, $scope, $window) {
         return res;
     };
 
-    var convertToPx = function(val) {
-        var result =  "" + Math.round(val) + "px";
-        return result; 
-    };
-
-
-    var executeCommand = function (command) {
-        $http.post("http://localhost:7938" + command._links.execute.href).then(
-            $window.close 
-        );
-    };
-
     var scrollSelectedCommandIntoView = function () {
-        if ($scope.commandList.selectedCommand) {
+        if ($scope.itemList.selectedUrl()) {
             var contentDiv = document.getElementById("contentBox");
-            var commandDiv = document.getElementById($scope.commandList.selectedCommand._links.self.href);
-            if (!(contentDiv && commandDiv)) {
-                return;
-            }
-
-            var contentTop = contentDiv.getBoundingClientRect().top;
-            var commandTop = commandDiv.getBoundingClientRect().top;
-            var contentBottom = contentDiv.getBoundingClientRect().bottom;
-            var commandBottom = commandDiv.getBoundingClientRect().bottom;
-
-            var delta = null;
-            if (commandTop < contentTop) {
-                // So command is (partly) above content view - we move the view upwards
-                delta = commandTop - contentTop - 15;
-            } else if (commandBottom > contentBottom) {
-                // So command is (partly) below content view - move the view downwards
-                delta = commandBottom - contentBottom + 15;
-            }
-            if (delta) {
-                contentDiv.scrollTop = contentDiv.scrollTop + delta;
+            var selectedDiv = document.getElementById($scope.itemList.selectedUrl());
+            if (contentDiv && selectedDiv) {
+                var contentRect = contentDiv.getBoundingClientRect();
+                var itemRect = selectedDiv.getBoundingClientRect();
+                var delta = null;
+                if (itemRect.top < contentRect.top) {
+                    delta = itemRect.top - contentRect.top - 15;
+                }
+                else if (itemRect.bottom > contentRect.bottom) {
+                    delta = itemRect.bottom - contentRect.bottom + 15;
+                } 
+                if (delta) {
+                    contentDiv.scrollTop = contentDiv.scrollTop + delta;
+                }
             }
         }
     };
@@ -128,14 +100,11 @@ function doController($q, $http, $scope, $window) {
         scale = Math.min(width/displayGeometry.w, height/displayGeometry.h);
     };
   
-    $http.get("http://localhost:7938/display").then(function(response) { 
+    $http.get("http://localhost:7938/windowmanager-service/display").then(function(response) { 
         calculateGeometry(response.data.geometry);
-        $scope.commandList.search();
     });
-    
 
-   $scope.$watch('commandList.commands', scrollSelectedCommandIntoView, true); 
-   $scope.$watch('commandList.selectedCommand', scrollSelectedCommandIntoView, true); 
+    console.log("chrome.storage.local", chrome.storage.local);
 };
 
 
@@ -145,6 +114,6 @@ doModule.controller('doCtrl', ['$q', '$http', '$scope', '$window', doController]
 
 doModule.config(['$compileProvider', function ($compileProvider) {
         $compileProvider.imgSrcSanitizationWhitelist(/^\s*((https?|ftp|file|blob|chrome-extension):|data:image\/)/);
-    }]);
+}]);
 
 
