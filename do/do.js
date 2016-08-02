@@ -77,7 +77,8 @@ function doController($q, $http, $scope, $window) {
         ArrowDown : next,
         ArrowUp :  previous,
         Enter : execute, 
-        " " : execute
+        " " : execute,
+        Escape : $window.close
     };
 
     $scope.onKeyDown = function ($event) {
