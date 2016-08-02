@@ -41,7 +41,21 @@ function doController($q, $http, $scope, $window) {
         selectedIndex = oldUrl ? $scope.items.findIndex(item => item.url === oldUrl) : -1;
         selectedIndex = selectedIndex === -1 ? 0 : selectedIndex;
     };
-   
+  
+    $scope.select = function(url) {
+        var tmp = $scope.items.findIndex(item => item.url === url);
+        if (tmp > -1) {
+            selectedIndex = tmp;
+        }
+    };
+
+    $scope.selectAndExecute = function(url) {
+        $scope.select(url);
+        if ($scope.selectedUrl() === url) {
+            execute(); 
+        }; 
+    };
+
     var windowList = makeWindowList($http, $scope.update);
     var applicationList = makeApplicationList($http, $scope.update);
     var iconCache = makeIconCache($http);

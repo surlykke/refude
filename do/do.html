@@ -24,7 +24,7 @@
         <div class="contentBox" id="contentBox">
            <div ng-repeat="item in items" 
                     ng-click="select(item.url)"
-                    ng-dblclick="" 
+                    ng-dblclick="selectAndExecute(item.url)" 
                     ng-class="itemClass(item)"
                     id="{{item.url}}">
                 <div ng-class="iconClass(item)">
