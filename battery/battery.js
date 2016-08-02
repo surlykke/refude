@@ -8,12 +8,11 @@
 function batteryController($scope, $timeout, $http) {
 
     $scope.stateStr = function() {
-        return "" + $scope.charge + "% " + 
-               ['\u25CF', '\u002B', '\u2212', '\u25CB', '?'][$scope.state];
+        return "" + $scope.charge + "% " + ['\u25CF', '\u002B', '\u2212', '\u25CB', '?'][$scope.state];
     };
 
     var updateBatteryInfo = function(event) {
-        $http.get("http://localhost:7938/power-service/devices/battery_BAT0").then(function(response) {
+        $http.get("http://localhost:7938/power-service/devices/DisplayDevice").then(function(response) {
             $scope.charge = response.data.Percentage;
             $scope.state =  response.data.State;
             $scope.low = function() { return  $scope.state >= 2 ? 10 : 0; };
@@ -28,12 +27,10 @@ function batteryController($scope, $timeout, $http) {
         $scope.state = 4;
     };
 
-
     evtSource.onopen = function(event) {
         console.log("open", event);
         updateBatteryInfo();
     }; 
-
 
     evtSource.addEventListener("resource-updated", function(e) {
         updateBatteryInfo();
@@ -45,5 +42,3 @@ batteryModule.controller('batteryCtrl', ['$scope', '$timeout', '$http', batteryC
 batteryModule.config(['$compileProvider', function ($compileProvider) {
     $compileProvider.imgSrcSanitizationWhitelist(/^\s*((https?|ftp|file|blob|chrome-extension):|data:image\/)/);
 }]);
-
-
