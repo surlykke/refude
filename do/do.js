@@ -7,22 +7,61 @@
  */
 
 function doController($q, $http, $scope, $window) {
-    $scope.iconCache = makeIconCache($http);
-    $scope.itemList = makeItemList($http, $scope.iconCache); 
+    var selectedIndex = -1;
+
+    var next = function() { 
+        if ($scope.items.length > 0) {
+            selectedIndex = (selectedIndex + 1) % $scope.items.length;
+        } 
+    };
+    
+    var previous = function() { 
+        if ($scope.items.length > 0) { 
+            selectedIndex = (selectedIndex +  $scope.items.length - 1) % $scope.items.length;
+        }
+    };
+
+    $scope.searchTerm = "";
+    $scope.items = [];
+    $scope.windows = [];
+    $scope.selectedUrl = function() {
+        var url = $scope.items[selectedIndex] ? $scope.items[selectedIndex].url : undefined;
+        return url;
+    };
+
+    $scope.update = function() {
+        var oldUrl = $scope.selectedUrl();
+        $scope.items = [];
+        $scope.items = windowList.filter($scope.searchTerm);
+        console.log("items:", $scope.items);
+        $scope.windows = $scope.items.filter(win => !win.state.includes("Hidden"));
+        console.log("windows", $scope.windows);
+        applicationList.filter($scope.searchTerm).forEach(app => $scope.items.push(app));
+        $scope.items.forEach(item => iconCache.requestIcon(item.iconUrl));
+        selectedIndex = oldUrl ? $scope.items.findIndex(item => item.url === oldUrl) : -1;
+        selectedIndex = selectedIndex === -1 ? 0 : selectedIndex;
+    };
+   
+    var windowList = makeWindowList($http, $scope.update);
+    var applicationList = makeApplicationList($http, $scope.update);
+    var iconCache = makeIconCache($http);
 
     var execute = function () {
-        var url = $scope.itemList.selectedUrl();
+        var url = $scope.selectedUrl();
         if (url) {
+            var callActivated = ! $scope.items[selectedIndex].isAWindow;
             $http.post(url).then( function(response) {
-                $scope.itemList.updateHistoryWithActivation();
+                if (callActivated) {
+                    applicationList.urlWasActivated(url);
+                }
                 $window.close();
             });
         }
     };
 
     var keyActions = {
-        ArrowDown : $scope.itemList.next,
-        ArrowUp :  $scope.itemList.previous,
+        ArrowDown : next,
+        ArrowUp :  previous,
         Enter : execute, 
         " " : execute
     };
@@ -39,21 +78,26 @@ function doController($q, $http, $scope, $window) {
     };
 
     $scope.iconUrl = function(item) {
-        return $scope.iconCache.urls[item.iconUrl] || "../../img/1x1.png";
+        return iconCache.urls[item.iconUrl] || "../../img/1x1.png";
     };
-   
-    $scope.windowClass = function(item) {
-        return item.isAWindow ? "windowItem" : "";
+  
+    $scope.itemClass  = function(item) { 
+        var tmp = "item";
+        if (item.url === $scope.selectedUrl()) tmp += " selected";
+        return tmp;
     };
 
-    $scope.selectedClass  = function(item) {
-        return item.url === $scope.itemList.selectedUrl() ? "selected" : "";
+    $scope.iconClass = function(item) {
+        var tmp = "itemIcon";
+        if (item.isAWindow) tmp += " windowItem";
+        if (item.state && item.state.includes("Hidden")) tmp += " hidden";
+        return tmp;
     };
 
     $scope.style = function(window, index) {
         var geometry = window.geometry;
-        var selected = window.url === $scope.itemList.selectedUrl();
-        var z_index = selected ? $scope.itemList.filteredWindows.length : index; 
+        var selected = window.url === $scope.selectedUrl();
+        var z_index = selected ? $scope.windows.length : index; 
         var res = {
             "left" : "" + Math.round(scale*geometry.x) + "px",
             "top" : "" + Math.round(scale*geometry.y) + "px",
@@ -68,9 +112,9 @@ function doController($q, $http, $scope, $window) {
     };
 
     var scrollSelectedCommandIntoView = function () {
-        if ($scope.itemList.selectedUrl()) {
+        if ($scope.selectedUrl()) {
             var contentDiv = document.getElementById("contentBox");
-            var selectedDiv = document.getElementById($scope.itemList.selectedUrl());
+            var selectedDiv = document.getElementById($scope.selectedUrl());
             if (contentDiv && selectedDiv) {
                 var contentRect = contentDiv.getBoundingClientRect();
                 var itemRect = selectedDiv.getBoundingClientRect();
@@ -103,8 +147,6 @@ function doController($q, $http, $scope, $window) {
     $http.get("http://localhost:7938/wm-service/display").then(function(response) { 
         calculateGeometry(response.data.geometry);
     });
-
-    console.log("chrome.storage.local", chrome.storage.local);
 };
 
 

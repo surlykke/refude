@@ -13,24 +13,21 @@
         <meta charset="UTF-8">
         <script src="angular.js"></script>
         <script src="iconcache.js"></script>
-        <script src="itemlist.js"></script>
+        <script src="windowlist.js"></script>
+        <script src="applicationlist.js"></script>
         <script src="do.js"></script>
         <link rel="stylesheet" href="do.css"/>
     </head>
     <body ng-app="do" ng-controller="doCtrl as ctrl" ng-keydown="onKeyDown($event)">
-        <input type="search" 
-               autofocus 
-               class="searchInput" 
-               ng-model="itemList.searchTerm"  
-               ng-change="itemList.filter()"/>
+        <input type="search" autofocus class="searchInput" ng-model="searchTerm"  ng-change="update()"/>
         
         <div class="contentBox" id="contentBox">
-           <div ng-repeat="item in itemList.filteredItems" 
+           <div ng-repeat="item in items" 
                     ng-click="select(item.url)"
                     ng-dblclick="" 
-                    class="item {{selectedClass(item)}}" 
+                    ng-class="itemClass(item)"
                     id="{{item.url}}">
-                <div class="itemIcon {{windowClass(item)}}">
+                <div ng-class="iconClass(item)">
                     <img ng-src='{{iconUrl(item)}}' height="32" width="32" alt=" " border="0"/>
                 </div>
                 <div class="itemDesc">
@@ -42,7 +39,7 @@
 
         <!-- graphical depiction of open windows -->
         <div id="disp" class="display">
-            <div ng-repeat="window in itemList.filteredWindows" class="window" ng-style="style(window, $index)">
+            <div ng-repeat="window in windows" class="window" ng-style="style(window, $index)">
                 <div class="windowTitle">
                     <img ng-src="{{iconUrl(window)}}" height="10" width="10" alt =" "/>
                     {{window.Name}}
