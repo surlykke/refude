@@ -6,17 +6,10 @@
  * Please refer to the LICENSE file for a copy of the license.
  */
 
-function panelController($scope, $timeout) {
-    var setclock = function() {
-        var now = new Date();
-        $scope.time = now.toLocaleTimeString();
-        $timeout(setclock, 1000 - now.getMilliseconds() + 3); // Just after next turn of second..
-    };
-
-    setclock();
+var setclock = function() {
+    var now = new Date();
+    document.getElementById("time").innerHTML = now.toLocaleTimeString();
+    setTimeout(setclock, 1000 - now.getMilliseconds() + 3); // Just after next turn of second..
 };
 
-var panelModule = angular.module('panel', []);
-panelModule.controller('panelCtrl', ['$scope', '$timeout', panelController]);
-
-
+document.addEventListener('DOMContentLoaded', setclock);
