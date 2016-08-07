@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<!--
+ Copyright (c) 2015, 2016 Christian Surlykke
+
+ This file is part of the refude-services project. 
+ It is distributed under the GPL v2 license.
+ Please refer to the LICENSE file for a copy of the license.
+-->
+
+<html>
+    <head>
+        <title>Refude Default Applications</title>
+        <meta charset="UTF-8">
+        <script src="angular.js"></script>
+        <script src="angular-aria.js"></script>
+        <script src="iconcache.js"></script>
+        <script src="appconfig.js"></script>
+        <link rel="stylesheet" href="app.css"/>
+    </head>
+    <body ng-app="appConfig" ng-controller="appconfigCtrl as ctrl" ng-keydown="onKeyDown($event)">
+        <div ng-show="!currentMimetype" style="display: flex; flex-direction: column; height: 90%;">
+            <h2 style="flex: 0;">
+                Mimetypes
+            </h2>
+            <input ng-model="searchTerm" ng-change="update()" 
+                   type="text" placeholder="Search" autofocus style="flex: 0;"/>
+            <nav ng-show="!currentMimetype" style="flex: 1; overflow-y: scroll;">
+                <ul>
+                    <li ng-repeat="(type, subtypeObj) in filteredMimetypes" ng-click="toggleExpandType(type)"
+                        class="typeEntry">
+                        {{type}}
+                        <ul ng-show="expandedTypes[type]">
+                            <li ng-repeat="(subtype, mime) in subtypeObj" 
+                                ng-click="toggleExpandSubtype(type, subtype, $event)"
+                                class="subtypeEntry">
+                                {{subtype}}
+                                <div ng-show="expandedSubtypes[type] && expandedSubtypes[type][subtype]"
+                                     style="display: flex; margin: 0.3em;">
+                                    <img ng-show="mime.iconUrl" ng-src="{{mime.iconUrl}}"  
+                                         width="40" height="40" alt=""/>     
+                                    <div style="margin-left: 0.2em;">
+                                        Patterns:&nbsp;{{mime.globs.join(", ")}}<br/>
+                                        Default&nbsp;application:&nbsp;
+                                        <a href="#" ng-click="edit(type, subtype, $event)">
+                                                {{mime.defaultApplication.Name}}
+                                        </a>
+                                    </div>
+                                </div>
+                            </li>
+                        </ul>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+        <div ng-show="currentMimetype" style="display: flex; flex-direction: column; height: 90%;">
+            <h2>Select default application</h2>
+            <nav style="overflow-y: scroll;">
+                <ul>
+                    <li ng-repeat="suggestion in suggestedApps">
+                        {{suggestion.description}}
+                        <ul>
+                            <li class="none" ng-if="suggestion.apps.length < 1">None</li>
+                            <li ng-repeat="app in suggestion.apps" 
+                                ng-click="select(app.applicationId)"
+                                class="appEntry">
+                                {{ app.Name }}
+                            </li>
+                        </ul>
+                    </li>
+                </ul> 
+            </nav>
+            <a href="#" style="float:right;">Cancel</a>
+        </div>
+    </body>
+</html>

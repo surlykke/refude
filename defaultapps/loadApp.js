@@ -8,7 +8,7 @@
 
 
 chrome.app.runtime.onLaunched.addListener(function (launchData) {
-    chrome.app.window.create('index.html', {
+    chrome.app.window.create('appconfig.html', {
         'id': 'org.restfulipc.refude.DefaultApps',
         'outerBounds': {
             'width': 460,
