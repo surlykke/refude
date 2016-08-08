@@ -146,12 +146,13 @@ function doController($q, $http, $scope, $window) {
             }
         }
     };
-     
+    
+    var displayGeometry = {};
     var width = 100;
     var height = 100;
     var scale = 0.1;
 
-    var calculateGeometry = function(displayGeometry) {
+    var calculateGeometry = function() {
         var display = document.getElementById("disp");
         var contentRect = display.getBoundingClientRect();
         width = contentRect.right - contentRect.left - 4;
@@ -160,8 +161,14 @@ function doController($q, $http, $scope, $window) {
     };
   
     $http.get("http://localhost:7938/wm-service/display").then(function(response) { 
-        calculateGeometry(response.data.geometry);
+        displayGeometry = response.data.geometry;
+        calculateGeometry();
+        angular.element($window).bind('resize', function () {
+            calculateGeometry();
+        });
     });
+
+
 };
 
 
