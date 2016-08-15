@@ -7,15 +7,11 @@
         <link rel="stylesheet" href="battery.css"/>
     </head>
     <body ng-app="battery" ng-controller="batteryCtrl as ctrl">
-        <meter class="batterybody"
-                ng-attr-value="{{charge}}" 
-                min="0" 
-                max="100" 
-                ng-attr-low="{{low()}}" 
-                ng-attr-high="{{high()}}" 
-                ng-attr-optimum="{{high() + 1}}"> 
-        </meter>
-        <meter class="batterypole" value="0" min="0" max="100"></meter>
-        <div class="state">{{stateStr()}}</div>
+        <div class="content">
+            <div class="data">{{stateStr}}</div>
+            <div class="menu">&#9776;</div>
+        </div>
+        <div class="background"></div>
+        <div ng-class="batteryclass" style="width: {{charge}}%;"></div>
     </body>
 </html>
