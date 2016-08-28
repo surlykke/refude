@@ -7,6 +7,7 @@
  */
 
 function doController($q, $http, $scope, $window) {
+    const remote = require('electron').remote
     var selectedIndex = -1;
 
     var next = function() { 
@@ -78,10 +79,13 @@ function doController($q, $http, $scope, $window) {
         ArrowUp :  previous,
         Enter : execute, 
         " " : execute,
-        Escape : $window.close
+        Escape : function() {
+            remote.getCurrentWindow().hide()
+        }
     };
 
     $scope.onKeyDown = function ($event) {
+        console.log("keyDown:", event)
         if ($event.key === "Tab") {
             action = keyActions[$event.shiftKey ? "ArrowUp" : "ArrowDown"];
         }

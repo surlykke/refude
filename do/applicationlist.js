@@ -18,7 +18,7 @@ var makeApplicationList = function ($http, somethingChangedCallback) {
        
         urlWasActivated : function(url) {
             history[url] = new Date().getTime();
-            chrome.storage.local.set(history);
+            //chrome.storage.local.set(history);
             sortApplications();
         }            
     };
@@ -26,10 +26,10 @@ var makeApplicationList = function ($http, somethingChangedCallback) {
     var history = {};
     var applications = [];
     var loadHistory = function() {
-        chrome.storage.local.get(function(hist) {
-            history = hist;
+        //chrome.storage.local.get(function(hist) {
+            //history = hist;
             getApplications();
-        });
+        //});
     };
 
     var getApplications = function() {

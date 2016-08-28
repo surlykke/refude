@@ -1,0 +1,12 @@
+{
+  "name": "refude",
+  "version": "0.0.1",
+  "description": "Tools for the desktop",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron-prebuilt": "^1.2.0"
+  }
+}
