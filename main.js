@@ -15,11 +15,6 @@ const BrowserWindow = electron.BrowserWindow
 
 let windows = {}
 
-let createWindow = function() {
-  //window.webContents.openDevTools({detach: true});
-  return window
-}
-
 app.on('window-all-closed', function () {
 })
 
@@ -31,6 +26,7 @@ let activateApp = function(appName) {
     else {
         console.log("Creating", appName)
         windows[appName] = new BrowserWindow({width: 600, height: 400})
+        //windows[appName].webContents.openDevTools();     
         windows[appName].setMenu(null);
         windows[appName].loadURL(`file://${__dirname}/${appName}/${appName}.html`)
         windows[appName].on('closed', function () {

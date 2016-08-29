@@ -69,7 +69,8 @@ function doController($q, $http, $scope, $window) {
                 if (callActivated) {
                     applicationList.urlWasActivated(url);
                 }
-                $window.close();
+                $scope.searchTerm = ""
+                remote.getCurrentWindow().hide()
             });
         }
     };
