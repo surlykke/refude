@@ -58,11 +58,7 @@ function batteryController($scope, $http) {
     var openPowerSettings = function() {
         $http.post("http://localhost:7938/desktop-service/applications/lxqt-leave.desktop");
     };
-
-    chrome.contextMenus.create({"id": "PowerSettings", "title": "Power settings"});
-
-    chrome.contextMenus.onClicked.addListener(openPowerSettings);
-};
+}
 
 var batteryModule = angular.module('battery', []);
 batteryModule.controller('batteryCtrl', ['$scope', '$http', batteryController]);

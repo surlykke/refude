@@ -34,10 +34,23 @@ exports.createWin = function(appName) {
     catch (err) {
         loadedBounds = {x : 0, y : 0, width : 300, height : 300 }
     }
-
     console.log("loaded bounds:", loadedBounds)
 
-    let window = new BrowserWindow(loadedBounds)
+    let loadedWinOptions
+    try {
+        loadedWinOptions = JSON.parse(fs.readFileSync(`${__dirname}/${appName}/windowoptions.json`))
+    }
+    catch (err) {
+        console.log("err:", err)
+        loadedWinOptions = {}
+    }
+    console.log("loadedWinOptions:", loadedWinOptions)
+    let opts = Object.assign({}, loadedBounds, loadedWinOptions)
+
+    console.log("Creating window with opts: ", opts);
+    let window = new BrowserWindow(opts)
+    opts["alwaysOnTop"] && window.setAlwaysOnTop(true)
+	//window.webContents.openDevTools()
     let actualBounds = window.getBounds();
     let boundsCorrection = {
         x: actualBounds.x - loadedBounds.x,
@@ -52,6 +65,7 @@ exports.createWin = function(appName) {
     window.on("resize", boundsChanged);
     window.on("move", boundsChanged);
     window.on("ready-to-show", () => console.log("ready to show"))
+    console.log("alwaysOnTop", window.isAlwaysOnTop())
     return window
 }
 

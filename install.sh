@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 sharedir="/usr/local/share/refude"
-filelist="do bin main.js package.json"
+filelist="do battery bin createwin.js main.js package.json"
 cd $(realpath $(dirname $0))
 mkdir -p $sharedir
 for file in $filelist; do
