@@ -9,7 +9,6 @@ if (app.makeSingleInstance((argv, workingDirectory) => {})) {
 
 app.on('window-all-closed', function () {})
 
-
 let windows = {}
 
 let activateApp = function(appName) {

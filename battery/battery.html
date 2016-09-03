@@ -2,16 +2,15 @@
     <head>
         <title>Refude Battery</title>
         <meta charset="UTF-8">
-        <script src="angular.js"></script>
         <script src="battery.js"></script>
         <link rel="stylesheet" href="battery.css"/>
     </head>
-    <body ng-app="battery" ng-controller="batteryCtrl as ctrl">
+    <body>
         <div class="content">
-            <div class="data">{{stateStr}}</div>
-            <div class="menu">&#9776;</div>
+            <div id="state" class="data">?</div>
+            <div id="menu" class="menu">&#9776;</div>
         </div>
         <div class="background"></div>
-        <div ng-class="batteryclass" style="width: {{charge}}%;"></div>
+        <div id="battery" class="" style="width: 0%;"></div>
     </body>
 </html>
