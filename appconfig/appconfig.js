@@ -5,21 +5,21 @@
 * It is distributed under the GPL v2 license.
 * Please refer to the LICENSE file for a copy of the license.
 */
-var appconfigCtrl = function($http, $scope, $window) {
+let appconfigCtrl = function($http, $scope, $window) {
 
     $scope.searchTerm = "";
     $scope.filteredMimetypes = {};
 
     $scope.update = function() {
         $scope.filteredMimetypes = {};
-        var searchTerm = $scope.searchTerm ? $scope.searchTerm.trim().toLowerCase() : "";
+        let searchTerm = $scope.searchTerm ? $scope.searchTerm.trim().toLowerCase() : "";
         mimetypes.filter(mimetype => mimetype.comment.toLowerCase().includes(searchTerm))
                  .forEach(function(mimetype){
                     $scope.filteredMimetypes[mimetype.type] = $scope.filteredMimetypes[mimetype.type] || {};
                     $scope.filteredMimetypes[mimetype.type][mimetype.subtype] = mimetype;
                   });
         
-        for (var type in $scope.filteredMimetypes) {
+        for (let type in $scope.filteredMimetypes) {
             if (searchTerm !== "" && $scope.expandedTypes[type] !== 2 && 
                     Object.keys($scope.filteredMimetypes[type]).length <= 5) {
                 openType(type, 1);
@@ -41,11 +41,11 @@ var appconfigCtrl = function($http, $scope, $window) {
         }
     };
 
-    var requestMimeIcon = function (mime) {
+    let requestMimeIcon = function (mime) {
         if (!(mime.hasOwnProperty("iconUrl"))) {
             mime.iconUrl = null;
-            var url1 = "http://localhost:7938/icon-service/icons/icon?name=" + mime.icon + "&size=50";  
-            var fallbackUrl = "http://localhost:7938/icon-service/icons/icon?name=" + mime.genericIcon + "&size=50"; 
+            let url1 = "http://localhost:7938/icon-service/icons/icon?name=" + mime.icon + "&size=50";  
+            let fallbackUrl = "http://localhost:7938/icon-service/icons/icon?name=" + mime.genericIcon + "&size=50"; 
             $http.get(url1, {responseType: 'blob', headers: {'accept': 'image/png'}}).then(
                     function(response) { 
                         mime.iconUrl = window.URL.createObjectURL(response.data); 
@@ -67,7 +67,7 @@ var appconfigCtrl = function($http, $scope, $window) {
         $scope.expandedTypes[type] ? delete $scope.expandedTypes[type] : openType(type, 2);
     };
 
-    var openType = function(type, value) {
+    let openType = function(type, value) {
         $scope.expandedTypes[type] = value;
     };
 
@@ -94,20 +94,20 @@ var appconfigCtrl = function($http, $scope, $window) {
         $event.stopPropagation();
     };
 
-    var buildSuggestedApps = function() {
+    let buildSuggestedApps = function() {
         $scope.suggestedApps = [];
         buildSuggestedAppsHelper($scope.currentMimetype);
-        var takenApps = new Set();
+        let takenApps = new Set();
         $scope.suggestedApps.forEach(function(appSuggestion) {
             appSuggestion.apps.forEach(function(app) {
                 takenApps.add(app);
             });
         });
-        var otherApps = [];
+        let otherApps = [];
         Object.keys(apps).forEach(function(key) {
             if (takenApps.has(key)) return;
-            var app = apps[key];
-            var exec = app.Exec ? app.Exec.toLowerCase() : "";
+            let app = apps[key];
+            let exec = app.Exec ? app.Exec.toLowerCase() : "";
             if (exec.includes("%f") || exec.includes("%u")) {
                 otherApps.push(apps[key]);
             }
@@ -115,10 +115,10 @@ var appconfigCtrl = function($http, $scope, $window) {
         $scope.suggestedApps.push({description: "Other applications", apps: otherApps});
     };
     
-    var buildSuggestedAppsHelper = function(mime) {
-        var description = "Applications that handle " + mime.comment;
+    let buildSuggestedAppsHelper = function(mime) {
+        let description = "Applications that handle " + mime.comment;
         if ($scope.suggestedApps.findIndex(appSuggestion => appSuggestion.description === description) < 0) {
-            var appArray = [];
+            let appArray = [];
             mime.associatedApplications.forEach(function(appId) {
                 if (apps[appId]) {
                     appArray.push(apps[appId]);
@@ -132,17 +132,17 @@ var appconfigCtrl = function($http, $scope, $window) {
     };
     
     $scope.select = function(applicationId) {
-        var defaultApplications = $scope.currentMimetype.defaultApplications.filter(appId => appId !== applicationId);
+        let defaultApplications = $scope.currentMimetype.defaultApplications.filter(appId => appId !== applicationId);
         defaultApplications.unshift(applicationId);
         $http.patch("http://localhost:7938/desktop-service/mimetypes/" + $scope.currentMimetype.mimetype,
                     {defaultApplications: defaultApplications});
         $scope.currentMimetype = undefined;
     };
 
-    var mimetypes = [];
-    var apps = {};
+    let mimetypes = [];
+    let apps = {};
 
-    var getStuff = function() {
+    let getStuff = function() {
        $http.get("http://localhost:7938/desktop-service/applications").then(function(response) {
             response.data.forEach(function(app) {
                 apps[app.applicationId] = app;
@@ -158,7 +158,7 @@ var appconfigCtrl = function($http, $scope, $window) {
         }); 
     };
     
-    var evtSource = new EventSource("http://localhost:7938/desktop-service/notify");
+    let evtSource = new EventSource("http://localhost:7938/desktop-service/notify");
     evtSource.onopen = getStuff;
     evtSource.addEventListener("resource-updated", getStuff);
     evtSource.addEventListener("resource-added", getStuff);
@@ -166,7 +166,7 @@ var appconfigCtrl = function($http, $scope, $window) {
 
 };
 
-var appConfigModule = angular.module('appConfig', ['ngAria']);
+let appConfigModule = angular.module('appConfig', ['ngAria']);
 appConfigModule.controller('appconfigCtrl', ['$http', '$scope', '$window', appconfigCtrl]);
 appConfigModule.directive("mimetypeList", function() {
     return {
