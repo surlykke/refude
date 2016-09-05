@@ -8,22 +8,12 @@ body {
     width: 100%;
     align-items: center;
     justify-content: center;
-    font-size: 14vw;
-}
-.data {
-    -webkit-app-region: drag;
-    float: left;
-    margin: 0.4em;
-}
-.menu {
-    margin: 0.4em;
-    float: right;
-}
-.background {
-    position: absolute;
-    height: 100%;
-    width: 100%;
+    text-align: right;
+    font-size: 18vw;
+    overflow: hidden;
     background: linear-gradient(lightgray, white 30%, lightgray);
-    z-index: -2;
+}
+.drag {
+    -webkit-app-region: drag;
 }
 

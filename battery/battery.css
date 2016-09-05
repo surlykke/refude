@@ -8,16 +8,11 @@ body {
     width: 100%;
     align-items: center;
     justify-content: center;
-    font-size: 14vw;
+    text-align: right;
+    font-size: 18vw;
 }
-.data {
+.drag {
     -webkit-app-region: drag;
-    float: left;
-    margin: 0.4em;
-}
-.menu {
-    margin: 0.4em;
-    float: right;
 }
 .background {
     position: absolute;
