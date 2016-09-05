@@ -9,20 +9,16 @@
 
 <html>
     <head>
-        <title>Refude Do</title>
+        <title>Refude Power</title>
         <meta charset="UTF-8">
         <script src="angular.js"></script>
         <script src="power.js"></script>
         <link rel="stylesheet" href="power.css"/>
     </head>
-    <body ng-app="power" ng-controller="powerCtrl as ctrl">
-        <div class="time">
-            {{time}}
-        </div>
+    <body ng-app="power"  ng-controller="powerCtrl as ctrl">
         <div class="powerButton" ng-repeat="action in actions"> 
-            <img ng-src="{{iconCache.urls[(iconUrl("system-shutdown"))]}}" 
-                 height="32" width="32" alt=" "/>
-            Shut down
+            <img ng-src={{iconUrl(action)}} height="32" width="32" alt=" "/>
+            {{action.description}} 
         </div>
     </body>
 </html>
