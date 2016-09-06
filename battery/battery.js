@@ -46,7 +46,6 @@ let update = function () {
     document.getElementById("state").innerHTML = stateStr;
     document.getElementById("battery").className = batteryclass;
     document.getElementById("battery").style.width = "" + charge + "%";
-    console.log("update done, stateStr: ", stateStr, ", batteryclass: ", batteryclass);
 };
 var updateBatteryInfo = function (event) {
     GET({host: "localhost", port: 7938, path: "/power-service/devices/DisplayDevice"}, function (json) {

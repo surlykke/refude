@@ -10,6 +10,7 @@ body {
     justify-content: center;
     text-align: right;
     font-size: 18vw;
+    overflow: hidden;
 }
 .drag {
     -webkit-app-region: drag;
