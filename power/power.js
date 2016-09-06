@@ -35,8 +35,9 @@ let powerController =  function($http, $scope) {
     let execute = function() {
         if ($scope.actions[selected]) {
             let url = "http://localhost:7938/power-service/actions/" + $scope.actions[selected].actionId;
-            $http.post(url);
-            remote.getCurrentWindow.close();
+            $http.post(url).then(function(resp) {
+                remote.getCurrentWindow().close();
+            });
         }
     };
 
