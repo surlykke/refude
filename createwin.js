@@ -48,7 +48,7 @@ exports.createWin = function(appName) {
     
     //opts.alwaysOnTop && window.setAlwaysOnTop(true);
 
-	//window.webContents.openDevTools({detached: true});
+	//window.webContents.openDevTools({detach: true});
     let actualBounds = window.getBounds();
     let boundsCorrection = {
         x: actualBounds.x - loadedBounds.x,

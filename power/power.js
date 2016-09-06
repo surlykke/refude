@@ -8,9 +8,72 @@
 
 let powerController =  function($http, $scope) {
     console.log("Into powerController"); 
+    const remote = require('electron').remote
+    
     $scope.actions = [];
     $scope.iconUrl = function(action) {
        return "http://localhost:7938/icon-service/icons/icon?name=" + action.icon + "&size=32";
+    };
+
+    $scope.actionClass = function(action) {
+        return "action" + (action === $scope.actions[selected] ? " selected" : "");
+    };
+
+    let selected = 0;
+    let selectNext = function() {
+        if ($scope.actions.length > 0) {
+            selected = (selected + 1) % $scope.actions.length;
+        }
+    }
+    
+    let selectPrevious = function() {
+        if ($scope.actions.length > 0) {
+            selected = (selected + $scope.actions.length - 1) % $scope.actions.length;
+        }
+    }
+
+    let execute = function() {
+        if ($scope.actions[selected]) {
+            let url = "http://localhost:7938/power-service/actions/" + $scope.actions[selected].actionId;
+            $http.post(url);
+            remote.getCurrentWindow.close();
+        }
+    };
+
+    $scope.select = function(action) {
+        for (i = 0; i < $scope.actions.length; i++) {
+            if ($scope.actions[i] === action) {
+                selected = i;
+                break;
+            }
+        }
+    };
+
+    $scope.selectAndExecute = function(action) {
+        $scope.select(action);
+        execute();
+    };
+
+    let keyActions = {
+        ArrowDown : selectNext,
+        ArrowUp :  selectPrevious,
+        Enter : execute, 
+        " " : execute,
+        Escape : function() {
+            remote.getCurrentWindow().close()
+        }
+    };
+
+    $scope.onKeyDown = function ($event) {
+        console.log("keyDown:", event)
+        if ($event.key === "Tab") {
+            action = keyActions[$event.shiftKey ? "ArrowUp" : "ArrowDown"];
+        }
+        else {
+            action = keyActions[$event.key];
+        }
+
+        if (action) action();
     };
 
     let getActions = function() {
@@ -18,9 +81,7 @@ let powerController =  function($http, $scope) {
             console.log("getActions got: ", resp);
             $scope.actions = resp.data;
         });
-    }
-    
-
+    };
 
     getActions();
 };

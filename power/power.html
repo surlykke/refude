@@ -15,10 +15,21 @@
         <script src="power.js"></script>
         <link rel="stylesheet" href="power.css"/>
     </head>
-    <body ng-app="power"  ng-controller="powerCtrl as ctrl">
-        <div class="powerButton" ng-repeat="action in actions"> 
-            <img ng-src={{iconUrl(action)}} height="32" width="32" alt=" "/>
-            {{action.description}} 
+    <body ng-app="power"  ng-controller="powerCtrl as ctrl" ng-keydown="onKeyDown($event)">
+       <div class="contentBox" id="contentBox">
+           <h2>Leave</h2> 
+           <div ng-repeat="action in actions" 
+                    ng-click="select(action)"
+                    ng-dblclick="selectAndExecute(action)" 
+                    ng-class="actionClass(action)"
+                    id="{{action.actionId}}">
+                <div class="icon">
+                    <img ng-src='{{iconUrl(action)}}' height="32" width="32" alt=" " border="0"/>
+                </div>
+                <div class="itemDesc">
+                    {{action.description}}
+                </div>
+            </div>
         </div>
     </body>
 </html>

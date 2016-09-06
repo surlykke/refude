@@ -1,0 +1,30 @@
+html, body {
+    height: 100%;
+}
+.contentBox {
+    position: absolute;
+    left: 10px;
+    top: 10px;
+    height: calc(100% - 80px);
+    width: 300px;
+    padding: 6px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+.action {
+    display: table-row;
+    padding: 2px;
+}
+.selected  {
+    background-color: lightskyblue;
+}
+.icon {
+    height: 35px;
+    width: 35px;
+    display: table-cell;
+    padding: 3px;
+    vertical-align: top;
+}
+.icon img {
+    border-style: none;
+}
