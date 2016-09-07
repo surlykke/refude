@@ -1,5 +1,6 @@
 html, body {
     height: 100%;
+    overflow: hidden;
 }
 .contentBox {
     position: absolute;
@@ -8,8 +9,7 @@ html, body {
     height: calc(100% - 80px);
     width: 300px;
     padding: 6px;
-    overflow-y: auto;
-    overflow-x: hidden;
+    overflow: hidden;
 }
 .action {
     display: table-row;
