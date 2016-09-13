@@ -16,7 +16,7 @@ let powerController =  function($http, $scope) {
     };
 
     $scope.actionClass = function(action) {
-        return "action" + (action === $scope.actions[selected] ? " selected" : "");
+        return action === $scope.actions[selected] ? "selected" : "";
     };
 
     let selected = 0;

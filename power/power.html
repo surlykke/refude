@@ -16,20 +16,22 @@
         <link rel="stylesheet" href="power.css"/>
     </head>
     <body ng-app="power"  ng-controller="powerCtrl as ctrl" ng-keydown="onKeyDown($event)">
-       <div class="contentBox" id="contentBox">
-           <h2>Leave</h2> 
-           <div ng-repeat="action in actions" 
+        <table cellspacing="0" width="100%" border="0">
+            <tr>
+                <td colspan="2" class="heading">Leave</td>
+            </tr>
+            <tr ng-repeat="action in actions" 
                     ng-click="select(action)"
                     ng-dblclick="selectAndExecute(action)" 
                     ng-class="actionClass(action)"
                     id="{{action.actionId}}">
-                <div class="icon">
+                <td class="img-cell">
                     <img ng-src='{{iconUrl(action)}}' height="32" width="32" alt=" " border="0"/>
-                </div>
-                <div class="itemDesc">
+                </td>
+                <td class="desc" width="99%">
                     {{action.description}}
-                </div>
-            </div>
-        </div>
+                </td>
+            </tr>
+        </table> 
     </body>
 </html>
