@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 sharedir="/usr/local/share/refude"
-filelist="bin appconfig do panel power createwin.js main.js package.json"
+filelist="bin common-js appconfig do panel power createwin.js main.js package.json"
 cd $(realpath $(dirname $0))
 mkdir -p $sharedir
 for file in $filelist; do

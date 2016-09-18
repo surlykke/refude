@@ -5,8 +5,7 @@
  * It is distributed under the GPL v2 license.
  * Please refer to the LICENSE file for a copy of the license.
  */
-let startUpdatingTime = function(elementId) {
-    let element = document.getElementById(elementId);
+let startUpdatingTime = function(element) {
     let updateTime = function() {
         let now = new Date();
         element.innerHTML = now.toLocaleTimeString();
@@ -14,3 +13,7 @@ let startUpdatingTime = function(elementId) {
     };
     updateTime();
 }
+
+document.addEventListener("DOMContentLoaded", function() {
+    startUpdatingTime(document.getElementById("clock"));
+});

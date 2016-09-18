@@ -28,8 +28,9 @@ let GET = function(opts, handler) {
     });
 };
 
-let startUpdatingBattery = function(elementId) {
-    let element = document.getElementById(elementId);
+document.addEventListener("DOMContentLoaded", function() {
+    let element = document.getElementById("battery");
+
     let update = function (state, charge) {
         element.innerHTML = "" + charge + "% (" + ["\u25CF", "\u002B", "\u2212", "\u25CB", "?"][state] +  ")";
     };
@@ -41,17 +42,18 @@ let startUpdatingBattery = function(elementId) {
     };
 
     let evtSource = new EventSource("http://localhost:7938/power-service/notify");
+    
     evtSource.onerror = function (event) {
         update(4, 0);
     };
+
     evtSource.onopen = function (event) {
         updateBatteryInfo();
     };
+
     evtSource.addEventListener("resource-updated", function (e) {
         updateBatteryInfo();
-    });
-}
-
-
+    });   
+});
 
 
