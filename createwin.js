@@ -43,7 +43,8 @@ exports.createWin = function(appName) {
         loadedWinOptions = {};
     }
     let opts = Object.assign({}, loadedBounds, loadedWinOptions);
-
+    opts.minWidth = 30;
+    opts.minHeight = 20;
     let window = new BrowserWindow(opts);
     
     //opts.alwaysOnTop && window.setAlwaysOnTop(true);

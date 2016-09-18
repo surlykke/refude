@@ -1,19 +1,21 @@
-body {
+html, body {
+    width: 100%;
+    height: 100%;
     margin: 0;
     padding: 0;
 }
 .content {
-    position: absolute;
-    height: 100%;
-    width: 100%;
-    align-items: center;
-    justify-content: center;
-    text-align: right;
-    font-size: 18vw;
+    margin-left: 4px; 
+    margin-right: 4px; 
+    height: calc(100% - 8px);
+    width: calc(100% - 8px);
     overflow: hidden;
-    background: linear-gradient(lightgray, white 30%, lightgray);
-}
-.drag {
+    white-space: nowrap;
     -webkit-app-region: drag;
+    background-color: white;
+}
+.context-menu {
+    cursor: default;
+    -webkit-app-region: no-drag;
 }
 

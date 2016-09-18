@@ -42,7 +42,7 @@ let handleRequest = function(request, response) {
                 respond(response, 200)
                 app.quit()
             }
-            else if (["do", "appconfig", "battery", "panel", "power"].includes(action)) {
+            else if (["do", "appconfig", "panel", "power"].includes(action)) {
                 console.log("do")
                 respond(response, activateApp(action) ? 200 : 500)
             }

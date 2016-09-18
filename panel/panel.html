@@ -11,13 +11,17 @@
     <head>
         <title>Refude Panel</title>
         <meta charset="UTF-8">
-        <script src="panel.js"></script>
+        <script src="clock.js"></script>
+        <script src="battery.js"></script>
         <link rel="stylesheet" href="panel.css"/>
     </head>
-    <body>
+    <body onload="startUpdatingTime('clock'); startUpdatingBattery('battery')">
         <div class="content">
-            <span id="time" class="drag">##:##:##</span>&nbsp;&#9776;
+        <span id="battery">?</span>&nbsp;
+        <span id="clock">?</span> &nbsp;
+        <span id="contextMenu" class="context-menu">&#9776;</span>
         </div>
     </body>
 </html>
+        
 
