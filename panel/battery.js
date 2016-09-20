@@ -32,7 +32,15 @@ document.addEventListener("DOMContentLoaded", function() {
     let element = document.getElementById("battery");
 
     let update = function (state, charge) {
-        element.innerHTML = "" + charge + "% (" + ["\u25CF", "\u002B", "\u2212", "\u25CB", "?"][state] +  ")";
+        if (["Charging", "Fully charged"].indexOf(state) > -1) { 
+            element.innerHTML = "<b>" + charge + "%</b>";
+        }
+        else if (["Discharging", "Empty"].indexOf(state) > -1) {
+            element.innerHTML = "" + charge + "%";
+        }
+        else {
+            element.innerHTML = "?";
+        }
     };
 
     let updateBatteryInfo = function (event) {
@@ -44,14 +52,17 @@ document.addEventListener("DOMContentLoaded", function() {
     let evtSource = new EventSource("http://localhost:7938/power-service/notify");
     
     evtSource.onerror = function (event) {
-        update(4, 0);
+        //console.log("evtSource error", event);
+        update("Unknown", 0);
     };
 
     evtSource.onopen = function (event) {
+        //console.log("evtSource onopen", event);
         updateBatteryInfo();
     };
 
     evtSource.addEventListener("resource-updated", function (e) {
+        //console.log("evtSource update", e);
         updateBatteryInfo();
     });   
 });

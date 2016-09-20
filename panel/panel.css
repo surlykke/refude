@@ -6,10 +6,11 @@ html, body {
     overflow: hidden;
 }
 .content {
-    margin-left: 4px; 
-    margin-top: 4px; 
-    height: calc(100% - 8px);
-    width: calc(100% - 8px);
+    margin-left: 2px; 
+    margin-top: 2px; 
+    padding: 0px;
+    height: calc(100% - 4px);
+    width: calc(100% - 4px);
     white-space: nowrap;
     -webkit-app-region: drag;
     background-color: white;
