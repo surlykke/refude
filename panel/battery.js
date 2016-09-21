@@ -32,15 +32,20 @@ document.addEventListener("DOMContentLoaded", function() {
     let element = document.getElementById("battery");
 
     let update = function (state, charge) {
+        let style ="color: black;";
         if (["Charging", "Fully charged"].indexOf(state) > -1) { 
             element.innerHTML = "<b>" + charge + "%</b>";
         }
         else if (["Discharging", "Empty"].indexOf(state) > -1) {
             element.innerHTML = "" + charge + "%";
+            if (charge < 20) {
+                style = "color: red;";
+            }
         }
         else {
             element.innerHTML = "?";
         }
+        element.style = style;
     };
 
     let updateBatteryInfo = function (event) {
