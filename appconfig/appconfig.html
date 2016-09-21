@@ -19,12 +19,12 @@
         <link rel="stylesheet" href="app.css"/>
     </head>
     <body ng-app="appConfig" ng-controller="appconfigCtrl as ctrl" ng-keydown="onKeyDown($event)">
-        <div ng-show="!currentMimetype" style="display: flex; flex-direction: column; height: 90%;">
+        <div ng-show="!currentMimetype" class="mainBox">
             <h2 style="flex: 0;">
                 Mimetypes
             </h2>
             <input ng-model="searchTerm" ng-change="update()" 
-                   type="text" placeholder="Search" autofocus style="flex: 0;"/>
+                   type="text" placeholder="Search" autofocus class="searchBox"/>
             <nav ng-show="!currentMimetype" style="flex: 1; overflow-y: scroll;">
                 <ul>
                     <li ng-repeat="(type, subtypeObj) in filteredMimetypes" ng-click="toggleExpandType(type)"
@@ -70,7 +70,7 @@
                     </li>
                 </ul> 
             </nav>
-            <a href="#" style="float:right;">Cancel</a>
+            <a href="#" style="float:right;" ng-click="currentMimetype = undefined;">Cancel</a>
         </div>
     </body>
 </html>
