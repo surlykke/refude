@@ -17,11 +17,8 @@ exports.createWin = function(appName) {
         }
         timeoutId = setTimeout(function() {
             let bounds = window.getBounds();
-            saveBounds({ x: bounds.x - boundsCorrection.x, 
-                         y: bounds.y - boundsCorrection.y, 
-                         width: bounds.width - boundsCorrection.width, 
-                         height: bounds.height - boundsCorrection.height 
-                     });
+            console.log("bounds", bounds);
+            saveBounds(bounds);
             timeoutId = null;
         }, 100);
     };
@@ -49,14 +46,6 @@ exports.createWin = function(appName) {
     //opts.alwaysOnTop && window.setAlwaysOnTop(true);
 
 	//window.webContents.openDevTools({detach: true});
-    let actualBounds = window.getBounds();
-    let boundsCorrection = {
-        x: actualBounds.x - loadedBounds.x,
-        y: actualBounds.y - loadedBounds.y,
-        width : actualBounds.width - loadedBounds.width,
-        height : actualBounds.height - loadedBounds.height
-    };
-   
     window.setMenu(null);
     window.loadURL(`file://${__dirname}/${appName}/${appName}.html`);
     window.on("resize", boundsChanged);
