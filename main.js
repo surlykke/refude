@@ -66,9 +66,10 @@ let http = require('http')
 let server = http.createServer(handleRequest)
 
 try {
-	fs.unlink("/run/user/1000/org.restfulipc.refude.desktop")
+	fs.unlinkSync("/run/user/1000/org.restfulipc.refude.desktop")
 }
 catch (err) {
+    console.log("error caught")
 }
 
 server.listen("/run/user/1000/org.restfulipc.refude.desktop")

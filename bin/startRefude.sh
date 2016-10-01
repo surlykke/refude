@@ -13,7 +13,7 @@ function exitIfRunning {
 
 exitIfRunning;
 
-nohup npm start >/dev/null 2>&1 &
+nohup npm start >/tmp/refude.log 2>&1 &
 
 for i in {1..50}; do
 	sleep 0.1
