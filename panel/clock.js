@@ -15,5 +15,7 @@ let startUpdatingTime = function(element) {
 }
 
 document.addEventListener("DOMContentLoaded", function() {
+    console.log("log", log);
+    log("startUpdatingTime...");
     startUpdatingTime(document.getElementById("clock"));
 });
