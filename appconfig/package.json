@@ -1,0 +1,12 @@
+{
+  "name": "refudeAppConfig",
+  "version": "0.0.1",
+  "description": "Refude Application Configuration",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron-prebuilt": "^1.2.0"
+  }
+}
