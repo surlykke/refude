@@ -15,8 +15,4 @@ html, body {
     -webkit-app-region: drag;
     background-color: white;
 }
-.context-menu {
-    cursor: default;
-    -webkit-app-region: no-drag;
-}
 

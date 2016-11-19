@@ -32,7 +32,6 @@ document.addEventListener("DOMContentLoaded", function() {
     let element = document.getElementById("battery");
 
     let update = function (state, charge) {
-        log("battery update");
         let style ="color: black;";
         if (["Charging", "Fully charged"].indexOf(state) > -1) { 
             element.innerHTML = "<b>" + charge + "%</b>";
@@ -50,33 +49,24 @@ document.addEventListener("DOMContentLoaded", function() {
     };
 
     let updateBatteryInfo = function (event) {
-        log("updateBatteryInfo");
         GET({host: "localhost", port: 7938, path: "/power-service/devices/DisplayDevice"}, function (json) {
-            log("updateBatteryInfo, return")
             update(json.State, json.Percentage);
         });
     };
 
-    log("Creating evtSource");
     let evtSource = new EventSource("http://localhost:7938/power-service/notify");
    
-    log("Set onerror");
     evtSource.onerror = function (event) {
-        log("battery error")
         //console.log("evtSource error", event);
         update("Unknown", 0);
     };
 
-    log("Set onopen");
     evtSource.onopen = function (event) {
-        log("battery open")
         //console.log("evtSource onopen", event);
         updateBatteryInfo();
     };
 
-    log("addEventListener");
     evtSource.addEventListener("resource-updated", function (e) {
-        //console.log("evtSource update", e);
         updateBatteryInfo();
     });   
 });
