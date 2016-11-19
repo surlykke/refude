@@ -5,8 +5,6 @@ const url = require('url')
 const windowManager = require('../common-js/createwin.js')
 
 
-// Keep a global reference of the window object, if you don't, the window will
-// be closed automatically when the JavaScript object is garbage collected.
 let win
 
 const shouldQuit = app.makeSingleInstance((commandLine, workingDirectory) => {
@@ -22,12 +20,12 @@ if (shouldQuit) {
   app.quit()
 }
 
+
 app.on('ready', () => {
- 	win = windowManager.createWin("panel", {transparent: true, frame: false})
+ 	win = windowManager.createWin("do")
 	win.on("closed", () => { win = null; });
     win.setMenu(null);
-	win.setAlwaysOnTop(true);    
-	win.loadURL(`file://${__dirname}/panel.html`);
+	win.loadURL(`file://${__dirname}/do.html`);
 	//win.webContents.openDevTools();
 });
 
