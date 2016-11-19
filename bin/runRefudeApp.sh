@@ -1,7 +1,7 @@
-#!/bin/sh
-echo "Trying to start $1"
-curl -X POST --unix-socket /run/user/1000/org.restfulipc.refude.desktop http://localhost/$1;
-if [[ "x7" == "x$$?" ]]; then
-	echo "Refude seemingly not running.."
-fi
+#!/usr/bin/env bash
+
+THISDIR=$(dirname $(realpath $0))
+APPDIR=`realpath "$THISDIR/../$1"`
+[[ -d $APPDIR ]] || { echo "Directory $APPDIR not found"; exit 1; }
+exec electron $APPDIR
 
