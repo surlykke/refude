@@ -4,4 +4,4 @@ Version=1.0
 Terminal=false
 Type=Application
 Name=Refude Panel
-Exec=runRefudeApp.sh panel
+Exec=refudePanel

@@ -14,8 +14,8 @@ chmod 744 $sharedir/*/*.desktop
 
 cd /usr/local/bin
 for app in $applist; do 
-	chmod a+x $sharedir/$app/runRefude*;
-	ln -sf $sharedir/$app/runRefude*; 
+	chmod a+x $sharedir/$app/refude*;
+	ln -sf $sharedir/$app/refude*; 
 done
 
 cd /usr/local/share/applications
