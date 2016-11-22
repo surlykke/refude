@@ -36,7 +36,12 @@ exports.createWin = function(appName, windowOpts) {
 	let window =  new BrowserWindow(windowOpts);
     window.on("resize", boundsChanged);
     window.on("move", boundsChanged);
-
+	if (windowOpts.alwaysOnTop) {
+		window.setAlwaysOnTop(true);
+	}
+	if (windowOpts.openDevTools) {
+		win.webContents.openDevTools();
+	}
     return window;
 };
 

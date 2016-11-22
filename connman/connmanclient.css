@@ -1,0 +1,25 @@
+html, body {
+    height: 100%;
+    overflow: hidden;
+}
+.heading {
+	font-size: 1.2em;
+}
+
+.tech {
+	padding-left : 12px;
+}
+.bold {
+	font-weight: bold;
+}
+
+.service {
+	padding-left : 12px;
+}
+.service:selected {
+	background-color: yellow;
+}
+
+.heading, .tech, .service {
+	border: solid black 1px;
+}

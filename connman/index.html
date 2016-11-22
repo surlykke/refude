@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<!--
+ Copyright (c) 2015, 2016 Christian Surlykke
+
+ This file is part of the refude project. 
+ It is distributed under the GPL v2 license.
+ Please refer to the LICENSE file for a copy of the license.
+-->
+
+<html>
+    <head>
+        <title>Refude Connman Client</title>
+        <meta charset="UTF-8">
+        <script src="../common-js/angular.js"></script>
+        <script src="../common-js/zoom.js"></script>
+		<script src="connmanclient.js"></script>
+        <link rel="stylesheet" href="connmanclient.css"/>
+    </head>
+    <body ng-app="connmanclient" ng-controller="connmanclientController as ctrl">
+		<div class="heading">
+			Connection Types
+		</div>
+		<div ng-repeat="tech in technologies" ng-class='["techrow", technologyclass(tech)]'>
+			{{techdisplayname(tech)}}
+		</div>
+		<div class="heading">
+			Services
+		</div>
+		<div ng-repeat="service in services"  ng-class='["servicerow", serviceclass(service)]'>
+			{{servicedisplayname(service)}}
+		</div>
+	</body>
+</html>

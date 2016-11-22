@@ -1,39 +1,11 @@
+const {app} = require('electron')
 
-const {app, BrowserWindow} = require('electron')
-const path = require('path')
-const url = require('url')
-const windowManager = require('../common-js/createwin.js')
-
-
-// Keep a global reference of the window object, if you don't, the window will
-// be closed automatically when the JavaScript object is garbage collected.
-let win
-
-const shouldQuit = app.makeSingleInstance((commandLine, workingDirectory) => {
-  // Someone tried to run a second instance, we should focus our window.
-  if (win) {
-	win.restore()
-	win.show()
-    win.focus()
-  }
-})
-
-if (shouldQuit) {
-  app.quit()
-}
+const singletonMaker = require('../common-js/singletonapp.js')
 
 app.on('ready', () => {
- 	win = windowManager.createWin("panel", {transparent: true, frame: false})
-	win.on("closed", () => { win = null; });
-    win.setMenu(null);
-	win.setAlwaysOnTop(true);    
-	win.loadURL(`file://${__dirname}/panel.html`);
-	//win.webContents.openDevTools();
-});
-
-
-// Quit when all windows are closed.
-app.on('window-all-closed', () => {
-    app.quit();
+	singletonMaker.singletonApp("/run/user/1000/org.refude.apps.panel", 
+		                        __dirname, 
+		                       {frame: false,
+							    alwaysOnTop: true});
 });
 
