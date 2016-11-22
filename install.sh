@@ -1,18 +1,21 @@
 #!/usr/bin/env bash
 sharedir="/usr/local/share/refude"
-filelist="bin common-js appconfig do panel power"
+applist="do panel power appconfig"
+dirlist="common-js $applist"
+
 cd $(realpath $(dirname $0))
+
 mkdir -p $sharedir
-for file in $filelist; do
+for file in $dirlist; do
 	cp -R $file $sharedir
 done
 
-chmod 755 $sharedir/bin/*.sh 
 chmod 744 $sharedir/*/*.desktop
 
 cd /usr/local/bin
-for exe in $sharedir/bin/*.sh; do 
-	ln -sf $exe; 
+for app in $applist; do 
+	chmod a+x $sharedir/$app/runRefude*;
+	ln -sf $sharedir/$app/runRefude*; 
 done
 
 cd /usr/local/share/applications
