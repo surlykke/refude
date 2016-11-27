@@ -1,0 +1,24 @@
+html, body {
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+}
+.heading {
+    font-size: x-large;
+    text-align: center;
+}
+.line {
+	display: flex;
+	vertical-align: middle;
+	white-space: nowrap;
+	overflow: hidden;
+	padding: 5px;
+}
+.selected  {
+    border: solid black 2px;
+	border-radius: 8px;
+}
+.line:not(.selected) {
+    border: solid rgba(0,0,0,0) 2px;
+	border-radius: 8px;
+}

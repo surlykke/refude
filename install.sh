@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 sharedir="/usr/local/share/refude"
 applist="do panel power appconfig connman"
-dirlist="common-js $applist"
+dirlist="common $applist"
 
 cd $(realpath $(dirname $0))
 

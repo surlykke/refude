@@ -42,6 +42,7 @@ exports.createWin = function(appName, windowOpts) {
 	if (windowOpts.openDevTools) {
 		win.webContents.openDevTools();
 	}
+	//window.webContents.openDevTools();
     return window;
 };
 

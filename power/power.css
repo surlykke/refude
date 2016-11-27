@@ -1,18 +1,4 @@
-html, body {
-    height: 100%;
-    width: 100%;
-    overflow: hidden;
+.list {
+	width: 95%;
 }
-.heading {
-    font-size: x-large;
-    text-align: center;
-}
-.img-cell {
-    white-space: nowrap;    
-}
-.desc {
-    text-align: left;
-}
-.selected  {
-    background-color: lightskyblue;
-}
+

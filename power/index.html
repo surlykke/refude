@@ -11,28 +11,24 @@
     <head>
         <title>Refude Power</title>
         <meta charset="UTF-8">
-        <script src="../common-js/angular.js"></script>
+        <script src="../common/angular.js"></script>
         <script src="power.js"></script>
-        <script src="../common-js/zoom.js"></script>
+        <script src="../common/zoom.js"></script>
+        <link rel="stylesheet" href="../common/refude.css"/>
         <link rel="stylesheet" href="power.css"/>
     </head>
     <body ng-app="power"  ng-controller="powerCtrl as ctrl" ng-keydown="onKeyDown($event)">
-        <table cellspacing="0" width="100%" border="0">
-            <tr>
-                <td colspan="2" class="heading">Leave</td>
-            </tr>
-            <tr ng-repeat="action in actions" 
-                    ng-click="select(action)"
-                    ng-dblclick="selectAndExecute(action)" 
-                    ng-class="actionClass(action)"
-                    id="{{action.actionId}}">
-                <td class="img-cell">
-                    <img ng-src='{{iconUrl(action)}}' height="32" width="32" alt=" " border="0"/>
-                </td>
-                <td class="desc" width="99%">
-                    {{action.description}}
-                </td>
-            </tr>
-        </table> 
+		<div class="list">
+			<div class="line heading">
+				Leave
+			</div>
+            <div ng-repeat="action in actions" 
+				 ng-click="select(action)"
+				 ng-dblclick="selectAndExecute(action)" 
+				 id="{{action.actionId}}" ng-class="actionClass(action)">
+					<img ng-src='{{iconUrl(action)}}' height="32" width="32" alt=" " border="0"/>
+					{{action.description}}
+            </div>
+        </div> 
     </body>
 </html>
