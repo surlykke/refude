@@ -12,10 +12,9 @@
         <title>Refude Do</title>
         <meta charset="UTF-8">
         <script src="../common/angular.js"></script>
-        <script src="iconcache.js"></script>
+        <script src="../common/zoom.js"></script>
         <script src="windowlist.js"></script>
         <script src="applicationlist.js"></script>
-        <script src="../common/zoom.js"></script>
         <script src="do.js"></script>
         <link rel="stylesheet" href="do.css"/>
     </head>
@@ -29,7 +28,7 @@
                     ng-class="itemClass(item)"
                     id="{{item.url}}">
                 <div ng-class="iconClass(item)">
-                    <img ng-src='{{iconUrl(item)}}' height="32" width="32" alt=" " border="0"/>
+                    <img ng-src='{{item.iconUrl}}' height="32" width="32" alt=" " border="0"/>
                 </div>
                 <div class="itemDesc">
                     <div class="itemName">{{item.name}}</div>
@@ -42,7 +41,7 @@
         <div id="disp" class="display">
             <div ng-repeat="window in windows" class="window" ng-style="style(window, $index)">
                 <div class="windowTitle">
-                    <img ng-src="{{iconUrl(window)}}" height="10" width="10" alt =" "/>
+                    <img ng-src="{{item.iconUrl}}" height="10" width="10" alt =" "/>
                     {{window.Name}}
                 </div>
             </div>

@@ -38,7 +38,6 @@ function doController($q, $http, $scope, $window) {
         $scope.windows = $scope.items.filter(win => !win.state.includes("Hidden"));
         console.log("windows", $scope.windows);
         applicationList.filter($scope.searchTerm).forEach(app => $scope.items.push(app));
-        $scope.items.forEach(item => iconCache.requestIcon(item.iconUrl));
         selectedIndex = oldUrl ? $scope.items.findIndex(item => item.url === oldUrl) : -1;
         selectedIndex = selectedIndex === -1 ? 0 : selectedIndex;
     };
@@ -59,7 +58,6 @@ function doController($q, $http, $scope, $window) {
 
     var windowList = makeWindowList($http, $scope.update);
     var applicationList = makeApplicationList($http, $scope.update);
-    var iconCache = makeIconCache($http);
 
     var execute = function () {
         var url = $scope.selectedUrl();
@@ -97,10 +95,6 @@ function doController($q, $http, $scope, $window) {
         if (action) action();
     };
 
-    $scope.iconUrl = function(item) {
-        return iconCache.urls[item.iconUrl] || "../../img/1x1.png";
-    };
-  
     $scope.itemClass  = function(item) { 
         var tmp = "item";
         if (item.url === $scope.selectedUrl()) tmp += " selected";
