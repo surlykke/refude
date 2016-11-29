@@ -16,12 +16,13 @@
         <script src="windowlist.js"></script>
         <script src="applicationlist.js"></script>
         <script src="do.js"></script>
+        <link rel="stylesheet" href="../common/refude.css"/>
         <link rel="stylesheet" href="do.css"/>
     </head>
     <body ng-app="do" ng-controller="doCtrl as ctrl" ng-keydown="onKeyDown($event)">
+
         <input type="search" autofocus class="searchInput" ng-model="searchTerm"  ng-change="update()"/>
-        
-        <div class="contentBox" id="contentBox">
+        <div class="list" id="contentBox">
            <div ng-repeat="item in items" 
                     ng-click="select(item.url)"
                     ng-dblclick="selectAndExecute(item.url)" 

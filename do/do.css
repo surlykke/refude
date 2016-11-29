@@ -6,25 +6,12 @@ html, body {
     border-radius: 6px;
     outline-style: none;
     height: 28px;
-    width: 310px;
-    margin: 6px;
-}
-.contentBox {
-    position: absolute;
-    left: 10px;
-    top: 50px;
-    height: calc(100% - 80px);
     width: 300px;
-    padding: 6px;
+}
+.list {
+	width: 300px;
+    height: calc(100% - 55px);
     overflow-y: auto;
-    overflow-x: hidden;
-}
-.item {
-    display: table-row;
-    padding: 2px;
-}
-.selected  {
-    background-color: lightskyblue;
 }
 .itemIcon {
     height: 35px;

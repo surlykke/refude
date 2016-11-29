@@ -8,30 +8,32 @@
 
 function doController($q, $http, $scope, $window) {
     const remote = require('electron').remote
-    var selectedIndex = -1;
+    let selectedIndex = -1;
 
-    var next = function() { 
+    let next = function() { 
         if ($scope.items.length > 0) {
             selectedIndex = (selectedIndex + 1) % $scope.items.length;
         } 
+        scrollSelectedCommandIntoView();
     };
     
-    var previous = function() { 
+    let previous = function() { 
         if ($scope.items.length > 0) { 
             selectedIndex = (selectedIndex +  $scope.items.length - 1) % $scope.items.length;
         }
+        scrollSelectedCommandIntoView();
     };
 
     $scope.searchTerm = "";
     $scope.items = [];
     $scope.windows = [];
     $scope.selectedUrl = function() {
-        var url = $scope.items[selectedIndex] ? $scope.items[selectedIndex].url : undefined;
+        let url = $scope.items[selectedIndex] ? $scope.items[selectedIndex].url : undefined;
         return url;
     };
 
     $scope.update = function() {
-        var oldUrl = $scope.selectedUrl();
+        let oldUrl = $scope.selectedUrl();
         $scope.items = [];
         $scope.items = windowList.filter($scope.searchTerm);
         console.log("items:", $scope.items);
@@ -43,7 +45,7 @@ function doController($q, $http, $scope, $window) {
     };
   
     $scope.select = function(url) {
-        var tmp = $scope.items.findIndex(item => item.url === url);
+        let tmp = $scope.items.findIndex(item => item.url === url);
         if (tmp > -1) {
             selectedIndex = tmp;
         }
@@ -56,13 +58,13 @@ function doController($q, $http, $scope, $window) {
         }; 
     };
 
-    var windowList = makeWindowList($http, $scope.update);
-    var applicationList = makeApplicationList($http, $scope.update);
+    let windowList = makeWindowList($http, $scope.update);
+    let applicationList = makeApplicationList($http, $scope.update);
 
-    var execute = function () {
-        var url = $scope.selectedUrl();
+    let execute = function () {
+        let url = $scope.selectedUrl();
         if (url) {
-            var callActivated = ! $scope.items[selectedIndex].isAWindow;
+            let callActivated = ! $scope.items[selectedIndex].isAWindow;
             $http.post(url).then( function(response) {
                 if (callActivated) {
                     applicationList.urlWasActivated(url);
@@ -73,7 +75,7 @@ function doController($q, $http, $scope, $window) {
         }
     };
 
-    var keyActions = {
+    let keyActions = {
         ArrowDown : next,
         ArrowUp :  previous,
         Enter : execute, 
@@ -96,23 +98,21 @@ function doController($q, $http, $scope, $window) {
     };
 
     $scope.itemClass  = function(item) { 
-        var tmp = "item";
-        if (item.url === $scope.selectedUrl()) tmp += " selected";
-        return tmp;
+        return item.url === $scope.selectedUrl() ? ["line", "selected"] : ["line"]
     };
 
     $scope.iconClass = function(item) {
-        var tmp = "itemIcon";
+        let tmp = "itemIcon";
         if (item.isAWindow) tmp += " windowItem";
         if (item.state && item.state.includes("Hidden")) tmp += " hidden";
         return tmp;
     };
 
     $scope.style = function(window, index) {
-        var geometry = window.geometry;
-        var selected = window.url === $scope.selectedUrl();
-        var z_index = selected ? $scope.windows.length : index; 
-        var res = {
+        let geometry = window.geometry;
+        let selected = window.url === $scope.selectedUrl();
+        let z_index = selected ? $scope.windows.length : index; 
+        let res = {
             "left" : "" + Math.round(scale*geometry.x) + "px",
             "top" : "" + Math.round(scale*geometry.y) + "px",
             "width" : "" + Math.round(scale*geometry.w) + "px",
@@ -125,35 +125,62 @@ function doController($q, $http, $scope, $window) {
         return res;
     };
 
-    var scrollSelectedCommandIntoView = function () {
+    $scope.contentRectTop = 0;
+    $scope.itemRectTop = 0;
+    $scope.contentRectBottom = 0;
+    $scope.itemRectBottom = 0;
+    $scope.scrollDelta = 0;
+    $scope.op = "";
+
+    let scrollSelectedCommandIntoView = function () {
         if ($scope.selectedUrl()) {
-            var contentDiv = document.getElementById("contentBox");
-            var selectedDiv = document.getElementById($scope.selectedUrl());
+            let contentDiv = document.getElementById("contentBox");
+            let selectedDiv = document.getElementById($scope.selectedUrl());
+            console.log("Have contentDiv and selectedDiv"); 
+            $scope.contentRectTop = 0;
+            $scope.itemRectTop = 0;
+            $scope.contentRectBottom = 0;
+            $scope.itemRectBottom = 0
+            $scope.scrollDelta = 0;
+
+            $scope.op = "";             
             if (contentDiv && selectedDiv) {
-                var contentRect = contentDiv.getBoundingClientRect();
-                var itemRect = selectedDiv.getBoundingClientRect();
-                var delta = null;
+                let contentRect = contentDiv.getBoundingClientRect();
+                let itemRect = selectedDiv.getBoundingClientRect();
+                $scope.contentRectTop = contentRect.top;
+                $scope.itemRectTop = itemRect.top;
+                $scope.contentRectBottom = contentRect.bottom;
+                $scope.itemRectBottom = itemRect.bottom;
+                $scope.op = "";             
+                console.log("contentRect:", contentRect, ", itemRect:", itemRect);
+                let delta = null;
                 if (itemRect.top < contentRect.top) {
+                    $scope.op = "delta = " + itemRect.top + " - " + contentRect.top + " - 15";
                     delta = itemRect.top - contentRect.top - 15;
                 }
                 else if (itemRect.bottom > contentRect.bottom) {
+                    $scope.op = "delta = " + itemRect.bottom + " - " + contentRect.bottom + " + 15";
                     delta = itemRect.bottom - contentRect.bottom + 15;
                 } 
                 if (delta) {
+                    $scope.scrollDelta = delta;
                     contentDiv.scrollTop = contentDiv.scrollTop + delta;
+                }
+                else {
+                    scrollDelta = 0;
                 }
             }
         }
     };
     
-    var displayGeometry = {};
-    var width = 100;
-    var height = 100;
-    var scale = 0.1;
+    let displayGeometry = {};
+    let width = 100;
+    let height = 100;
+    let scale = 0.1;
 
-    var calculateGeometry = function() {
-        var display = document.getElementById("disp");
-        var contentRect = display.getBoundingClientRect();
+    let calculateGeometry = function() {
+        let display = document.getElementById("disp");
+        let contentRect = display.getBoundingClientRect();
         width = contentRect.right - contentRect.left - 4;
         height = contentRect.bottom - contentRect.top - 4;
         scale = Math.min(width/displayGeometry.w, height/displayGeometry.h);
@@ -171,7 +198,7 @@ function doController($q, $http, $scope, $window) {
 };
 
 
-var doModule = angular.module('do', []);
+let doModule = angular.module('do', []);
 
 doModule.controller('doCtrl', ['$q', '$http', '$scope', '$window', doController]);
 
