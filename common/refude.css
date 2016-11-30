@@ -5,10 +5,11 @@ html, body {
 }
 .heading {
     font-size: x-large;
-    text-align: center;
+    padding-left: 50px;
 }
 .line {
 	display: flex;
+    width: calc(100% - 20px);
 	vertical-align: middle;
 	white-space: nowrap;
 	overflow: hidden;
@@ -21,4 +22,11 @@ html, body {
 .line:not(.selected) {
     border: solid rgba(0,0,0,0) 2px;
 	border-radius: 8px;
+}
+.searchInput  {
+    border-radius: 6px;
+    outline-style: none;
+    height: 28px;
+    width: 310px;
+    margin: 6px;
 }

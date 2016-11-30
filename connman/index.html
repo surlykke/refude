@@ -14,20 +14,25 @@
         <script src="../common/angular.js"></script>
         <script src="../common/zoom.js"></script>
 		<script src="connmanclient.js"></script>
+        <link rel="stylesheet" href="../common/refude.css"/>
         <link rel="stylesheet" href="connmanclient.css"/>
     </head>
     <body ng-app="connmanclient" ng-controller="connmanclientController as ctrl">
-		<div class="heading">
-			Connection Types
-		</div>
-		<div ng-repeat="tech in technologies" ng-class='["techrow", technologyclass(tech)]'>
-			{{techdisplayname(tech)}}
-		</div>
-		<div class="heading">
-			Services
-		</div>
-		<div ng-repeat="service in services"  ng-class='["servicerow", serviceclass(service)]'>
-			{{servicedisplayname(service)}}
+		<div class="list">
+            <div class="line heading">
+                Connection Types
+            </div>
+            <div ng-repeat="tech in technologies" ng-class='["line", technologyclass(tech)]'>
+                <img src='../common/1x1.png' height="32" width="32" alt=" " border="0"/>
+                {{techdisplayname(tech)}}
+            </div>
+            <div class="line heading">
+                Services
+            </div>
+            <div ng-repeat="service in services"  ng-class='["line", serviceclass(service)]'>
+                <img src="{{service.iconUrl}}" onerror="this.src='../common/1x1.png'" height="32" width="32" alt=" " border="0"/>
+                {{servicedisplayname(service)}}
+            </div>
 		</div>
 	</body>
 </html>
