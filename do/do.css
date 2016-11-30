@@ -2,12 +2,6 @@ html, body {
     height: 100%;
     overflow: hidden;
 }
-.searchInput  {
-    border-radius: 6px;
-    outline-style: none;
-    height: 28px;
-    width: 300px;
-}
 .list {
 	width: 300px;
     height: calc(100% - 55px);
