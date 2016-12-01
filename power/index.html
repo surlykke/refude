@@ -26,8 +26,8 @@
 				 ng-click="select(action)"
 				 ng-dblclick="selectAndExecute(action)" 
 				 id="{{action.actionId}}" ng-class="actionClass(action)">
-					<img ng-src='{{iconUrl(action)}}' height="32" width="32" alt=" " border="0"/>
-					{{action.description}}
+                <div class="line-icon"><img ng-src='{{iconUrl(action)}}' height="32" width="32" alt=" " border="0"/></div>
+                <div class="line-title">{{action.description}}</div>
             </div>
         </div> 
     </body>

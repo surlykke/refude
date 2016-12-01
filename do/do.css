@@ -7,31 +7,12 @@ html, body {
     height: calc(100% - 55px);
     overflow-y: auto;
 }
-.itemIcon {
-    height: 35px;
-    width: 35px;
-    display: table-cell;
-    padding: 3px;
-    vertical-align: top;
-}
-.itemIcon img {
-    border-style: none;
-}
-.windowItem img {
-    -webkit-filter: drop-shadow(5px 5px 3px grey);
-    overflow: visible;
-}
-.hidden {
-    opacity: 0.4;
-}
-.itemDesc {
-    display: table-cell;
-    white-space: nowrap;
-    padding: 3px;
-    width: 100%;
-}
-.itemComment {
-    font-size: smaller;
+.searchInput  {
+    border-radius: 6px;
+    outline-style: none;
+    height: 28px;
+    width: 280px;
+    margin: 6px;
 }
 .display {
     position: absolute;

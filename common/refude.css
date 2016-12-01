@@ -8,12 +8,31 @@ html, body {
     padding-left: 50px;
 }
 .line {
-	display: flex;
     width: calc(100% - 20px);
-	vertical-align: middle;
-	white-space: nowrap;
+	vertical-align: top;
 	overflow: hidden;
-	padding: 5px;
+    padding: 5px;
+}
+.line-icon {
+    float: left;
+    margin-right: 6px;
+}
+.line-title {
+    overflow: hidden;
+    white-space: nowrap;
+    margin-right: 6px;
+}
+.line-comment {
+    white-space: nowrap;
+    font-size: 0.8em;
+    margin-right: 6px;
+}
+.shadow img {
+    -webkit-filter: drop-shadow(5px 5px 3px grey);
+    overflow: visible;
+}
+.dimmed {
+    opacity: 0.4;
 }
 .selected  {
     border: solid black 2px;

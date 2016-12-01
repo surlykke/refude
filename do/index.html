@@ -23,18 +23,14 @@
 
         <input type="search" autofocus class="searchInput" ng-model="searchTerm"  ng-change="update()"/>
         <div class="list" id="contentBox">
-           <div ng-repeat="item in items" 
+            <div ng-repeat="item in items" 
                     ng-click="select(item.url)"
                     ng-dblclick="selectAndExecute(item.url)" 
-                    ng-class="itemClass(item)"
+                    ng-class="lineClass(item)"
                     id="{{item.url}}">
-                <div ng-class="iconClass(item)">
-                    <img ng-src='{{item.iconUrl}}' height="32" width="32" alt=" " border="0"/>
-                </div>
-                <div class="itemDesc">
-                    <div class="itemName">{{item.name}}</div>
-                    <div class="itemComment"> {{item.comment}} </div>
-                </div>
+                <div class="line-icon"><img ng-src='{{item.iconUrl}}' height="32" width="32" alt=" " border="0"/></div>
+                <div class="line-title">{{item.name}}</div>
+                <div class="line-comment">{{item.comment}}</div>
             </div>
         </div>
 

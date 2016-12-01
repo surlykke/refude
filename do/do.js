@@ -36,9 +36,7 @@ function doController($q, $http, $scope, $window) {
         let oldUrl = $scope.selectedUrl();
         $scope.items = [];
         $scope.items = windowList.filter($scope.searchTerm);
-        console.log("items:", $scope.items);
         $scope.windows = $scope.items.filter(win => !win.state.includes("Hidden"));
-        console.log("windows", $scope.windows);
         applicationList.filter($scope.searchTerm).forEach(app => $scope.items.push(app));
         selectedIndex = oldUrl ? $scope.items.findIndex(item => item.url === oldUrl) : -1;
         selectedIndex = selectedIndex === -1 ? 0 : selectedIndex;
@@ -86,7 +84,6 @@ function doController($q, $http, $scope, $window) {
     };
 
     $scope.onKeyDown = function ($event) {
-        console.log("keyDown:", event)
         if ($event.key === "Tab") {
             action = keyActions[$event.shiftKey ? "ArrowUp" : "ArrowDown"];
         }
@@ -97,15 +94,19 @@ function doController($q, $http, $scope, $window) {
         if (action) action();
     };
 
-    $scope.itemClass  = function(item) { 
-        return item.url === $scope.selectedUrl() ? ["line", "selected"] : ["line"]
-    };
-
-    $scope.iconClass = function(item) {
-        let tmp = "itemIcon";
-        if (item.isAWindow) tmp += " windowItem";
-        if (item.state && item.state.includes("Hidden")) tmp += " hidden";
-        return tmp;
+    $scope.lineClass  = function(item) { 
+		cls = ["line"];
+		if (item.url === $scope.selectedUrl()) {
+            cls.push("selected");
+        }
+		if (item.isAWindow) {
+            cls.push("shadow")
+            if (item.state && item.state.includes("Hidden")) {
+                cls.push("dimmed");
+            }
+        }
+        console.log("lineClass for ", item.name, ": ", cls);
+        return cls;
     };
 
     $scope.style = function(window, index) {
@@ -136,7 +137,6 @@ function doController($q, $http, $scope, $window) {
         if ($scope.selectedUrl()) {
             let contentDiv = document.getElementById("contentBox");
             let selectedDiv = document.getElementById($scope.selectedUrl());
-            console.log("Have contentDiv and selectedDiv"); 
             $scope.contentRectTop = 0;
             $scope.itemRectTop = 0;
             $scope.contentRectBottom = 0;
@@ -152,7 +152,6 @@ function doController($q, $http, $scope, $window) {
                 $scope.contentRectBottom = contentRect.bottom;
                 $scope.itemRectBottom = itemRect.bottom;
                 $scope.op = "";             
-                console.log("contentRect:", contentRect, ", itemRect:", itemRect);
                 let delta = null;
                 if (itemRect.top < contentRect.top) {
                     $scope.op = "delta = " + itemRect.top + " - " + contentRect.top + " - 15";
