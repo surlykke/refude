@@ -14,14 +14,15 @@ html, body {
     height: 42px;
     width: 283px;
     margin-bottom: 8px;
+    padding: 7px;
 }
 .line {
     width: 270px;
 }
 .display {
     position: absolute;
-    left: 330px;
-    top: 15px;
+    left: 320px;
+    top: 8px;
     width: calc(100% - 340px);
     min-width: 200px;
     height: calc(100% - 33px);
