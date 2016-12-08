@@ -105,7 +105,6 @@ function doController($q, $http, $scope, $window) {
                 cls.push("dimmed");
             }
         }
-        console.log("lineClass for ", item.name, ": ", cls);
         return cls;
     };
 
