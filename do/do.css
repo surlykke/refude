@@ -12,12 +12,12 @@ html, body {
     border-radius: 8px;
     outline-style: none;
     height: 42px;
-    width: 283px;
+    width: 275px;
     margin-bottom: 8px;
     padding: 7px;
 }
 .line {
-    width: 270px;
+    width: 262px;
 }
 .display {
     position: absolute;

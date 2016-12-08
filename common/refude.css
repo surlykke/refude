@@ -8,8 +8,9 @@ html, body {
     padding-left: 50px;
 }
 .line {
-	vertical-align: top;
-	overflow: hidden;
+    margin-bottom: 5px;
+    vertical-align: top;
+    overflow: hidden;
     padding-left:5px;
     padding-right: 5px; 
     padding-top: 2px;
@@ -36,10 +37,11 @@ html, body {
 }
 .selected  {
     border: solid black 2px;
-	border-radius: 8px;
+    border-radius: 8px;
+    box-shadow: 2px 2px 2px #888888;
 }
 .line:not(.selected) {
     border: solid rgba(0,0,0,0) 2px;
-	border-radius: 8px;
+    border-radius: 8px;
 }
 
