@@ -19,26 +19,31 @@
         <link rel="stylesheet" href="../common/refude.css"/>
         <link rel="stylesheet" href="do.css"/>
     </head>
-    <body ng-app="do" ng-controller="doCtrl as ctrl" ng-keydown="onKeyDown($event)">
-
-        <input type="search" autofocus class="searchInput" ng-model="searchTerm"  ng-change="update()"/>
-        <div class="list" id="contentBox">
-            <div ng-repeat="item in items" 
-                    ng-click="select(item.url)"
-                    ng-dblclick="selectAndExecute(item.url)" 
-                    ng-class="lineClass(item)"
-                    id="{{item.url}}">
-                <div class="line-icon"><img ng-src='{{item.iconUrl}}' height="32" width="32" alt=" " border="0"/></div>
-                <div class="line-title">{{item.name}}</div>
-                <div class="line-comment">{{item.comment}}</div>
+    <body ng-app="do" ng-controller="doCtrl as ctrl" ng-keydown="onKeyDown($event)" class="content">
+        <div class="left">
+            <div class="searchInput"> 
+                <input type="search" autofocus ng-model="searchTerm"  ng-change="update()"/>
+            </div>
+            <div class="list" id="contentBox">
+                <div ng-repeat="item in items" 
+                     ng-click="select(item.url)"
+                     ng-dblclick="selectAndExecute(item.url)" 
+                     ng-class="lineClass(item)"
+                     id="{{item.url}}">
+                    <div class="line-icon">
+                        <img ng-src='{{item.iconUrl}}' height="32" width="32" alt=" " border="0"/>
+                    </div>
+                    <div class="line-title">{{item.name}}</div>
+                    <div class="line-comment">{{item.comment}}</div>
+                </div>
             </div>
         </div>
-
+            
         <!-- graphical depiction of open windows -->
         <div id="disp" class="display">
             <div ng-repeat="window in windows" class="window" ng-style="style(window, $index)">
                 <div class="windowTitle">
-                    <img ng-src="{{item.iconUrl}}" height="10" width="10" alt =" "/>
+                    <img ng-src="{{window.iconUrl}}" height="10" width="10" alt =" "/>
                     {{window.Name}}
                 </div>
             </div>

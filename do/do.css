@@ -2,31 +2,43 @@ html, body {
     height: 100%;
     overflow: hidden;
 }
-.list {
-    box-sizing: border-box;
-	width: 300px;
-    height: calc(100% - 55px);
-    overflow-y: auto;
+.content  {
+    display: flex;
+}
+.left {
+    margin-right: 8px;
+    height: calc(100% - 20px);
+    width: 250px;
+    overflow: auto;
+    resize: horizontal;
+    display: flex;
+    flex-direction: column;
 }
 .searchInput  {
+    height: 42px;
+    width: calc(100% - 18px);
+    margin-bottom: 8px;
+}
+.searchInput > input {
+    height: 100%;
+    width: 100%;
     border-radius: 8px;
     outline-style: none;
-    height: 42px;
-    width: 275px;
+}
+.list {
+    overflow-y: scroll;
+    flex: 1;
     margin-bottom: 8px;
-    padding: 7px;
+
 }
 .line {
-    width: 262px;
+    width: calc(100% - 20px);
 }
 .display {
-    position: absolute;
-    left: 320px;
-    top: 8px;
-    width: calc(100% - 340px);
-    min-width: 200px;
-    height: calc(100% - 33px);
-    border: solid 1px lightgrey;
+    flex: 1;
+    height: calc(100% - 20px);
+    position: relative;
+    border: solid 1px grey;
 }
 .window {
     position: absolute;

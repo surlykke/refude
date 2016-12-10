@@ -187,9 +187,7 @@ function doController($q, $http, $scope, $window) {
     $http.get("http://localhost:7938/wm-service/display").then(function(response) { 
         displayGeometry = response.data.geometry;
         calculateGeometry();
-        angular.element($window).bind('resize', function () {
-            calculateGeometry();
-        });
+        angular.element($window).bind('resize', calculateGeometry); 
     });
 
 
