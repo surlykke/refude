@@ -120,7 +120,7 @@ function doController($q, $http, $scope, $window) {
             "z-index" : z_index
         };
         if (selected) {
-            res["opacity"] = 1;
+            res["opacity"] = 0.7;
         }
         return res;
     };

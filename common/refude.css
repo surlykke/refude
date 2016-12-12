@@ -33,7 +33,7 @@
 .selected  {
     border: solid black 2px;
     border-radius: 8px;
-    box-shadow: 2px 2px 2px #888888;
+    box-shadow: 1px 1px 1px #888888;
 }
 .line:not(.selected) {
     border: solid rgba(0,0,0,0) 2px;

@@ -44,7 +44,7 @@ html, body {
     position: absolute;
     border: solid 1px black;
     background-color: grey;
-    opacity: 0.4;
+    opacity: 0.2;
 }
 .windowTitle {
     background-color: lightblue;
