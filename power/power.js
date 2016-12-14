@@ -88,7 +88,7 @@ let powerController =  function($http, $scope) {
 };
 
 console.log("Doing angular.module...");
-
+console.log(process.env.XDG_RUNTIME_DIR);
 let powerModule = angular.module('power', []);
 console.log("Calling controller..");
 powerModule.controller('powerCtrl', ['$http', '$scope', powerController]);

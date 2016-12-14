@@ -20,7 +20,6 @@ let handleRequest = function (request, response) {
 }
 
 exports.singletonApp = function(socketPath, dirPath, windowOpts) {
-
 	req = http.get({socketPath: socketPath, method: "POST"}, (response) => {
         response.resume();
         console.log("Already running. exit...")
