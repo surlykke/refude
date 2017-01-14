@@ -7,66 +7,118 @@
  */
 
 function doController($q, $http, $scope, $window) {
-    const remote = require('electron').remote
-    let selectedIndex = -1;
+    const remote = require('electron').remote; 
+
+    $scope.searchTerm = "";
+    $scope.actions = [];
+
+    $scope.update = function() {
+        $scope.actions = [];
+        listOfActionsList.forEach((actionList) => {
+            let filteredActionList = actionList.list.filter(includeAction);
+            if (filteredActionList.length > 0) {
+                filteredActionList[0].__startMarker = actionList.name;
+            }
+            [].push.apply($scope.actions, filteredActionList);
+        });
+
+        if ($scope.actions.length > 0) {
+            let previous = $scope.actions[$scope.actions.length - 1];
+            $scope.actions.forEach((action) => {
+                action.__previous = previous;
+                previous.__next = action;
+                previous = action;
+            });
+        }
+        
+        if ($scope.selectedAction) {
+            $scope.selectedAction = $scope.actions.find((action) => {action.url === $scope.selectedAction.url});
+        }
+            
+        if (!$scope.selectedAction && $scope.actions.length > 0) {
+            $scope.selectedAction = $scope.actions[0];
+        }
+
+    };
+
+    $scope.select = function(action) {
+        $scope.selectedAction = action;
+    };
+
+    $scope.selectAndExecute = function(action) {
+        $scope.select(action);
+        execute(); 
+    };
+
+    $scope.onKeyDown = function ($event) {
+        if ($event.key === "Tab") {
+            action = keyActions[$event.shiftKey ? "ArrowUp" : "ArrowDown"];
+        }
+        else {
+            action = keyActions[$event.key];
+        }
+
+        if (action) action();
+    };
+
+    $scope.actionClass  = function(action) { 
+		_class = ["line"];
+		if (action === $scope.selectedAction) {
+            _class.push("selected");
+        }
+		if (action.geometry) {
+            _class.push("shadow")
+            if (action.state && action.state.includes("Hidden")) {
+                _class.push("dimmed");
+            }
+        }
+        return _class;
+    };
+
+    $scope.style = function(action, index) {
+        return {
+            "left" : "" + Math.round(scale*action.geometry.x) + "px",
+            "top" : "" + Math.round(scale*action.geometry.y) + "px",
+            "width" : "" + Math.round(scale*action.geometry.w) + "px",
+            "height" : "" + Math.round(scale*action.geometry.h) + "px",
+            "z-index" : $scope.selectedAction === action ? 1000 : index,
+            "opacity" : $scope.selectedAction === action ? 0.7 : 0.3 
+        };
+    };
+
+
+    let listOfActionsList = [makeActionList($http, 
+                                            "Windows",
+                                            "http://localhost:7938/wm-service/actions",
+                                            "http://localhost:7938/wm-service/notify",
+                                            $scope.update),
+                             makeActionList($http,
+                                            "Actions",
+                                            "http://localhost:7938/desktop-service/actions",
+                                            "http://localhost:7938/desktop-service/notify",
+                                            $scope.update)];
 
     let next = function() { 
-        if ($scope.items.length > 0) {
-            selectedIndex = (selectedIndex + 1) % $scope.items.length;
-        } 
+        $scope.selectedAction = $scope.selectedAction ? $scope.selectedAction.__next : undefined;
         scrollSelectedCommandIntoView();
     };
     
     let previous = function() { 
-        if ($scope.items.length > 0) { 
-            selectedIndex = (selectedIndex +  $scope.items.length - 1) % $scope.items.length;
-        }
+        $scope.selectedAction = $scope.selectedAction ? $scope.selectedAction.__previous : undefined;
         scrollSelectedCommandIntoView();
     };
 
-    $scope.searchTerm = "";
-    $scope.items = [];
-    $scope.windows = [];
-    $scope.selectedUrl = function() {
-        let url = $scope.items[selectedIndex] ? $scope.items[selectedIndex].url : undefined;
-        return url;
+    let includeAction = function(action) {
+        let searchTerm = $scope.searchTerm.trim();
+        result = (action.geometry || "" !== searchTerm) && action.name.toLowerCase().includes($scope.searchTerm.trim());  
+        return result; 
     };
 
-    $scope.update = function() {
-        let oldUrl = $scope.selectedUrl();
-        $scope.items = [];
-        $scope.items = windowList.filter($scope.searchTerm);
-        $scope.windows = $scope.items.filter(win => !win.state.includes("Hidden"));
-        applicationList.filter($scope.searchTerm).forEach(app => $scope.items.push(app));
-        selectedIndex = oldUrl ? $scope.items.findIndex(item => item.url === oldUrl) : -1;
-        selectedIndex = selectedIndex === -1 ? 0 : selectedIndex;
-    };
-  
-    $scope.select = function(url) {
-        let tmp = $scope.items.findIndex(item => item.url === url);
-        if (tmp > -1) {
-            selectedIndex = tmp;
-        }
-    };
-
-    $scope.selectAndExecute = function(url) {
-        $scope.select(url);
-        if ($scope.selectedUrl() === url) {
-            execute(); 
-        }; 
-    };
-
-    let windowList = makeWindowList($http, $scope.update);
-    let applicationList = makeApplicationList($http, $scope.update);
 
     let execute = function () {
-        let url = $scope.selectedUrl();
+        let url = $scope.selectedAction.url;
         if (url) {
-            let callActivated = ! $scope.items[selectedIndex].isAWindow;
             $http.post(url).then( function(response) {
-                if (callActivated) {
-                    applicationList.urlWasActivated(url);
-                }
                 $scope.searchTerm = ""
                 remote.getCurrentWindow().hide()
             });
@@ -83,89 +135,25 @@ function doController($q, $http, $scope, $window) {
         }
     };
 
-    $scope.onKeyDown = function ($event) {
-        if ($event.key === "Tab") {
-            action = keyActions[$event.shiftKey ? "ArrowUp" : "ArrowDown"];
-        }
-        else {
-            action = keyActions[$event.key];
-        }
-
-        if (action) action();
-    };
-
-    $scope.lineClass  = function(item) { 
-		cls = ["line"];
-		if (item.url === $scope.selectedUrl()) {
-            cls.push("selected");
-        }
-		if (item.isAWindow) {
-            cls.push("shadow")
-            if (item.state && item.state.includes("Hidden")) {
-                cls.push("dimmed");
-            }
-        }
-        return cls;
-    };
-
-    $scope.style = function(window, index) {
-        let geometry = window.geometry;
-        let selected = window.url === $scope.selectedUrl();
-        let z_index = selected ? $scope.windows.length : index; 
-        let res = {
-            "left" : "" + Math.round(scale*geometry.x) + "px",
-            "top" : "" + Math.round(scale*geometry.y) + "px",
-            "width" : "" + Math.round(scale*geometry.w) + "px",
-            "height" : "" + Math.round(scale*geometry.h) + "px",
-            "z-index" : z_index
-        };
-        if (selected) {
-            res["opacity"] = 0.7;
-        }
-        return res;
-    };
-
-    $scope.contentRectTop = 0;
-    $scope.itemRectTop = 0;
-    $scope.contentRectBottom = 0;
-    $scope.itemRectBottom = 0;
-    $scope.scrollDelta = 0;
-    $scope.op = "";
-
     let scrollSelectedCommandIntoView = function () {
-        if ($scope.selectedUrl()) {
+        if ($scope.selectedAction) {
             let contentDiv = document.getElementById("contentBox");
-            let selectedDiv = document.getElementById($scope.selectedUrl());
-            $scope.contentRectTop = 0;
-            $scope.itemRectTop = 0;
-            $scope.contentRectBottom = 0;
-            $scope.itemRectBottom = 0
-            $scope.scrollDelta = 0;
+            let selectedDiv = document.getElementById($scope.selectedAction.url);
 
-            $scope.op = "";             
             if (contentDiv && selectedDiv) {
                 let contentRect = contentDiv.getBoundingClientRect();
                 let itemRect = selectedDiv.getBoundingClientRect();
-                $scope.contentRectTop = contentRect.top;
-                $scope.itemRectTop = itemRect.top;
-                $scope.contentRectBottom = contentRect.bottom;
-                $scope.itemRectBottom = itemRect.bottom;
-                $scope.op = "";             
+                
                 let delta = null;
                 if (itemRect.top < contentRect.top) {
-                    $scope.op = "delta = " + itemRect.top + " - " + contentRect.top + " - 15";
                     delta = itemRect.top - contentRect.top - 15;
                 }
                 else if (itemRect.bottom > contentRect.bottom) {
-                    $scope.op = "delta = " + itemRect.bottom + " - " + contentRect.bottom + " + 15";
                     delta = itemRect.bottom - contentRect.bottom + 15;
                 } 
+
                 if (delta) {
-                    $scope.scrollDelta = delta;
                     contentDiv.scrollTop = contentDiv.scrollTop + delta;
-                }
-                else {
-                    scrollDelta = 0;
                 }
             }
         }
@@ -189,8 +177,6 @@ function doController($q, $http, $scope, $window) {
         calculateGeometry();
         angular.element($window).bind('resize', calculateGeometry); 
     });
-
-
 };
 
 

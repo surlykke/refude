@@ -40,9 +40,8 @@ exports.createWin = function(appName, windowOpts) {
 		window.setAlwaysOnTop(true);
 	}
 	if (windowOpts.openDevTools) {
-		win.webContents.openDevTools();
+		window.webContents.openDevTools();
 	}
-	//window.webContents.openDevTools();
     return window;
 };
 
