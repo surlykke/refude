@@ -49,7 +49,7 @@ document.addEventListener("DOMContentLoaded", function() {
     };
 
     let updateBatteryInfo = function (event) {
-        GET({host: "localhost", port: 7938, path: "/power-service/devices/DisplayDevice"}, function (json) {
+        GET({host: "localhost", port: 7938, path: "/power-service/device/DisplayDevice"}, function (json) {
             update(json.State, json.Percentage);
         });
     };
