@@ -14,6 +14,7 @@
         <script src="../common/angular.js"></script>
         <script src="power.js"></script>
         <script src="../common/zoom.js"></script>
+        <script src="../common/utils.js"></script>
         <link rel="stylesheet" href="../common/refude.css"/>
         <link rel="stylesheet" href="power.css"/>
     </head>
@@ -25,8 +26,8 @@
             <div ng-repeat="action in actions" 
 				 ng-click="select(action)"
 				 ng-dblclick="selectAndExecute(action)" 
-				 id="{{action.actionId}}" ng-class="actionClass(action)">
-                <div class="line-icon"><img ng-src='{{iconUrl(action)}}' height="32" width="32" alt=" " border="0"/></div>
+				 ng-class="actionClass(action)">
+                <div class="line-icon"><img ng-src='{{action.fullIconUrl}}' height="32" width="32" alt=" " border="0"/></div>
                 <div class="line-title">{{action.description}}</div>
             </div>
         </div> 

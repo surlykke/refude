@@ -11,49 +11,35 @@ let powerController =  function($http, $scope) {
     const remote = require('electron').remote
     
     $scope.actions = [];
-    $scope.iconUrl = function(action) {
-       return "http://localhost:7938/icon-service/icons/icon?name=" + action.icon + "&size=32";
-    };
 
     $scope.actionClass = function(action) {
-        return action === $scope.actions[selected] ? ["line", "selected"] : ["line"];
+        return action === selectedAction ? ["line", "selected"] : ["line"];
     };
 
-    let selected = 0;
-    let selectNext = function() {
-        if ($scope.actions.length > 0) {
-            selected = (selected + 1) % $scope.actions.length;
-        }
+    let selectNext = () => { 
+        selectedAction = selectedAction.__next; 
     }
     
-    let selectPrevious = function() {
-        if ($scope.actions.length > 0) {
-            selected = (selected + $scope.actions.length - 1) % $scope.actions.length;
-        }
+    let selectPrevious = () => { 
+        selectedAction = selectedAction.__previous; 
     }
 
     let execute = function() {
-        if ($scope.actions[selected]) {
-            let url = "http://localhost:7938/power-service/actions/" + $scope.actions[selected].actionId;
-            $http.post(url).then(function(resp) {
-                remote.getCurrentWindow().close();
-            });
-        }
+        $http.post(selectedAction.url).then(function(resp) {
+            remote.getCurrentWindow().close();
+        });
     };
 
-    $scope.select = function(action) {
-        for (i = 0; i < $scope.actions.length; i++) {
-            if ($scope.actions[i] === action) {
-                selected = i;
-                break;
-            }
-        }
-    };
+    $scope.select = (action) => { 
+        selectedAction = action; 
+    }
 
-    $scope.selectAndExecute = function(action) {
+    $scope.selectAndExecute = (action) => {
         $scope.select(action);
         execute();
     };
+
+    let selectedAction;
 
     let keyActions = {
         ArrowDown : selectNext,
@@ -78,17 +64,48 @@ let powerController =  function($http, $scope) {
     };
 
     let getActions = function() {
-        $http.get("http://localhost:7938/power-service/actions").then(function(resp){
-            console.log("getActions got: ", resp);
-            $scope.actions = resp.data;
+        let url = "http://localhost:7938/power-service/actions";
+        $http.get(url)
+        .then(response => {
+            let listOfPromises = response.data.map(function(actionPath) {
+                return $http.get(combineUrls(url, actionPath));
+            });
+                
+            Promise.all(listOfPromises).then(
+                responses => { 
+                    $scope.actions = responses.map(response => { 
+                        action = response.data;
+                        action.url = response.config.url;
+                        if (action.iconUrl) {
+                            action.fullIconUrl = combineUrls(response.config.url, action.iconUrl);
+                        }
+                        else if (action.icon) {
+                            action.fullIconUrl = "http://localhost:7938/icon-service/icons/icon?name=" + action.icon + "&size=32";
+                        }
+                    
+                        return action;
+                    });
+                    console.log("Actions: ", $scope.actions);
+                    let previousAction = $scope.actions[$scope.actions.length - 1];
+                    $scope.actions.forEach((action) => { 
+                        action.__previous = previousAction;
+                        previousAction.__next = action;
+                        previousAction = action;
+                    });
+                   
+                    selectedAction = $scope.actions[0];
+                    $scope.$apply();
+                },
+                reason => {
+                    $scope.actions = [] 
+                }
+            );
         });
     };
 
     getActions();
 };
 
-console.log("Doing angular.module...");
-console.log(process.env.XDG_RUNTIME_DIR);
 let powerModule = angular.module('power', []);
 console.log("Calling controller..");
 powerModule.controller('powerCtrl', ['$http', '$scope', powerController]);
