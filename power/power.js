@@ -94,7 +94,7 @@ let powerController =  function($http, $scope) {
                     });
                    
                     selectedAction = $scope.actions[0];
-                    $scope.$apply();
+                    $scope.$apply(); // Apparently needed - don't know why
                 },
                 reason => {
                     $scope.actions = [] 

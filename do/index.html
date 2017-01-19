@@ -14,6 +14,8 @@
         <script src="../common/angular.js"></script>
         <script src="../common/zoom.js"></script>
         <script src="../common/utils.js"></script>
+        <script src="../common/resourcecollection.js"></script>
+
         <script src="actionlist.js"></script>
         <script src="do.js"></script>
         <link rel="stylesheet" href="../common/refude.css"/>
@@ -22,7 +24,7 @@
     <body ng-app="do" ng-controller="doCtrl as ctrl" ng-keydown="onKeyDown($event)" class="content">
         <div class="left">
             <div class="searchInput"> 
-                <input type="search" autofocus ng-model="searchTerm"  ng-change="update()"/>
+                <input type="search" autofocus ng-model="searchTerm" ng-change="update()"/>
             </div>
             <div class="list" id="contentBox">
                 <div ng-repeat="action in actions" 
