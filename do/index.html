@@ -16,7 +16,6 @@
         <script src="../common/utils.js"></script>
         <script src="../common/resourcecollection.js"></script>
 
-        <script src="actionlist.js"></script>
         <script src="do.js"></script>
         <link rel="stylesheet" href="../common/refude.css"/>
         <link rel="stylesheet" href="do.css"/>
@@ -24,16 +23,16 @@
     <body ng-app="do" ng-controller="doCtrl as ctrl" ng-keydown="onKeyDown($event)" class="content">
         <div class="left">
             <div class="searchInput"> 
-                <input type="search" autofocus ng-model="searchTerm" ng-change="update()"/>
+                <input type="search" autofocus ng-model="searchTerm"/>
             </div>
             <div class="list" id="contentBox">
                 <div ng-repeat="action in actions" 
-                     ng-click="select(action)"
-                     ng-dblclick="selectAndExecute(action)" 
-                     ng-class="actionClass(action)"
-                     id="{{action.url}}">
+                    ng-click="select(action)"
+                    ng-dblclick="selectAndExecute(action)" 
+                    ng-class="actionClass(action)"
+                    id="{{action.url}}">
                     <div class="line-icon">
-                        <img ng-src='{{action.fullIconUrl}}' height="32" width="32" alt=" " border="0"/>
+                        <img ng-src='{{action.iconUrl}}' height="32" width="32" alt=" " border="0"/>
                     </div>
                     <div class="line-title">{{action.name}}</div>
                     <div class="line-comment">{{action.comment}}</div>
@@ -43,10 +42,10 @@
             
         <!-- graphical depiction of open windows -->
         <div id="disp" class="display">
-            <div ng-repeat="action in actions" ng-if="action.geometry" class="window" ng-style="style(action, $index)">
+            <div ng-repeat="action in actions" ng-if="action.resource.geometry" class="window" ng-style="style(action, $index)">
                 <div class="windowTitle">
-                    <img ng-src="{{action.fullIconUrl}}" height="10" width="10" alt =" "/>
-                    {{action.Name}}
+                    <img ng-src="{{action.iconUrl}}" height="10" width="10" alt =" "/>
+                    {{action.name}}
                 </div>
             </div>
         </div>

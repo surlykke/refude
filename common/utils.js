@@ -5,7 +5,7 @@
  * It is distributed under the GPL v2 license.
  * Please refer to the LICENSE file for a copy of the license.
  */
-let combineUrls = function(url, relativeUrl) {
+let combineUrls = (url, relativeUrl) => {
 	if (relativeUrl[0] === "/") {
 		return relativeUrl;
 	}
@@ -17,4 +17,8 @@ let combineUrls = function(url, relativeUrl) {
 	}
 	
 	return url.substr(0, p + 1) + relativeUrl;
+}
+
+let iconServiceUrl = (iconName, size) => {
+    return "http://localhost:7938/icon-service/icons/icon?name=" + iconName + "&size=" + (size || 32);
 }

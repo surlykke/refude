@@ -6,36 +6,61 @@
  * Please refer to the LICENSE file for a copy of the license.
  */
 
-function doController($q, $http, $scope, $window) {
+function doController($q, $http, $scope, $window, $timeout) {
     const remote = require('electron').remote; 
 
     $scope.searchTerm = "";
     $scope.actions = [];
+    $scope.version = 0;
 
-    $scope.update = function() {
-        $scope.actions = [];
-        [].push.apply($scope.actions, collectWindowActions()); 
-        [].push.apply($scope.actions, collectOtherActions());
+    let updateVersion = () => { $timeout(() => {$scope.version++;});};
+    let windowResourceFilter = res => !(res.state.includes("Above") || ["Refude Do", "refudeDo"].includes(res.name));
+     
+    let windowResourceActions = createResourceCollection($http, 
+                                                         "http://localhost:7938/wm-service/windows", 
+                                                         "http://localhost:7938/wm-service/notify",
+                                                         windowResourceFilter,
+                                                         updateVersion);
+
+    let applicationResourceFilter = res => true; 
+    let applicationResourceActions = createResourceCollection($http, 
+                                                              "http://localhost:7938/desktop-service/applications", 
+                                                              "http://localhost:7938/desktop-service/notify",
+                                                              applicationResourceFilter,
+                                                              updateVersion);
+    
+    let filterActions = () => {
+        $scope.actions.length = 0;
+        let term = $scope.searchTerm.toLowerCase().trim();
+        let windowActionFilter = (action) => term.length === 0 || action.name.toLowerCase().includes(term);
+        windowResourceActions.filter(windowActionFilter).forEach(action => $scope.actions.push(action));
+        let applicationActionFilter = (action) => term.length > 0 && action.name.toLowerCase().includes(term);
+        applicationResourceActions.filter(applicationActionFilter).forEach(action => $scope.actions.push(action));
 
         if ($scope.actions.length > 0) {
             let previous = $scope.actions[$scope.actions.length - 1];
             $scope.actions.forEach((action) => {
-                action.__previous = previous;
-                previous.__next = action;
+                action._previous = previous;
+                previous._next = action;
                 previous = action;
             });
         }
-        
+      
         if ($scope.selectedAction) {
-            $scope.selectedAction = $scope.actions.find((action) => {action.url === $scope.selectedAction.url});
-        } 
-        
+            $scope.selectedAction = $scope.actions.find((action) => action.url === $scope.selectedAction.url);
+        }
+            
         if (!$scope.selectedAction && $scope.actions.length > 0) {
             $scope.selectedAction = $scope.actions[0];
-        }
+        } 
 
-    };
+    }
 
+
+    $scope.$watch('version', filterActions);
+    $scope.$watch('searchTerm', filterActions);
+
+    
     $scope.select = function(action) {
         $scope.selectedAction = action;
     };
@@ -52,7 +77,7 @@ function doController($q, $http, $scope, $window) {
         else {
             action = keyActions[$event.key];
         }
-
+        
         if (action) action();
     };
 
@@ -61,7 +86,7 @@ function doController($q, $http, $scope, $window) {
         if (action === $scope.selectedAction) {
             _class.push("selected");
         }
-        if (action.geometry) {
+        if (action.resource.geometry) {
             _class.push("shadow")
             if (action.state && action.state.includes("Hidden")) {
                 _class.push("dimmed");
@@ -72,79 +97,37 @@ function doController($q, $http, $scope, $window) {
 
     $scope.style = function(action, index) {
         return {
-            "left" : "" + Math.round(scale*action.geometry.x) + "px",
-            "top" : "" + Math.round(scale*action.geometry.y) + "px",
-            "width" : "" + Math.round(scale*action.geometry.w) + "px",
-            "height" : "" + Math.round(scale*action.geometry.h) + "px",
+            "left" : "" + Math.round(scale*action.resource.geometry.x) + "px",
+            "top" : "" + Math.round(scale*action.resource.geometry.y) + "px",
+            "width" : "" + Math.round(scale*action.resource.geometry.w) + "px",
+            "height" : "" + Math.round(scale*action.resource.geometry.h) + "px",
             "z-index" : $scope.selectedAction === action ? 1000 : index,
             "opacity" : $scope.selectedAction === action ? 0.7 : 0.3 
         };
     };
 
-    let windowResources = createResourceCollection($http, 
-                                                   "http://localhost:7938/wm-service/windows", 
-                                                   "http://localhost:7938/wm-service/notify",
-                                                   $scope.update);
-
-    let otherResources = createResourceCollection($http,
-                                                  "http://localhost:7938/desktop-service/applications", 
-                                                  "http://localhost:7938/desktop-service/notify", 
-                                                  $scope.update);
-
-    let collectWindowActions = () => {
-        let term = $scope.searchTerm.toLowerCase().trim();
-        let actions = [];
-        windowResources.forEach(resource => {
-            if (!resource.state.includes("Above") &&
-                resource.name !== "Refude Do" &&
-                resource._actions[0].name.toLowerCase().includes(term)) {
-                resource._actions[0].geometry = resource.geometry;
-                actions.push(resource._actions[0]);
-            }
-        });
-        return actions;
-    };
-
-    let collectOtherActions = () => {
-        let term = $scope.searchTerm.toLowerCase().trim();
-        if ("" === term) {
-            return [];
-        }
-        else {
-            let actions = [];
-            otherResources.forEach((resource) => {
-                [].push.apply(actions, resource._actions.filter(action => action.name.toLowerCase().includes(term)));
-            });
-            return actions;
-        }
-    };
-
-
-    let next = function() { 
-        $scope.selectedAction = $scope.selectedAction ? $scope.selectedAction.__next : undefined;
+    let next = () => { 
+        if ($scope.selectedAction) {
+            $scope.selectedAction = $scope.selectedAction._next;
+        } 
         scrollSelectedCommandIntoView();
     };
     
-    let previous = function() { 
-        $scope.selectedAction = $scope.selectedAction ? $scope.selectedAction.__previous : undefined;
+    let previous = () => { 
+        if ($scope.selectedAction) { 
+            $scope.selectedAction = $scope.selectedAction._previous;
+        }
         scrollSelectedCommandIntoView();
     };
 
-    let includeAction = function(action) {
-        let searchTerm = $scope.searchTerm.trim();
-        result = (action.geometry || "" !== searchTerm) && action.name.toLowerCase().includes($scope.searchTerm.trim());  
-        return result; 
-    };
-
-
     let execute = function () {
-        console.log("Execute, selectedAction:", $scope.selectedAction);
         let url = $scope.selectedAction.url;
         if (url) {
-            console.log("Posting: ", url);
-            $http.post(url).then( function(response) {
+            $http.post(url).then( response => {
                 $scope.searchTerm = ""
                 remote.getCurrentWindow().hide()
+            }).then(error => {
+                console.log(error);
             });
         }
     };
@@ -206,7 +189,7 @@ function doController($q, $http, $scope, $window) {
 
 let doModule = angular.module('do', []);
 
-doModule.controller('doCtrl', ['$q', '$http', '$scope', '$window', doController]);
+doModule.controller('doCtrl', ['$q', '$http', '$scope', '$window', '$timeout', doController]);
 
 doModule.config(['$compileProvider', function ($compileProvider) {
         $compileProvider.imgSrcSanitizationWhitelist(/^\s*((https?|ftp|file|blob|chrome-extension):|data:image\/)/);

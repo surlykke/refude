@@ -1,19 +1,25 @@
-let createResourceCollection = ($http, resourceIndexUrl, notifyUrl, callback) => { let collection = new Map();
+let createResourceCollection = ($http, resourceIndexUrl, notifyUrl, resourceFilter, callBack) => { 
+    
+    let actions = [];
+
+    let resources = new Map();
 
     let getResources = () => {
+        console.log("getResources");
         $http.get(resourceIndexUrl).then(
             response => {
                 let listOfPromises = response.data.map(resourcePath => $http.get(combineUrls(resourceIndexUrl, resourcePath)));
                                         
                 Promise.all(listOfPromises).then(
                     responses => {
+                        resources.clear();
                         responses.forEach(response => { updateResource(response.config.url, response.data);});
-                        callback();
+                        updateActions();
                     },
                     response => {
+                        resources.clear();
                         console.log(response);
-                        collection.clear();
-                        callback();
+                        updateActions();
                     }
                 );
             }
@@ -22,35 +28,48 @@ let createResourceCollection = ($http, resourceIndexUrl, notifyUrl, callback) =>
 
     let updateResource = (url, resource) => {
         resource.url = url;
-        resource._actions.forEach(action => {
-            action.url = url + "?action=" + action.id;
-            if (action.iconUrl) {
-                action.fullIconUrl = combineUrls(url, action.iconUrl);
-            }
-            else if (action.icon) {
-                action.fullIconUrl = "http://localhost:7938/icon-service/icons/icon?name=" + action.icon + "&size=32";
-            }
-        });
-
-        collection.set(url, resource);
+        resources.set(url, resource);
     };
         
+    let updateActions = () => {
+        console.log("updateActions");
+        actions.length = 0;
+        for (let [url, resource] of resources) {
+            if (resourceFilter(resource)) {
+                for(id in resource._actions) {
+                    let act = resource._actions[id];
+                    actions.push({
+                        name: act.name,
+                        comment: act.comment,
+                        url: resource.url + "?action=" + id,
+                        iconUrl: act.iconUrl ? combineUrls(resource.url, act.iconUrl) : 
+                                                act.icon ? iconServiceUrl(act.icon) : undefined,
+                        resource: resource
+                    });
+                }
+            }
+        }
+        console.log("callBack");
+        callBack();
+    };
+
+
 
     let onResourceUpdated = (evt) => {
         let resourceUrl = combineUrls(notifyUrl, evt.data);
         if (resourceUrl === resourceIndexUrl) {
             getResources();
         }
-        else if (collection.has(resourceUrl)) {
+        else if (resources.has(resourceUrl)) {
             $http.get(resourceUrl).then(
                 response => { 
                     updateResource(resourceUrl, response.data); 
-                    callback;
+                    updateActions();
                 },
                 error => {
                     console.log(error);
-                    delete collection[resourceUrl];
-                    callback();
+                    delete resources[resourceUrl];
+                    updateActions();
                 }
             );
         }
@@ -58,9 +77,9 @@ let createResourceCollection = ($http, resourceIndexUrl, notifyUrl, callback) =>
 
 
     let evtSource = new EventSource(notifyUrl);
-    evtSource.onerror = (event) => { collection.clear(); };
+    evtSource.onerror = (event) => { resources.clear(); };
     evtSource.onopen = getResources;
-    evtSource.addEventListener("resource-added", onResourceUpdated);
+    evtSource.addEventListener("resource-updated", onResourceUpdated);
 
-    return collection;
+    return actions;
 }
