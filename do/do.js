@@ -28,14 +28,19 @@ function doController($q, $http, $scope, $window, $timeout) {
                                                               "http://localhost:7938/desktop-service/notify",
                                                               applicationResourceFilter,
                                                               updateVersion);
-    
+
+
+    let history = {};
+
     let filterActions = () => {
         $scope.actions.length = 0;
         let term = $scope.searchTerm.toLowerCase().trim();
         let windowActionFilter = (action) => term.length === 0 || action.name.toLowerCase().includes(term);
         windowResourceActions.filter(windowActionFilter).forEach(action => $scope.actions.push(action));
         let applicationActionFilter = (action) => term.length > 0 && action.name.toLowerCase().includes(term);
-        applicationResourceActions.filter(applicationActionFilter).forEach(action => $scope.actions.push(action));
+        applicationResourceActions.filter(applicationActionFilter)
+                                  .sort((act1, act2) => (history[act2.url] || 0) - (history[act1.url] || 0))
+                                  .forEach(action => $scope.actions.push(action));
 
         if ($scope.actions.length > 0) {
             let previous = $scope.actions[$scope.actions.length - 1];
@@ -126,6 +131,8 @@ function doController($q, $http, $scope, $window, $timeout) {
             $http.post(url).then( response => {
                 $scope.searchTerm = ""
                 remote.getCurrentWindow().hide()
+                history[url] = new Date().getTime();
+                localStorage.setItem('history', JSON.stringify(history)) 
             }).then(error => {
                 console.log(error);
             });
@@ -184,6 +191,14 @@ function doController($q, $http, $scope, $window, $timeout) {
         calculateGeometry();
         angular.element($window).bind('resize', calculateGeometry); 
     });
+
+    try {
+        history = JSON.parse(localStorage.getItem('history') || {});
+    }
+    catch (err) {
+        history = {}
+    }
+
 };
 
 

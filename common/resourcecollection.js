@@ -5,7 +5,6 @@ let createResourceCollection = ($http, resourceIndexUrl, notifyUrl, resourceFilt
     let resources = new Map();
 
     let getResources = () => {
-        console.log("getResources");
         $http.get(resourceIndexUrl).then(
             response => {
                 let listOfPromises = response.data.map(resourcePath => $http.get(combineUrls(resourceIndexUrl, resourcePath)));
@@ -32,7 +31,6 @@ let createResourceCollection = ($http, resourceIndexUrl, notifyUrl, resourceFilt
     };
         
     let updateActions = () => {
-        console.log("updateActions");
         actions.length = 0;
         for (let [url, resource] of resources) {
             if (resourceFilter(resource)) {
@@ -49,7 +47,6 @@ let createResourceCollection = ($http, resourceIndexUrl, notifyUrl, resourceFilt
                 }
             }
         }
-        console.log("callBack");
         callBack();
     };
 
