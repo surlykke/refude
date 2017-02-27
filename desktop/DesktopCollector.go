@@ -3,10 +3,10 @@ package main
 import (
 	"os"
 	"path/filepath"
-	"refude-service/xdg"
 	"strings"
 	"fmt"
 	"time"
+	"github.com/surlykke/RefudeServices/xdg"
 )
 
 type AppMap map[string]DesktopApplication
@@ -53,7 +53,9 @@ func (c* desktopCollection) addAssociations(mimeId string, appIds...string) {
 		appSet = &tmp
 	}
 	appSet.addAll(appIds)
-	c.mimeId2associatedApps[mimeId] = appSet
+	if !ok {
+		c.mimeId2associatedApps[mimeId] = appSet
+	}
 }
 
 func (c* desktopCollection) removeAssociations(mimeId string, appIds...string) {
