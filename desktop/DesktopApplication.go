@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"github.com/surlykke/RefudeServices/common"
 )
 
 type DesktopApplication struct {
@@ -13,17 +14,17 @@ type DesktopApplication struct {
 	Comment         string `json:",omitempty"`
 	Icon            string `json:",omitempty"`
 	Hidden          bool
-	OnlyShowIn      StringSet
-	NotShowIn       StringSet
+	OnlyShowIn      common.StringSet
+	NotShowIn       common.StringSet
 	DbusActivatable bool   `json:",omitempty"`
 	TryExec         string `json:",omitempty"`
 	Exec            string
 	Path            string `json:",omitempty"`
 	Terminal        bool
-	Mimetypes       StringSet
-	Categories      StringSet
-	Implements      StringSet
-	Keywords        StringSet
+	Mimetypes       common.StringSet
+	Categories      common.StringSet
+	Implements      common.StringSet
+	Keywords        common.StringSet
 	StartupNotify   bool
 	StartupWmClass  string `json:",omitempty"`
 	Url             string `json:",omitempty"`
@@ -43,18 +44,18 @@ type Action struct {
 
 
 func readDesktopFile(path string) (DesktopApplication, error) {
-	iniGroups, err := ReadIniFile(path)
+	iniGroups, err := common.ReadIniFile(path)
 
 	if err != nil {
 		return DesktopApplication{}, err
 	}
 
-	if iniGroups[0].name != "Desktop Entry" {
+	if iniGroups[0].Name != "Desktop Entry" {
 		return DesktopApplication{}, errors.New("Desktop file should start with a 'Desktop Entry' group")
 	}
 
 	app := DesktopApplication{}
-	desktopEntry := iniGroups[0].entry
+	desktopEntry := iniGroups[0].Entry
 	app.Type = desktopEntry["Type"]
 	app.Version = desktopEntry["Version"]
 	app.Exec = desktopEntry["Exec"]
@@ -68,12 +69,12 @@ func readDesktopFile(path string) (DesktopApplication, error) {
 	app.GenericName = desktopEntry["GenericName"]
 	app.Comment = desktopEntry["Comment"]
 
-	app.OnlyShowIn = toSet(split(desktopEntry["OnlyShowIn"]))
-	app.NotShowIn = toSet(split(desktopEntry["NotShowIn"]))
-	app.Mimetypes = toSet(split(desktopEntry["MimeType"]))
-	app.Categories = toSet(split(desktopEntry["Categories"]))
-	app.Implements = toSet(split(desktopEntry["Implements"]))
-	app.Keywords = toSet(split(desktopEntry["Keywords"]))
+	app.OnlyShowIn = common.ToSet(common.Split(desktopEntry["OnlyShowIn"]))
+	app.NotShowIn = common.ToSet(common.Split(desktopEntry["NotShowIn"]))
+	app.Mimetypes = common.ToSet(common.Split(desktopEntry["MimeType"]))
+	app.Categories = common.ToSet(common.Split(desktopEntry["Categories"]))
+	app.Implements = common.ToSet(common.Split(desktopEntry["Implements"]))
+	app.Keywords = common.ToSet(common.Split(desktopEntry["Keywords"]))
 	app.Actions = make(map[string]Action, 0)
 	return app, nil
 }

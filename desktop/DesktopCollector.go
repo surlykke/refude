@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 	"github.com/surlykke/RefudeServices/xdg"
+	"github.com/surlykke/RefudeServices/common"
 )
 
 type AppMap map[string]DesktopApplication
@@ -19,7 +20,7 @@ func CollectFromDesktop() (MimeMap, AppMap)  {
 	c.Mimes = CollectMimeTypes()
 	fmt.Println(time.Now(), "Mimes collected")
 	c.Apps = make(map[string]DesktopApplication)
-	c.mimeId2associatedApps = make(map[string]*StringSet)
+	c.mimeId2associatedApps = make(map[string]*common.StringSet)
 	c.defaultApps = make(map[string][]string)
 
 	for _, dir := range xdg.DataDirs() {
@@ -42,17 +43,17 @@ type desktopCollection struct {
 	Apps  AppMap
 	Mimes MimeMap
 
-	mimeId2associatedApps   map[string]*StringSet
+	mimeId2associatedApps   map[string]*common.StringSet
 	defaultApps map[string][]string
 }
 
 func (c* desktopCollection) addAssociations(mimeId string, appIds...string) {
 	appSet, ok	:= c.mimeId2associatedApps[mimeId]
 	if !ok {
-		tmp := make(StringSet)
+		tmp := make(common.StringSet)
 		appSet = &tmp
 	}
-	appSet.addAll(appIds)
+	appSet.AddAll(appIds)
 	if !ok {
 		c.mimeId2associatedApps[mimeId] = appSet
 	}
@@ -61,7 +62,7 @@ func (c* desktopCollection) addAssociations(mimeId string, appIds...string) {
 func (c* desktopCollection) removeAssociations(mimeId string, appIds...string) {
 	appSet, ok := c.mimeId2associatedApps[mimeId]
 	if ok {
-		appSet.removeAll(appIds)
+		appSet.RemoveAll(appIds)
 		c.mimeId2associatedApps[mimeId] = appSet
 	}
 }
@@ -78,7 +79,7 @@ func (c *desktopCollection) collectApplications(appdir string) {
 					for mimetypeId,_ := range app.Mimetypes {
 						c.addAssociations(mimetypeId, app.Id)
 					}
-					app.Mimetypes = make(StringSet)
+					app.Mimetypes = make(common.StringSet)
 					c.Apps[app.Id] = app
 				}
 			}
@@ -95,7 +96,7 @@ func (c *desktopCollection) readMimeappsList(path string) {
 		removedAssociations map[string][]string
 	}{make(map[string][]string), make(map[string][]string), make(map[string][]string)}
 
-	iniGroups, err := ReadIniFile(path)
+	iniGroups, err := common.ReadIniFile(path)
 	if err != nil {
 		if !os.IsNotExist(err) {
 			fmt.Println(err)
@@ -106,7 +107,7 @@ func (c *desktopCollection) readMimeappsList(path string) {
 	} else {
 		for _, iniGroup := range iniGroups {
 			var dest map[string][]string
-			switch iniGroup.name {
+			switch iniGroup.Name {
 			case "Default Applications":
 				dest = mimeappsList.defaultApplications
 			case "Added Associations":
@@ -116,8 +117,8 @@ func (c *desktopCollection) readMimeappsList(path string) {
 			default:
 				continue
 			}
-			for k, v := range iniGroup.entry {
-				dest[k] = split(v)
+			for k, v := range iniGroup.Entry {
+				dest[k] = common.Split(v)
 			}
 		}
 	}
@@ -139,17 +140,17 @@ func (c *desktopCollection) postProcess() {
 	for mimeId, appIds := range c.mimeId2associatedApps {
 		for appId,_ := range *appIds {
 			if app, ok := c.Apps[appId]; ok {
-				app.Mimetypes.add(mimeId)
+				app.Mimetypes.Add(mimeId)
 			}
 			if mime, ok := c.Mimes[mimeId]; ok {
-				mime.AssociatedApplications.add(appId)
+				mime.AssociatedApplications.Add(appId)
 			}
 		}
 	}
 
 	for mimetypeId, appList := range c.defaultApps {
 		if mimetype, ok := c.Mimes[mimetypeId]; ok {
-			mimetype.DefaultApplications = removeDublets(appList)
+			mimetype.DefaultApplications = common.RemoveDublets(appList)
 			c.Mimes[mimetypeId] = mimetype
 		}
 	}

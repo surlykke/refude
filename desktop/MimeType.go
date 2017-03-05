@@ -2,21 +2,12 @@ package main
 
 import (
 	"encoding/xml"
-	"fmt"
+	"github.com/surlykke/RefudeServices/common"
 	"io/ioutil"
+	"fmt"
 	"regexp"
 	"strings"
 )
-
-//comment lang
-//acronym
-//expanded-acronym
-//alias*
-//glob
-//sub-class-of*
-//icon
-//generic-icon
-//
 
 const freedesktopOrgXml = "/usr/share/mime/packages/freedesktop.org.xml"
 
@@ -26,12 +17,12 @@ type MimeType struct {
 	Comment                string
 	Acronym                string
 	ExpandedAcronym        string
-	Aliases                StringSet
-	Globs                  StringSet
-	SubClassOf             StringSet
+	Aliases                common.StringSet
+	Globs                  common.StringSet
+	SubClassOf             common.StringSet
 	Icon                   string
 	GenericIcon            string
-	AssociatedApplications StringSet
+	AssociatedApplications common.StringSet
 	DefaultApplications    []string
 }
 
@@ -100,17 +91,17 @@ func CollectMimeTypes() map[string]MimeType {
 		mimeType.Acronym = tmp.Acronym
 		mimeType.ExpandedAcronym = tmp.ExpandedAcronym
 
-		mimeType.Aliases = make(StringSet)
+		mimeType.Aliases = make(common.StringSet)
 		for _, aliasStruct := range tmp.Alias {
 			mimeType.Aliases[aliasStruct.Type] = true
 		}
 
-		mimeType.Globs = make(StringSet)
+		mimeType.Globs = make(common.StringSet)
 		for _, tmpGlob := range tmp.Glob {
 			mimeType.Globs[tmpGlob.Pattern] = true
 		}
 
-		mimeType.SubClassOf = make(StringSet)
+		mimeType.SubClassOf = make(common.StringSet)
 		for _, tmpSubClassOf := range tmp.SubClassOf {
 			mimeType.SubClassOf[tmpSubClassOf.Type] = true
 		}
@@ -127,7 +118,7 @@ func CollectMimeTypes() map[string]MimeType {
 			mimeType.GenericIcon = mimeType.Type + "-x-generic"
 		}
 
-		mimeType.AssociatedApplications = make(StringSet)
+		mimeType.AssociatedApplications = make(common.StringSet)
 		mimeType.DefaultApplications = make([]string, 0)
 
 		res[mimeType.Type+"/"+mimeType.Subtype] = mimeType
