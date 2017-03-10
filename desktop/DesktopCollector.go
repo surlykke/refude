@@ -8,13 +8,15 @@ import (
 	"time"
 	"github.com/surlykke/RefudeServices/xdg"
 	"github.com/surlykke/RefudeServices/common"
+	"net/http"
+	"github.com/surlykke/RefudeServices/resources"
 )
 
 type AppMap map[string]DesktopApplication
 type MimeMap map[string]MimeType
+type Pathlist []string
 
-
-func CollectFromDesktop() (MimeMap, AppMap)  {
+func CollectFromDesktop() map[string]http.Handler  {
 	fmt.Println(time.Now(), "Into NewDesktopCollection")
 	c := desktopCollection{}
 	c.Mimes = CollectMimeTypes()
@@ -36,7 +38,26 @@ func CollectFromDesktop() (MimeMap, AppMap)  {
 
 	c.postProcess()
 	fmt.Println(time.Now(), "Update done")
-	return c.Mimes, c.Apps
+
+	collectedResources := make(map[string]http.Handler)
+	appPaths := make(Pathlist, 0)
+	mimePaths := make(Pathlist, 0)
+
+	for appId, desktopApplication := range c.Apps {
+		path := "/application/" + appId
+		collectedResources[path] = resources.NewJsonResource(desktopApplication)
+		appPaths = append(appPaths, path[1:])
+	}
+	collectedResources["/applications"] = resources.NewJsonResource(appPaths)
+
+	for mimeId, mimeType := range c.Mimes {
+		path := "/mimetype/" + mimeId
+		collectedResources[path] = resources.NewJsonResource(mimeType)
+		mimePaths = append(mimePaths, path)
+	}
+	collectedResources["/mimetypes"] = resources.NewJsonResource(mimePaths)
+
+	return collectedResources
 }
 
 type desktopCollection struct {
@@ -118,7 +139,7 @@ func (c *desktopCollection) readMimeappsList(path string) {
 				continue
 			}
 			for k, v := range iniGroup.Entry {
-				dest[k] = common.Split(v)
+				dest[k] = common.Split(v, ";")
 			}
 		}
 	}
@@ -156,4 +177,6 @@ func (c *desktopCollection) postProcess() {
 	}
 }
 
-
+func (pl Pathlist) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusMethodNotAllowed)
+}

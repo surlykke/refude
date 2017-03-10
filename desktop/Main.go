@@ -1,13 +1,14 @@
 package main
 
 import (
-	"fmt"
-	"time"
+	"github.com/surlykke/RefudeServices/resources"
+	"net/http"
 )
 
 func main() {
-	fmt.Println(time.Now(), "Starting")
-	d := DesktopService{}
-	d.Start()
+	resourceCollection := resources.NewResourceCollection()
+	resources := CollectFromDesktop()
+	resourceCollection.Update(resources)
 
+	http.ListenAndServe(":8000", resourceCollection)
 }

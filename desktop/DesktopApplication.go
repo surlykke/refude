@@ -3,9 +3,11 @@ package main
 import (
 	"errors"
 	"github.com/surlykke/RefudeServices/common"
+	"github.com/surlykke/RefudeServices/resources"
 )
 
 type DesktopApplication struct {
+	resources.FallbackHandler
 	Type            string
 	Version         string `json:",omitempty"`
 	Name            string
@@ -69,12 +71,12 @@ func readDesktopFile(path string) (DesktopApplication, error) {
 	app.GenericName = desktopEntry["GenericName"]
 	app.Comment = desktopEntry["Comment"]
 
-	app.OnlyShowIn = common.ToSet(common.Split(desktopEntry["OnlyShowIn"]))
-	app.NotShowIn = common.ToSet(common.Split(desktopEntry["NotShowIn"]))
-	app.Mimetypes = common.ToSet(common.Split(desktopEntry["MimeType"]))
-	app.Categories = common.ToSet(common.Split(desktopEntry["Categories"]))
-	app.Implements = common.ToSet(common.Split(desktopEntry["Implements"]))
-	app.Keywords = common.ToSet(common.Split(desktopEntry["Keywords"]))
+	app.OnlyShowIn = common.ToSet(common.Split(desktopEntry["OnlyShowIn"], ";"))
+	app.NotShowIn = common.ToSet(common.Split(desktopEntry["NotShowIn"], ";"))
+	app.Mimetypes = common.ToSet(common.Split(desktopEntry["MimeType"], ";"))
+	app.Categories = common.ToSet(common.Split(desktopEntry["Categories"], ";"))
+	app.Implements = common.ToSet(common.Split(desktopEntry["Implements"], ";"))
+	app.Keywords = common.ToSet(common.Split(desktopEntry["Keywords"], ";"))
 	app.Actions = make(map[string]Action, 0)
 	return app, nil
 }

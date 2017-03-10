@@ -7,11 +7,13 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"github.com/surlykke/RefudeServices/resources"
 )
 
 const freedesktopOrgXml = "/usr/share/mime/packages/freedesktop.org.xml"
 
 type MimeType struct {
+	resources.FallbackHandler
 	Type                   string
 	Subtype                string
 	Comment                string

@@ -3,7 +3,6 @@ package main
 import (
 	"net/http"
 	"sync"
-	"net/url"
 	"fmt"
 )
 
@@ -15,50 +14,51 @@ type IconService struct {
 func (is IconService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
-		is.GET(w, r)
+		is.mutex.RLock()
+		themesCopy := is.themes
+		is.mutex.RUnlock()
+		if name, size, theme, ok := is.extractNameSizeAndTheme(r.URL.Query()); !ok {
+			w.WriteHeader(http.StatusUnprocessableEntity)
+		} else {
+			if icon, ok := themesCopy.FindIcon(theme, size, name); ok {
+				fmt.Println("Serving: ", icon.Path)
+				http.ServeFile(w, r, icon.Path)
+			}  else {
+				w.WriteHeader(http.StatusNotFound)
+			}
+		}
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
 }
 
-func (is IconService) GET(w http.ResponseWriter, r* http.Request) {
-	qParms := r.URL.Query()
 
-	if len(qParms["name"]) != 1 || len(qParms["themeName"]) > 1 || len(qParms["size"]) > 1 {
-		w.WriteHeader(http.StatusUnprocessableEntity)
+func (is IconService) extractNameSizeAndTheme(query map[string][]string) (string, uint32, string, bool) {
+	if len(query["name"]) != 1 || len(query["themeName"]) > 1 || len(query["size"]) > 1 {
+		return "", 0, "", false
 	}
 
-	iconName := qParms["name"][0]
-	themeName := getFirstOr(qParms, "theme", is.defaultTheme())
+	name := query["name"][0]
+	iconSize := uint32(32)
+	theme := is.defaultTheme()
 
-	iconSize,ok := readUint32(getFirstOr(qParms, "size", "32"))
-	if !ok {
-		iconSize = 32
-	}
-
-	is.mutex.RLock()
-	themesCopy := is.themes
-	is.mutex.RUnlock()
-
-	if icon, ok := themesCopy.FindIcon(themeName, iconSize, iconName); ok {
-		fmt.Println("Serving: ", icon.Path)
-		http.ServeFile(w, r, icon.Path)
-	}  else {
-		w.WriteHeader(http.StatusNotFound)
-	}
-}
-
-func getFirstOr(values url.Values, key string, fallBack string) string {
-	if valsForKey, ok := values[key]; ok {
-		if len(valsForKey) > 0 {
-			return valsForKey[0]
+	if len(query["size"]) > 0 {
+		var ok bool
+		if iconSize, ok = readUint32(query["size"][0]); !ok {
+			return "", 0, "", false
 		}
 	}
-	return fallBack
+
+	if len(query["theme"]) > 0 {
+		theme = query["theme"][0]
+	}
+
+	return name, iconSize, theme, true
 }
 
+
 func (is IconService) defaultTheme() string {
-    return "oxygen" // FIXME
+    return "oxygen" // TODO
 }
 
 func (is *IconService) start() {
