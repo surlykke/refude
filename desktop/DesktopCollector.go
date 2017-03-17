@@ -14,7 +14,6 @@ import (
 
 type AppMap map[string]DesktopApplication
 type MimeMap map[string]MimeType
-type Pathlist []string
 
 func CollectFromDesktop() map[string]http.Handler  {
 	fmt.Println(time.Now(), "Into NewDesktopCollection")
@@ -40,8 +39,8 @@ func CollectFromDesktop() map[string]http.Handler  {
 	fmt.Println(time.Now(), "Update done")
 
 	collectedResources := make(map[string]http.Handler)
-	appPaths := make(Pathlist, 0)
-	mimePaths := make(Pathlist, 0)
+	appPaths := make(resources.Pathlist, 0)
+	mimePaths := make(resources.Pathlist, 0)
 
 	for appId, desktopApplication := range c.Apps {
 		path := "/application/" + appId
@@ -177,6 +176,4 @@ func (c *desktopCollection) postProcess() {
 	}
 }
 
-func (pl Pathlist) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusMethodNotAllowed)
-}
+

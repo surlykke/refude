@@ -6,6 +6,12 @@ import (
 	"encoding/json"
 )
 
+type Pathlist []string
+
+func (pl Pathlist) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusMethodNotAllowed)
+}
+
 type FallbackHandler struct {}
 
 func (fb FallbackHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -15,37 +21,23 @@ func (fb FallbackHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 type JsonResource struct {
 	data  http.Handler
 	bytes []byte
-	mutex sync.RWMutex
 }
 
 func NewJsonResource(handler http.Handler) JsonResource {
-	return JsonResource{handler, nil, sync.RWMutex{}}
+	if byte, err := json.Marshal(handler); err == nil {
+		return JsonResource{handler, byte}
+	} else {
+		panic(err)
+	}
+
 }
 
 func (jr JsonResource) ServeHTTP(w http.ResponseWriter, r *http.Request){
-	jr.mutex.RLock()
-	defer jr.mutex.RUnlock()
-	if jr.bytes == nil {
-		if !jr.getBytes() {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
+	if r.Method != "GET" {
+		jr.data.ServeHTTP(w, r)
+	} else {
+		w.Write(jr.bytes)
 	}
-
-	w.Write(jr.bytes)
-}
-
-func (jr *JsonResource) getBytes() bool {
-	jr.mutex.RUnlock()
-	defer jr.mutex.RLock()
-
-	jr.mutex.Lock()
-	defer jr.mutex.Unlock()
-
-	var err error
-	jr.bytes, err = json.Marshal(jr.data)
-
-	return err == nil
 }
 
 type ResourceCollection struct {
@@ -71,15 +63,9 @@ func (rc ResourceCollection) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (rc* ResourceCollection) Update(resources map[string]http.Handler) {
+func (rc* ResourceCollection) Set(resources map[string]http.Handler) {
 	rc.mutex.Lock()
 	defer rc.mutex.Unlock()
-
-	for path,_ := range rc.resources {
-		if _,isThere := resources[path]; !isThere {
-			rc.notifier.Notify("resource-removed", path)
-		}
-	}
 
 	for path,handler := range resources {
 		if oldHandler, isThere := rc.resources[path]; isThere {
@@ -89,7 +75,17 @@ func (rc* ResourceCollection) Update(resources map[string]http.Handler) {
 		} else {
 			rc.notifier.Notify("resource-added", path)
 		}
-	}
 
-	rc.resources = resources
+		rc.resources[path] = handler
+	}
 }
+
+func (rc* ResourceCollection) Remove(paths []string) {
+	for _, path := range paths {
+		if _,ok := rc.resources[path]; ok {
+			rc.notifier.Notify("resource-removed", path)
+			delete(rc.resources, path)
+		}
+	}
+}
+

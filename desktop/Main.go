@@ -8,7 +8,7 @@ import (
 func main() {
 	resourceCollection := resources.NewResourceCollection()
 	resources := CollectFromDesktop()
-	resourceCollection.Update(resources)
+	resourceCollection.Set(resources)
 
-	http.ListenAndServe(":8000", resourceCollection)
+	http.ListenAndServe(":8000", &resourceCollection)
 }
