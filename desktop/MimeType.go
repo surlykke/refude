@@ -1,19 +1,20 @@
 package main
 
 import (
+
 	"encoding/xml"
 	"github.com/surlykke/RefudeServices/common"
 	"io/ioutil"
 	"fmt"
 	"regexp"
 	"strings"
-	"github.com/surlykke/RefudeServices/resources"
+	"net/http"
+	"github.com/surlykke/RefudeServices/service"
 )
 
 const freedesktopOrgXml = "/usr/share/mime/packages/freedesktop.org.xml"
 
-type MimeType struct {
-	resources.FallbackHandler
+type Mimetype struct {
 	Type                   string
 	Subtype                string
 	Comment                string
@@ -28,7 +29,27 @@ type MimeType struct {
 	DefaultApplications    []string
 }
 
-func CollectMimeTypes() map[string]MimeType {
+func (mt *Mimetype) Data(r *http.Request) (int, string, []byte) {
+	if r.Method == "GET" {
+		return service.GetJsonData(mt)
+	} else {
+		return http.StatusMethodNotAllowed, "", nil
+	}
+}
+
+type MTId string
+
+type MimetypeIdList []string
+
+func (mimetypeIds MimetypeIdList) Data(r *http.Request) (int, string, []byte) {
+	paths := make([]string, len(mimetypeIds))
+	for i, mimeTypeId := range mimetypeIds {
+		paths[i] = "mimetype/" + mimeTypeId
+	}
+	return service.GetJsonData(paths)
+}
+
+func CollectMimeTypes() map[string]*Mimetype {
 	xmlCollector := struct {
 		XMLName   xml.Name `xml:"mime-info"`
 		MimeTypes []struct {
@@ -71,9 +92,9 @@ func CollectMimeTypes() map[string]MimeType {
 		panic(err)
 	}
 
-	res := make(map[string]MimeType)
+	res := make(map[string]*Mimetype)
 	for _, tmp := range xmlCollector.MimeTypes {
-		mimeType := MimeType{}
+		mimeType := Mimetype{}
 
 		typeElements := typePattern.FindStringSubmatch(tmp.Type)
 		if len(typeElements) == 3 {
@@ -123,7 +144,7 @@ func CollectMimeTypes() map[string]MimeType {
 		mimeType.AssociatedApplications = make(common.StringSet)
 		mimeType.DefaultApplications = make([]string, 0)
 
-		res[mimeType.Type+"/"+mimeType.Subtype] = mimeType
+		res[mimeType.Type+"/"+mimeType.Subtype] = &mimeType
 	}
 
 	return res

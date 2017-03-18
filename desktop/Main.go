@@ -1,14 +1,14 @@
 package main
 
 import (
-	"github.com/surlykke/RefudeServices/resources"
 	"net/http"
+	"github.com/surlykke/RefudeServices/service"
 )
 
 func main() {
-	resourceCollection := resources.NewResourceCollection()
-	resources := CollectFromDesktop()
-	resourceCollection.Set(resources)
+	service.Setup()
+	desktop := NewDesktop()
+	go desktop.Run()
 
-	http.ListenAndServe(":8000", &resourceCollection)
+	http.ListenAndServe(":8000", http.HandlerFunc(service.ServeHTTP))
 }

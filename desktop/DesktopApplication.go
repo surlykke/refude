@@ -3,11 +3,11 @@ package main
 import (
 	"errors"
 	"github.com/surlykke/RefudeServices/common"
-	"github.com/surlykke/RefudeServices/resources"
+	"net/http"
+	"github.com/surlykke/RefudeServices/service"
 )
 
 type DesktopApplication struct {
-	resources.FallbackHandler
 	Type            string
 	Version         string `json:",omitempty"`
 	Name            string
@@ -42,18 +42,37 @@ type Action struct {
 }
 
 
+func (app *DesktopApplication) Data(r *http.Request) (int, string, []byte) {
+	if r.Method == "GET" {
+		return service.GetJsonData(app)
+	} else {
+		return http.StatusMethodNotAllowed, "", nil
+	}
+
+}
+
+type AppId string
+
+type AppIdList []string
+
+func (appIds AppIdList) Data(r *http.Request) (int, string, []byte) {
+	paths := make([]string, len(appIds))
+	for i, appId := range appIds {
+		paths[i] = "application/" + appId
+	}
+	return service.GetJsonData(paths)
+}
 
 
-
-func readDesktopFile(path string) (DesktopApplication, error) {
+func readDesktopFile(path string) (*DesktopApplication, MimetypeIdList, error) {
 	iniGroups, err := common.ReadIniFile(path)
 
 	if err != nil {
-		return DesktopApplication{}, err
+		return nil, nil, err
 	}
 
 	if iniGroups[0].Name != "Desktop Entry" {
-		return DesktopApplication{}, errors.New("Desktop file should start with a 'Desktop Entry' group")
+		return nil, nil, errors.New("Desktop file should start with a 'Desktop Entry' group")
 	}
 
 	app := DesktopApplication{}
@@ -73,10 +92,11 @@ func readDesktopFile(path string) (DesktopApplication, error) {
 
 	app.OnlyShowIn = common.ToSet(common.Split(desktopEntry["OnlyShowIn"], ";"))
 	app.NotShowIn = common.ToSet(common.Split(desktopEntry["NotShowIn"], ";"))
-	app.Mimetypes = common.ToSet(common.Split(desktopEntry["MimeType"], ";"))
+	app.Mimetypes = make(common.StringSet)
 	app.Categories = common.ToSet(common.Split(desktopEntry["Categories"], ";"))
 	app.Implements = common.ToSet(common.Split(desktopEntry["Implements"], ";"))
 	app.Keywords = common.ToSet(common.Split(desktopEntry["Keywords"], ";"))
 	app.Actions = make(map[string]Action, 0)
-	return app, nil
+
+	return &app, common.Split(desktopEntry["MimeType"], ";"), nil
 }
