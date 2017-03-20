@@ -20,8 +20,8 @@ type Desktop struct {
 	mimetypes map[string]*Mimetype}
 
 func NewDesktop() Desktop {
-	service.Map("/applications", make(AppIdList, 0))
-	service.Map("/mimetypes", make(MimetypeIdList, 0))
+	service.Map("/applications", make(common.StringSet))
+	service.Map("/mimetypes", make(common.StringSet))
 	return Desktop{make(map[string]*DesktopApplication), make(map[string]*Mimetype)}
 }
 
@@ -63,7 +63,7 @@ func (d *Desktop) Update() {
 		}
 	}
 
-	appPaths := make(AppIdList, 0)
+	appPaths := make(common.StringSet)
 	for appId, newDesktopApplication := range c.applications {
 		path := "/application/" + appId
 		if oldDesktopApplication,ok := d.applications[appId]; !ok {
@@ -73,7 +73,7 @@ func (d *Desktop) Update() {
 				service.Remap(path, newDesktopApplication)
 			}
 		}
-		appPaths = append(appPaths, path[1:])
+		appPaths[path[1:]] = true
 	}
 	service.Remap("/applications", appPaths)
 
@@ -83,7 +83,7 @@ func (d *Desktop) Update() {
 		}
 	}
 
-	mimePaths := make(MimetypeIdList, 0)
+	mimePaths := make(common.StringSet)
 	for mimeId, mimeType := range c.mimetypes {
 		path := "/mimetype/" + mimeId
 		if oldMimetype, ok := d.mimetypes[mimeId]; !ok {
@@ -93,7 +93,7 @@ func (d *Desktop) Update() {
 				service.Remap(path, mimeType)
 			}
 		}
-		mimePaths = append(mimePaths, path)
+		mimePaths[path[1:]] = true
 	}
 	service.Remap("/mimetypes", mimePaths)
 
@@ -165,7 +165,7 @@ func (c *Collector) collectApplications(appdir string) {
 					delete(c.applications, app.Id)
 				} else {
 					c.applications[app.Id] = app
-					for _,mimetypeId := range mimetypes {
+					for mimetypeId,_ := range mimetypes {
 						c.addAssociations(mimetypeId, app.Id)
 					}
 				}

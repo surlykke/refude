@@ -3,6 +3,7 @@ package common
 import (
 	"encoding/json"
 	"strings"
+	"net/http"
 )
 
 type StringSet map[string]bool
@@ -100,3 +101,20 @@ func Reverse(stringlist []string) []string {
 		return append(Reverse(stringlist[1:]), stringlist[0])
 	}
 }
+
+func (ss *StringSet) Data(r *http.Request) (int, string, []byte){
+	l := make([]string, 0, len(*ss))
+	for s,_ := range *ss {
+		l = append(l, s)
+	}
+	return GetJsonData(l)
+}
+
+func GetJsonData(v interface{}) (int, string, []byte){
+	bytes, err := json.Marshal(v)
+	if err != nil {
+		panic("Could not json-marshal")
+	};
+	return http.StatusOK, "application/json", bytes
+}
+

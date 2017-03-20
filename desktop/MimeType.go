@@ -9,7 +9,6 @@ import (
 	"regexp"
 	"strings"
 	"net/http"
-	"github.com/surlykke/RefudeServices/service"
 )
 
 const freedesktopOrgXml = "/usr/share/mime/packages/freedesktop.org.xml"
@@ -31,23 +30,12 @@ type Mimetype struct {
 
 func (mt *Mimetype) Data(r *http.Request) (int, string, []byte) {
 	if r.Method == "GET" {
-		return service.GetJsonData(mt)
+		return common.GetJsonData(mt)
 	} else {
 		return http.StatusMethodNotAllowed, "", nil
 	}
 }
 
-type MTId string
-
-type MimetypeIdList []string
-
-func (mimetypeIds MimetypeIdList) Data(r *http.Request) (int, string, []byte) {
-	paths := make([]string, len(mimetypeIds))
-	for i, mimeTypeId := range mimetypeIds {
-		paths[i] = "mimetype/" + mimeTypeId
-	}
-	return service.GetJsonData(paths)
-}
 
 func CollectMimeTypes() map[string]*Mimetype {
 	xmlCollector := struct {

@@ -4,7 +4,6 @@ import (
 	"errors"
 	"github.com/surlykke/RefudeServices/common"
 	"net/http"
-	"github.com/surlykke/RefudeServices/service"
 )
 
 type DesktopApplication struct {
@@ -44,27 +43,13 @@ type Action struct {
 
 func (app *DesktopApplication) Data(r *http.Request) (int, string, []byte) {
 	if r.Method == "GET" {
-		return service.GetJsonData(app)
+		return common.GetJsonData(app)
 	} else {
 		return http.StatusMethodNotAllowed, "", nil
 	}
-
 }
 
-type AppId string
-
-type AppIdList []string
-
-func (appIds AppIdList) Data(r *http.Request) (int, string, []byte) {
-	paths := make([]string, len(appIds))
-	for i, appId := range appIds {
-		paths[i] = "application/" + appId
-	}
-	return service.GetJsonData(paths)
-}
-
-
-func readDesktopFile(path string) (*DesktopApplication, MimetypeIdList, error) {
+func readDesktopFile(path string) (*DesktopApplication, common.StringSet, error) {
 	iniGroups, err := common.ReadIniFile(path)
 
 	if err != nil {
@@ -98,5 +83,5 @@ func readDesktopFile(path string) (*DesktopApplication, MimetypeIdList, error) {
 	app.Keywords = common.ToSet(common.Split(desktopEntry["Keywords"], ";"))
 	app.Actions = make(map[string]Action, 0)
 
-	return &app, common.Split(desktopEntry["MimeType"], ";"), nil
+	return &app, common.ToSet(common.Split(desktopEntry["MimeType"], ";")), nil
 }

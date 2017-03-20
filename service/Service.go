@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"fmt"
 	"sync"
-	"encoding/json"
 )
 
 // NotifierPath is reserved, Get requests to this path will
@@ -21,13 +20,6 @@ type Resource interface {
 	Data(r *http.Request) (int, string, []byte)
 }
 
-func GetJsonData(v interface{}) (int, string, []byte){
-	bytes, err := json.Marshal(v)
-	if err != nil {
-		panic("Could not json-marshal")
-	};
-	return http.StatusOK, "application/json", bytes
-}
 
 func Map(path string, res Resource) {
 	mutex.Lock()
