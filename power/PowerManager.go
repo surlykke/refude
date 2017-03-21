@@ -2,7 +2,6 @@ package main
 
 import (
 	"github.com/godbus/dbus"
-	"fmt"
 	"github.com/surlykke/RefudeServices/service"
 	"github.com/surlykke/RefudeServices/common"
 	"strings"
@@ -19,38 +18,35 @@ const UPowerDeviceInterface = "org.freedesktop.UPower.Device"
 
 
 type PowerManager struct {
-	watchers map[dbus.ObjectPath]chan bool
+	changeChans map[dbus.ObjectPath]chan map[string]dbus.Variant
 	conn *dbus.Conn
 }
 
-
-// Keeps an eye on UPower. Send true through nudges to make it refresh, false to return
-func watchUPower(conn *dbus.Conn, dbusPath dbus.ObjectPath, nudges chan bool) {
-	service.Map("/UPower", &UPower{})
+// Keeps an eye on UPower. PowerManager#Run redirects PropertiesChanged to this through the changes channel
+func watchUPower(conn *dbus.Conn, changes chan map[string]dbus.Variant) {
+	uPower := UPower{}
+	uPower.ReadDBusProps(getProps(conn, UPowPath, UPowerInterface))
+	service.Map("/UPower", uPower) // Important that we use call-by-value, ie. uPower is copied - see below
 	for {
-		if ! <-nudges {
-			return
-		}
-
-		uPower := UPower{}
-		uPower.ReadDBusProps(getProps(conn, dbusPath, UPowerInterface))
-		service.Remap("/UPower", &uPower)
+		uPower.ReadDBusProps(<- changes)
+		service.Remap("/UPower", uPower) // Do
 	}
 }
 
-
-// Keeps an eye on a device. Send true through nudges to make it refresh, false to return
-func watchDevice(conn *dbus.Conn, dbusPath dbus.ObjectPath, resourcePath string, nudges chan bool) {
-	service.Map(resourcePath, &Device{})
+// Keeps an eye on a device. PowerManager#Run redirects PropertiesChanged to this through the changes channel
+func watchDevice(conn *dbus.Conn, dbusPath dbus.ObjectPath, changes chan map[string]dbus.Variant) {
+	path := resourcePath(dbusPath)
+	device := Device{}
+	device.ReadDBusProps(getProps(conn, dbusPath, UPowerDeviceInterface))
+	service.Map(path, device) // Important to call-by-value (copy) here. Service owns what it gets
 	for {
-		if ! <-nudges {
-			return
-		}
-
-		device := Device{}
-		device.ReadDBusProps(getProps(conn, dbusPath, UPowerDeviceInterface))
-		service.Remap(resourcePath, &device)
+		device.ReadDBusProps(<-changes)
+		service.Remap(path, device) // do.
 	}
+}
+
+func resourcePath(devicePath dbus.ObjectPath) string {
+	return "/device/" + string(devicePath)[strings.LastIndex(string(devicePath), "/") + 1:]
 }
 
 func getProps(conn *dbus.Conn, path dbus.ObjectPath, dbusInterface string) map[string]dbus.Variant {
@@ -59,14 +55,11 @@ func getProps(conn *dbus.Conn, path dbus.ObjectPath, dbusInterface string) map[s
 }
 
 func (pm *PowerManager) listenForPropChanges(path dbus.ObjectPath) {
-	matchRule := fmt.Sprintf("type='signal',interface='org.freedesktop.DBus.Properties',member='PropertiesChanged',path='%s'", path)
-	fmt.Println("MatchRule: ", matchRule)
-	call := pm.conn.BusObject().Call("org.freedesktop.DBus.AddMatch", 0, matchRule)
-	fmt.Println(".. -> ", call)
+
 }
 
 func (pm *PowerManager) Run() {
-	pm.watchers = make(map[dbus.ObjectPath]chan bool)
+	pm.changeChans = make(map[dbus.ObjectPath]chan map[string]dbus.Variant)
 
 	if conn, err := dbus.SystemBus(); err != nil {
 		panic(err)
@@ -76,34 +69,33 @@ func (pm *PowerManager) Run() {
 
 	signals := make(chan *dbus.Signal, 100)
 	pm.conn.Signal(signals)
+	pm.conn.BusObject().Call(
+		"org.freedesktop.DBus.AddMatch",
+		0,
+		"type='signal',interface='org.freedesktop.DBus.Properties',member='PropertiesChanged', sender='org.freedesktop.UPower'")
 
 
-	pm.listenForPropChanges(UPowPath)
-	pm.watchers[UPowPath] = make(chan bool)
-	go watchUPower(pm.conn, UPowPath, pm.watchers[UPowPath])
+	pm.changeChans[UPowPath] = make(chan map[string]dbus.Variant)
+	go watchUPower(pm.conn, pm.changeChans[UPowPath])
 
-
-	uPowerObject := pm.conn.Object(UPowService, UPowPath)
-	devicePaths := make(common.StringSet)
-
-	enumCall := uPowerObject.Call(UPowerInterface + ".EnumerateDevices", dbus.Flags(0))
-
-	for _,devicePath := range append(enumCall.Body[0].([]dbus.ObjectPath), DisplayDevicePath) {
-		pm.listenForPropChanges(devicePath)
-		pm.watchers[devicePath] = make(chan bool)
-		resourcePath := "/device/" + string(devicePath)[strings.LastIndex(string(devicePath), "/") + 1:]
-		go watchDevice(pm.conn, devicePath, resourcePath, pm.watchers[devicePath])
-		devicePaths[resourcePath[1:]] = true
+	enumCall := pm.conn.Object(UPowService, UPowPath).Call(UPowerInterface + ".EnumerateDevices", dbus.Flags(0))
+	devicePaths := append(enumCall.Body[0].([]dbus.ObjectPath), DisplayDevicePath)
+	for _,devicePath := range devicePaths {
+		pm.changeChans[devicePath] = make(chan map[string]dbus.Variant)
+		go watchDevice(pm.conn, devicePath, pm.changeChans[devicePath])
 	}
 
-	service.Map("/devices", &devicePaths)
+	resourcePaths := make(common.StringSet)
+    for _,devicePath := range devicePaths {
+	    resourcePaths[resourcePath(devicePath)[1:]] = true
+    }
+	service.Map("/devices", &resourcePaths)
 
 	for signal := range signals {
-		fmt.Println(signal.Path)
-		if watcher,ok := pm.watchers[signal.Path]; ok {
-			fmt.Println("enqueing")
-			watcher <- true
-			fmt.Println("enqueued")
+		if signal.Name == "org.freedesktop.DBus.Properties.PropertiesChanged" {
+			if changeChan, ok := pm.changeChans[signal.Path]; ok {
+				changeChan <- signal.Body[1].(map[string]dbus.Variant)
+			}
 		}
 	}
 }

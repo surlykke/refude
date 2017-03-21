@@ -43,7 +43,7 @@ func (up *UPower) ReadDBusProps(m map[string]dbus.Variant) {
 	}
 }
 
-func (up *UPower) Data(r *http.Request) (int, string, []byte) {
+func (up UPower) Data(r *http.Request) (int, string, []byte) {
 	return common.GetJsonData(up)
 }
 
@@ -106,7 +106,7 @@ func (d *Device) ReadDBusProps(m map[string]dbus.Variant) {
 	}
 }
 
-func (d *Device) Data(r *http.Request) (int, string, []byte) {
+func (d Device) Data(r *http.Request) (int, string, []byte) {
 	return common.GetJsonData(d)
 }
 
