@@ -116,6 +116,7 @@ func (wm *WindowManager) updateWindows() {
 
 func (wm *WindowManager) getWindow(wId xproto.Window) (Window, error) {
 		window := Window{}
+		window.x = wm.x
 		window.Id = WId(wId)
 		name, err := ewmh.WmNameGet(wm.x, wId)
 		if err != nil || len(name) == 0 {
@@ -147,6 +148,13 @@ func (wm *WindowManager) getWindow(wId xproto.Window) (Window, error) {
 					window.IconUrl = ".." + iconUrl
 				}
 			}
+		}
+
+		window.Actions = make(map[string]Action)
+		window.Actions["_default"] = Action{
+			Name: window.Name,
+			Comment: "Raise and focus",
+			IconUrl: window.IconUrl,
 		}
 
 		return window, nil

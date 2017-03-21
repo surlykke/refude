@@ -4,10 +4,13 @@ import (
 	"github.com/BurntSushi/xgb/xproto"
 	"net/http"
 	"github.com/surlykke/RefudeServices/common"
+	"github.com/BurntSushi/xgbutil/ewmh"
+	"github.com/BurntSushi/xgbutil"
 )
 
 
 type Window struct {
+	x       *xgbutil.XUtil
 	Id      WId
 	X,Y,H,W int
 	Name    string
@@ -17,7 +20,6 @@ type Window struct {
 }
 
 type Action struct {
-	Id      string
 	Name    string
 	Comment string
 	IconUrl string
@@ -31,6 +33,13 @@ type WIdList []WId
 func (w *Window) Data(r *http.Request) (int, string, []byte) {
 	if r.Method == "GET" {
 		return common.GetJsonData(w)
+	} else if r.Method == "POST" {
+		if actionv,ok := r.URL.Query()["action"]; ok && len(actionv) > 0 && actionv[0] != "_default" {
+			return http.StatusNotAcceptable, "", nil
+		} else {
+			ewmh.ActiveWindowReq(w.x, xproto.Window(w.Id))
+			return http.StatusAccepted, "", nil
+		}
 	} else {
 		return http.StatusMethodNotAllowed, "", nil
 	}
