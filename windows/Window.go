@@ -3,7 +3,7 @@ package main
 import (
 	"github.com/BurntSushi/xgb/xproto"
 	"net/http"
-	"github.com/surlykke/RefudeServices/service"
+	"github.com/surlykke/RefudeServices/common"
 )
 
 
@@ -30,7 +30,7 @@ type WIdList []WId
 
 func (w *Window) Data(r *http.Request) (int, string, []byte) {
 	if r.Method == "GET" {
-		return service.GetJsonData(w)
+		return common.GetJsonData(w)
 	} else {
 		return http.StatusMethodNotAllowed, "", nil
 	}

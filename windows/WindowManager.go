@@ -12,6 +12,7 @@ import (
 	"github.com/surlykke/RefudeServices/service"
 	"net/http"
 	"github.com/BurntSushi/xgb/randr"
+	"github.com/surlykke/RefudeServices/common"
 )
 
 
@@ -23,7 +24,7 @@ func (wl WIdList) Data(r *http.Request) (int, string, []byte) {
 		for i,wId := range wl {
 			paths[i] = fmt.Sprintf("window/%d", wId)
 		}
-		return service.GetJsonData(paths)
+		return common.GetJsonData(paths)
 	} else {
 		return http.StatusMethodNotAllowed, "", nil
 	}

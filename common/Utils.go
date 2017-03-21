@@ -102,9 +102,9 @@ func Reverse(stringlist []string) []string {
 	}
 }
 
-func (ss *StringSet) Data(r *http.Request) (int, string, []byte){
-	l := make([]string, 0, len(*ss))
-	for s,_ := range *ss {
+func (ss StringSet) Data(r *http.Request) (int, string, []byte){
+	l := make([]string, 0, len(ss))
+	for s,_ := range ss {
 		l = append(l, s)
 	}
 	return GetJsonData(l)
