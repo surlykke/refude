@@ -57,7 +57,7 @@ func Remap(path string, res Resource) {
 
 func Unmap(path string) {
 	mutex.Lock()
-	mutex.Unlock()
+	defer mutex.Unlock()
 
 	if _,ok := resources[path]; ok {
 		delete(resources, path)
