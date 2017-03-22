@@ -32,19 +32,19 @@
                     ng-class="actionClass(action)"
                     id="{{action.url}}">
                     <div class="line-icon">
-                        <img ng-src='{{action.iconUrl}}' height="32" width="32" alt=" " border="0"/>
+                        <img ng-src='{{action.IconUrl}}' height="32" width="32" alt=" " border="0"/>
                     </div>
-                    <div class="line-title">{{action.name}}</div>
-                    <div class="line-comment">{{action.comment}}</div>
+                    <div class="line-title">{{action.Name}}</div>
+                    <div class="line-comment">{{action.Comment}}</div>
                 </div>
             </div>
         </div>
 
         <!-- graphical depiction of open windows -->
         <div id="disp" class="display">
-            <div ng-repeat="action in actions" ng-if="action.resource.geometry" class="window" ng-style="style(action, $index)">
+            <div ng-repeat="action in actions" ng-if="action.X" class="window" ng-style="style(action, $index)">
                 <div class="windowTitle">
-                    <img ng-src="{{action.iconUrl}}" height="10" width="10" alt =" "/>
+                    <img ng-src="{{action.IconUrl}}" height="10" width="10" alt =" "/>
                     {{action.name}}
                 </div>
             </div>

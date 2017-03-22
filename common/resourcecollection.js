@@ -1,14 +1,11 @@
 let createResourceCollection = ($http, resourceIndexUrl, notifyUrl, resourceFilter, callBack) => { 
-   	console.log("createResources ", resourceIndexUrl, ", notifyUrl: ", notifyUrl) 
     let actions = [];
 
     let resources = new Map();
 
     let getResources = () => {
-		console.log("Getting", resourceIndexUrl)
         $http.get(resourceIndexUrl).then(
             response => {
-				console.log("Got ", response.data)
                 let listOfPromises = response.data.map(resourcePath => $http.get(combineUrls(resourceIndexUrl, resourcePath)));
                                         
                 Promise.all(listOfPromises).then(
@@ -19,7 +16,6 @@ let createResourceCollection = ($http, resourceIndexUrl, notifyUrl, resourceFilt
                     },
                     response => {
                         resources.clear();
-                        console.log(response);
                         updateActions();
                     }
                 );
@@ -40,15 +36,16 @@ let createResourceCollection = ($http, resourceIndexUrl, notifyUrl, resourceFilt
         for (let [url, resource] of resources) {
             if (resourceFilter(resource)) {
                 for(id in resource.Actions) {
+
                     let act = resource.Actions[id];
-                    actions.push({
-                        name: act.Name,
-                        comment: act.Comment,
-                        url: resource.url + "?action=" + id,
-                        iconUrl: act.IconUrl ? combineUrls(resource.url, act.IconUrl) : 
-                                                act.Icon ? iconServiceUrl(act.Icon) : undefined,
-                        resource: resource
-                    });
+                   	if (act.IconUrl) {
+						act.IconUrl = combineUrls(resource.url, act.IconUrl) 
+					} 
+					else if (act.Icon) {
+						act.IconUrl = iconServiceUrl(act.Icon)
+					}
+					act.url = url + "?action=" + id	
+					actions.push(act)
                 }
             }
         }

@@ -23,7 +23,6 @@ function doController($q, $http, $scope, $window, $timeout) {
                                                          updateVersion);
 
     let applicationResourceFilter = res => true;
-	console.log("Creating applicationsResourceActions")
     let applicationResourceActions = createResourceCollection($http,
                                                               "http://localhost:7938/desktop-service/applications",
                                                               "http://localhost:7938/desktop-service/notify",
@@ -34,12 +33,11 @@ function doController($q, $http, $scope, $window, $timeout) {
     let history = {};
 
     let filterActions = () => {
-		console.log("Into filterActions, windowResourceActions: ", windowResourceActions)
         $scope.actions.length = 0;
         let term = $scope.searchTerm.toLowerCase().trim();
-        let windowActionFilter = (action) => term.length === 0 || action.name.toLowerCase().includes(term);
+        let windowActionFilter = (action) => term.length === 0 || action.Name.toLowerCase().includes(term);
         windowResourceActions.filter(windowActionFilter).forEach(action => $scope.actions.push(action));
-        let applicationActionFilter = (action) => term.length > 0 && action.name.toLowerCase().includes(term);
+        let applicationActionFilter = (action) => term.length > 0 && action.Name.toLowerCase().includes(term);
         applicationResourceActions.filter(applicationActionFilter)
                                   .sort((act1, act2) => (history[act2.url] || 0) - (history[act1.url] || 0))
                                   .forEach(action => $scope.actions.push(action));
@@ -60,8 +58,6 @@ function doController($q, $http, $scope, $window, $timeout) {
         if (!$scope.selectedAction && $scope.actions.length > 0) {
             $scope.selectedAction = $scope.actions[0];
         }
-
-        console.log("Out of filterActions, actions: ", $scope.actions)
     }
 
 
@@ -70,6 +66,7 @@ function doController($q, $http, $scope, $window, $timeout) {
 
 
     $scope.select = function(action) {
+		console.log("Selecting ", action)
         $scope.selectedAction = action;
     };
 
@@ -79,12 +76,15 @@ function doController($q, $http, $scope, $window, $timeout) {
     };
 
     $scope.onKeyDown = function ($event) {
+		console.log("onKeyDown ", $event)
         if ($event.key === "Tab") {
             action = keyActions[$event.shiftKey ? "ArrowUp" : "ArrowDown"];
         }
         else {
             action = keyActions[$event.key];
         }
+	
+		console.log("action ", action)
 
         if (action) action();
     };
@@ -94,9 +94,9 @@ function doController($q, $http, $scope, $window, $timeout) {
         if (action === $scope.selectedAction) {
             _class.push("selected");
         }
-        if (action.resource.geometry) {
+        if (action.X != undefined) {
             _class.push("shadow")
-            if (action.state && action.state.includes("Hidden")) {
+            if (action.state && action.state.includes("_NET_WM_STATE_HIDDEN")) {
                 _class.push("dimmed");
             }
         }
@@ -105,10 +105,10 @@ function doController($q, $http, $scope, $window, $timeout) {
 
     $scope.style = function(action, index) {
         return {
-            "left" : "" + Math.round(scale*action.resource.geometry.x) + "px",
-            "top" : "" + Math.round(scale*action.resource.geometry.y) + "px",
-            "width" : "" + Math.round(scale*action.resource.geometry.w) + "px",
-            "height" : "" + Math.round(scale*action.resource.geometry.h) + "px",
+            "left" : "" + Math.round(scale*action.X) + "px",
+            "top" : "" + Math.round(scale*action.Y) + "px",
+            "width" : "" + Math.round(scale*action.W) + "px",
+            "height" : "" + Math.round(scale*action.H) + "px",
             "z-index" : $scope.selectedAction === action ? 1000 : index,
             "opacity" : $scope.selectedAction === action ? 0.7 : 0.3
         };
@@ -129,8 +129,12 @@ function doController($q, $http, $scope, $window, $timeout) {
     };
 
     let execute = function () {
+		console.log("Into execute, selectedAction: ", $scope.selectedAction)
+
         let url = $scope.selectedAction.url;
+		console.log("execute, selectedActionUrl: ", $scope.selectedAction.url)
         if (url) {
+			console.log("posting: ", url)
             $http.post(url).then( response => {
                 $scope.searchTerm = ""
                 remote.getCurrentWindow().hide()
