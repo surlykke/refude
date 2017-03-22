@@ -1,12 +1,14 @@
 let createResourceCollection = ($http, resourceIndexUrl, notifyUrl, resourceFilter, callBack) => { 
-    
+   	console.log("createResources ", resourceIndexUrl, ", notifyUrl: ", notifyUrl) 
     let actions = [];
 
     let resources = new Map();
 
     let getResources = () => {
+		console.log("Getting", resourceIndexUrl)
         $http.get(resourceIndexUrl).then(
             response => {
+				console.log("Got ", response.data)
                 let listOfPromises = response.data.map(resourcePath => $http.get(combineUrls(resourceIndexUrl, resourcePath)));
                                         
                 Promise.all(listOfPromises).then(
@@ -21,8 +23,11 @@ let createResourceCollection = ($http, resourceIndexUrl, notifyUrl, resourceFilt
                         updateActions();
                     }
                 );
-            }
-        );
+            },
+			response => {
+				console.log("Error: ", response)
+			}
+        )
     }
 
     let updateResource = (url, resource) => {
@@ -34,14 +39,14 @@ let createResourceCollection = ($http, resourceIndexUrl, notifyUrl, resourceFilt
         actions.length = 0;
         for (let [url, resource] of resources) {
             if (resourceFilter(resource)) {
-                for(id in resource._actions) {
-                    let act = resource._actions[id];
+                for(id in resource.Actions) {
+                    let act = resource.Actions[id];
                     actions.push({
-                        name: act.name,
-                        comment: act.comment,
+                        name: act.Name,
+                        comment: act.Comment,
                         url: resource.url + "?action=" + id,
-                        iconUrl: act.iconUrl ? combineUrls(resource.url, act.iconUrl) : 
-                                                act.icon ? iconServiceUrl(act.icon) : undefined,
+                        iconUrl: act.IconUrl ? combineUrls(resource.url, act.iconUrl) : 
+                                                act.Icon ? iconServiceUrl(act.Icon) : undefined,
                         resource: resource
                     });
                 }

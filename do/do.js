@@ -1,30 +1,31 @@
 /*
  * Copyright (c) 2015, 2016 Christian Surlykke
  *
- * This file is part of the refude project. 
+ * This file is part of the refude project.
  * It is distributed under the GPL v2 license.
  * Please refer to the LICENSE file for a copy of the license.
  */
 
 function doController($q, $http, $scope, $window, $timeout) {
-    const remote = require('electron').remote; 
+    const remote = require('electron').remote;
 
     $scope.searchTerm = "";
     $scope.actions = [];
     $scope.version = 0;
 
     let updateVersion = () => { $timeout(() => {$scope.version++;});};
-    let windowResourceFilter = res => !(res.state.includes("Above") || ["Refude Do", "refudeDo"].includes(res.name));
-     
-    let windowResourceActions = createResourceCollection($http, 
-                                                         "http://localhost:7938/wm-service/windows", 
+    let windowResourceFilter = res => !(res.States.includes("_NET_WM_STATE_ABOVE") || ["Refude Do", "refudeDo"].includes(res.Name));
+
+    let windowResourceActions = createResourceCollection($http,
+                                                         "http://localhost:7938/wm-service/windows",
                                                          "http://localhost:7938/wm-service/notify",
                                                          windowResourceFilter,
                                                          updateVersion);
 
-    let applicationResourceFilter = res => true; 
-    let applicationResourceActions = createResourceCollection($http, 
-                                                              "http://localhost:7938/desktop-service/applications", 
+    let applicationResourceFilter = res => true;
+	console.log("Creating applicationsResourceActions")
+    let applicationResourceActions = createResourceCollection($http,
+                                                              "http://localhost:7938/desktop-service/applications",
                                                               "http://localhost:7938/desktop-service/notify",
                                                               applicationResourceFilter,
                                                               updateVersion);
@@ -33,6 +34,7 @@ function doController($q, $http, $scope, $window, $timeout) {
     let history = {};
 
     let filterActions = () => {
+		console.log("Into filterActions, windowResourceActions: ", windowResourceActions)
         $scope.actions.length = 0;
         let term = $scope.searchTerm.toLowerCase().trim();
         let windowActionFilter = (action) => term.length === 0 || action.name.toLowerCase().includes(term);
@@ -50,29 +52,30 @@ function doController($q, $http, $scope, $window, $timeout) {
                 previous = action;
             });
         }
-      
+
         if ($scope.selectedAction) {
             $scope.selectedAction = $scope.actions.find((action) => action.url === $scope.selectedAction.url);
         }
-            
+
         if (!$scope.selectedAction && $scope.actions.length > 0) {
             $scope.selectedAction = $scope.actions[0];
-        } 
+        }
 
+        console.log("Out of filterActions, actions: ", $scope.actions)
     }
 
 
     $scope.$watch('version', filterActions);
     $scope.$watch('searchTerm', filterActions);
 
-    
+
     $scope.select = function(action) {
         $scope.selectedAction = action;
     };
 
     $scope.selectAndExecute = function(action) {
         $scope.select(action);
-        execute(); 
+        execute();
     };
 
     $scope.onKeyDown = function ($event) {
@@ -82,11 +85,11 @@ function doController($q, $http, $scope, $window, $timeout) {
         else {
             action = keyActions[$event.key];
         }
-        
+
         if (action) action();
     };
 
-    $scope.actionClass  = function(action) { 
+    $scope.actionClass  = function(action) {
         _class = ["line"];
         if (action === $scope.selectedAction) {
             _class.push("selected");
@@ -107,19 +110,19 @@ function doController($q, $http, $scope, $window, $timeout) {
             "width" : "" + Math.round(scale*action.resource.geometry.w) + "px",
             "height" : "" + Math.round(scale*action.resource.geometry.h) + "px",
             "z-index" : $scope.selectedAction === action ? 1000 : index,
-            "opacity" : $scope.selectedAction === action ? 0.7 : 0.3 
+            "opacity" : $scope.selectedAction === action ? 0.7 : 0.3
         };
     };
 
-    let next = () => { 
+    let next = () => {
         if ($scope.selectedAction) {
             $scope.selectedAction = $scope.selectedAction._next;
-        } 
+        }
         scrollSelectedCommandIntoView();
     };
-    
-    let previous = () => { 
-        if ($scope.selectedAction) { 
+
+    let previous = () => {
+        if ($scope.selectedAction) {
             $scope.selectedAction = $scope.selectedAction._previous;
         }
         scrollSelectedCommandIntoView();
@@ -132,7 +135,7 @@ function doController($q, $http, $scope, $window, $timeout) {
                 $scope.searchTerm = ""
                 remote.getCurrentWindow().hide()
                 history[url] = new Date().getTime();
-                localStorage.setItem('history', JSON.stringify(history)) 
+                localStorage.setItem('history', JSON.stringify(history))
             }).then(error => {
                 console.log(error);
             });
@@ -142,7 +145,7 @@ function doController($q, $http, $scope, $window, $timeout) {
     let keyActions = {
         ArrowDown : next,
         ArrowUp :  previous,
-        Enter : execute, 
+        Enter : execute,
         " " : execute,
         Escape : function() {
             remote.getCurrentWindow().hide()
@@ -157,14 +160,14 @@ function doController($q, $http, $scope, $window, $timeout) {
             if (contentDiv && selectedDiv) {
                 let contentRect = contentDiv.getBoundingClientRect();
                 let itemRect = selectedDiv.getBoundingClientRect();
-                
+
                 let delta = null;
                 if (itemRect.top < contentRect.top) {
                     delta = itemRect.top - contentRect.top - 15;
                 }
                 else if (itemRect.bottom > contentRect.bottom) {
                     delta = itemRect.bottom - contentRect.bottom + 15;
-                } 
+                }
 
                 if (delta) {
                     contentDiv.scrollTop = contentDiv.scrollTop + delta;
@@ -172,7 +175,7 @@ function doController($q, $http, $scope, $window, $timeout) {
             }
         }
     };
-    
+
     let displayGeometry = {};
     let width = 100;
     let height = 100;
@@ -185,11 +188,11 @@ function doController($q, $http, $scope, $window, $timeout) {
         height = contentRect.bottom - contentRect.top - 4;
         scale = Math.min(width/displayGeometry.w, height/displayGeometry.h);
     };
-  
-    $http.get("http://localhost:7938/wm-service/display").then(function(response) { 
-        displayGeometry = response.data.geometry;
+
+    $http.get("http://localhost:7938/wm-service/display").then(function(response) {
+        displayGeometry = response.data
         calculateGeometry();
-        angular.element($window).bind('resize', calculateGeometry); 
+        angular.element($window).bind('resize', calculateGeometry);
     });
 
     try {
@@ -209,5 +212,3 @@ doModule.controller('doCtrl', ['$q', '$http', '$scope', '$window', '$timeout', d
 doModule.config(['$compileProvider', function ($compileProvider) {
         $compileProvider.imgSrcSanitizationWhitelist(/^\s*((https?|ftp|file|blob|chrome-extension):|data:image\/)/);
 }]);
-
-
