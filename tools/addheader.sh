@@ -1,3 +1,7 @@
+#!/usr/bin/env bash
+tmp=`mktemp`
+
+cat<< EOF > $tmp
 /*
  * Copyright (c) 2017 Christian Surlykke
  *
@@ -6,14 +10,7 @@
  * Please refer to the GPL2 file for a copy of the license.
  */
 
-package main
+EOF
 
-import (
-	"github.com/surlykke/RefudeServices/service"
-)
-
-func main() {
-	pm := 	&PowerManager{}
-	go pm.Run()
-	service.Serve("org.refude.power-service")
-}
+cat $1 >> $tmp
+mv $tmp $1
