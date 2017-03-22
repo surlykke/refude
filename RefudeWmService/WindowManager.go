@@ -21,6 +21,7 @@ import (
 	"net/http"
 	"github.com/BurntSushi/xgb/randr"
 	"github.com/surlykke/RefudeServices/common"
+	"github.com/BurntSushi/xgb"
 )
 
 
@@ -57,6 +58,12 @@ func (wm *WindowManager) Run() {
 	}
 	xwindow.New(wm.x, wm.x.RootWin()).Listen(xproto.EventMaskSubstructureNotify)
 	wm.updateWindows()
+	conn, err := xgb.NewConn()
+	if err != nil {
+		panic(err)
+	}
+	randr.Init(conn)
+	wm.buildDisplay(conn)
 
 	for ;; {
 		evt, err := wm.x.Conn().WaitForEvent()
@@ -74,6 +81,18 @@ func (wm *WindowManager) Run() {
 
 func windowPath(wId WId) string {
 	return fmt.Sprintf("/window/%d", wId)
+}
+
+func (wm *WindowManager) buildDisplay(conn *xgb.Conn) {
+	display := Display{Screens: make([]Rect, 0)}
+
+	defaultScreen := xproto.Setup(conn).DefaultScreen(conn)
+	display.W = defaultScreen.WidthInPixels
+	display.H = defaultScreen.HeightInPixels
+
+	// TODO add screens
+
+	service.Map("/display", &display)
 }
 
 func (wm *WindowManager) updateWindows() {
