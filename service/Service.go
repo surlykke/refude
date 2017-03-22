@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"fmt"
 	"sync"
+	"github.com/surlykke/RefudeServices/xdg"
+	"net"
 )
 
 // NotifierPath is reserved, Get requests to this path will
@@ -11,8 +13,8 @@ import (
 // a resource to NotifierPath will panic
 const NotifierPath = "/notify"
 
-var	resources  map[string]Resource
-var	notifier   Notifier
+var	resources  map[string]Resource = make(map[string]Resource)
+var	notifier   Notifier = MakeNotifier()
 var mutex      sync.Mutex
 
 
@@ -74,10 +76,16 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Setup must be run before starting to serving request
-func Setup() {
-	resources = make(map[string]Resource)
-	notifier = MakeNotifier()
+func Serve(socketName string) {
+	socketPath := xdg.RuntimeDir() + "/" + socketName
+
+	if listener,err := net.ListenUnix("unix", &net.UnixAddr{Name: socketPath, Net: "unix"}); err != nil {
+		panic(err)
+	} else {
+		http.Serve(listener, http.HandlerFunc(ServeHTTP))
+	}
+
 }
+
 
 
