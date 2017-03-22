@@ -17,7 +17,8 @@ import (
 
 type Desktop struct {
 	applications map[string]*DesktopApplication
-	mimetypes map[string]*Mimetype}
+	mimetypes map[string]*Mimetype
+}
 
 func NewDesktop() Desktop {
 	service.Map("/applications", make(common.StringSet))
@@ -157,7 +158,7 @@ func (c* Collector) removeAssociations(mimeId string, appIds...string) {
 
 func (c *Collector) collectApplications(appdir string) {
 	filepath.Walk(appdir, func(path string, info os.FileInfo, err error) error {
-		if !(info.IsDir() || !strings.HasSuffix(path, ".desktop")) {
+		if !(info.IsDir() || !strings.HasSuffix(path, ".RefudeDesktopService")) {
 			app, mimetypes, err := readDesktopFile(path)
 			if err == nil {
 				app.Id = strings.Replace(path[len(appdir)+1:], "/", "-", -1)

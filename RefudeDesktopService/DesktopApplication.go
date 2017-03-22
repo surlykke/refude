@@ -45,10 +45,6 @@ type Action struct {
 	Icon    string
 }
 
-func launch(execStringn string) {
-
-}
-
 func (app *DesktopApplication) Data(r *http.Request) (int, string, []byte) {
 	if r.Method == "GET" {
 		return common.GetJsonData(app)
