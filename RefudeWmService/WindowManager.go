@@ -68,6 +68,7 @@ func (wm *WindowManager) Run() {
 	for ;; {
 		evt, err := wm.x.Conn().WaitForEvent()
 		if err == nil {
+			fmt.Println("Event: ", evt)
 			if scEvt, ok := evt.(randr.ScreenChangeNotifyEvent); ok {
 				fmt.Println("Got screen change event: ", scEvt) // TODO update display resource
 			} else {
@@ -167,14 +168,16 @@ func (wm *WindowManager) getWindow(wId xproto.Window) (Window, error) {
 				hash.Write([]byte{byte((val & 0xFF000000) >> 24), byte((val & 0xFF0000) >> 16), byte((val & 0xFF00) >> 8), byte(val & 0xFF)})
 			}
 
+			iconUrl := fmt.Sprintf("/icon/%d", hash.Sum64())
+
 			if !wm.iconHashes[hash.Sum64()] {
 				if icon, err := MakeIcon(hash.Sum64(), iconArr); err == nil {
-					iconUrl := fmt.Sprintf("/icon/%d", icon.hash)
 					wm.iconHashes[icon.hash] = true
 					service.Map(iconUrl, icon)
-					window.IconUrl = ".." + iconUrl
 				}
 			}
+
+			window.IconUrl = ".." + iconUrl
 		}
 
 		window.Actions = make(map[string]Action)
@@ -182,6 +185,10 @@ func (wm *WindowManager) getWindow(wId xproto.Window) (Window, error) {
 			Name: window.Name,
 			Comment: "Raise and focus",
 			IconUrl: window.IconUrl,
+			X: window.X,
+			Y: window.Y,
+			W: window.W,
+			H: window.H,
 		}
 
 		return window, nil

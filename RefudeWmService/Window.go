@@ -31,6 +31,7 @@ type Action struct {
 	Name    string
 	Comment string
 	IconUrl string
+	X,Y,W,H int
 }
 
 type WId xproto.Window

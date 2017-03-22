@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net"
 	"bufio"
+	"sync"
 )
 
 
@@ -20,14 +21,19 @@ type evtChan chan []byte
 
 type Notifier struct {
 	clients map[evtChan]bool
+	mutex sync.Mutex
 }
 
 func MakeNotifier() Notifier {
-	return Notifier{make(map[evtChan]bool)}
+	return Notifier{clients: make(map[evtChan]bool)}
 }
 
-func (n Notifier) Notify(eventType string, data string) {
+func (n* Notifier) Notify(eventType string, data string) {
+	fmt.Println("Into Notify")
 	message := []byte(fmt.Sprintf(chunkTemplate, len(eventType) + len(data) + 14, eventType, data))
+	n.mutex.Lock()
+	defer n.mutex.Unlock()
+
 	for client,_ := range n.clients {
 		select {
 		case <-client:
@@ -36,6 +42,7 @@ func (n Notifier) Notify(eventType string, data string) {
 			client<- message
 		}
 	}
+	fmt.Println("Out of notify")
 }
 
 const initialResponse string =
@@ -61,6 +68,8 @@ func (n *Notifier) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	} else if con, bufrw, err := hj.Hijack(); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 	} else {
+		n.mutex.Lock()
+		defer n.mutex.Unlock()
 		evts := make(evtChan)
 		n.clients[evts] = true
 		go HandleClient(evts, con, bufrw)
