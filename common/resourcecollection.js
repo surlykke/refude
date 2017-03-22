@@ -45,7 +45,7 @@ let createResourceCollection = ($http, resourceIndexUrl, notifyUrl, resourceFilt
                         name: act.Name,
                         comment: act.Comment,
                         url: resource.url + "?action=" + id,
-                        iconUrl: act.IconUrl ? combineUrls(resource.url, act.iconUrl) : 
+                        iconUrl: act.IconUrl ? combineUrls(resource.url, act.IconUrl) : 
                                                 act.Icon ? iconServiceUrl(act.Icon) : undefined,
                         resource: resource
                     });

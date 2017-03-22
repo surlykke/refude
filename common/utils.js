@@ -20,5 +20,5 @@ let combineUrls = (url, relativeUrl) => {
 }
 
 let iconServiceUrl = (iconName, size) => {
-    return "http://localhost:7938/icon-service/icons/icon?name=" + iconName + "&size=" + (size || 32);
+    return "http://localhost:7938/icon-service/icon?name=" + iconName + "&size=" + (size || 32);
 }
