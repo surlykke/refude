@@ -61,10 +61,7 @@ func (is IconService) defaultTheme() string {
     return "oxygen" // TODO
 }
 
-func (is *IconService) start() {
-	is.update()
-	http.ListenAndServe(":8000", is)
-}
+
 
 func (is *IconService) update() {
 	is.mutex.Lock()

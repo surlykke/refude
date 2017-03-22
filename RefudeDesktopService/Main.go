@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"github.com/surlykke/RefudeServices/service"
 	"net"
+	"github.com/surlykke/RefudeServices/xdg"
 )
 
 func main() {
@@ -11,7 +12,9 @@ func main() {
 	desktop := NewDesktop()
 	go desktop.Run()
 
-	if listener,err := net.ListenUnix("unix", &net.UnixAddr{"/tmp/test", "unix"}); err != nil {
+	socketPath := xdg.RuntimeDir() + "/org.refude.desktop-service"
+
+	if listener,err := net.ListenUnix("unix", &net.UnixAddr{socketPath, "unix"}); err != nil {
 		panic(err)
 	} else {
 		http.Serve(listener, http.HandlerFunc(service.ServeHTTP))
