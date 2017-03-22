@@ -6,12 +6,18 @@ import (
 	"sync"
 	"github.com/surlykke/RefudeServices/xdg"
 	"net"
+	"context"
+	"syscall"
 )
 
-// NotifierPath is reserved, Get requests to this path will
+// NotifierPath is reserved. Get requests to this path will
 // be answered with a server-sent-event stream. Attemts to map
 // a resource to NotifierPath will panic
 const NotifierPath = "/notify"
+
+// PingPath is reserved. Get request to this path will be answered with a http 200 ok
+const PingPath = "/ping"
+
 
 var	resources  map[string]Resource = make(map[string]Resource)
 var	notifier   Notifier = MakeNotifier()
@@ -53,8 +59,10 @@ func Unmap(path string) {
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Request for ", r.URL.Path)
-	if r.URL.Path == "/notify" {
+	if r.URL.Path == NotifierPath {
 		notifier.ServeHTTP(w, r)
+	} else if r.URL.Path == PingPath {
+		w.WriteHeader(http.StatusOK)
 	} else {
 		mutex.Lock()
 		defer mutex.Unlock()
@@ -76,15 +84,51 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func Serve(socketName string) {
-	socketPath := xdg.RuntimeDir() + "/" + socketName
-
-	if listener,err := net.ListenUnix("unix", &net.UnixAddr{Name: socketPath, Net: "unix"}); err != nil {
-		panic(err)
-	} else {
-		http.Serve(listener, http.HandlerFunc(ServeHTTP))
+func seemsToBeRunning(socketPath string) bool {
+	client := http.Client{
+		Transport: &http.Transport{ DialContext: func(ctx context.Context, _, _ string) (net.Conn, error){
+				return net.Dial("unix", socketPath)
+			},
+		},
 	}
 
+	if response, err := client.Get("http://localhost/ping"); err == nil {
+		response.Body.Close()
+		return true
+	} else {
+		return false
+	}
+}
+
+
+func makeListener(socketName string) (*net.UnixListener, bool) {
+	socketPath := xdg.RuntimeDir() + "/" + socketName
+
+	if seemsToBeRunning(socketPath) {
+		fmt.Println("Application seems to be running. Let's leave it at that")
+		return nil, false
+	}
+
+	syscall.Unlink(socketPath)
+
+	if listener,err := net.ListenUnix("unix", &net.UnixAddr{Name: socketPath, Net: "unix"}); err != nil {
+		fmt.Println(err)
+		return nil, false
+	} else {
+		return listener, true
+	}
+}
+
+func Serve(socketName string) {
+	if listener, ok := makeListener(socketName); ok {
+		http.Serve(listener, http.HandlerFunc(ServeHTTP))
+	}
+}
+
+func ServeWith(socketName string, handler http.Handler) {
+	if listener, ok := makeListener(socketName); ok {
+		http.Serve(listener, handler)
+	}
 }
 
 

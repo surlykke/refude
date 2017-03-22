@@ -7,5 +7,5 @@ import (
 func main() {
 	var iconService IconService
 	iconService.update()
-	service.Serve("org.refude.icon-service")
+	service.ServeWith("org.refude.icon-service", iconService)
 }

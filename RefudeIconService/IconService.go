@@ -12,23 +12,35 @@ type IconService struct {
 }
 
 func (is IconService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case "GET":
-		is.mutex.RLock()
-		themesCopy := is.themes
-		is.mutex.RUnlock()
-		if name, size, theme, ok := is.extractNameSizeAndTheme(r.URL.Query()); !ok {
-			w.WriteHeader(http.StatusUnprocessableEntity)
+
+	switch r.URL.Path {
+	case "/ping":
+		if r.Method == "GET" {
+			w.WriteHeader(http.StatusOK)
 		} else {
-			if icon, ok := themesCopy.FindIcon(theme, size, name); ok {
-				fmt.Println("Serving: ", icon.Path)
-				http.ServeFile(w, r, icon.Path)
-			}  else {
-				w.WriteHeader(http.StatusNotFound)
+			w.WriteHeader(http.StatusMethodNotAllowed)
+		}
+	case "/icon":
+		fmt.Println("Serving ", r.URL.Path)
+		if r.Method == "GET" {
+			is.mutex.RLock()
+			themesCopy := is.themes
+			is.mutex.RUnlock()
+			if name, size, theme, ok := is.extractNameSizeAndTheme(r.URL.Query()); !ok {
+				w.WriteHeader(http.StatusUnprocessableEntity)
+			} else {
+				if icon, ok := themesCopy.FindIcon(theme, size, name); ok {
+					fmt.Println("Serving: ", icon.Path)
+					http.ServeFile(w, r, icon.Path)
+				} else {
+					w.WriteHeader(http.StatusNotFound)
+				}
 			}
+		} else {
+			w.WriteHeader(http.StatusMethodNotAllowed)
 		}
 	default:
-		w.WriteHeader(http.StatusMethodNotAllowed)
+		w.WriteHeader(http.StatusNotFound)
 	}
 }
 
