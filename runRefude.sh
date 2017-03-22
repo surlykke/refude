@@ -4,11 +4,19 @@
 # are needed by the services.
 #
 
+REFUDESERVICES="RefudeDesktopService RefudeIconService RefudePowerService RefudeWmService"
+
+if [[ "--restart" == "$1" ]]; then
+    for app in $REFUDESERVICES  haproxy; do
+        killall $app
+    done
+fi
+
 GOPATH="${GOPATH:-$HOME/go}"
 HAPROXYCFG="$GOPATH/src/github.com/surlykke/RefudeServices/haproxy.cfg"
 
 # Run refudeservices.
-for app in RefudeDesktopService RefudeIconService RefudePowerService RefudeWmService RefudeConnmanService ; do
+for app in $REFUDESERVICES; do
 	nohup $app >/dev/null 2>/dev/null &
 done
 
