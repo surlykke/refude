@@ -75,14 +75,26 @@ func HandleClient(evts evtChan, conn net.Conn, bufrw *bufio.ReadWriter) {
 	defer func() { evts <- []byte{} }()
 	defer conn.Close()
 
-	if _, err := bufrw.Write([]byte(initialResponse)); err == nil {
-		for ;; {
-			message := <- evts
-			if _,err := bufrw.Write([]byte(message)); err != nil || bufrw.Flush() != nil {
-				break
-			}
+	fmt.Println("Writing ", initialResponse)
+	if !immediateWrite(bufrw, []byte(initialResponse)) {
+		return
+	}
+
+	for ; ; {
+		message := <-evts
+		if !immediateWrite(bufrw, message) {
+			return
 		}
 	}
 }
 
+func immediateWrite(bufrw *bufio.ReadWriter, msg []byte) bool {
+	if _, err := bufrw.Write([]byte(msg)); err != nil {
+		return false
+	} else  if bufrw.Flush() != nil {
+		return false
+	} else {
+		return true
+	}
+}
 
