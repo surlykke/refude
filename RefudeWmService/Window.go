@@ -14,12 +14,13 @@ import (
 	"github.com/surlykke/RefudeServices/common"
 	"github.com/BurntSushi/xgbutil/ewmh"
 	"github.com/BurntSushi/xgbutil"
+	"fmt"
 )
 
 
 type Window struct {
 	x       *xgbutil.XUtil
-	Id      WId
+	Id      xproto.Window
 	X,Y,H,W int
 	Name    string
 	IconUrl string
@@ -33,11 +34,6 @@ type Action struct {
 	IconUrl string
 	X,Y,W,H int
 }
-
-type WId xproto.Window
-
-type WIdList []WId
-
 
 func (w *Window) Data(r *http.Request) (int, string, []byte) {
 	if r.Method == "GET" {
@@ -74,13 +70,26 @@ func (w *Window) Equal( w2 *Window) bool {
 	return true
 }
 
+type WindowIdList []xproto.Window
 
-func (wl WIdList) Equal(wl2 WIdList) bool {
-	if len(wl) != len(wl2) {
+func (w WindowIdList) Data(r *http.Request) (int, string, []byte) {
+	if r.Method == "GET" {
+		paths := make([]string, len(w), len(w))
+		for i,wId := range w {
+			paths[i] = fmt.Sprintf("window/%d", wId)
+		}
+		return common.GetJsonData(paths)
+	} else {
+		return http.StatusMethodNotAllowed, "", nil
+	}
+}
+
+func (w WindowIdList) Equal(w2 WindowIdList) bool {
+	if len(w) != len(w2) {
 		return false
 	} else {
-		for i := 0; i < len(wl); i++ {
-			if wl[i] != wl2[i] {
+		for i := 0; i < len(w); i++ {
+			if w[i] != w2[i] {
 				return false
 			}
 		}
@@ -88,3 +97,12 @@ func (wl WIdList) Equal(wl2 WIdList) bool {
 	return true
 }
 
+func (w WindowIdList) find(windowId xproto.Window) bool {
+	for _, wId := range w {
+		if windowId == wId {
+			return true
+		}
+	}
+
+	return false
+}

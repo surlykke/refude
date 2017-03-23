@@ -18,61 +18,46 @@ import (
 	"github.com/BurntSushi/xgbutil/icccm"
 	"github.com/BurntSushi/xgbutil/xprop"
 	"github.com/surlykke/RefudeServices/service"
-	"net/http"
 	"github.com/BurntSushi/xgb/randr"
-	"github.com/surlykke/RefudeServices/common"
 	"github.com/BurntSushi/xgb"
+	"time"
 )
 
 
-type WindowSet map[WId]*Window
-
-func (wl WIdList) Data(r *http.Request) (int, string, []byte) {
-	if r.Method == "GET" {
-		paths := make([]string, len(wl), len(wl))
-		for i,wId := range wl {
-			paths[i] = fmt.Sprintf("window/%d", wId)
-		}
-		return common.GetJsonData(paths)
-	} else {
-		return http.StatusMethodNotAllowed, "", nil
-	}
-}
+var windowIds = make(WindowIdList, 0)
+var windows = make(map[xproto.Window]*Window)
+var display = Display{Screens: make([]Rect, 0)}
+var iconHashes = make(map[uint64]bool)
+var x  *xgbutil.XUtil
 
 
-type WindowManager struct {
-	wIds    WIdList
-	windows WindowSet
-	iconHashes map[uint64]bool
-	x          *xgbutil.XUtil
-}
 
-func (wm *WindowManager) Run() {
-	wm.wIds = make(WIdList, 0)
-	service.Map("/windows", wm.wIds)
-	wm.windows = make(WindowSet)
-	wm.iconHashes = make(map[uint64]bool)
+func WmRun() {
+	service.Map("/windows", &windowIds)
+	service.Map("/display", &display)
+
 	var err error
-	if wm.x, err = xgbutil.NewConn(); err != nil {
+	if x, err = xgbutil.NewConn(); err != nil {
 		panic(err)
 	}
-	xwindow.New(wm.x, wm.x.RootWin()).Listen(xproto.EventMaskSubstructureNotify)
-	wm.updateWindows()
+
+	xwindow.New(x, x.RootWin()).Listen(xproto.EventMaskSubstructureNotify)
+	updateWindows()
 	conn, err := xgb.NewConn()
 	if err != nil {
 		panic(err)
 	}
 	randr.Init(conn)
-	wm.buildDisplay(conn)
+	buildDisplay(conn)
 
 	for ;; {
-		evt, err := wm.x.Conn().WaitForEvent()
+		evt, err := x.Conn().WaitForEvent()
 		if err == nil {
 			fmt.Println("Event: ", evt)
 			if scEvt, ok := evt.(randr.ScreenChangeNotifyEvent); ok {
 				fmt.Println("Got screen change event: ", scEvt) // TODO update display resource
 			} else {
-				wm.updateWindows()
+				updateWindows()
 			}
 		}
 	}
@@ -80,12 +65,11 @@ func (wm *WindowManager) Run() {
 
 
 
-func windowPath(wId WId) string {
-	return fmt.Sprintf("/window/%d", wId)
+func windowPath(windowId xproto.Window) string {
+	return fmt.Sprintf("/window/%d", windowId)
 }
 
-func (wm *WindowManager) buildDisplay(conn *xgb.Conn) {
-	display := Display{Screens: make([]Rect, 0)}
+func buildDisplay(conn *xgb.Conn) {
 
 	defaultScreen := xproto.Setup(conn).DefaultScreen(conn)
 	display.W = defaultScreen.WidthInPixels
@@ -93,105 +77,140 @@ func (wm *WindowManager) buildDisplay(conn *xgb.Conn) {
 
 	// TODO add screens
 
-	service.Map("/display", &display)
+	service.Remap("/display", &display)
 }
 
-func (wm *WindowManager) updateWindows() {
-	var wIds WIdList
-	var windows WindowSet = make(WindowSet)
-	tmp, err := ewmh.ClientListStackingGet(wm.x)
+func updateWindows() {
+	fmt.Println("Ind i updateWindows ", time.Now())
+	tmp, err := ewmh.ClientListStackingGet(x)
 	if err != nil {
 		panic(err)
 	}
 
+	newWindowIds := make(WindowIdList, len(tmp))
 	// Reverse order, so highest stacked comes first
-	wIds = make(WIdList, len(tmp))
-	for i,wId := range tmp {
-		wIds[len(tmp) - 1 - i] = WId(wId)
+	for i, wId := range tmp {
+		newWindowIds[len(tmp) - 1 -i] = wId
 	}
 
-	for _,wId := range wIds {
-		if window, err := wm.getWindow(xproto.Window(wId)); err == nil {
-			windows[wId] = &window
+	for _,windowId := range windowIds {
+		if ! newWindowIds.find(windowId) {
+			delete(windows, windowId)
+			service.Unmap(windowPath(windowId))
 		}
 	}
 
-	for wId,_ := range wm.windows {
-		if _,ok := windows[wId]; !ok {
-			service.Unmap(windowPath(wId))
-		}
-	}
-
-	for wId, window := range windows {
-		if oldWindow,ok := wm.windows[wId]; !ok {
-			service.Map(windowPath(wId), window)
+	for _,windowId := range newWindowIds {
+		if windowIds.find(windowId) {
+			if window, err := updateWindow(windows[windowId]); err == nil && !window.Equal(windows[windowId]) {
+				windows[windowId] = &window
+				service.Remap(windowPath(windowId), &window)
+			}
 		} else {
-			if ! oldWindow.Equal(window) {
-				service.Remap(windowPath(wId), window)
+			if window, err := getWindow(xproto.Window(windowId)); err == nil {
+				windows[windowId] = &window
+				service.Map(windowPath(windowId), &window)
 			}
 		}
 	}
 
-	if !(wIds.Equal(wm.wIds)) {
-		service.Remap("/windows", wIds)
-		wm.wIds = wIds
+	if !windowIds.Equal(newWindowIds) {
+		windowIds = newWindowIds
+		service.Remap("/windows", &windowIds)
+	}
+	fmt.Println("Ud af updateWindows ", time.Now())
+}
+
+func getWindow(wId xproto.Window) (Window, error) {
+	fmt.Println("Ind i getWindow     ", time.Now())
+
+	window := Window{}
+	window.x = x
+	window.Id = wId
+	name, err := ewmh.WmNameGet(x, wId)
+	if err != nil || len(name) == 0 {
+		name,_ = icccm.WmNameGet(x, wId)
+	}
+	window.Name = name
+	if rect, err := xwindow.New(x, wId).DecorGeometry(); err == nil {
+		window.X = rect.X()
+		window.Y = rect.Y()
+		window.H = rect.Height()
+		window.W = rect.Width()
 	}
 
-	wm.windows = windows
+	if states, err := ewmh.WmStateGet(x, wId); err == nil {
+		window.States = states
+	}
+
+	if iconArr, err := xprop.PropValNums(xprop.GetProperty(x, wId, "_NET_WM_ICON")); err == nil {
+		hash := fnv.New64a()
+		for _,val := range iconArr {
+			hash.Write([]byte{byte((val & 0xFF000000) >> 24), byte((val & 0xFF0000) >> 16), byte((val & 0xFF00) >> 8), byte(val & 0xFF)})
+		}
+
+		iconUrl := fmt.Sprintf("/icon/%d", hash.Sum64())
+
+		if !iconHashes[hash.Sum64()] {
+			if icon, err := MakeIcon(hash.Sum64(), iconArr); err == nil {
+				iconHashes[icon.hash] = true
+				service.Map(iconUrl, icon)
+			}
+		}
+
+		window.IconUrl = ".." + iconUrl
+	}
+
+	window.Actions = make(map[string]Action)
+	window.Actions["_default"] = Action{
+		Name: window.Name,
+		Comment: "Raise and focus",
+		IconUrl: window.IconUrl,
+		X: window.X,
+		Y: window.Y,
+		W: window.W,
+		H: window.H,
+	}
+
+	fmt.Println("Ud af getWindow     ", time.Now())
+	return window, nil
 }
 
+func updateWindow(window *Window) (Window, error) {
+	fmt.Println("Ind i updateWindow  ", time.Now())
+	newWindow := Window{}
+	newWindow.x = x
+	newWindow.Id = window.Id
+	name, err := ewmh.WmNameGet(x, newWindow.Id)
+	if err != nil || len(name) == 0 {
+		name,_ = icccm.WmNameGet(x, newWindow.Id)
+	}
+	newWindow.Name = name
+	if rect, err := xwindow.New(x, newWindow.Id).DecorGeometry(); err == nil {
+		newWindow.X = rect.X()
+		newWindow.Y = rect.Y()
+		newWindow.H = rect.Height()
+		newWindow.W = rect.Width()
+	}
 
+	if states, err := ewmh.WmStateGet(x, newWindow.Id); err == nil {
+		newWindow.States = states
+	}
 
-func (wm *WindowManager) getWindow(wId xproto.Window) (Window, error) {
-		window := Window{}
-		window.x = wm.x
-		window.Id = WId(wId)
-		name, err := ewmh.WmNameGet(wm.x, wId)
-		if err != nil || len(name) == 0 {
-			name,_ = icccm.WmNameGet(wm.x, wId)
-		}
-		window.Name = name
-		if rect, err := xwindow.New(wm.x, wId).DecorGeometry(); err == nil {
-			window.X = rect.X()
-			window.Y = rect.Y()
-			window.H = rect.Height()
-			window.W = rect.Width()
-		}
+	newWindow.IconUrl = window.IconUrl
 
-		if states, err := ewmh.WmStateGet(wm.x, wId); err == nil {
-			window.States = states
-		}
+	newWindow.Actions = make(map[string]Action)
+	newWindow.Actions["_default"] = Action{
+		Name:    newWindow.Name,
+		Comment: "Raise and focus",
+		IconUrl: newWindow.IconUrl,
+		X:       newWindow.X,
+		Y:       newWindow.Y,
+		W:       newWindow.W,
+		H:       newWindow.H,
+	}
 
-		if iconArr, err := xprop.PropValNums(xprop.GetProperty(wm.x, wId, "_NET_WM_ICON")); err == nil {
-			hash := fnv.New64a()
-			for _,val := range iconArr {
-				hash.Write([]byte{byte((val & 0xFF000000) >> 24), byte((val & 0xFF0000) >> 16), byte((val & 0xFF00) >> 8), byte(val & 0xFF)})
-			}
-
-			iconUrl := fmt.Sprintf("/icon/%d", hash.Sum64())
-
-			if !wm.iconHashes[hash.Sum64()] {
-				if icon, err := MakeIcon(hash.Sum64(), iconArr); err == nil {
-					wm.iconHashes[icon.hash] = true
-					service.Map(iconUrl, icon)
-				}
-			}
-
-			window.IconUrl = ".." + iconUrl
-		}
-
-		window.Actions = make(map[string]Action)
-		window.Actions["_default"] = Action{
-			Name: window.Name,
-			Comment: "Raise and focus",
-			IconUrl: window.IconUrl,
-			X: window.X,
-			Y: window.Y,
-			W: window.W,
-			H: window.H,
-		}
-
-		return window, nil
+	fmt.Println("Ud af updateWindow  ", time.Now())
+	return newWindow, nil
 }
-
 

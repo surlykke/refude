@@ -13,7 +13,6 @@ import (
 )
 
 func main() {
-	wm := WindowManager{}
-	go wm.Run()
+	go WmRun()
 	service.Serve("org.refude.wm-service")
 }
