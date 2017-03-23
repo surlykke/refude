@@ -42,7 +42,7 @@
 
         <!-- graphical depiction of open windows -->
         <div id="disp" class="display">
-            <div ng-repeat="action in actions" ng-if="action.X" class="window" ng-style="style(action, $index)">
+            <div ng-repeat="action in actions" ng-if="action.X != undefined" class="window" ng-style="style(action, $index)">
                 <div class="windowTitle">
                     <img ng-src="{{action.IconUrl}}" height="10" width="10" alt =" "/>
                     {{action.name}}

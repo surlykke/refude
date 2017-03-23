@@ -186,11 +186,12 @@ function doController($q, $http, $scope, $window, $timeout) {
     let scale = 0.1;
 
     let calculateGeometry = function() {
+		console.log("calculateGeometry, displayGeometry: ", displayGeometry)
         let display = document.getElementById("disp");
         let contentRect = display.getBoundingClientRect();
         width = contentRect.right - contentRect.left - 4;
         height = contentRect.bottom - contentRect.top - 4;
-        scale = Math.min(width/displayGeometry.w, height/displayGeometry.h);
+        scale = Math.min(width/displayGeometry.W, height/displayGeometry.H);
     };
 
     $http.get("http://localhost:7938/wm-service/display").then(function(response) {
