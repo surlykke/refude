@@ -29,7 +29,6 @@ func MakeNotifier() Notifier {
 }
 
 func (n* Notifier) Notify(eventType string, data string) {
-	fmt.Println("Into Notify")
 	message := []byte(fmt.Sprintf(chunkTemplate, len(eventType) + len(data) + 14, eventType, data))
 	n.mutex.Lock()
 	defer n.mutex.Unlock()
@@ -42,7 +41,6 @@ func (n* Notifier) Notify(eventType string, data string) {
 			client<- message
 		}
 	}
-	fmt.Println("Out of notify")
 }
 
 const initialResponse string =

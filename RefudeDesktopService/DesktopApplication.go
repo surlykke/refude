@@ -13,10 +13,8 @@ import (
 	"github.com/surlykke/RefudeServices/common"
 	"net/http"
 	"fmt"
-	"os"
-	"syscall"
 	"os/exec"
-	"strings"
+	"io/ioutil"
 	"regexp"
 )
 
@@ -57,25 +55,19 @@ func (app *DesktopApplication) Data(r *http.Request) (int, string, []byte) {
 	if r.Method == "GET" {
 		return common.GetJsonData(app)
 	} else if r.Method == "POST" {
-		action := "_default"
+		actionId := "_default"
 		actionv, ok := r.URL.Query()["action"]
 		if ok && len(actionv) > 0{
-			action = actionv[0]
+			actionId = actionv[0]
 		}
 
-		if action,ok := app.Actions[action]; !ok {
+		if action,ok := app.Actions[actionId]; !ok {
 			return http.StatusNotAcceptable, "", nil
-		} else if argv := strings.Fields(regexp.MustCompile("%[uUfF]").ReplaceAllString(action.Exec, "")); len(argv) == 0 {
-			return http.StatusInternalServerError, "", nil
-		} else if binary, err := exec.LookPath(argv[0]); err != nil {
-			return http.StatusInternalServerError, "", nil
 		} else {
-			env := os.Environ()
-			home := os.Getenv("HOME")
-			fmt.Println("home: ", home)
-			procAttr := &syscall.ProcAttr{home,  env, []uintptr{}, nil}
-			fmt.Println(binary)
-			if _, err := syscall.ForkExec(binary, argv, procAttr); err != nil {
+			cmd := regexp.MustCompile("%[uUfF]").ReplaceAllString(action.Exec, "")
+
+			if err:= runCmd(cmd); err != nil {
+				fmt.Println(err)
 				return http.StatusInternalServerError, "", nil
 			} else {
 				return http.StatusAccepted, "", nil
@@ -85,6 +77,28 @@ func (app *DesktopApplication) Data(r *http.Request) (int, string, []byte) {
 		return http.StatusMethodNotAllowed, "", nil
 	}
 }
+
+func runCmd(app string) error {
+	cmd := exec.Command("sh", "-c", "("+app+">/dev/null 2>/dev/null &)")
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return err
+	}
+
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+
+	ioutil.ReadAll(stderr)
+
+	if err := cmd.Wait(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+
 
 func readDesktopFile(path string) (*DesktopApplication, common.StringSet, error) {
 	iniGroups, err := common.ReadIniFile(path)
