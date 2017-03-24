@@ -42,7 +42,7 @@ func Map(path string, res Resource) {
 	defer mutex.Unlock()
 
 	resources[path] = res
-	notify.Notify("resource-added", path)
+	notify.Notify("resource-added", path[1:])
 }
 
 func Remap(path string, res Resource) {
@@ -51,7 +51,7 @@ func Remap(path string, res Resource) {
 
 	if _,ok := resources[path]; ok {
 		resources[path] = res
-		notify.Notify("resource-updated", path)
+		notify.Notify("resource-updated", path[1:])
 	}
 }
 
@@ -61,7 +61,7 @@ func Unmap(path string) {
 
 	if _,ok := resources[path]; ok {
 		delete(resources, path)
-		notify.Notify("resource-removed", path)
+		notify.Notify("resource-removed", path[1:])
 	}
 }
 
