@@ -16,6 +16,7 @@ import (
 	"net"
 	"context"
 	"syscall"
+	"github.com/surlykke/RefudeServices/notify"
 )
 
 // NotifierPath is reserved. Get requests to this path will
@@ -28,7 +29,6 @@ const PingPath = "/ping"
 
 
 var	resources  map[string]Resource = make(map[string]Resource)
-var	notifier   Notifier = MakeNotifier()
 var mutex      sync.Mutex
 
 
@@ -42,7 +42,7 @@ func Map(path string, res Resource) {
 	defer mutex.Unlock()
 
 	resources[path] = res
-	notifier.Notify("resource-added", path)
+	notify.Notify("resource-added", path)
 }
 
 func Remap(path string, res Resource) {
@@ -51,7 +51,7 @@ func Remap(path string, res Resource) {
 
 	if _,ok := resources[path]; ok {
 		resources[path] = res
-		notifier.Notify("resource-updated", path)
+		notify.Notify("resource-updated", path)
 	}
 }
 
@@ -61,34 +61,37 @@ func Unmap(path string) {
 
 	if _,ok := resources[path]; ok {
 		delete(resources, path)
-		notifier.Notify("resource-removed", path)
+		notify.Notify("resource-removed", path)
 	}
 }
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Request for ", r.URL.Path)
 	if r.URL.Path == NotifierPath {
-		notifier.ServeHTTP(w, r)
+		notify.ServeHTTP(w, r)
 	} else if r.URL.Path == PingPath {
 		w.WriteHeader(http.StatusOK)
 	} else {
-		mutex.Lock()
-		defer mutex.Unlock()
-
-		if res,ok := resources[r.URL.Path]; ok {
-			statusCode, contentType, bytes := res.Data(r)
-			if statusCode != http.StatusOK {
-				w.WriteHeader(statusCode)
-			}
-			if contentType != "" {
-				w.Header().Set("Content-Type", contentType)
-			}
-			if bytes != nil {
-				w.Write(bytes)
-			}
-		} else {
-			w.WriteHeader(http.StatusNotFound)
+		statusCode, contentType, bytes := getData(r)
+		if statusCode != http.StatusOK {
+			w.WriteHeader(statusCode)
 		}
+		if contentType != "" {
+			w.Header().Set("Content-Type", contentType)
+		}
+		if bytes != nil {
+			w.Write(bytes)
+		}
+	}
+}
+
+func getData(r *http.Request) (int, string, []byte){
+	mutex.Lock()
+	defer mutex.Unlock()
+	if res,ok := resources[r.URL.Path]; ok {
+		return res.Data(r)
+	} else {
+		return http.StatusNotFound, "", nil
 	}
 }
 
@@ -107,7 +110,6 @@ func seemsToBeRunning(socketPath string) bool {
 		return false
 	}
 }
-
 
 func makeListener(socketName string) (*net.UnixListener, bool) {
 	socketPath := xdg.RuntimeDir() + "/" + socketName

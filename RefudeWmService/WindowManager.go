@@ -20,7 +20,6 @@ import (
 	"github.com/surlykke/RefudeServices/service"
 	"github.com/BurntSushi/xgb/randr"
 	"github.com/BurntSushi/xgb"
-	"time"
 )
 
 
@@ -53,7 +52,6 @@ func WmRun() {
 	for ;; {
 		evt, err := x.Conn().WaitForEvent()
 		if err == nil {
-			fmt.Println("Event: ", evt)
 			if scEvt, ok := evt.(randr.ScreenChangeNotifyEvent); ok {
 				fmt.Println("Got screen change event: ", scEvt) // TODO update display resource
 			} else {
@@ -81,7 +79,6 @@ func buildDisplay(conn *xgb.Conn) {
 }
 
 func updateWindows() {
-	fmt.Println("Ind i updateWindows ", time.Now())
 	tmp, err := ewmh.ClientListStackingGet(x)
 	if err != nil {
 		panic(err)
@@ -118,11 +115,9 @@ func updateWindows() {
 		windowIds = newWindowIds
 		service.Remap("/windows", &windowIds)
 	}
-	fmt.Println("Ud af updateWindows ", time.Now())
 }
 
 func getWindow(wId xproto.Window) (Window, error) {
-	fmt.Println("Ind i getWindow     ", time.Now())
 
 	window := Window{}
 	window.x = x
@@ -172,12 +167,10 @@ func getWindow(wId xproto.Window) (Window, error) {
 		H: window.H,
 	}
 
-	fmt.Println("Ud af getWindow     ", time.Now())
 	return window, nil
 }
 
 func updateWindow(window *Window) (Window, error) {
-	fmt.Println("Ind i updateWindow  ", time.Now())
 	newWindow := Window{}
 	newWindow.x = x
 	newWindow.Id = window.Id
@@ -210,7 +203,6 @@ func updateWindow(window *Window) (Window, error) {
 		H:       newWindow.H,
 	}
 
-	fmt.Println("Ud af updateWindow  ", time.Now())
 	return newWindow, nil
 }
 
