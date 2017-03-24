@@ -69,7 +69,7 @@ func Unmap(path string) {
 }
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Request for ", r.URL.Path)
+	fmt.Println("Request for '", r.URL.Path, "'")
 	if r.URL.Path == NotifierPath {
 		notify.ServeHTTP(w, r)
 	} else if r.URL.Path == PingPath {
@@ -85,6 +85,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if ok {
 			handlerCopy.ServeHTTP(w, r)
 		} else {
+			fmt.Println("Service doesn't have it..")
 			w.WriteHeader(http.StatusNotFound)
 		}
 	}

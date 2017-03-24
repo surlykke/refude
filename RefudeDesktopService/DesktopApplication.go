@@ -17,6 +17,7 @@ import (
 	"io/ioutil"
 	"regexp"
 	"strings"
+	"github.com/surlykke/RefudeServices/service"
 )
 
 type DesktopApplication struct {
@@ -123,9 +124,9 @@ func readDesktopFile(path string) (*DesktopApplication, common.StringList, error
 	app.Url = desktopEntry["URL"]
 
 	if strings.HasPrefix(desktopEntry["Icon"], "/") {
-		//path := desktopEntry["Icon"]
-		app.IconUrl = "../icon" + desktopEntry["Icon"]
-		//service.Map(app.IconUrl, Icon(path))
+		resourcePath := "/icon" + desktopEntry["Icon"]
+		app.IconUrl = ".." + resourcePath
+		service.Map(resourcePath, Icon{"/icon"})
 	} else {
 		app.IconName = desktopEntry["Icon"]
 	}
@@ -159,15 +160,22 @@ func readDesktopFile(path string) (*DesktopApplication, common.StringList, error
 		} else {
 			action := Action{
 				Name: iniGroups[i].Entry["Name"],
-				Comment: "",
+				Comment: app.Name,
 
 				Exec: iniGroups[i].Entry["Exec"],
 			}
 			if strings.HasPrefix(iniGroups[i].Entry["Icon"], "/") {
-				action.IconUrl = iniGroups[i].Entry["Icon"]
+				resourcePath := "/icon" + iniGroups[i].Entry["Icon"]
+				action.IconUrl = ".." + resourcePath
+				service.Map(resourcePath, Icon{"/icon"})
 			} else {
 				action.IconName = iniGroups[i].Entry["Icon"]
 			}
+
+			if action.IconUrl == "" && action.IconName == "" {
+				action.IconUrl, action.IconName = app.IconUrl, app.IconName
+			}
+
 			app.Actions[actionName] = action
 		}
 	}

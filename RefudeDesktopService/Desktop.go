@@ -216,8 +216,12 @@ func (c *Collector) readMimeappsList(path string) {
 	}
 }
 
-type Icon string  // Holds a path to a icon file
+type Icon struct {
+	prefix string
+}
 
 func (i Icon) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	http.ServeFile(w, r, string(i))
+	if strings.HasPrefix(r.URL.Path, i.prefix) {
+		http.ServeFile(w, r, r.URL.Path[len(i.prefix):])
+	}
 }
