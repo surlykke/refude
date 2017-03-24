@@ -13,7 +13,6 @@ import (
 )
 
 func main() {
-	desktop := NewDesktop()
-	go desktop.Run()
+	go DesktopRun()
 	service.Serve("org.refude.desktop-service")
 }

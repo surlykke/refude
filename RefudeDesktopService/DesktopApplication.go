@@ -16,6 +16,7 @@ import (
 	"os/exec"
 	"io/ioutil"
 	"regexp"
+	"strings"
 )
 
 type DesktopApplication struct {
@@ -25,18 +26,19 @@ type DesktopApplication struct {
 	GenericName     string `json:",omitempty"`
 	NoDisplay       bool
 	Comment         string `json:",omitempty"`
-	Icon            string `json:",omitempty"`
+	IconName        string `json:",omitempty"`
+	IconUrl         string `json:",omitempty"`
 	Hidden          bool
-	OnlyShowIn      common.StringSet
-	NotShowIn       common.StringSet
+	OnlyShowIn      common.StringList
+	NotShowIn       common.StringList
 	DbusActivatable bool   `json:",omitempty"`
 	TryExec         string `json:",omitempty"`
 	Path            string `json:",omitempty"`
 	Terminal        bool
-	Mimetypes       common.StringSet
-	Categories      common.StringSet
-	Implements      common.StringSet
-	Keywords        common.StringSet
+	Mimetypes       common.StringList
+	Categories      common.StringList
+	Implements      common.StringList
+	Keywords        common.StringList
 	StartupNotify   bool
 	StartupWmClass  string `json:",omitempty"`
 	Url             string `json:",omitempty"`
@@ -45,15 +47,16 @@ type DesktopApplication struct {
 }
 
 type Action struct {
-	Comment string
-	Name    string
-	Exec    string
-	Icon    string
+	Comment  string
+	Name     string
+	Exec     string
+	IconName string
+	IconUrl  string
 }
 
-func (app *DesktopApplication) Data(r *http.Request) (int, string, []byte) {
+func (app *DesktopApplication) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		return common.GetJsonData(app)
+		common.ServeAsJson(w, r, app)
 	} else if r.Method == "POST" {
 		actionId := "_default"
 		actionv, ok := r.URL.Query()["action"]
@@ -62,19 +65,19 @@ func (app *DesktopApplication) Data(r *http.Request) (int, string, []byte) {
 		}
 
 		if action,ok := app.Actions[actionId]; !ok {
-			return http.StatusNotAcceptable, "", nil
+			w.WriteHeader(http.StatusNotAcceptable)
 		} else {
 			cmd := regexp.MustCompile("%[uUfF]").ReplaceAllString(action.Exec, "")
 
 			if err:= runCmd(cmd); err != nil {
 				fmt.Println(err)
-				return http.StatusInternalServerError, "", nil
+				w.WriteHeader(http.StatusInternalServerError)
 			} else {
-				return http.StatusAccepted, "", nil
+				w.WriteHeader(http.StatusAccepted)
 			}
 		}
 	} else {
-		return http.StatusMethodNotAllowed, "", nil
+		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
 }
 
@@ -100,7 +103,7 @@ func runCmd(app string) error {
 
 
 
-func readDesktopFile(path string) (*DesktopApplication, common.StringSet, error) {
+func readDesktopFile(path string) (*DesktopApplication, common.StringList, error) {
 	iniGroups, err := common.ReadIniFile(path)
 
 	if err != nil {
@@ -118,42 +121,56 @@ func readDesktopFile(path string) (*DesktopApplication, common.StringSet, error)
 	app.Path = desktopEntry["Path"]
 	app.StartupWmClass = desktopEntry["StartupWMClass"]
 	app.Url = desktopEntry["URL"]
-	app.Icon = desktopEntry["Icon"]
+
+	if strings.HasPrefix(desktopEntry["Icon"], "/") {
+		//path := desktopEntry["Icon"]
+		app.IconUrl = "../icon" + desktopEntry["Icon"]
+		//service.Map(app.IconUrl, Icon(path))
+	} else {
+		app.IconName = desktopEntry["Icon"]
+	}
 
 	// FIXME use localized values
 	app.Name = desktopEntry["Name"]
 	app.GenericName = desktopEntry["GenericName"]
 	app.Comment = desktopEntry["Comment"]
 
-	app.OnlyShowIn = common.ToSet(common.Split(desktopEntry["OnlyShowIn"], ";"))
-	app.NotShowIn = common.ToSet(common.Split(desktopEntry["NotShowIn"], ";"))
-	app.Mimetypes = make(common.StringSet)
-	app.Categories = common.ToSet(common.Split(desktopEntry["Categories"], ";"))
-	app.Implements = common.ToSet(common.Split(desktopEntry["Implements"], ";"))
-	app.Keywords = common.ToSet(common.Split(desktopEntry["Keywords"], ";"))
+	app.OnlyShowIn = common.Split(desktopEntry["OnlyShowIn"], ";")
+	app.NotShowIn = common.Split(desktopEntry["NotShowIn"], ";")
+	app.Mimetypes = make(common.StringList, 0)
+	app.Categories = common.Split(desktopEntry["Categories"], ";")
+	app.Implements = common.Split(desktopEntry["Implements"], ";")
+	app.Keywords = common.Split(desktopEntry["Keywords"], ";")
 	app.Actions = make(map[string]Action, 0)
 	app.Actions["_default"] = Action{
 		Name: app.Name,
 		Comment: app.Comment,
-		Icon: app.Icon,
+		IconName: app.IconName,
+		IconUrl: app.IconUrl,
 		Exec: desktopEntry["Exec"],
 	}
-	actionNames := common.ToSet(common.Split(desktopEntry["Actions"], ";"))
+	actionNames := common.Split(desktopEntry["Actions"], ";")
 	for i := 1; i < len(iniGroups); i++ {
 		if iniGroups[i].Name[0:15] != "Desktop Action " {
 			continue
-		} else if actionName := iniGroups[i].Name[15:]; !actionNames[actionName] {
+		} else if actionName := iniGroups[i].Name[15:]; !common.Find(actionNames, actionName) {
 			fmt.Println("Unknown action", iniGroups[i].Name, " - ignoring")
 			continue
 		} else {
-			app.Actions[actionName] = Action{
+			action := Action{
 				Name: iniGroups[i].Entry["Name"],
 				Comment: "",
-				Icon: iniGroups[i].Entry["Icon"],
+
 				Exec: iniGroups[i].Entry["Exec"],
 			}
+			if strings.HasPrefix(iniGroups[i].Entry["Icon"], "/") {
+				action.IconUrl = iniGroups[i].Entry["Icon"]
+			} else {
+				action.IconName = iniGroups[i].Entry["Icon"]
+			}
+			app.Actions[actionName] = action
 		}
 	}
 
-	return &app, common.ToSet(common.Split(desktopEntry["MimeType"], ";")), nil
+	return &app, common.Split(desktopEntry["MimeType"], ";"), nil
 }

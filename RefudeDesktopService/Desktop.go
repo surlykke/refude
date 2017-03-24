@@ -17,25 +17,16 @@ import (
 	"github.com/surlykke/RefudeServices/xdg"
 	"github.com/surlykke/RefudeServices/common"
 	"github.com/surlykke/RefudeServices/service"
-	"reflect"
 	"golang.org/x/sys/unix"
+	"net/http"
 )
 
 
-
-type Desktop struct {
-	applications map[string]*DesktopApplication
-	mimetypes map[string]*Mimetype
-}
-
-func NewDesktop() Desktop {
-	service.Map("/applications", make(common.StringSet))
-	service.Map("/mimetypes", make(common.StringSet))
-	return Desktop{make(map[string]*DesktopApplication), make(map[string]*Mimetype)}
-}
+var applicationIds = make(common.StringList, 0)
+var mimetypeIds = make(common.StringList, 0)
 
 
-func (d *Desktop) Run() {
+func DesktopRun() {
 
 	fd, err := unix.InotifyInit()
 	defer unix.Close(fd)
@@ -51,7 +42,8 @@ func (d *Desktop) Run() {
 			panic(err)
 		}
 	}
-	d.Update()
+
+	update()
 	dummy := make([]byte, 100)
 	for {
 		if _, err := unix.Read(fd, dummy); err != nil {
@@ -61,51 +53,39 @@ func (d *Desktop) Run() {
 	}
 }
 
-func (d *Desktop) Update() {
+func update() {
 	c := NewCollector()
 	c.collect()
 
 
-	for appId,_ := range d.applications {
-		if _,ok := c.applications[appId]; ok {
+	for _, appId := range applicationIds {
+		if _,ok := c.applications[appId]; !ok {
 			service.Unmap("/application/" + appId)
 		}
 	}
 
-	appPaths := make(common.StringSet)
+	applicationIds = make(common.StringList, 0)
 	for appId, newDesktopApplication := range c.applications {
-		path := "/application/" + appId
-		if oldDesktopApplication,ok := d.applications[appId]; !ok {
-			service.Map(path, newDesktopApplication)
-		} else {
-			if !reflect.DeepEqual(oldDesktopApplication, newDesktopApplication) {
-				service.Remap(path, newDesktopApplication)
-			}
-		}
-		appPaths[path[1:]] = true
+		service.Map("/application/" + appId, newDesktopApplication)
+		applicationIds = append(applicationIds, appId)
 	}
-	service.Remap("/applications", appPaths)
 
-	for mimeId,_ := range d.mimetypes {
-		if _,ok := c.mimetypes[mimeId]; !ok {
-			service.Unmap("/mimetype/" + mimeId)
+	service.Map("/applications", common.Prepend(applicationIds, "application/"))
+
+	for _, mimetypeId := range mimetypeIds {
+		if _,ok := c.mimetypes[mimetypeId]; !ok {
+			service.Unmap("/mimetype/" + mimetypeId)
 		}
 	}
 
-	mimePaths := make(common.StringSet)
-	for mimeId, mimeType := range c.mimetypes {
-		path := "/mimetype/" + mimeId
-		if oldMimetype, ok := d.mimetypes[mimeId]; !ok {
-			service.Map(path, mimeType)
-		} else {
-			if !reflect.DeepEqual(oldMimetype, mimeType) {
-				service.Remap(path, mimeType)
-			}
-		}
-		mimePaths[path[1:]] = true
-	}
-	service.Remap("/mimetypes", mimePaths)
+	mimetypeIds := make(common.StringList, 0)
 
+	for mimetypeId, mimeType := range c.mimetypes {
+		service.Map("/mimetype/" + mimetypeId, mimeType)
+		mimetypeIds = append(mimetypeIds, mimetypeId)
+	}
+
+	service.Map("/mimetypes", common.Prepend(mimetypeIds, "mimetype/"))
 }
 
 
@@ -144,8 +124,8 @@ func (c* Collector) addAssociations(mimeId string, appIds...string) {
 	if mimetype, mimetypeFound := c.mimetypes[mimeId]; mimetypeFound {
 		for _,appId := range appIds {
 			if application, appFound := c.applications[appId]; appFound {
-				mimetype.AssociatedApplications[appId] = true
-				application.Mimetypes[mimeId] = true
+				mimetype.AssociatedApplications = common.AppendIfNotThere(mimetype.AssociatedApplications, appId)
+				application.Mimetypes = common.AppendIfNotThere(application.Mimetypes, mimeId)
 			}
 		}
 	}
@@ -156,10 +136,10 @@ func (c* Collector) removeAssociations(mimeId string, appIds...string) {
 
 	for _,appId := range appIds {
 		if app, ok := c.applications[appId]; ok {
-			delete(app.Mimetypes, mimeId)
+			app.Mimetypes = common.Remove(app.Mimetypes, mimeId)
 		}
 		if mimetypeFound {
-			delete(mimetype.AssociatedApplications, appId)
+			mimetype.AssociatedApplications = common.Remove(mimetype.AssociatedApplications, appId)
 		}
 	}
 }
@@ -174,7 +154,7 @@ func (c *Collector) collectApplications(appdir string) {
 					delete(c.applications, app.Id)
 				} else {
 					c.applications[app.Id] = app
-					for mimetypeId,_ := range mimetypes {
+					for _, mimetypeId := range mimetypes {
 						c.addAssociations(mimetypeId, app.Id)
 					}
 				}
@@ -236,4 +216,8 @@ func (c *Collector) readMimeappsList(path string) {
 	}
 }
 
+type Icon string  // Holds a path to a icon file
 
+func (i Icon) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, string(i))
+}

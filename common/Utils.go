@@ -14,45 +14,13 @@ import (
 	"net/http"
 )
 
-type StringSet map[string]bool
+type StringList []string
 
-func (set *StringSet) Add(s string) {
-	(*set)[s] = true
+func (pl StringList) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	ServeGetAsJson(w, r, pl)
 }
 
-func (set *StringSet) Remove(s string) {
-	delete(*set, s)
-}
-
-func (set *StringSet) AddAll(list []string) {
-	for _, s := range list {
-		set.Add(s)
-	}
-}
-
-func (set *StringSet) RemoveAll(list []string) {
-	for _, s := range list {
-		set.Remove(s)
-	}
-}
-
-func (ss StringSet) MarshalJSON() ([]byte, error) {
-	keys := make([]string, 0, len(ss))
-	for key := range ss {
-		keys = append(keys, key)
-	}
-	return json.Marshal(keys)
-}
-
-func ToSet(list []string) StringSet {
-	res := make(StringSet)
-	for _, s := range list {
-		res[s] = true
-	}
-	return res
-}
-
-func AppendIfNotThere(list []string, s string) []string {
+func AppendIfNotThere(list StringList, s string) StringList {
 	for _, v := range list {
 		if v == s {
 			return list
@@ -62,67 +30,61 @@ func AppendIfNotThere(list []string, s string) []string {
 	return append(list, s)
 }
 
-func RemoveDublets(list []string) []string {
-	seen := make(map[string]bool)
-	j := 0
-	for _, s := range list {
-		if _, ok := seen[s]; !ok {
-			list[j] = s
-			j++
-		}
-	}
-	result := make([]string, j)
-	copy(result, list)
-	return result
-}
-
-func Remove(list []string, element string) []string {
-	result := make([]string, 0, len(list))
-	for _, s := range list {
-		if s != element {
-			result = append(result, s)
-		}
-	}
-	return result
-}
-
-func Split(str string, sep string) []string {
-	return TrimAndFilterEmpties(strings.Split(str, sep))
-}
-
-
-func TrimAndFilterEmpties(stringList []string) []string {
-	res := make([]string, 0)
-	for _,str := range stringList {
-		trimmed := strings.TrimSpace(str)
-		if trimmed != "" {
-			res = append(res, trimmed)
+func Remove(list StringList, str string) StringList {
+	res := make(StringList, 0, len(list))
+	for _,s := range list {
+		if s != str {
+			res = append(res, s)
 		}
 	}
 	return res
 }
 
-func Reverse(stringlist []string) []string {
-	if  len(stringlist) <= 1 {
-		return stringlist
+func Find(list StringList, str string) bool {
+	for _,s := range list {
+		if s == str {
+			return true
+		}
+	}
+
+	return false
+}
+
+func Split(str string, sep string) StringList {
+	tmp := strings.Split(str, sep)
+	res := make(StringList, 0, len(tmp))
+	for _,s := range tmp {
+		trimmed := strings.TrimSpace(s)
+		if trimmed != "" {
+			res = AppendIfNotThere(res, trimmed)
+		}
+	}
+	return res
+}
+
+func Prepend(stringList StringList, prefix string) StringList {
+	res := make(StringList, 0, len(stringList))
+	for _,str := range stringList {
+		res = append(res, prefix + str)
+	}
+	return res
+}
+
+func ServeGetAsJson(w http.ResponseWriter, r *http.Request, i interface{}) {
+	if r.Method == "GET" {
+		ServeAsJson(w, r, i)
 	} else {
-		return append(Reverse(stringlist[1:]), stringlist[0])
+		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
 }
 
-func (ss StringSet) Data(r *http.Request) (int, string, []byte){
-	l := make([]string, 0, len(ss))
-	for s,_ := range ss {
-		l = append(l, s)
-	}
-	return GetJsonData(l)
-}
-
-func GetJsonData(v interface{}) (int, string, []byte){
-	bytes, err := json.Marshal(v)
+func ServeAsJson(w http.ResponseWriter, r *http.Request, i interface{}) {
+	bytes, err := json.Marshal(i)
 	if err != nil {
 		panic("Could not json-marshal")
 	};
-	return http.StatusOK, "application/json", bytes
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(bytes)
 }
+
 

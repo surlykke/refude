@@ -27,20 +27,20 @@ type Mimetype struct {
 	Comment                string
 	Acronym                string
 	ExpandedAcronym        string
-	Aliases                common.StringSet
-	Globs                  common.StringSet
-	SubClassOf             common.StringSet
+	Aliases                common.StringList
+	Globs                  common.StringList
+	SubClassOf             common.StringList
 	Icon                   string
 	GenericIcon            string
-	AssociatedApplications common.StringSet
+	AssociatedApplications common.StringList
 	DefaultApplications    []string
 }
 
-func (mt *Mimetype) Data(r *http.Request) (int, string, []byte) {
+func (mt *Mimetype) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		return common.GetJsonData(mt)
+		common.ServeAsJson(w, r, mt)
 	} else {
-		return http.StatusMethodNotAllowed, "", nil
+		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
 }
 
@@ -110,19 +110,19 @@ func CollectMimeTypes() map[string]*Mimetype {
 		mimeType.Acronym = tmp.Acronym
 		mimeType.ExpandedAcronym = tmp.ExpandedAcronym
 
-		mimeType.Aliases = make(common.StringSet)
+		mimeType.Aliases = make(common.StringList, 0)
 		for _, aliasStruct := range tmp.Alias {
-			mimeType.Aliases[aliasStruct.Type] = true
+			mimeType.Aliases = common.AppendIfNotThere(mimeType.Aliases, aliasStruct.Type)
 		}
 
-		mimeType.Globs = make(common.StringSet)
+		mimeType.Globs = make(common.StringList, 0)
 		for _, tmpGlob := range tmp.Glob {
-			mimeType.Globs[tmpGlob.Pattern] = true
+			mimeType.Globs = common.AppendIfNotThere(mimeType.Globs, tmpGlob.Pattern)
 		}
 
-		mimeType.SubClassOf = make(common.StringSet)
+		mimeType.SubClassOf = make(common.StringList, 0)
 		for _, tmpSubClassOf := range tmp.SubClassOf {
-			mimeType.SubClassOf[tmpSubClassOf.Type] = true
+			mimeType.SubClassOf = common.AppendIfNotThere(mimeType.SubClassOf, tmpSubClassOf.Type)
 		}
 
 		if tmp.Icon.Name != "" {
@@ -137,12 +137,11 @@ func CollectMimeTypes() map[string]*Mimetype {
 			mimeType.GenericIcon = mimeType.Type + "-x-generic"
 		}
 
-		mimeType.AssociatedApplications = make(common.StringSet)
+		mimeType.AssociatedApplications = make(common.StringList, 0)
 		mimeType.DefaultApplications = make([]string, 0)
 
 		res[mimeType.Type+"/"+mimeType.Subtype] = &mimeType
 	}
 
 	return res
-
 }

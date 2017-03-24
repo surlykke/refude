@@ -16,7 +16,6 @@ import (
 	"net/http"
 	"fmt"
 	"strconv"
-	"github.com/surlykke/RefudeServices/service"
 )
 
 type SizedPng struct {
@@ -29,9 +28,9 @@ type Icon struct {
 	pngs []SizedPng
 }
 
-func (icon Icon) Data(r *http.Request) (int, string, []byte){
+func (icon Icon) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
-		return http.StatusMethodNotAllowed, "", nil
+		w.WriteHeader(http.StatusMethodNotAllowed)
 	} else {
 		var bytes []byte = nil
 
@@ -49,15 +48,8 @@ func (icon Icon) Data(r *http.Request) (int, string, []byte){
 			}
 		}
 
-		return http.StatusOK, "image/png", bytes
-	}
-}
-
-func (icon Icon) Equal(otherRes service.Resource) bool {
-	if otherIcon, ok := otherRes.(Icon); ok {
-		return icon.hash == otherIcon.hash
-	} else {
-		return false
+		w.Header().Set("Content-Type", "image/png")
+		w.Write(bytes)
 	}
 }
 

@@ -23,10 +23,6 @@ type Display struct {
 	Screens []Rect
 }
 
-func (d* Display) Data(r *http.Request) (int, string, []byte) {
-	if r.Method == "GET" {
-		return common.GetJsonData(d)
-	} else {
-		return http.StatusMethodNotAllowed, "", nil
-	}
+func (d* Display) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	common.ServeGetAsJson(w, r, d)
 }

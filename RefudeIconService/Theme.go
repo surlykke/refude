@@ -73,7 +73,7 @@ func ReadThemes() Themes {
 
 	for themeId, theme := range res.themes {
 		fmt.Println("parents for ", themeId, ": ", theme.Inherits)
-		ancestors := getAncestors(themeId, make(common.StringSet), res.themes)
+		ancestors := getAncestors(themeId, make(common.StringList, 0), res.themes)
 		fmt.Println("ancestors for ", themeId, ": ", ancestors)
 		ancestors = append(ancestors, "hicolor")
 		theme.Ancestors = ancestors
@@ -138,11 +138,11 @@ func readIndexTheme(themeId string, indexThemeFilePath string) (Theme, error) {
 	theme.Comment = inigroups[0].Entry["Comment"]
 	theme.Inherits = common.Split(inigroups[0].Entry["Inherits"], ",")
 	theme.IconDirs = []IconDir{}
-	directories := common.ToSet(common.Split(inigroups[0].Entry["Directories"], ","))
+	directories := common.Split(inigroups[0].Entry["Directories"], ",")
 
 	for _,iniGroup := range inigroups[1:] {
 
-		if ! directories[iniGroup.Name] {
+		if ! common.Find(directories, iniGroup.Name) {
 			fmt.Fprintln(os.Stderr, iniGroup.Name, " not found in Directories")
 			continue
 		}
@@ -181,10 +181,10 @@ func readIndexTheme(themeId string, indexThemeFilePath string) (Theme, error) {
 	return theme, nil
 }
 
-func getAncestors(themeId string, visited common.StringSet, themeMap map[string]Theme) []string {
+func getAncestors(themeId string, visited common.StringList, themeMap map[string]Theme) []string {
 	ancestors := make([]string, 0)
-	if themeId != "hicolor" && !visited[themeId] {
-		visited.Add(themeId)
+	if themeId != "hicolor" && !common.Find(visited,themeId) {
+		common.AppendIfNotThere(visited, themeId)
 		if theme, ok := themeMap[themeId]; ok {
 			ancestors = append(ancestors, themeId)
 			for _,parentId := range theme.Inherits {
@@ -273,11 +273,19 @@ func FindIcon(icons map[string][]Icon,  size uint32, iconname string) (Icon, boo
 // exists, we prefer the one under $HOME/.local
 func getSearchDirectories() []string {
 	searchDirs := []string{xdg.Home() + "/.icons", xdg.DataHome() + "/icons"}
-	for _,datadir := range common.Reverse(xdg.DataDirs()) {
+	for _,datadir := range reverse(xdg.DataDirs()) {
 		searchDirs = append(searchDirs, datadir + "/icons")
 	}
 	searchDirs = append(searchDirs, "/usr/share/pixmaps")
 	return searchDirs
+}
+
+func reverse(strings []string) []string {
+	res := make([]string, len(strings))
+	for i,_ := range strings {
+		res[len(strings) - 1 - i] = strings[i]
+	}
+	return res
 }
 
 

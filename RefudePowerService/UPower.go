@@ -12,11 +12,10 @@ import (
 	"github.com/godbus/dbus"
 	"net/http"
 	"github.com/surlykke/RefudeServices/common"
-	"github.com/surlykke/RefudeServices/service"
 )
 
 type UPowerObject interface {
-	service.Resource
+	http.Handler
 	ReadDBusProps(m map[string]dbus.Variant)
 	Copy() UPowerObject
 }
@@ -56,8 +55,8 @@ func (up *UPower) ReadDBusProps(m map[string]dbus.Variant) {
 	}
 }
 
-func (up UPower) Data(r *http.Request) (int, string, []byte) {
-	return common.GetJsonData(up)
+func (up UPower) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	common.ServeGetAsJson(w, r, up)
 }
 
 type Device struct {
@@ -142,8 +141,8 @@ func (d *Device) ReadDBusProps(m map[string]dbus.Variant) {
 	}
 }
 
-func (d Device) Data(r *http.Request) (int, string, []byte) {
-	return common.GetJsonData(d)
+func (d Device) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	common.ServeGetAsJson(w, r, d)
 }
 
 func deviceType(index uint32) string {

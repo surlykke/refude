@@ -17,6 +17,7 @@ import (
 	"context"
 	"syscall"
 	"github.com/surlykke/RefudeServices/notify"
+	"reflect"
 )
 
 // NotifierPath is reserved. Get requests to this path will
@@ -25,42 +26,44 @@ import (
 const NotifierPath = "/notify"
 
 // PingPath is reserved. Get request to this path will be answered with a http 200 ok
+// Attempts to map to PingPath will panic
 const PingPath = "/ping"
 
-
-var	resources  map[string]Resource = make(map[string]Resource)
+var	resources  map[string]http.Handler = make(map[string]http.Handler)
 var mutex      sync.Mutex
 
 
-type Resource interface {
-	Data(r *http.Request) (int, string, []byte)
-}
+func Map(path string, res http.Handler) {
+	var eventType string
 
-
-func Map(path string, res Resource) {
 	mutex.Lock()
-	defer mutex.Unlock()
-
-	resources[path] = res
-	notify.Notify("resource-added", path[1:])
-}
-
-func Remap(path string, res Resource) {
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	if _,ok := resources[path]; ok {
+	if oldRes, ok := resources[path]; ok {
+		if !reflect.DeepEqual(res, oldRes) {
+			eventType = "resource-updated"
+			resources[path] = res
+		}
+	} else {
+		eventType = "resource-added"
 		resources[path] = res
-		notify.Notify("resource-updated", path[1:])
+	}
+	mutex.Unlock()
+
+	if eventType != "" {
+		notify.Notify(eventType, path[1:])
 	}
 }
 
 func Unmap(path string) {
-	mutex.Lock()
-	defer mutex.Unlock()
+	var found bool
 
+	mutex.Lock()
 	if _,ok := resources[path]; ok {
+		found = true
 		delete(resources, path)
+	}
+	mutex.Unlock()
+
+	if (found) {
 		notify.Notify("resource-removed", path[1:])
 	}
 }
@@ -70,30 +73,23 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == NotifierPath {
 		notify.ServeHTTP(w, r)
 	} else if r.URL.Path == PingPath {
-		w.WriteHeader(http.StatusOK)
+		if r.Method == "GET" {
+			w.WriteHeader(http.StatusOK)
+		} else {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+		}
 	} else {
-		statusCode, contentType, bytes := getData(r)
-		if statusCode != http.StatusOK {
-			w.WriteHeader(statusCode)
-		}
-		if contentType != "" {
-			w.Header().Set("Content-Type", contentType)
-		}
-		if bytes != nil {
-			w.Write(bytes)
+		mutex.Lock()
+		handlerCopy, ok := resources[r.URL.Path]
+		mutex.Unlock()
+		if ok {
+			handlerCopy.ServeHTTP(w, r)
+		} else {
+			w.WriteHeader(http.StatusNotFound)
 		}
 	}
 }
 
-func getData(r *http.Request) (int, string, []byte){
-	mutex.Lock()
-	defer mutex.Unlock()
-	if res,ok := resources[r.URL.Path]; ok {
-		return res.Data(r)
-	} else {
-		return http.StatusNotFound, "", nil
-	}
-}
 
 func seemsToBeRunning(socketPath string) bool {
 	client := http.Client{

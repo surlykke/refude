@@ -20,21 +20,17 @@ import (
 	"github.com/surlykke/RefudeServices/service"
 	"github.com/BurntSushi/xgb/randr"
 	"github.com/BurntSushi/xgb"
+	"github.com/surlykke/RefudeServices/common"
 )
 
 
-var windowIds = make(WindowIdList, 0)
-var windows = make(map[xproto.Window]*Window)
+var windows = make(map[xproto.Window]Window)
 var display = Display{Screens: make([]Rect, 0)}
 var iconHashes = make(map[uint64]bool)
 var x  *xgbutil.XUtil
 
 
-
 func WmRun() {
-	service.Map("/windows", &windowIds)
-	service.Map("/display", &display)
-
 	var err error
 	if x, err = xgbutil.NewConn(); err != nil {
 		panic(err)
@@ -46,6 +42,7 @@ func WmRun() {
 	if err != nil {
 		panic(err)
 	}
+
 	randr.Init(conn)
 	buildDisplay(conn)
 
@@ -62,11 +59,6 @@ func WmRun() {
 }
 
 
-
-func windowPath(windowId xproto.Window) string {
-	return fmt.Sprintf("/window/%d", windowId)
-}
-
 func buildDisplay(conn *xgb.Conn) {
 
 	defaultScreen := xproto.Setup(conn).DefaultScreen(conn)
@@ -75,7 +67,7 @@ func buildDisplay(conn *xgb.Conn) {
 
 	// TODO add screens
 
-	service.Remap("/display", &display)
+	service.Map("/display", &display)
 }
 
 func updateWindows() {
@@ -84,41 +76,33 @@ func updateWindows() {
 		panic(err)
 	}
 
-	newWindowIds := make(WindowIdList, len(tmp))
+	newWindowIds := make([]xproto.Window, len(tmp))
 	// Reverse order, so highest stacked comes first
 	for i, wId := range tmp {
 		newWindowIds[len(tmp) - 1 -i] = wId
 	}
 
-	for _,windowId := range windowIds {
-		if ! newWindowIds.find(windowId) {
-			delete(windows, windowId)
-			service.Unmap(windowPath(windowId))
+	for wId,_ := range windows {
+		if ! find(newWindowIds, wId) {
+			delete(windows, wId)
+			service.Unmap(fmt.Sprintf("/window/%d", wId))
 		}
 	}
 
-	for _,windowId := range newWindowIds {
-		if windowIds.find(windowId) {
-			if window, err := updateWindow(windows[windowId]); err == nil && !window.Equal(windows[windowId]) {
-				windows[windowId] = &window
-				service.Remap(windowPath(windowId), &window)
-			}
+	for _,wId := range newWindowIds {
+		if _, ok := windows[wId]; ok {
+			windows[wId] = updateWindow(windows[wId])
 		} else {
-			if window, err := getWindow(xproto.Window(windowId)); err == nil {
-				windows[windowId] = &window
-				service.Map(windowPath(windowId), &window)
-			}
+			windows[wId] = getWindow(xproto.Window(wId))
 		}
+
+		service.Map(fmt.Sprintf("/window/%d", wId), windows[wId])
 	}
 
-	if !windowIds.Equal(newWindowIds) {
-		windowIds = newWindowIds
-		service.Remap("/windows", &windowIds)
-	}
+	mapWids(newWindowIds)
 }
 
-func getWindow(wId xproto.Window) (Window, error) {
-
+func getWindow(wId xproto.Window) Window {
 	window := Window{}
 	window.x = x
 	window.Id = wId
@@ -167,10 +151,10 @@ func getWindow(wId xproto.Window) (Window, error) {
 		H: window.H,
 	}
 
-	return window, nil
+	return window
 }
 
-func updateWindow(window *Window) (Window, error) {
+func updateWindow(window Window) Window {
 	newWindow := Window{}
 	newWindow.x = x
 	newWindow.Id = window.Id
@@ -203,6 +187,25 @@ func updateWindow(window *Window) (Window, error) {
 		H:       newWindow.H,
 	}
 
-	return newWindow, nil
+	return newWindow
+}
+
+func find(windowIds []xproto.Window, windowId xproto.Window) bool {
+	for _,wId := range windowIds {
+		if wId == windowId {
+			return true
+		}
+	}
+
+	return false
+}
+
+func mapWids(wIds []xproto.Window)  {
+	res := make(common.StringList, len(wIds))
+	for i,wId := range wIds {
+		res[i] = fmt.Sprintf("window/%d", wId)
+	}
+
+	service.Map("/windows", res)
 }
 

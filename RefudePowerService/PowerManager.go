@@ -37,7 +37,7 @@ func watchUPower(conn *dbus.Conn, changes chan map[string]dbus.Variant) {
 	service.Map("/UPower", uPower) // Important that we use call-by-value, ie. uPower is copied - see below
 	for {
 		uPower.ReadDBusProps(<- changes)
-		service.Remap("/UPower", uPower) // Do
+		service.Map("/UPower", uPower) // Do
 	}
 }
 
@@ -49,7 +49,7 @@ func watchDevice(conn *dbus.Conn, dbusPath dbus.ObjectPath, changes chan map[str
 	service.Map(path, device) // Important to call-by-value (copy) here. Service owns what it gets
 	for {
 		device.ReadDBusProps(<-changes)
-		service.Remap(path, device) // do.
+		service.Map(path, device) // do.
 	}
 }
 
@@ -88,16 +88,14 @@ func (pm *PowerManager) Run() {
 
 	enumCall := pm.conn.Object(UPowService, UPowPath).Call(UPowerInterface + ".EnumerateDevices", dbus.Flags(0))
 	devicePaths := append(enumCall.Body[0].([]dbus.ObjectPath), DisplayDevicePath)
+	resourcePaths := make(common.StringList, 0, len(devicePaths))
 	for _,devicePath := range devicePaths {
+		resourcePaths = append(resourcePaths, resourcePath(devicePath)[1:])
 		pm.changeChans[devicePath] = make(chan map[string]dbus.Variant)
 		go watchDevice(pm.conn, devicePath, pm.changeChans[devicePath])
 	}
 
-	resourcePaths := make(common.StringSet)
-    for _,devicePath := range devicePaths {
-	    resourcePaths[resourcePath(devicePath)[1:]] = true
-    }
-	service.Map("/devices", &resourcePaths)
+	service.Map("/devices", resourcePaths)
 
 	for signal := range signals {
 		if signal.Name == "org.freedesktop.DBus.Properties.PropertiesChanged" {
