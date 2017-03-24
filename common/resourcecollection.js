@@ -28,7 +28,7 @@ let createResourceCollection = ($http, resourceIndexUrl, notifyUrl, resourceFilt
 
     let updateResource = (url, resource) => {
         resource.url = url;
-        resources.set(url, resource);
+		resources.set(url, resource);
     };
         
     let updateActions = () => {
@@ -41,8 +41,8 @@ let createResourceCollection = ($http, resourceIndexUrl, notifyUrl, resourceFilt
                    	if (act.IconUrl) {
 						act.IconUrl = combineUrls(resource.url, act.IconUrl) 
 					} 
-					else if (act.Icon) {
-						act.IconUrl = iconServiceUrl(act.Icon)
+					else if (act.IconName) {
+						act.IconUrl = iconServiceUrl(act.IconName)
 					}
 					act.url = url + "?action=" + id	
 					actions.push(act)
