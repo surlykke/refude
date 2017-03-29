@@ -69,7 +69,6 @@ func Unmap(path string) {
 }
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Request for '", r.URL.Path, "'")
 	if r.URL.Path == NotifierPath {
 		notify.ServeHTTP(w, r)
 	} else if r.URL.Path == PingPath {

@@ -27,16 +27,15 @@ import (
 var windows = make(map[xproto.Window]Window)
 var display = Display{Screens: make([]Rect, 0)}
 var iconHashes = make(map[uint64]bool)
-var x  *xgbutil.XUtil
 
 
 func WmRun() {
 	var err error
-	if x, err = xgbutil.NewConn(); err != nil {
+	if xUtil, err = xgbutil.NewConn(); err != nil {
 		panic(err)
 	}
 
-	xwindow.New(x, x.RootWin()).Listen(xproto.EventMaskSubstructureNotify)
+	xwindow.New(xUtil, xUtil.RootWin()).Listen(xproto.EventMaskSubstructureNotify)
 	updateWindows()
 	conn, err := xgb.NewConn()
 	if err != nil {
@@ -47,7 +46,7 @@ func WmRun() {
 	buildDisplay(conn)
 
 	for ;; {
-		evt, err := x.Conn().WaitForEvent()
+		evt, err := xUtil.Conn().WaitForEvent()
 		if err == nil {
 			if scEvt, ok := evt.(randr.ScreenChangeNotifyEvent); ok {
 				fmt.Println("Got screen change event: ", scEvt) // TODO update display resource
@@ -71,7 +70,7 @@ func buildDisplay(conn *xgb.Conn) {
 }
 
 func updateWindows() {
-	tmp, err := ewmh.ClientListStackingGet(x)
+	tmp, err := ewmh.ClientListStackingGet(xUtil)
 	if err != nil {
 		panic(err)
 	}
@@ -86,6 +85,7 @@ func updateWindows() {
 		if ! find(newWindowIds, wId) {
 			delete(windows, wId)
 			service.Unmap(fmt.Sprintf("/window/%d", wId))
+			service.Unmap(fmt.Sprintf("/action/%d", wId))
 		}
 	}
 
@@ -97,6 +97,7 @@ func updateWindows() {
 		}
 
 		service.Map(fmt.Sprintf("/window/%d", wId), windows[wId])
+		service.Map(fmt.Sprintf("/action/%d", wId), windows[wId].Actions["_default"])
 	}
 
 	mapWids(newWindowIds)
@@ -104,25 +105,24 @@ func updateWindows() {
 
 func getWindow(wId xproto.Window) Window {
 	window := Window{}
-	window.x = x
 	window.Id = wId
-	name, err := ewmh.WmNameGet(x, wId)
+	name, err := ewmh.WmNameGet(xUtil, wId)
 	if err != nil || len(name) == 0 {
-		name,_ = icccm.WmNameGet(x, wId)
+		name,_ = icccm.WmNameGet(xUtil, wId)
 	}
 	window.Name = name
-	if rect, err := xwindow.New(x, wId).DecorGeometry(); err == nil {
+	if rect, err := xwindow.New(xUtil, wId).DecorGeometry(); err == nil {
 		window.X = rect.X()
 		window.Y = rect.Y()
 		window.H = rect.Height()
 		window.W = rect.Width()
 	}
 
-	if states, err := ewmh.WmStateGet(x, wId); err == nil {
+	if states, err := ewmh.WmStateGet(xUtil, wId); err == nil {
 		window.States = states
 	}
 
-	if iconArr, err := xprop.PropValNums(xprop.GetProperty(x, wId, "_NET_WM_ICON")); err == nil {
+	if iconArr, err := xprop.PropValNums(xprop.GetProperty(xUtil, wId, "_NET_WM_ICON")); err == nil {
 		hash := fnv.New64a()
 		for _,val := range iconArr {
 			hash.Write([]byte{byte((val & 0xFF000000) >> 24), byte((val & 0xFF0000) >> 16), byte((val & 0xFF00) >> 8), byte(val & 0xFF)})
@@ -140,8 +140,9 @@ func getWindow(wId xproto.Window) Window {
 		window.IconUrl = ".." + iconUrl
 	}
 
-	window.Actions = make(map[string]Action)
-	window.Actions["_default"] = Action{
+	window.Actions = make(map[string]*Action)
+	window.Actions["_default"] = &Action{
+		winId: window.Id,
 		Name: window.Name,
 		Comment: "Raise and focus",
 		IconUrl: window.IconUrl,
@@ -149,6 +150,7 @@ func getWindow(wId xproto.Window) Window {
 		Y: window.Y,
 		W: window.W,
 		H: window.H,
+		States: window.States,
 	}
 
 	return window
@@ -156,28 +158,28 @@ func getWindow(wId xproto.Window) Window {
 
 func updateWindow(window Window) Window {
 	newWindow := Window{}
-	newWindow.x = x
 	newWindow.Id = window.Id
-	name, err := ewmh.WmNameGet(x, newWindow.Id)
+	name, err := ewmh.WmNameGet(xUtil, newWindow.Id)
 	if err != nil || len(name) == 0 {
-		name,_ = icccm.WmNameGet(x, newWindow.Id)
+		name,_ = icccm.WmNameGet(xUtil, newWindow.Id)
 	}
 	newWindow.Name = name
-	if rect, err := xwindow.New(x, newWindow.Id).DecorGeometry(); err == nil {
+	if rect, err := xwindow.New(xUtil, newWindow.Id).DecorGeometry(); err == nil {
 		newWindow.X = rect.X()
 		newWindow.Y = rect.Y()
 		newWindow.H = rect.Height()
 		newWindow.W = rect.Width()
 	}
 
-	if states, err := ewmh.WmStateGet(x, newWindow.Id); err == nil {
+	if states, err := ewmh.WmStateGet(xUtil, newWindow.Id); err == nil {
 		newWindow.States = states
 	}
 
 	newWindow.IconUrl = window.IconUrl
 
-	newWindow.Actions = make(map[string]Action)
-	newWindow.Actions["_default"] = Action{
+	newWindow.Actions = make(map[string]*Action)
+	newWindow.Actions["_default"] = &Action{
+		winId:   newWindow.Id,
 		Name:    newWindow.Name,
 		Comment: "Raise and focus",
 		IconUrl: newWindow.IconUrl,
@@ -185,6 +187,7 @@ func updateWindow(window Window) Window {
 		Y:       newWindow.Y,
 		W:       newWindow.W,
 		H:       newWindow.H,
+		States:  newWindow.States,
 	}
 
 	return newWindow
@@ -201,11 +204,14 @@ func find(windowIds []xproto.Window, windowId xproto.Window) bool {
 }
 
 func mapWids(wIds []xproto.Window)  {
-	res := make(common.StringList, len(wIds))
+	windowPaths := make(common.StringList, len(wIds))
+	actionPaths := make(common.StringList, len(wIds))
 	for i,wId := range wIds {
-		res[i] = fmt.Sprintf("window/%d", wId)
+		windowPaths[i] = fmt.Sprintf("window/%d", wId)
+		actionPaths[i] = fmt.Sprintf("action/%d", wId)
 	}
 
-	service.Map("/windows", res)
+	service.Map("/windows", windowPaths)
+	service.Map("/actions", actionPaths)
 }
 
