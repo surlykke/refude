@@ -24,7 +24,7 @@ type Window struct {
 	X,Y,H,W int
 	Name    string
 	IconUrl string
-	States  []string
+	States  common.StringList
 	Actions map[string]*Action
 }
 
