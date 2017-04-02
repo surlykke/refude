@@ -14,6 +14,7 @@
         <script src="../common/angular.js"></script>
         <script src="../common/zoom.js"></script>
         <script src="../common/utils.js"></script>
+        <script src="../common/resourcecollection.js"></script>
 
         <script src="do.js"></script>
         <link rel="stylesheet" href="../common/refude.css"/>
@@ -25,27 +26,26 @@
                 <input type="search" autofocus ng-model="searchTerm"/>
             </div>
             <div class="list" id="contentBox">
-                <div ng-repeat="actionUrl in filteredUrls"
-                    ng-click="select(actionUrl)"
-                    ng-dblclick="selectAndExecute(actionUrl)" 
-                    ng-class="actionClass(actionUrl)"
-                    id="{{actionUrl}}">
+                <div ng-repeat="action in actions"
+                    ng-click="select(action)"
+                    ng-dblclick="selectAndExecute(action)" 
+                    ng-class="actionClass(action)"
+                    id="{{action.url}}">
                     <div class="line-icon">
-                        <img ng-src='{{action(actionUrl).IconUrl}}' height="32" width="32" alt=" " border="0"/>
+                        <img ng-src='{{action.IconUrl}}' height="32" width="32" alt=" " border="0"/>
                     </div>
-                    <div class="line-title">{{action(actionUrl).Name}}</div>
-                    <div class="line-comment">{{action(actionUrl).Comment}}</div>
+                    <div class="line-title">{{action.Name}}</div>
+                    <div class="line-comment">{{action.Comment}}</div>
                 </div>
             </div>
         </div>
 
         <!-- graphical depiction of open windows -->
         <div id="disp" class="display">
-            <div ng-repeat="actionUrl in filteredUrls" 
-			     ng-if="action(actionUrl).X != undefined" class="window" ng-style="style(actionUrl, $index)">
+            <div ng-repeat="action in actions" ng-if="action.X != undefined" class="window" ng-style="style(action, $index)">
                 <div class="windowTitle">
-                    <img ng-src="{{action(actionUrl).IconUrl}}" height="10" width="10" alt =" "/>
-                    {{action(actionUrl).name}}
+                    <img ng-src="{{action.IconUrl}}" height="10" width="10" alt =" "/>
+                    {{action.name}}
                 </div>
             </div>
         </div>
