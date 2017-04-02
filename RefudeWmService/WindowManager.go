@@ -89,8 +89,6 @@ func updateWindows() {
 		}
 	}
 
-	var windowPaths = make(common.StringList, 0, len(newWindowIds))
-	var actionPaths = make(common.StringList, 0, len(newWindowIds))
 	for _,wId := range newWindowIds {
 		if _, ok := windows[wId]; ok {
 			windows[wId] = updateWindow(windows[wId])
@@ -98,16 +96,11 @@ func updateWindows() {
 			windows[wId] = getWindow(xproto.Window(wId))
 		}
 
-		windowPaths = append(windowPaths, fmt.Sprintf("window/%d", wId))
 		service.Map(fmt.Sprintf("/window/%d", wId), windows[wId])
-		if !common.Find(windows[wId].States, "_NET_WM_STATE_ABOVE") {
-			service.Map(fmt.Sprintf("/action/%d", wId), windows[wId].Actions["_default"])
-			actionPaths = append(actionPaths, fmt.Sprintf("action/%d", wId))
-		}
+		service.Map(fmt.Sprintf("/action/%d", wId), windows[wId].Actions["_default"])
 	}
 
-	service.Map("/windows", windowPaths)
-	service.Map("/actions", actionPaths)
+	mapWids(newWindowIds)
 }
 
 func getWindow(wId xproto.Window) Window {
@@ -208,5 +201,17 @@ func find(windowIds []xproto.Window, windowId xproto.Window) bool {
 	}
 
 	return false
+}
+
+func mapWids(wIds []xproto.Window)  {
+	windowPaths := make(common.StringList, len(wIds))
+	actionPaths := make(common.StringList, len(wIds))
+	for i,wId := range wIds {
+		windowPaths[i] = fmt.Sprintf("window/%d", wId)
+		actionPaths[i] = fmt.Sprintf("action/%d", wId)
+	}
+
+	service.Map("/windows", windowPaths)
+	service.Map("/actions", actionPaths)
 }
 

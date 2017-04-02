@@ -63,7 +63,7 @@ func Unmap(path string) {
 	}
 	mutex.Unlock()
 
-	if found {
+	if (found) {
 		notify.Notify("resource-removed", path[1:])
 	}
 }
