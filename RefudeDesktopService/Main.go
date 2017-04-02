@@ -10,11 +10,9 @@ package main
 
 import (
 	"github.com/surlykke/RefudeServices/service"
-	"log"
 )
 
 func main() {
-	log.SetFlags(log.Ltime | log.Lmicroseconds)
 	go DesktopRun()
 	service.Serve("org.refude.desktop-service")
 }

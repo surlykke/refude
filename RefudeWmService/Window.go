@@ -14,27 +14,24 @@ import (
 	"github.com/surlykke/RefudeServices/common"
 	"github.com/BurntSushi/xgbutil/ewmh"
 	"github.com/BurntSushi/xgbutil"
-	"fmt"
 )
 
-var xUtil       *xgbutil.XUtil
 
 type Window struct {
+	x       *xgbutil.XUtil
 	Id      xproto.Window
 	X,Y,H,W int
 	Name    string
 	IconUrl string
 	States  []string
-	Actions map[string]*Action
+	Actions map[string]Action
 }
 
 type Action struct {
 	Name    string
 	Comment string
 	IconUrl string
-	winId   xproto.Window
 	X,Y,W,H int
-	States  []string
 }
 
 func (win Window) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -44,7 +41,7 @@ func (win Window) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if actionv,ok := r.URL.Query()["action"]; ok && len(actionv) > 0 && actionv[0] != "_default" {
 			w.WriteHeader(http.StatusNotAcceptable)
 		} else {
-			ewmh.ActiveWindowReq(xUtil, xproto.Window(win.Id))
+			ewmh.ActiveWindowReq(win.x, xproto.Window(win.Id))
 			w.WriteHeader(http.StatusAccepted)
 		}
 	} else {
@@ -52,18 +49,3 @@ func (win Window) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (ac* Action) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "GET" {
-		common.ServeAsJson(w, r, ac)
-	} else if r.Method == "POST" {
-		fmt.Println("POST mod ac.winId: ", ac.winId)
-		if err := ewmh.ActiveWindowReq(xUtil, ac.winId); err == nil {
-			w.WriteHeader(http.StatusAccepted)
-		} else {
-			fmt.Println(err)
-			w.WriteHeader(http.StatusInternalServerError)
-		}
-	} else {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-	}
-}

@@ -15,8 +15,8 @@ import (
 	"io/ioutil"
 	"fmt"
 	"regexp"
+	"strings"
 	"net/http"
-	"log"
 )
 
 const freedesktopOrgXml = "/usr/share/mime/packages/freedesktop.org.xml"
@@ -46,7 +46,6 @@ func (mt *Mimetype) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 
 func CollectMimeTypes() map[string]*Mimetype {
-	log.Print("Into Collect MimeTypes")
 	xmlCollector := struct {
 		XMLName   xml.Name `xml:"mime-info"`
 		MimeTypes []struct {
@@ -80,7 +79,6 @@ func CollectMimeTypes() map[string]*Mimetype {
 		fmt.Println("Unable to open ", freedesktopOrgXml, ": ", err)
 	}
 	parseErr := xml.Unmarshal(xmlInput, &xmlCollector)
-	log.Print("Unmarshalling done")
 	if parseErr != nil {
 		fmt.Println("Error parsing: ", parseErr)
 	}
@@ -130,7 +128,7 @@ func CollectMimeTypes() map[string]*Mimetype {
 		if tmp.Icon.Name != "" {
 			mimeType.Icon = tmp.Icon.Name
 		} else {
-			mimeType.Icon = mimeType.Type + mimeType.Subtype
+			mimeType.Icon = strings.Replace(mimeType.Type, "/", "-", -1)
 		}
 
 		if tmp.GenericIcon.Name != "" {
@@ -144,6 +142,6 @@ func CollectMimeTypes() map[string]*Mimetype {
 
 		res[mimeType.Type+"/"+mimeType.Subtype] = &mimeType
 	}
-	log.Print("Mimetypes collected")
+
 	return res
 }

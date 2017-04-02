@@ -19,43 +19,15 @@ import (
 	"github.com/surlykke/RefudeServices/service"
 	"golang.org/x/sys/unix"
 	"net/http"
-	"time"
-	"encoding/json"
-	"io/ioutil"
-	"log"
-	"sort"
 )
 
 
-var applications = make(map[string]*DesktopApplication)
-var mimetypes = make(map[string]*Mimetype)
-var actionPaths = make(common.StringList, 0)
+var applicationIds = make(common.StringList, 0)
+var mimetypeIds = make(common.StringList, 0)
 
-var historyPath = xdg.DataHome() + "/data/RefudeDesktopServiceHistory"
-
-var Activations = make(chan string)
-var fileChanges = make(chan bool)
-
-var history = make(map[string]time.Time)
 
 func DesktopRun() {
 
-	getHistory()
-	update()
-	go watchFiles()
-	for {
-		select {
-		case url:= <-Activations:
-			history[url] = time.Now()
-			sortAndMapActionPaths()
-			saveHistory()
-		case <-fileChanges:
-			update()
-		}
-	}
-}
-
-func watchFiles() {
 	fd, err := unix.InotifyInit()
 	defer unix.Close(fd)
 
@@ -71,40 +43,13 @@ func watchFiles() {
 		}
 	}
 
+	update()
 	dummy := make([]byte, 100)
 	for {
 		if _, err := unix.Read(fd, dummy); err != nil {
 			panic(err)
 		}
-		fileChanges <- true
-	}
-}
-
-
-
-func getHistory() {
-	if file, err := os.Open(historyPath); err == nil {
-		defer file.Close()
-		if bytes, err := ioutil.ReadAll(file); err == nil {
-			json.Unmarshal(bytes, &history)
-		} else {
-			fmt.Println("Error unmarshalling history ", err)
-		}
-	} else {
-		fmt.Println("Error opening file ", historyPath, " ", err)
-	}
-}
-
-func saveHistory() {
-	if bytes, err := json.Marshal(history); err == nil {
-		if file, err := os.Create(historyPath); err == nil {
-			defer file.Close()
-			file.Write(bytes)
-		} else {
-			fmt.Println("Error opening ", historyPath, " ", err)
-		}
-	} else {
-		log.Println("Error marshalling history:", err)
+		fmt.Println("Something happened...")
 	}
 }
 
@@ -112,63 +57,46 @@ func update() {
 	c := NewCollector()
 	c.collect()
 
-	for applicationId,application := range applications {
-		if _,ok := c.applications[applicationId]; !ok {
-			service.Unmap("/application/" + applicationId)
-			for actionId := range application.Actions {
-				service.Unmap("/action/" + applicationId + "_" + actionId)
-			}
+
+	for _, appId := range applicationIds {
+		if _,ok := c.applications[appId]; !ok {
+			service.Unmap("/application/" + appId)
 		}
 	}
 
-	applications = c.applications
-	var applicationPaths = make(common.StringList, 0)
-	for applicationId, application := range applications {
-		service.Map("/application/" + applicationId, application)
-		applicationPaths = append(applicationPaths, "application/" + applicationId)
-		for actionId, action := range application.Actions {
-			service.Map("/action/" + applicationId + "_" + actionId, action)
-			actionPaths = append(actionPaths, "action/" + applicationId + "_" + actionId)
-		}
+	applicationIds = make(common.StringList, 0)
+	for appId, newDesktopApplication := range c.applications {
+		service.Map("/application/" + appId, newDesktopApplication)
+		applicationIds = append(applicationIds, appId)
 	}
-	service.Map("/applications", applicationPaths)
-	sortAndMapActionPaths()
 
-	for mimetypeId := range mimetypes {
+	service.Map("/applications", common.Prepend(applicationIds, "application/"))
+
+	for _, mimetypeId := range mimetypeIds {
 		if _,ok := c.mimetypes[mimetypeId]; !ok {
 			service.Unmap("/mimetype/" + mimetypeId)
 		}
 	}
 
-	mimetypes = c.mimetypes
-	var mimetypePaths = make(common.StringList, 0)
-	for mimetypeId, mimeType := range mimetypes {
+	mimetypeIds := make(common.StringList, 0)
+
+	for mimetypeId, mimeType := range c.mimetypes {
 		service.Map("/mimetype/" + mimetypeId, mimeType)
-		mimetypePaths = append(mimetypePaths, "mimetype/" + mimetypeId)
+		mimetypeIds = append(mimetypeIds, mimetypeId)
 	}
-	service.Map("/mimetypes", mimetypePaths)
+
+	service.Map("/mimetypes", common.Prepend(mimetypeIds, "mimetype/"))
 }
 
-func sortAndMapActionPaths() {
-	sort.SliceStable(actionPaths, func(i int, j int) bool {
-		p1 := actionPaths[i]
-		p2 := actionPaths[j]
-		t1,_ := history[p1]
-		t2,_ := history[p2]
-		return t1.After(t2)
-	})
 
-	service.Map("/actions", actionPaths)
-}
 
 type Collector struct {
 	applications map[string]*DesktopApplication
 	mimetypes map[string]*Mimetype
-	actions map[string]*Action
 }
 
 func NewCollector() Collector {
-	return Collector{make(map[string]*DesktopApplication), make(map[string]*Mimetype), make(map[string]*Action)}
+	return Collector{make(map[string]*DesktopApplication), make(map[string]*Mimetype)}
 }
 
 func (c *Collector) collect()  {
@@ -185,14 +113,12 @@ func (c *Collector) collect()  {
 	for _,dir := range append(xdg.ConfigDirs(), xdg.ConfigHome()) {
 		c.readMimeappsList(dir + "/mimeapps.list")
 	}
-
-	for _,app := range c.applications {
-		for key,action := range app.Actions {
-			actionId := app.Id + "_" + key
-			c.actions[actionId] = action
-		}
-	}
 }
+
+func appPath(id string) string {
+	return "/application/" + id
+}
+
 
 func (c* Collector) addAssociations(mimeId string, appIds...string) {
 	if mimetype, mimetypeFound := c.mimetypes[mimeId]; mimetypeFound {

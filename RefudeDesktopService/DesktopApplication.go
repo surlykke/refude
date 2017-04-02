@@ -43,10 +43,17 @@ type DesktopApplication struct {
 	StartupNotify   bool
 	StartupWmClass  string `json:",omitempty"`
 	Url             string `json:",omitempty"`
-	Actions         map[string]*Action
+	Actions         map[string]Action
 	Id              string
 }
 
+type Action struct {
+	Comment  string
+	Name     string
+	Exec     string
+	IconName string
+	IconUrl  string
+}
 
 func (app *DesktopApplication) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
@@ -75,9 +82,6 @@ func (app *DesktopApplication) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	}
 }
 
-
-
-
 func runCmd(app string) error {
 	cmd := exec.Command("sh", "-c", "("+app+">/dev/null 2>/dev/null &)")
 	stderr, err := cmd.StderrPipe()
@@ -98,30 +102,6 @@ func runCmd(app string) error {
 	return nil
 }
 
-type Action struct {
-	Comment  string
-	Name     string
-	Exec     string
-	IconName string `json:",omitempty"`
-	IconUrl  string `json:",omitempty"`
-}
-
-func (act *Action) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "GET" {
-		common.ServeAsJson(w, r, act)
-	} else if r.Method == "POST" {
-		cmd := regexp.MustCompile("%[uUfF]").ReplaceAllString(act.Exec, "")
-		if err:= runCmd(cmd); err != nil {
-			fmt.Println(err)
-			w.WriteHeader(http.StatusInternalServerError)
-		} else {
-			Activations <- r.URL.Path[1:]
-			w.WriteHeader(http.StatusAccepted)
-		}
-	} else {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-	}
-}
 
 
 func readDesktopFile(path string) (*DesktopApplication, common.StringList, error) {
@@ -162,8 +142,8 @@ func readDesktopFile(path string) (*DesktopApplication, common.StringList, error
 	app.Categories = common.Split(desktopEntry["Categories"], ";")
 	app.Implements = common.Split(desktopEntry["Implements"], ";")
 	app.Keywords = common.Split(desktopEntry["Keywords"], ";")
-	app.Actions = make(map[string]*Action, 0)
-	app.Actions["_default"] = &Action{
+	app.Actions = make(map[string]Action, 0)
+	app.Actions["_default"] = Action{
 		Name: app.Name,
 		Comment: app.Comment,
 		IconName: app.IconName,
@@ -196,7 +176,7 @@ func readDesktopFile(path string) (*DesktopApplication, common.StringList, error
 				action.IconUrl, action.IconName = app.IconUrl, app.IconName
 			}
 
-			app.Actions[actionName] = &action
+			app.Actions[actionName] = action
 		}
 	}
 
