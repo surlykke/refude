@@ -1,7 +1,3 @@
 #!/usr/bin/env bash
-
-cd $(dirname $(realpath $0))
-curl --unix ${XDG_RUNTIME_DIR}/org.refude.apps.panel http://localhost || 
-pwd
-exec electron . >/dev/null 2>/dev/null &
+nw $(dirname $(realpath $0))
 

@@ -7,8 +7,6 @@
  */
 
 function doController($q, $http, $scope, $window, $timeout) {
-    const remote = require('electron').remote;
-
     $scope.searchTerm = "";
     $scope.actions = [];
     $scope.version = 0;
@@ -137,7 +135,7 @@ function doController($q, $http, $scope, $window, $timeout) {
 			console.log("posting: ", url)
             $http.post(url).then( response => {
                 $scope.searchTerm = ""
-                remote.getCurrentWindow().hide()
+                hideWindow()
                 history[url] = new Date().getTime();
                 localStorage.setItem('history', JSON.stringify(history))
             }).then(error => {
@@ -152,7 +150,7 @@ function doController($q, $http, $scope, $window, $timeout) {
         Enter : execute,
         " " : execute,
         Escape : function() {
-            remote.getCurrentWindow().hide()
+            hideWindow()
         }
     };
 
@@ -193,6 +191,7 @@ function doController($q, $http, $scope, $window, $timeout) {
         height = contentRect.bottom - contentRect.top - 4;
         scale = Math.min(width/displayGeometry.W, height/displayGeometry.H);
     };
+
 
     $http.get("http://localhost:7938/wm-service/display").then(function(response) {
         displayGeometry = response.data

@@ -1,12 +1,7 @@
 {
   "name": "refudeDo",
-  "version": "0.0.1",
-  "description": "Refude Do",
-  "main": "main.js",
-  "scripts": {
-    "start": "electron ."
-  },
-  "devDependencies": {
-    "electron-prebuilt": "^1.2.0"
+  "main": "index.html",
+  "window": {
+  	"id": "org.refude.Do"
   }
 }

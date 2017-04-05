@@ -1,24 +1,9 @@
 #!/usr/bin/env bash
-sharedir="/usr/local/share/refude"
-applist="do panel power appconfig connman"
-dirlist="common $applist"
+thisdir=$(dirname $(realpath $0))
+applist="do/refudeDo panel/refudePanel power/refudePower appconfig/refudeAppConfig connman/refudeConnman"
 
-cd $(realpath $(dirname $0))
-
-mkdir -p $sharedir
-for file in $dirlist; do
-	cp -R $file $sharedir
+cd ~/bin
+for app in $applist; do
+   ln -sf $thisdir/$app
 done
 
-chmod 744 $sharedir/*/*.desktop
-
-cd /usr/local/bin
-for app in $applist; do 
-	chmod a+x $sharedir/$app/refude*;
-	ln -sf $sharedir/$app/refude*; 
-done
-
-cd /usr/local/share/applications
-for desktop in $sharedir/*/*.desktop; do 
-	ln -sf $desktop
-done

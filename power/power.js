@@ -6,9 +6,8 @@
  * Please refer to the LICENSE file for a copy of the license.
  */
 
-let powerController =  function($http, $scope) {
+let powerController =  function($http, $window, $scope) {
     console.log("Into powerController"); 
-    const remote = require('electron').remote
     
     $scope.actions = [];
 
@@ -26,7 +25,7 @@ let powerController =  function($http, $scope) {
 
     let execute = function() {
         $http.post(selectedAction.url).then(function(resp) {
-            remote.getCurrentWindow().close();
+            window.close();
         });
     };
 
@@ -47,7 +46,7 @@ let powerController =  function($http, $scope) {
         Enter : execute, 
         " " : execute,
         Escape : function() {
-            remote.getCurrentWindow().close()
+            window.close()
         }
     };
 
@@ -108,6 +107,6 @@ let powerController =  function($http, $scope) {
 
 let powerModule = angular.module('power', []);
 console.log("Calling controller..");
-powerModule.controller('powerCtrl', ['$http', '$scope', powerController]);
+powerModule.controller('powerCtrl', ['$http', '$window', '$scope', powerController]);
 
 

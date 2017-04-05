@@ -1,12 +1,9 @@
 {
   "name": "refudePanel",
-  "version": "0.0.1",
-  "description": "Refude Panel",
-  "main": "main.js",
-  "scripts": {
-    "start": "electron ."
-  },
-  "devDependencies": {
-    "electron-prebuilt": "^1.2.0"
+  "main": "index.html",
+  "window" : {
+  	"id" : "org.refude.Panel",
+  	"frame": false,
+	"always_on_top": true
   }
 }
