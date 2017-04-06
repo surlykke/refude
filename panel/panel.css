@@ -12,7 +12,6 @@ html, body {
     height: calc(100% - 4px);
     width: calc(100% - 4px);
     white-space: nowrap;
-    -webkit-app-region: drag;
-    background-color: white;
+    background-color: rgba(200,200,200,0.8);
 }
 
