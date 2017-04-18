@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
-nw $(dirname $(realpath $0))
+nohup nw $(dirname $(realpath $0)) >/dev/null 2>/dev/null &
 
