@@ -1,7 +1,7 @@
 import React from 'react';
 import {render} from 'react-dom';
-import {nwHide, nwSetup, doHttp} from './../common/utils'
-import {MakeServiceProxy} from "./service-proxy"
+import {nwHide, nwSetup, doHttp} from '../common/utils'
+import {MakeServiceProxy} from "../common/service-proxy"
 import {SearchBox, CommandList,Windows} from "./components.jsx"
 
 const windowsProxy = MakeServiceProxy("http://localhost:7938/wm-service/windows", "http://localhost:7938/wm-service/notify")
