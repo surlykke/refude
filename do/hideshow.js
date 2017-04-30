@@ -7,13 +7,18 @@
  */
 
 // -------------------- NW stuff ---------------------
-let NW = require('nw.gui')
+let NW = window.require('nw.gui')
 let WIN = NW.Window.get()
-let hideWindow = () => {
+
+let nwHide = () => {
 		WIN.hide()
 }
 
-NW.App.on("open", (args) => {
-		console.log("Opened", args)
-		WIN.show();
-})
+let nwSetup = () => {
+	NW.App.on("open", (args) => {
+			console.log("Opened", args)
+			WIN.show();
+	})
+}
+
+export {nwHide, nwSetup}

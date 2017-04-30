@@ -1,7 +1,8 @@
 {
-  "name": "refudeDo",
-  "main": "index.html",
+  "name": "Refude Do",
+  "main": "main.html",
+  "version": "0.0.1",
   "window": {
-  	"id": "org.refude.Do"
+  	"id": "org.refude.do"
   }
 }
