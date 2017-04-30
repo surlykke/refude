@@ -1,7 +1,6 @@
 import React from 'react';
 import {render} from 'react-dom';
-import {nwHide, nwSetup} from './hideshow.js'
-import {doHttp} from './utils'
+import {nwHide, nwSetup, doHttp} from './../common/utils'
 import {MakeServiceProxy} from "./service-proxy"
 import {SearchBox, CommandList,Windows} from "./components.jsx"
 

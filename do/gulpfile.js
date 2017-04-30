@@ -23,7 +23,7 @@ gulp.task('js', function() {
 gulp.task('default', ['assets', 'js']);
 
 gulp.task('watch',function() {
-	gulp.watch(['./src/**/*'],['default'])
+	gulp.watch(['./**/*'],['default'])
 });
 
 gulp.task('run', ['default', 'watch'])

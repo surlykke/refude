@@ -22,7 +22,10 @@ let CommandList = props =>
 	</div>
 
 let classes = (res, selected) => {
-	return "line" + (res === selected ? " selected" : "")
+	return "line" +
+	       (res === selected ? " selected" : "") +
+		   (res.X !== undefined ? " shadow" : "") +
+		   (res.States && res.States.includes("_NET_WM_STATE_HIDDEN") ? " dimmed" : "")
 }
 
 let Command = props =>
@@ -39,15 +42,15 @@ let Command = props =>
 
 
 let zIndex = (win, index, selected) => win === selected ? 1 : -index
-let fillOpacity = (win, selected) => win === selected ? "0.3" : "0.05"
+let fillOpacity = (win, selected) => win === selected ? "0.1" : "0.05"
 
 let Windows = props =>
 	<div id="disp" className="display">
 		<svg viewBox="0 0 1920 1080" >
 		{props.windows.map((win, index) => (
 			<g key={win.url} z={zIndex(win, index, props.selected)} fillOpacity={fillOpacity(win, props.selected)}>
-			    <rect x={win.X} y={win.Y} width={win.W} height={win.H} stroke="black"/>
-				<text x={win.X + win.W/2} y={win.Y + win.H/2} textAnchor="middle" alignmentBaseline="center" fontSize="120">{index}</text>
+			    <rect x={win.X} y={win.Y} width={win.W} height={win.H} stroke="black" />
+				<text x={win.X + win.W/2} y={win.Y + win.H/2} textAnchor="middle" alignmentBaseline="center" fontSize="120" stroke="black">{index + 1}</text>
 			</g>
 		))}
 		</svg>
