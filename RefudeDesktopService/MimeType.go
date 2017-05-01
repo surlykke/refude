@@ -30,7 +30,7 @@ type Mimetype struct {
 	Aliases                common.StringList
 	Globs                  common.StringList
 	SubClassOf             common.StringList
-	Icon                   string
+	IconName               string
 	GenericIcon            string
 	AssociatedApplications common.StringList
 	DefaultApplications    []string
@@ -126,9 +126,9 @@ func CollectMimeTypes() map[string]*Mimetype {
 		}
 
 		if tmp.Icon.Name != "" {
-			mimeType.Icon = tmp.Icon.Name
+			mimeType.IconName = tmp.Icon.Name
 		} else {
-			mimeType.Icon = strings.Replace(mimeType.Type, "/", "-", -1)
+			mimeType.IconName = strings.Replace(mimeType.Type, "/", "-", -1)
 		}
 
 		if tmp.GenericIcon.Name != "" {
