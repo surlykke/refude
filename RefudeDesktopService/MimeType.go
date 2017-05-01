@@ -128,7 +128,8 @@ func CollectMimeTypes() map[string]*Mimetype {
 		if tmp.Icon.Name != "" {
 			mimeType.IconName = tmp.Icon.Name
 		} else {
-			mimeType.IconName = strings.Replace(mimeType.Type, "/", "-", -1)
+			mimeType.IconName = strings.Replace(mimeType.Type, "/", "-", -1) + "-" +
+			                    strings.Replace(mimeType.Subtype, "/", "-", -1)
 		}
 
 		if tmp.GenericIcon.Name != "" {
