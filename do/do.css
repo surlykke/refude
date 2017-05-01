@@ -5,7 +5,6 @@ html, body {
 .content  {
 	height: 100%;
 	width: 100%;
-	border: 1px solid red;
     display: flex;
 }
 .left {
@@ -41,17 +40,4 @@ html, body {
     flex: 1;
     height: calc(100% - 20px);
     position: relative;
-    border: solid 1px grey;
-}
-.window {
-    position: absolute;
-    border: solid 1px black;
-    background-color: grey;
-    opacity: 0.2;
-}
-.windowTitle {
-    background-color: lightblue;
-    font-size: xx-small;
-    vertical-align: central;
-    opacity: 1;
 }

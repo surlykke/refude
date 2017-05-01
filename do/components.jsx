@@ -6,10 +6,6 @@ let SearchBox = props =>
         <input type="search" autoFocus value={props.searchTerm}/>
     </div>
 
-let classNames = (res, selected) => {
-	console.log("classNames(", res, ", ", selected, ")")
-	return "line" + (res === selected ? " selected" : "")
-}
 
 let CommandList = props =>
     <div className="list" id="contentBox">
@@ -21,20 +17,23 @@ let CommandList = props =>
 		)}
 	</div>
 
-let classes = (res, selected) => {
-	return "line" +
-	       (res === selected ? " selected" : "") +
-		   (res.X !== undefined ? " shadow" : "") +
-		   (res.States && res.States.includes("_NET_WM_STATE_HIDDEN") ? " dimmed" : "")
-}
+let isWindow = res => res.X !== undefined
+let isMinimized = res =>  (res.States || []).includes("_NET_WM_STATE_HIDDEN")
+
+
+let commandClasses = (res, selected) =>
+	"line" + (res === selected ? " selected" : "") + (isWindow(res) ? " shadow" : "") + (isMinimized(res) ? " dimmed" : "")
+
+let iconSize = res => isMinimized(res) ? 20 : 32
+
 
 let Command = props =>
 	<div onClick={() => {props.select(props.res)}}
 		 onDoubleClick={() => {props.select(props.res, true)}}
-		 className={classes(props.res, props.selected)}>
+		 className={commandClasses(props.res, props.selected)}>
 
-	    <div className="line-icon">
-	        <img src={props.res.IconUrl} height="32" width="32" alt=" "/>
+	    <div className="line-icon" style={{paddingLeft: 32 - iconSize(props.res)}}>
+	        <img src={props.res.IconUrl} height={iconSize(props.res)} width={iconSize(props.res)} alt=" "/>
 	    </div>
 	    <div className="line-title">{props.res.Name}</div>
 	    <div className="line-comment">{props.res.Comment}</div>
@@ -48,9 +47,12 @@ let Windows = props =>
 	<div id="disp" className="display">
 		<svg viewBox="0 0 1920 1080" >
 		{props.windows.map((win, index) => (
-			<g key={win.url} z={zIndex(win, index, props.selected)} fillOpacity={fillOpacity(win, props.selected)}>
+			<g key={win.url} z={zIndex(win, index, props.selected)} font-family="Verdana" fillOpacity={fillOpacity(win, props.selected)}>
 			    <rect x={win.X} y={win.Y} width={win.W} height={win.H} stroke="black" />
-				<text x={win.X + win.W/2} y={win.Y + win.H/2} textAnchor="middle" alignmentBaseline="center" fontSize="120" stroke="black">{index + 1}</text>
+				<rect x={win.X} y={win.Y} width={win.W} height="40" fill="lightblue" fillOpacity="1"/>
+				<img xlinkHref={win.IconUrl} x={win.X} y={win.Y} width="40" height="40"/>
+				<text x={win.X + 80} y={win.Y + 30} fontSize="27" stroke="black" alignmentBaseline="center">{win.Name}</text>
+				<text x={win.X + win.W/2} y={win.Y + win.H/2} textAnchor="middle" alignmentBaseline="center" fontSize="120" stroke="black" fill="#000000">{index + 1}</text>
 			</g>
 		))}
 		</svg>
