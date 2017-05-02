@@ -1,6 +1,41 @@
+html, body {
+    height: 100%;
+    overflow: hidden;
+}
 .heading {
     font-size: x-large;
     padding-left: 50px;
+}
+.content  {
+	height: 100%;
+	width: 100%;
+    display: flex;
+}
+.left {
+    margin-right: 8px;
+    height: calc(100% - 20px);
+    width: 250px;
+    overflow: auto;
+    resize: horizontal;
+    display: flex;
+    flex-direction: column;
+}
+.searchInput  {
+    height: 42px;
+    width: calc(100% - 18px);
+    margin-bottom: 8px;
+}
+.searchInput > input {
+    height: 100%;
+    width: 100%;
+    border-radius: 8px;
+    outline-style: none;
+}
+.list {
+    overflow-y: scroll;
+    flex: 1;
+    margin-bottom: 8px;
+
 }
 .line {
     margin-bottom: 5px;
@@ -10,6 +45,7 @@
     padding-right: 5px; 
     padding-top: 2px;
     padding-bottom: 2px;
+    width: calc(100% - 20px);
 }
 .line-icon {
     float: left;
@@ -40,3 +76,9 @@
     border-radius: 8px;
 }
 
+
+.display {
+    flex: 1;
+    height: calc(100% - 20px);
+    position: relative;
+}
