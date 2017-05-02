@@ -31,6 +31,8 @@ export function MakeServiceProxy(indexUrl, notifyUrl) {
 			dressup(url, res)
 		}
 
+		console.log("set ", url, ", IconName: ", res.IconName)
+
 		resources[url] = res
 		publish(url)
 	}

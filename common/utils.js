@@ -42,8 +42,6 @@ let doHttp = (url, method) => { // TODO payload
 		method: method || "GET"
 	}
 
-	console.log("doHttp, opts: ", opts)
-
 	return new Promise((resolve, reject) => {
 		http.request(opts, resp => {
 			let data = ''
@@ -72,11 +70,12 @@ let nwHide = () => {
 		WIN.hide()
 }
 
-let nwSetup = () => {
-	NW.App.on("open", (args) => {
-			console.log("Opened", args)
-			WIN.show();
-	})
+let nwShow = () => {
+	WIN.show();
 }
 
-export {nwHide, nwSetup, combinedUrl, combinedUrls, iconServiceUrl, doHttp}
+let nwSetup = () => {
+	NW.App.on("open", (args) => {nwShow()})
+}
+
+export {nwHide, nwShow, nwSetup, combinedUrl, combinedUrls, iconServiceUrl, doHttp}

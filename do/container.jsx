@@ -121,6 +121,6 @@ class Container extends React.Component {
 nwSetup()
 
 render(
-	<Container windowsProxy={windowsProxy} appsProxy={appsProxy}/>,
+	<Container/>,
 	document.getElementById('root')
 );
