@@ -70,8 +70,12 @@ let nwHide = () => {
 		WIN.hide()
 }
 
-let nwShow = () => {
+let nwShow = (alwaysOnTop) => {
 	WIN.show();
+	if (alwaysOnTop) {
+		console.log("Setting alwaysOnTop")
+		WIN.setAlwaysOnTop(true)
+	}
 }
 
 let nwSetup = () => {

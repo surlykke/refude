@@ -7,24 +7,24 @@ var gutil = require('gulp-util');
 
 gulp.task('assets', function() {
 	return gulp
-		.src(['main.html', '../common/refude.css', 'package.json', 'refudeDo'])
-		.pipe(gulp.dest('../dist/do'))
+		.src(['main.html', '../common/refude.css', 'package.json', 'refudeAppChooser'])
+		.pipe(gulp.dest('../dist/appchooser'))
 })
 
 gulp.task('js', function() {
-u	browserify({ entries: ["./container.jsx"], extensions: [".jsx", ".js"], debug: true })
+	browserify({ entries: ["./appchooser.jsx"], extensions: [".jsx", ".js"], debug: true })
 		.transform(babelify, {presets: ["react", "es2015", "stage-0"]})
 		.bundle()
 		.on('error',gutil.log)
 		.pipe(source('bundle.js'))
-    	.pipe(gulp.dest('../dist/do'));
+    	.pipe(gulp.dest('../dist/appchooser'));
 });
 
 gulp.task('default', ['assets', 'js']);
 
 gulp.task('watch',function() {
 	gulp.start('default')
-	gulp.watch(['./*', '../common/*'],['default'])
+	gulp.watch(['*', '../common/*'],['default'])
 });
 
 gulp.task('run', ['default', 'watch'])

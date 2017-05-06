@@ -6,6 +6,10 @@ html, body {
     font-size: x-large;
     padding-left: 50px;
 }
+.heading2 {
+	font-size: 1.1em;
+	padding-bottom: 8px;
+}
 .content  {
 	height: 100%;
 	width: 100%;
@@ -42,7 +46,7 @@ html, body {
     vertical-align: top;
     overflow: hidden;
     padding-left:5px;
-    padding-right: 5px; 
+    padding-right: 5px;
     padding-top: 2px;
     padding-bottom: 2px;
     width: calc(100% - 20px);

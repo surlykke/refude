@@ -4,8 +4,9 @@ export function MakeServiceProxy(indexUrl, notifyUrl) {
 	let subscribers = []
 
 	let proxy = {
-		get: url => { return resources[url] },
-		index: () => { return resources[indexUrl] || [] },
+		get: url => { return resourceMap[url] },
+		index: () => { return resourceMap[indexUrl] || [] },
+		resources: () => { return proxy.index().map(url => resourceMap[url]).filter(res => res)},
 		subscribe: subscriber => {subscribers.push(subscriber)},
 		unsubscribe: subscriber => {subscribers = subscribers.filter(s => s !== subscriber)},
 		indexUrl: indexUrl,
@@ -25,15 +26,13 @@ export function MakeServiceProxy(indexUrl, notifyUrl) {
 	let setResource = (url, res) => {
 		if (url === indexUrl) {
 			res = combinedUrls(url, res)
-			res.filter(url => !resources[url]).forEach(url => {fetchResource(url)})
+			res.filter(url => !resourceMap[url]).forEach(url => {fetchResource(url)})
 		}
 		else {
 			dressup(url, res)
 		}
 
-		console.log("set ", url, ", IconName: ", res.IconName)
-
-		resources[url] = res
+		resourceMap[url] = res
 		publish(url)
 	}
 
@@ -47,7 +46,7 @@ export function MakeServiceProxy(indexUrl, notifyUrl) {
 		}
 	}
 
-	let resources = new Map()
+	let resourceMap = new Map()
 	let evtSource;
 
 	let connect = () => {
@@ -57,7 +56,7 @@ export function MakeServiceProxy(indexUrl, notifyUrl) {
 		}
 
 		evtSource.onerror = event => {
-			resources = new Map()
+			resourceMap = new Map()
 			if (evtSource.readyState === 2) {
 				setTimeout(() => {connect()}, 5000)
 			}
@@ -73,8 +72,8 @@ export function MakeServiceProxy(indexUrl, notifyUrl) {
 
 		evtSource.addEventListener("resource-removed", event => {
 			let url = combinedUrl(notifyUrl, event.data)
-			if (resources[url]) {
-				delete resources[url]
+			if (resourceMap[url]) {
+				delete resourceMap[url]
 				publish(url)
 			}
 		})
