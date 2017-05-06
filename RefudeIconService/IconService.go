@@ -34,15 +34,17 @@ func (is IconService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			is.mutex.RLock()
 			themesCopy := is.themes
 			is.mutex.RUnlock()
-			if name, size, theme, ok := is.extractNameSizeAndTheme(r.URL.Query()); !ok {
+			if names, size, theme, ok := is.extractNameSizeAndTheme(r.URL.Query()); !ok {
 				w.WriteHeader(http.StatusUnprocessableEntity)
 			} else {
-				if icon, ok := themesCopy.FindIcon(theme, size, name); ok {
-					fmt.Println("Serving: ", icon.Path)
-					http.ServeFile(w, r, icon.Path)
-				} else {
-					w.WriteHeader(http.StatusNotFound)
+				for _, name := range names {
+					if icon, ok := themesCopy.FindIcon(theme, size, name); ok {
+						fmt.Println("Serving: ", icon.Path)
+						http.ServeFile(w, r, icon.Path)
+						return
+					}
 				}
+				w.WriteHeader(http.StatusNotFound)
 			}
 		} else {
 			w.WriteHeader(http.StatusMethodNotAllowed)
@@ -53,19 +55,19 @@ func (is IconService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 
-func (is IconService) extractNameSizeAndTheme(query map[string][]string) (string, uint32, string, bool) {
-	if len(query["name"]) != 1 || len(query["themeName"]) > 1 || len(query["size"]) > 1 {
-		return "", 0, "", false
+func (is IconService) extractNameSizeAndTheme(query map[string][]string) ([]string, uint32, string, bool) {
+	if len(query["name"]) < 1 || len(query["themeName"]) > 1 || len(query["size"]) > 1 {
+		return make([]string, 0), 0, "", false
 	}
 
-	name := query["name"][0]
+	name := query["name"]
 	iconSize := uint32(32)
 	theme := is.defaultTheme()
 
 	if len(query["size"]) > 0 {
 		var ok bool
 		if iconSize, ok = readUint32(query["size"][0]); !ok {
-			return "", 0, "", false
+			return make([]string, 0), 0, "", false
 		}
 	}
 
