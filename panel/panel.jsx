@@ -12,7 +12,8 @@ import {nwHide, nwShow} from '../common/utils'
 
 const powerProxy = MakeServiceProxy("http://localhost:7938/power-service/devices", "http://localhost:7938/power-service/notify")
 const displayDeviceUrl = "http://localhost:7938/power-service/device/DisplayDevice"
-
+const gui = window.require('nw.gui')
+const Window = gui.Window.get()
 class Panel extends React.Component {
 
 	constructor(props) {
@@ -56,8 +57,8 @@ class Panel extends React.Component {
 	}
 
 	onClick = (event) => {
-		nwHide()
-		setTimeout(() => {nwShow()}, 5000)
+		Window.minimize()
+		setTimeout(() => {Window.restore()}, 5000)
 	}
 
 	render = () =>
