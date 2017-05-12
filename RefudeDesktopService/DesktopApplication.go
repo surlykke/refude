@@ -68,8 +68,13 @@ func (app *DesktopApplication) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		if action,ok := app.Actions[actionId]; !ok {
 			w.WriteHeader(http.StatusNotAcceptable)
 		} else {
-			cmd := regexp.MustCompile("%[uUfF]").ReplaceAllString(action.Exec, "")
-
+			args := ""
+			argv, ok := r.URL.Query()["arg"]
+			if ok && len(argv) > 0 {
+				args = strings.Join(argv, " ")
+			}
+			cmd := regexp.MustCompile("%[uUfF]").ReplaceAllString(action.Exec, args)
+			fmt.Println("Running cmd: " + cmd)
 			if err:= runCmd(cmd); err != nil {
 				fmt.Println(err)
 				w.WriteHeader(http.StatusInternalServerError)
