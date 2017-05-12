@@ -100,7 +100,7 @@ class AppConfig extends React.Component {
 		let {mimetypes, selected, searchTerm} = this.state
 		return (
 			<div className="content">
-				<div className="left" onKeyDown={this.onKeyDown}>
+				<div className="topdown" onKeyDown={this.onKeyDown}>
 					<MimetypeList mimetypes={mimetypes} selected={selected} select={this.select}/>
 				</div>
 			</div>

@@ -8,7 +8,7 @@ for app in $angularapp; do
 	ln -sf $thisdir/$app
 done
 
-reactapps="panel/refudePanel do/refudeDo"
+reactapps="panel/refudePanel do/refudeDo appchooser/refudeAppChooser"
 for app in $reactapps; do
 	appdir=`dirname $app`
 	echo "building $appdir"

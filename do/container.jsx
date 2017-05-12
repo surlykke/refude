@@ -109,7 +109,7 @@ class Container extends React.Component {
 		let {windows, apps, selected, searchTerm} = this.state
 		return (
 			<div className="content">
-				<div className="left" onKeyDown={this.onKeyDown}>
+				<div className="topdown" onKeyDown={this.onKeyDown}>
 					<SearchBox onTermChange={this.onTermChange} searchTerm={searchTerm}/>
 					<CommandList windows={windows} apps={apps} selected={selected} select={this.select}/>
 				</div>

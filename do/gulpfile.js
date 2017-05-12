@@ -7,7 +7,7 @@ var gutil = require('gulp-util');
 
 gulp.task('assets', function() {
 	return gulp
-		.src(['main.html', '../common/refude.css', 'package.json', 'refudeDo'])
+		.src(['main.html', '../common/refude.css', 'do.css', 'package.json', 'refudeDo'])
 		.pipe(gulp.dest('../dist/do'))
 })
 

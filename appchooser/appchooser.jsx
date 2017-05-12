@@ -1,87 +1,124 @@
 import React from 'react';
 import {render} from 'react-dom';
-import {doHttp} from '../common/utils'
+import {doHttp, iconServiceUrl} from '../common/utils'
 import {MakeServiceProxy} from '../common/service-proxy'
-import {Mimetype, Applist} from "./components"
+import {Argument, Applist} from "./components"
 
 let appsProxy = MakeServiceProxy("http://localhost:7938/desktop-service/applications",
                                  "http://localhost:7938/desktop-service/notify")
 
+let gui = window.require('nw.gui')
+if (gui.App.argv.length < 2) {
+	gui.App.quit()
+}
+let appArgument = gui.App.argv[0]
+let mimetypeId = gui.App.argv[1]
 
 class AppChooser extends React.Component {
 	constructor(props) {
 		super(props)
-		let gui =
-		this.mimetypeId =  window.require('nw.gui').App.argv[0]
-		console.log("mimetypeId:", this.mimetypeId)
-		let err = ""
-		if (!this.mimetypeId) {
-			err = "Usage: appchooser mimetype [uri]"
-		}
-		else {
-			this.mimetypeIds = []
-			this.mimetypes = new Map()
-		}
-		this.state = {applist: [], err: err}
+		this.mimetypeIds = []
+		this.mimetypes = new Map()
+		this.state = {applist: []}
+		this.allApps = []
 	}
-
 
 	componentDidMount() {
-		console.log("Fetching...")
-		this.fetch(this.mimetypeId)
-		appsProxy.subscribe(url => {this.requestUpdate()})
+		console.log("fetch: ")
+		this.fetch(mimetypeId)
+		appsProxy.subscribe(url => {this.update()})
+		document.body.addEventListener("keydown", this.onKeyDown)
 	}
 
-	fetch = (mimetypeId) => {
-		let url = "http://localhost:7938/desktop-service/mimetype/" + mimetypeId
-		console.log("Fetching ", url)
+	fetch = (id) => {
+		let url = "http://localhost:7938/desktop-service/mimetype/" + id
 		doHttp(url).then(mimetype => {
-			console.log("Got: ", mimetype)
-			let mimetypeId = mimetype.Type + "/" + mimetype.Subtype
-			if (! this.mimetypeIds.includes(mimetypeId)) {
-				this.mimetypeIds.push(mimetypeId)
-				this.mimetypes[mimetypeId] = mimetype
-				mimetype.SubClassOf.forEach(id => { this.fetch(id)})
-				this.requestUpdate()
+			if (! this.mimetypeIds.includes(id)) {
+				this.mimetypeIds.push(id)
+				mimetype.IconUrl = iconServiceUrl([mimetype.IconName, mimetype.GenericIcon])
+				this.mimetypes[id] = mimetype
+				mimetype.SubClassOf.forEach(subId => { this.fetch(subId)})
+				this.update()
 			}
 		})
 	}
 
-	requestUpdate = () => {
+	// We get a lot of events from appsProxy, so we collect to, at most, one update pr 20 ms
+	update = () => {
 		if (! this.updatePending) {
 			this.updatePending = true
-			setTimeout(() => {this.update(); this.updatePending = false}, 20)
+			setTimeout(() => {
+				let applist = this.mimetypeIds.concat(["other"]).map(id => {
+					return {
+						id: id,
+						desc: id !== "other" ? "Applications that handle " + this.mimetypes[id].Comment : "Other applications",
+						apps: []
+					}
+				})
+
+				let takesArgs = app => app.Actions["_default"]["Exec"].match(/%f|%F|%u|%U/)
+				appsProxy.resources().filter(takesArgs).forEach(app => {
+				 	applist.find(t => app.Mimetypes.includes(t.id) || t.id === 'other').apps.push(app)
+				})
+				applist = applist.filter(t => t.apps.length > 0)
+
+				this.allApps = []
+				applist.forEach(t => {this.allApps.push(...t.apps)})
+				this.setState({appArgument: appArgument, mimetype: this.mimetypes[mimetypeId], selected: this.allApps[0], applist: applist})
+				this.updatePending = false
+			}, 20)
 		}
 	}
 
-	update = () => {
-		console.log("Updating")
-		let apps = new Map()
-		this.mimetypeIds.forEach(mimetypeId => {apps[mimetypeId] = []})
-		apps["other"] = []
+	select = (app, done) => {
+		this.setState({selected: app})
+		if (done) {
+			this.execute()
+		}
+	}
 
-		appsProxy.resources().forEach(app => {
-			let id = this.mimetypeIds.find(id => app.Mimetypes.includes(id)) || "other"
-			apps[id].push(app)
-		})
+	move = up => {
+		let i = this.allApps.indexOf(this.state.selected)
+		i = (i + (up ? -1 : 1) + this.allApps.length) % this.allApps.length
+		this.setState({selected: this.allApps[i]})
+	}
 
-		let applist = []
-		this.mimetypeIds.forEach(mimetypeId => {
-			applist.push({desc: "Applications that handle " + this.mimetypes[mimetypeId].Comment, apps: apps[mimetypeId]})
-		})
-		applist.push({desc: "Other applications", apps: apps["other"]})
+	execute = () => {
+		if (this.state.selected) {
+			let url = this.state.selected.url + "?arg=" + encodeURIComponent(appArgument)
+			doHttp(url, "POST").then(response => {gui.App.quit()})
+		}
+	}
 
-		this.setState({mimetype: this.mimetypes[this.mimetypeId], applist: applist})
-		console.log("State now: ", this.state)
+	onKeyDown = (event) => {
+		let {key, ctrlKey, shiftKey, altKey, metaKey} = event
+		let op = {
+			Tab: () => {this.move(shiftKey)},
+	        ArrowDown : () => {this.move()},
+	        ArrowUp :  () => {this.move(true)},
+	        Enter : () => {this.execute()},
+	        " " : () => {this.execute()}
+		}[key]
+
+		if (op) {
+			op()
+			event.preventDefault()
+		}
 	}
 
 
+	appClasses = (app, selected) => "line" + (app === selected ? " selected" : "")
+
 	render = () => {
+		let {mimetype, applist, selected} = this.state
 		return (
-			<div className="content">
-				<div>
-					<Mimetype mimetype={this.state.mimetype}/>
-					<Applist applist={this.state.applist}/>
+			<div className=" content" onKeyDown={this.onKeyDown}>
+				<div className="topdown">
+					<div className="heading2">Select an application to open:</div>
+					<Argument appArgument={appArgument} mimetypeId={mimetypeId} mimetype={mimetype}/>
+					<div> <input type="checkbox"/>Remember</div>
+					<div className="hr"></div>
+					<Applist applist={applist} selected={selected} select={this.select}/>
 				</div>
 			</div>
 		)
@@ -89,6 +126,6 @@ class AppChooser extends React.Component {
 }
 
 render(
-	<AppChooser/>,
+	<AppChooser appArgument={gui.App.argv[0]} mimetypeId={gui.App.argv[1]}/>,
 	document.getElementById('root')
 );

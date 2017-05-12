@@ -26,8 +26,11 @@ let combinedUrls = (absoluteUrl, relativeUrls) => {
 }
 
 
-let iconServiceUrl = (iconName, size) => {
-    return "http://localhost:7938/icon-service/icon?name=" + iconName + "&size=" + (size || 32);
+let iconServiceUrl = (iconNames, size) => {
+	if (! Array.isArray(iconNames)) iconNames = [iconNames]
+    return "http://localhost:7938/icon-service/icon" +
+	       "?name=" + iconNames.map(name => encodeURIComponent(name)).join("&name=") +
+		   "&size=" + (size || 32);
 }
 
 const tcpPattern = /http:\/\/(\w*)(:(\d+))?(\/.*)/
