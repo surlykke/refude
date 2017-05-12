@@ -12,7 +12,7 @@ gulp.task('assets', function() {
 })
 
 gulp.task('js', function() {
-u	browserify({ entries: ["./container.jsx"], extensions: [".jsx", ".js"], debug: true })
+	browserify({ entries: ["./container.jsx"], extensions: [".jsx", ".js"], debug: true })
 		.transform(babelify, {presets: ["react", "es2015", "stage-0"]})
 		.bundle()
 		.on('error',gutil.log)
