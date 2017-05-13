@@ -2,7 +2,8 @@ import React from 'react';
 import {render} from 'react-dom';
 import {doHttp, iconServiceUrl} from '../common/utils'
 import {MakeServiceProxy} from '../common/service-proxy'
-import {Argument, Applist} from "./components"
+import {Argument} from "./components"
+import {List} from "../common/components"
 
 let appsProxy = MakeServiceProxy("http://localhost:7938/desktop-service/applications",
                                  "http://localhost:7938/desktop-service/notify")
@@ -19,7 +20,7 @@ class AppChooser extends React.Component {
 		super(props)
 		this.mimetypeIds = []
 		this.mimetypes = new Map()
-		this.state = {applist: []}
+		this.state = {listOfLists: []}
 		this.allApps = []
 	}
 
@@ -48,23 +49,26 @@ class AppChooser extends React.Component {
 		if (! this.updatePending) {
 			this.updatePending = true
 			setTimeout(() => {
-				let applist = this.mimetypeIds.concat(["other"]).map(id => {
+				let listOfLists = this.mimetypeIds.concat(["other"]).map(id => {
 					return {
 						id: id,
 						desc: id !== "other" ? "Applications that handle " + this.mimetypes[id].Comment : "Other applications",
-						apps: []
+						items: []
 					}
 				})
 
 				let takesArgs = app => app.Actions["_default"]["Exec"].match(/%f|%F|%u|%U/)
 				appsProxy.resources().filter(takesArgs).forEach(app => {
-				 	applist.find(t => app.Mimetypes.includes(t.id) || t.id === 'other').apps.push(app)
+				 	listOfLists.find(t => app.Mimetypes.includes(t.id) || t.id === 'other').items.push(app)
 				})
-				applist = applist.filter(t => t.apps.length > 0)
+				listOfLists = listOfLists.filter(t => t.items.length > 0)
 
 				this.allApps = []
-				applist.forEach(t => {this.allApps.push(...t.apps)})
-				this.setState({appArgument: appArgument, mimetype: this.mimetypes[mimetypeId], selected: this.allApps[0], applist: applist})
+				listOfLists.forEach(t => {this.allApps.push(...t.items)})
+				this.setState({appArgument: appArgument,
+					           mimetype: this.mimetypes[mimetypeId],
+							   selected: this.allApps[0],
+							   listOfLists: listOfLists})
 				this.updatePending = false
 			}, 20)
 		}
@@ -109,7 +113,7 @@ class AppChooser extends React.Component {
 	appClasses = (app, selected) => "line" + (app === selected ? " selected" : "")
 
 	render = () => {
-		let {mimetype, applist, selected} = this.state
+		let {mimetype, listOfLists, selected} = this.state
 		return (
 			<div className=" content" onKeyDown={this.onKeyDown}>
 				<div className="topdown">
@@ -117,7 +121,7 @@ class AppChooser extends React.Component {
 					<Argument appArgument={appArgument} mimetypeId={mimetypeId} mimetype={mimetype}/>
 					<div> <input type="checkbox"/>Remember</div>
 					<div className="hr"></div>
-					<Applist applist={applist} selected={selected} select={this.select}/>
+					<List listOfLists={listOfLists} selected={selected} select={this.select}/>
 				</div>
 			</div>
 		)
