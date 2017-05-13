@@ -18,6 +18,8 @@ import (
 	"regexp"
 	"strings"
 	"github.com/surlykke/RefudeServices/service"
+	"encoding/json"
+	"io"
 )
 
 type DesktopApplication struct {
@@ -55,27 +57,44 @@ type Action struct {
 	IconUrl  string
 }
 
+type DesktopPostPayload struct {
+	ActionId string
+	Arguments []string
+}
+
+func unmarshal(data io.Reader, dest interface{}) error {
+	if extractedData, err := ioutil.ReadAll(data); err != nil {
+		return err
+	} else if len(extractedData) > 0 {
+		return json.Unmarshal(extractedData, dest)
+	} else {
+		return nil
+	}
+}
+
 func (app *DesktopApplication) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		common.ServeAsJson(w, r, app)
 	} else if r.Method == "POST" {
-		actionId := "_default"
-		actionv, ok := r.URL.Query()["action"]
-		if ok && len(actionv) > 0{
-			actionId = actionv[0]
+		payload := DesktopPostPayload{}
+		if err := unmarshal(r.Body, &payload); err != nil {
+			fmt.Println(err)
+			w.WriteHeader(http.StatusNotAcceptable);
+			return
 		}
 
-		if action,ok := app.Actions[actionId]; !ok {
+		if len(payload.ActionId) == 0 {
+			payload.ActionId = "_default"
+		}
+
+		fmt.Println("action: ", payload.ActionId, ", args")
+		if action, ok := app.Actions[payload.ActionId]; !ok {
 			w.WriteHeader(http.StatusNotAcceptable)
 		} else {
-			args := ""
-			argv, ok := r.URL.Query()["arg"]
-			if ok && len(argv) > 0 {
-				args = strings.Join(argv, " ")
-			}
+			args := strings.Join(payload.Arguments, " ")
 			cmd := regexp.MustCompile("%[uUfF]").ReplaceAllString(action.Exec, args)
 			fmt.Println("Running cmd: " + cmd)
-			if err:= runCmd(cmd); err != nil {
+			if err := runCmd(cmd); err != nil {
 				fmt.Println(err)
 				w.WriteHeader(http.StatusInternalServerError)
 			} else {
