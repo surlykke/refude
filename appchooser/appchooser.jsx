@@ -36,6 +36,7 @@ class AppChooser extends React.Component {
 		doHttp(url).then(mimetype => {
 			if (! this.mimetypeIds.includes(id)) {
 				this.mimetypeIds.push(id)
+				mimetype.url = url
 				mimetype.IconUrl = iconServiceUrl([mimetype.IconName, mimetype.GenericIcon])
 				this.mimetypes[id] = mimetype
 				mimetype.SubClassOf.forEach(subId => { this.fetch(subId)})
@@ -88,6 +89,14 @@ class AppChooser extends React.Component {
 	}
 
 	execute = () => {
+		if (this.refs.remember.value === "on" && this.state.mimetype) {
+			console.log("PATCHING to ", this.state.mimetype.url)
+			let appId = this.state.selected.Id
+			let defaultApps = [this.state.selected.Id]
+			defaultApps.push(...this.state.mimetype.DefaultApplications.filter(appId => applicationId !== appId))
+			doHttp(this.state.mimetype.url, "PATCH", {DefaultApplications: defaultApps})
+		}
+
 		if (this.state.selected) {
 			doHttp(this.state.selected.url, "POST", {Arguments: [appArgument]}).then(response => {gui.App.quit()})
 		}
@@ -119,7 +128,7 @@ class AppChooser extends React.Component {
 				<div className="topdown">
 					<div className="heading2">Select an application to open:</div>
 					<Argument appArgument={appArgument} mimetypeId={mimetypeId} mimetype={mimetype}/>
-					<div> <input type="checkbox"/>Remember</div>
+					<div> <input type="checkbox" ref="remember"/>Remember</div>
 					<div className="hr"></div>
 					<List listOfLists={listOfLists} selected={selected} select={this.select}/>
 				</div>
