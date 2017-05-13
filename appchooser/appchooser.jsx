@@ -85,8 +85,7 @@ class AppChooser extends React.Component {
 
 	execute = () => {
 		if (this.state.selected) {
-			let url = this.state.selected.url + "?arg=" + encodeURIComponent(appArgument)
-			doHttp(url, "POST").then(response => {gui.App.quit()})
+			doHttp(this.state.selected.url, "POST", {Arguments: [appArgument]}).then(response => {gui.App.quit()})
 		}
 	}
 

@@ -35,7 +35,7 @@ let iconServiceUrl = (iconNames, size) => {
 
 const tcpPattern = /http:\/\/(\w*)(:(\d+))?(\/.*)/
 
-let doHttp = (url, method) => { // TODO payload
+let doHttp = (url, method, payload) => { // TODO payload
 	let m = tcpPattern.exec(url)
 
 	let opts = {
@@ -46,7 +46,7 @@ let doHttp = (url, method) => { // TODO payload
 	}
 
 	return new Promise((resolve, reject) => {
-		http.request(opts, resp => {
+		let req = http.request(opts, resp => {
 			let data = ''
 			resp.setEncoding('utf8')
 			resp.on('data', chunk => { data += chunk })
@@ -59,8 +59,11 @@ let doHttp = (url, method) => { // TODO payload
 				}
 			})
 		})
-		.on('error', e => reject(e))
-		.end()
+		req.on('error', e => reject(e))
+		if (payload) {
+			req.write(JSON.stringify(payload))
+		}
+		req.end()
 	})
 
 }
