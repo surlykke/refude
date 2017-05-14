@@ -18,10 +18,10 @@ class AppChooser extends React.Component {
 		this.mimetypeIds = []
 		this.mimetypes = new Map()
 		this.state = {appArgument: appArgument, mimetypeId: mimetypeId, listOfLists: []}
+		this.allItems = []
 	}
 
 	componentDidMount() {
-		console.log("fetch: ")
 		this.fetch(mimetypeId)
 		appsProxy.subscribe(url => {this.update()})
 		document.body.addEventListener("keydown", this.onKeyDown)
@@ -61,40 +61,67 @@ class AppChooser extends React.Component {
 				 	listOfLists.find(t => app.Mimetypes.includes(t.id) || t.id === 'other').items.push(app)
 				})
 				listOfLists = listOfLists.filter(t => t.items.length > 0)
-
-				this.setState({listOfLists: listOfLists})
+				this.allItems = []
+				listOfLists.forEach(t => {this.allItems.push(...t.items)})
+				this.setState({listOfLists: listOfLists, selected: this.allItems[0]})
 				this.updatePending = false
 			}, 20)
 		}
 	}
 
-	execute = app => {
-		if (this.refs.remember.value === "on" && this.state.mimetype) {
-			console.log("PATCHING to ", this.state.mimetype.url)
-			let defaultApps = [app.Id, ...this.state.mimetype.DefaultApplications.filter(id => app.Id !== id)]
-			doHttp(this.state.mimetype.url, "PATCH", {DefaultApplications: defaultApps})
-		}
-
-		doHttp(app.url, "POST", {Arguments: [appArgument]}).then(response => {gui.App.quit()})
+	select = (item, execute) => {
+		this.setState({selected: item})
+		if (execute) this.execute()
 	}
 
+	execute = () => {
+		let app = this.state.selected
+		let remember = this.refs.remember.value === "on"
+		let mimetype = this.state.mimetype
+		if (app) {
+			if (remember && mimetype) {
+				console.log("PATCHING to ", this.state.mimetype.url)
+				let defaultApps = [app.Id, ...mimetype.DefaultApplications.filter(id => app.Id !== id)]
+				doHttp(mimetype.url, "PATCH", {DefaultApplications: defaultApps})
+			}
+
+			doHttp(app.url, "POST", {Arguments: [appArgument]}).then(response => {gui.App.quit()})
+		}
+	}
+
+	move = up => {
+		let i = this.allItems.indexOf(this.state.selected)
+		i = (i + (up ? -1 : 1) + this.allItems.length) % this.allItems.length
+		this.select(this.allItems[i])
+	}
+
+
 	onKeyDown = (event) => {
-		console.log("onKeyDown: ", event)
-		if (["Tab", "ArrowDown", "ArrowUp", "Enter", " "].includes(event.key)) {
-			this.list.onKeyDown(event)
+		let {key, ctrlKey, shiftKey, altKey, metaKey} = event
+		let op = {
+			Tab: () => {this.move(shiftKey)},
+	        ArrowDown : () => {this.move()},
+	        ArrowUp :  () => {this.move(true)},
+	        Enter : () => {this.select(this.state.selected, true)},
+	        " " : () => {this.select(this.state.selected, true)}
+		}[key]
+
+		if (op) {
+			op()
+			event.preventDefault()
 		}
 	}
 
 	render = () => {
 		let {mimetype, listOfLists, selected} = this.state
 		return (
-			<div className=" content" onKeyDown={this.onKeyDown}>
+			<div className=" content">
 				<div className="topdown">
 					<div className="heading2">Select an application to open:</div>
 					<Argument appArgument={appArgument} mimetypeId={mimetypeId} mimetype={mimetype}/>
 					<div> <input type="checkbox" ref="remember"/>Remember</div>
 					<div className="hr"></div>
-					<List listOfLists={listOfLists} execute={this.execute} ref={list => this.list = list}/>
+					<List listOfLists={listOfLists} select={this.select} selected={selected}/>
 				</div>
 			</div>
 		)

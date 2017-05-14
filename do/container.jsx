@@ -27,6 +27,7 @@ class Container extends React.Component {
 	constructor(props) {
 		super(props)
 		this.state = {listOfLists: [], windows: [], searchTerm: ""}
+		this.allItems = []
 	}
 
 	componentDidMount = () => {
@@ -51,6 +52,11 @@ class Container extends React.Component {
 					}
 				]
 				this.setState({listOfLists: listOfLists.filter(t => t.items.length > 0), windows: listOfLists[0].items})
+				this.allItems = []
+				listOfLists.forEach(t => {this.allItems.push(...t.items)})
+				if (! (this.state.selected && this.allItems.includes(this.state.selected))) {
+					this.setState({selected: this.allItems[0]})
+				}
 				this.updatePending = false
 			},
 			20)
@@ -62,22 +68,44 @@ class Container extends React.Component {
 		this.update()
 	}
 
-	execute = (item) => {
-		doHttp(item.url, "POST").then(response => {
-			this.setState({searchTerm: ""})
-			this.update()
-			nwHide()
-		})
+	select = (item, execute) => {
+		this.setState({selected: item})
+		if (execute) this.execute()
 	}
 
-	onKeyDown = event => {
-		if (["Tab", "ArrowDown", "ArrowUp", "Enter", " "].includes(event.key)) {
-			this.list.onKeyDown(event)
-		}
-		else if ("Escape" === event.key) {
-	    	nwHide()
+	execute = () => {
+		if (this.state.selected) {
+			doHttp(item.url, "POST").then(response => {
+				this.setState({selected: undefined, searchTerm: ""})
+				this.update()
+				nwHide()
+			})
 		}
 	}
+
+	move = up => {
+		let i = this.allItems.indexOf(this.state.selected)
+		i = (i + (up ? -1 : 1) + this.allItems.length) % this.allItems.length
+		this.select(this.allItems[i])
+	}
+
+
+	onKeyDown = (event) => {
+		let {key, ctrlKey, shiftKey, altKey, metaKey} = event
+		let op = {
+			Tab: () => {this.move(shiftKey)},
+	        ArrowDown : () => {this.move()},
+	        ArrowUp :  () => {this.move(true)},
+	        Enter : () => {this.select(this.state.selected, true)},
+	        " " : () => {this.select(this.state.selected, true)}
+		}[key]
+
+		if (op) {
+			op()
+			event.preventDefault()
+		}
+	}
+
 
 	render = () => {
 		let {windows, apps, selected, searchTerm} = this.state
@@ -86,7 +114,7 @@ class Container extends React.Component {
 			<div className="content">
 				<div className="topdown" onKeyDown={this.onKeyDown}>
 					<SearchBox onTermChange={this.onTermChange} searchTerm={searchTerm}/>
-					<List listOfLists={this.state.listOfLists} execute={this.execute} ref={list => this.list = list}/>
+					<List listOfLists={this.state.listOfLists} select={this.select} selected={this.state.selected}/>
 				</div>
 				<Windows windows={windows} selected={selected}/>
 			</div>
