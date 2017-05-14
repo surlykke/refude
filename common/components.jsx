@@ -4,15 +4,19 @@ import ReactDom from 'react-dom'
 class List extends React.Component {
 	constructor(props) {
 		super(props)
+		console.log("List constructor, props.listOfLists: ", props.listOfLists)
 		this.getAllItems(props.listOfLists)
 		this.state = {selected: this.allItems[0]}
+		console.log("out of constructor, state: ", this.state)
 	}
 
 	componentWillReceiveProps(props) {
 		this.getAllItems(props.listOfLists)
+		console.log("willReceive, selected: ", this.state.selected)
 		if (! this.allItems.includes(this.state.selected)) {
 			this.setState({selected: this.allItems[0]})
 		}
+		console.log("out of willReceive, state: ", this.state)
 	}
 
 	getAllItems = listOfLists => {
@@ -44,6 +48,7 @@ class List extends React.Component {
 		if (exec) {
 			this.props.execute(item)
 		}
+		console.log("out of select, selected: ", this.state.selected)
 	}
 
 	execute = () => {
@@ -73,12 +78,18 @@ class List extends React.Component {
 		let i = this.allItems.indexOf(this.state.selected)
 		i = (i + (up ? -1 : 1) + this.allItems.length) % this.allItems.length
 		this.setState({selected: this.allItems[i]})
+		console.log("out move, selected: ", this.state.selected)
 	}
 
+	getSelectedDiv(div, item)  {
+		if (this.state.selected && this.state.selected.url === item.url) {
+			this.selectedDiv = div
+		}
+	}
 
 	render = () => {
 		let {listOfLists} = this.props
-
+		console.log("List render, state: ", this.state)
 		return (
 		    <div className="list" ref={listDiv => this.listDiv = listDiv }>
 				{listOfLists.map(pair => (
@@ -86,7 +97,7 @@ class List extends React.Component {
 						<div className="sublistheading">{pair.desc}</div>
 						{pair.items.map(item => (
 							<div key={item.url}
-								 ref={div => {if (item.url === this.state.selected.url) this.selectedDiv = div}}
+								 ref={div => {this.getSelectedDiv(div, item)}}
 								 onClick={() => {this.select(item)}}
 								 onDoubleClick={() => {this.select(item, true)}}
 								 className={this.classes(item)}>
