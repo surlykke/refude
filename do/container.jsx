@@ -97,7 +97,8 @@ class Container extends React.Component {
 	        ArrowDown : () => {this.move()},
 	        ArrowUp :  () => {this.move(true)},
 	        Enter : () => {this.select(this.state.selected, true)},
-	        " " : () => {this.select(this.state.selected, true)}
+	        " " : () => {this.select(this.state.selected, true)},
+			"Escape" : () => {nwHide()}
 		}[key]
 
 		if (op) {
