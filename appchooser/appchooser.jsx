@@ -9,9 +9,6 @@ let appsProxy = MakeServiceProxy("http://localhost:7938/desktop-service/applicat
                                  "http://localhost:7938/desktop-service/notify")
 
 let gui = window.require('nw.gui')
-if (gui.App.argv.length < 2) {
-	gui.App.quit()
-}
 let appArgument = gui.App.argv[0]
 let mimetypeId = gui.App.argv[1]
 
@@ -20,8 +17,7 @@ class AppChooser extends React.Component {
 		super(props)
 		this.mimetypeIds = []
 		this.mimetypes = new Map()
-		this.state = {listOfLists: []}
-		this.allApps = []
+		this.state = {appArgument: appArgument, mimetypeId: mimetypeId, listOfLists: []}
 	}
 
 	componentDidMount() {
@@ -40,10 +36,17 @@ class AppChooser extends React.Component {
 				mimetype.IconUrl = iconServiceUrl([mimetype.IconName, mimetype.GenericIcon])
 				this.mimetypes[id] = mimetype
 				mimetype.SubClassOf.forEach(subId => { this.fetch(subId)})
+				if (id === this.state.mimetypeId) {
+					this.setState({mimetype: mimetype})
+				}
 				this.update()
 			}
 		})
 	}
+
+
+	desc = id => id === "other" ? "Other applications" : "Applications that handle " + this.mimetypes[id].Comment
+	takesArgs = app => app.Actions["_default"]["Exec"].match(/%f|%F|%u|%U/)
 
 	// We get a lot of events from appsProxy, so we collect to, at most, one update pr 20 ms
 	update = () => {
@@ -51,75 +54,36 @@ class AppChooser extends React.Component {
 			this.updatePending = true
 			setTimeout(() => {
 				let listOfLists = this.mimetypeIds.concat(["other"]).map(id => {
-					return {
-						id: id,
-						desc: id !== "other" ? "Applications that handle " + this.mimetypes[id].Comment : "Other applications",
-						items: []
-					}
+					return { id: id, desc: this.desc(id), items: [] }
 				})
 
-				let takesArgs = app => app.Actions["_default"]["Exec"].match(/%f|%F|%u|%U/)
-				appsProxy.resources().filter(takesArgs).forEach(app => {
+				appsProxy.resources().filter(this.takesArgs).forEach(app => {
 				 	listOfLists.find(t => app.Mimetypes.includes(t.id) || t.id === 'other').items.push(app)
 				})
 				listOfLists = listOfLists.filter(t => t.items.length > 0)
 
-				this.allApps = []
-				listOfLists.forEach(t => {this.allApps.push(...t.items)})
-				this.setState({appArgument: appArgument,
-					           mimetype: this.mimetypes[mimetypeId],
-							   selected: this.allApps[0],
-							   listOfLists: listOfLists})
+				this.setState({listOfLists: listOfLists})
 				this.updatePending = false
 			}, 20)
 		}
 	}
 
-	select = (app, done) => {
-		this.setState({selected: app})
-		if (done) {
-			this.execute()
-		}
-	}
-
-	move = up => {
-		let i = this.allApps.indexOf(this.state.selected)
-		i = (i + (up ? -1 : 1) + this.allApps.length) % this.allApps.length
-		this.setState({selected: this.allApps[i]})
-	}
-
-	execute = () => {
+	execute = app => {
 		if (this.refs.remember.value === "on" && this.state.mimetype) {
 			console.log("PATCHING to ", this.state.mimetype.url)
-			let appId = this.state.selected.Id
-			let defaultApps = [this.state.selected.Id]
-			defaultApps.push(...this.state.mimetype.DefaultApplications.filter(appId => applicationId !== appId))
+			let defaultApps = [app.Id, ...this.state.mimetype.DefaultApplications.filter(id => app.Id !== id)]
 			doHttp(this.state.mimetype.url, "PATCH", {DefaultApplications: defaultApps})
 		}
 
-		if (this.state.selected) {
-			doHttp(this.state.selected.url, "POST", {Arguments: [appArgument]}).then(response => {gui.App.quit()})
-		}
+		doHttp(app.url, "POST", {Arguments: [appArgument]}).then(response => {gui.App.quit()})
 	}
 
 	onKeyDown = (event) => {
-		let {key, ctrlKey, shiftKey, altKey, metaKey} = event
-		let op = {
-			Tab: () => {this.move(shiftKey)},
-	        ArrowDown : () => {this.move()},
-	        ArrowUp :  () => {this.move(true)},
-	        Enter : () => {this.execute()},
-	        " " : () => {this.execute()}
-		}[key]
-
-		if (op) {
-			op()
-			event.preventDefault()
+		console.log("onKeyDown: ", event)
+		if (["Tab", "ArrowDown", "ArrowUp", "Enter", " "].includes(event.key)) {
+			this.list.onKeyDown(event)
 		}
 	}
-
-
-	appClasses = (app, selected) => "line" + (app === selected ? " selected" : "")
 
 	render = () => {
 		let {mimetype, listOfLists, selected} = this.state
@@ -130,7 +94,7 @@ class AppChooser extends React.Component {
 					<Argument appArgument={appArgument} mimetypeId={mimetypeId} mimetype={mimetype}/>
 					<div> <input type="checkbox" ref="remember"/>Remember</div>
 					<div className="hr"></div>
-					<List listOfLists={listOfLists} selected={selected} select={this.select}/>
+					<List listOfLists={listOfLists} execute={this.execute} ref={list => this.list = list}/>
 				</div>
 			</div>
 		)
