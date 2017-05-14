@@ -74,7 +74,8 @@ class Container extends React.Component {
 	}
 
 	execute = () => {
-		if (this.state.selected) {
+		let item = this.state.selected
+		if (item) {
 			doHttp(item.url, "POST").then(response => {
 				this.setState({selected: undefined, searchTerm: ""})
 				this.update()
