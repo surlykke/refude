@@ -112,6 +112,9 @@ class AppChooser extends React.Component {
 		}
 	}
 
+	extraClasses = item => "app"
+
+
 	render = () => {
 		let {mimetype, listOfLists, selected} = this.state
 		return (
@@ -121,7 +124,7 @@ class AppChooser extends React.Component {
 					<Argument appArgument={appArgument} mimetypeId={mimetypeId} mimetype={mimetype}/>
 					<div> <input type="checkbox" ref="remember"/>Remember</div>
 					<div className="hr"></div>
-					<List listOfLists={listOfLists} select={this.select} selected={selected}/>
+					<List listOfLists={listOfLists} select={this.select} selected={selected} extraClasses={this.extraClasses}/>
 				</div>
 			</div>
 		)

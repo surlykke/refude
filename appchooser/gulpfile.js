@@ -7,7 +7,7 @@ var gutil = require('gulp-util');
 
 gulp.task('assets', function() {
 	return gulp
-		.src(['main.html', '../common/refude.css', 'package.json', 'refudeAppChooser'])
+		.src(['main.html', '../common/refude.css', 'appchooser.css', 'package.json', 'refudeAppChooser'])
 		.pipe(gulp.dest('../dist/appchooser'))
 })
 
