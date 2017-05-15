@@ -21,6 +21,7 @@ import (
 	"github.com/BurntSushi/xgb/randr"
 	"github.com/BurntSushi/xgb"
 	"github.com/surlykke/RefudeServices/common"
+	"time"
 )
 
 
@@ -29,16 +30,39 @@ var display = Display{Screens: make([]Rect, 0)}
 var iconHashes = make(map[uint64]bool)
 var x  *xgbutil.XUtil
 
+func getXConnection() (*xgbutil.XUtil, error) {
+	var err error
+	for i := 0; i < 5; i++ {
+		if x, err := xgbutil.NewConn(); err == nil {
+			return x, nil
+		}
+		time.Sleep(time.Second)
+	}
+	return nil, err
+}
+
+func getXgbConnection() (*xgb.Conn, error) {
+	var err error
+	for i := 0; i < 5; i++ {
+		if conn, err := xgb.NewConn(); err == nil {
+			return conn, nil
+		}
+		time.Sleep(time.Second)
+	}
+	return nil, err
+}
+
 
 func WmRun() {
 	var err error
-	if x, err = xgbutil.NewConn(); err != nil {
+	if x, err = getXConnection(); err != nil {
 		panic(err)
 	}
 
 	xwindow.New(x, x.RootWin()).Listen(xproto.EventMaskSubstructureNotify)
 	updateWindows()
-	conn, err := xgb.NewConn()
+
+	conn, err := getXgbConnection()
 	if err != nil {
 		panic(err)
 	}
@@ -73,7 +97,7 @@ func buildDisplay(conn *xgb.Conn) {
 func updateWindows() {
 	tmp, err := ewmh.ClientListStackingGet(x)
 	if err != nil {
-		panic(err)
+		return
 	}
 
 	newWindowIds := make([]xproto.Window, len(tmp))
