@@ -40,9 +40,9 @@ class List extends React.Component {
 								 onDoubleClick={() => {select(item, true)}}
 								 className={this.classes(item, selected)}>
 
-							    <div className="line-icon">
-							        <img src={item.IconUrl} height="32" width="32" alt=" "/>
-							    </div>
+							    <div className="line-icon"
+									 style={{background: "url(" + item.IconUrl + ")	",
+									         backgroundSize: "contain"}} />
 							    <div className="line-title">{item.Name}</div>
 							    <div className="line-comment">{item.Comment}</div>
 							</div>

@@ -68,6 +68,8 @@ html, body {
 .line-icon {
     float: left;
     margin-right: 6px;
+	width: 32px;
+	height: 32px;
 }
 .line-title, .line-comment {
     overflow: hidden;
@@ -76,13 +78,6 @@ html, body {
 }
 .line-comment {
     font-size: 0.8em;
-}
-.shadow img {
-    -webkit-filter: drop-shadow(5px 5px 3px grey);
-    overflow: visible;
-}
-.dimmed {
-    opacity: 0.4;
 }
 .selected  {
     border: solid black 2px;

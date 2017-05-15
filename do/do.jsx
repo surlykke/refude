@@ -87,9 +87,9 @@ class Container extends React.Component {
 	extraClasses = item => {
 		let result = ""
 		if (item.X !== undefined )  { // So it's a window
-			result +=  "shadow"
+			result +=  "window"
 			if (item.States.includes("_NET_WM_STATE_HIDDEN")) {
-				result += " dimmed"
+				result += " minimized"
 			}
 		}
 
