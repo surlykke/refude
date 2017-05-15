@@ -2,8 +2,8 @@ import React from 'react';
 import {render} from 'react-dom';
 import {nwHide, nwSetup, doHttp} from '../common/utils'
 import {MakeServiceProxy} from "../common/service-proxy"
-import {SearchBox, Windows} from "./components.jsx"
 import {List} from "../common/components"
+import {Windows} from "./windows.jsx"
 
 const windowsProxy = MakeServiceProxy("http://localhost:7938/wm-service/windows", "http://localhost:7938/wm-service/notify")
 const appsProxy = MakeServiceProxy("http://localhost:7938/desktop-service/applications", "http://localhost:7938/desktop-service/notify")
@@ -84,6 +84,18 @@ class Container extends React.Component {
 		}
 	}
 
+	extraClasses = item => {
+		let result = ""
+		if (item.X !== undefined )  { // So it's a window
+			result +=  "shadow"
+			if (item.States.includes("_NET_WM_STATE_HIDDEN")) {
+				result += " dimmed"
+			}
+		}
+
+		return result
+	}
+
 	move = up => {
 		let i = this.allItems.indexOf(this.state.selected)
 		i = (i + (up ? -1 : 1) + this.allItems.length) % this.allItems.length
@@ -115,8 +127,14 @@ class Container extends React.Component {
 		return (
 			<div className="content">
 				<div className="topdown" onKeyDown={this.onKeyDown}>
-					<SearchBox onTermChange={this.onTermChange} searchTerm={searchTerm}/>
-					<List listOfLists={this.state.listOfLists} select={this.select} selected={this.state.selected}/>
+				    <div className="searchInput" onChange={this.onTermChange} >
+				        <input type="search" autoFocus value={searchTerm}/>
+				    </div>
+
+					<List listOfLists={this.state.listOfLists}
+						  select={this.select}
+						  selected={this.state.selected}
+						  extraClasses={this.extraClasses}/>
 				</div>
 				<Windows windows={windows} selected={selected}/>
 			</div>
