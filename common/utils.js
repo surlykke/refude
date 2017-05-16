@@ -51,11 +51,16 @@ let doHttp = (url, method, payload) => { // TODO payload
 			resp.setEncoding('utf8')
 			resp.on('data', chunk => { data += chunk })
 			resp.on('end', () => {
-				try {
-					resolve(data === '' ? null : JSON.parse(data))
+				if (resp.statusCode > 299) {
+					reject(new Error(`Request Failed.\n` + `Status Code: ${resp.statusCode}`));
 				}
-				catch (e) {
-					reject(e)
+				else {
+					try {
+						resolve(data === '' ? null : JSON.parse(data))
+					}
+					catch (e) {
+						reject(e)
+					}
 				}
 			})
 		})

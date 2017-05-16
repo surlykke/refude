@@ -17,7 +17,11 @@ class AppChooser extends React.Component {
 		super(props)
 		this.mimetypeIds = []
 		this.mimetypes = new Map()
-		this.state = {appArgument: appArgument, mimetypeId: mimetypeId, listOfLists: []}
+		this.state = {
+			appArgument: appArgument,
+			iconUrl: iconServiceUrl(["unknown"], 32),
+			comment: mimetypeId,
+			listOfLists: []}
 		this.allItems = []
 	}
 
@@ -31,13 +35,15 @@ class AppChooser extends React.Component {
 		let url = "http://localhost:7938/desktop-service/mimetype/" + id
 		doHttp(url).then(mimetype => {
 			if (! this.mimetypeIds.includes(id)) {
+				console.log("pushing", id, ", mimetype: ", mimetype)
 				this.mimetypeIds.push(id)
 				mimetype.url = url
 				mimetype.IconUrl = iconServiceUrl([mimetype.IconName, mimetype.GenericIcon])
 				this.mimetypes[id] = mimetype
 				mimetype.SubClassOf.forEach(subId => { this.fetch(subId)})
-				if (id === this.state.mimetypeId) {
-					this.setState({mimetype: mimetype})
+				if (id === mimetypeId) {
+					console.log("setState: ", {iconUrl: mimetype.IconUrl, comment: mimetype.Comment})
+					this.setState({iconUrl: mimetype.IconUrl, comment: mimetype.Comment})
 				}
 				this.update()
 			}
@@ -53,6 +59,7 @@ class AppChooser extends React.Component {
 		if (! this.updatePending) {
 			this.updatePending = true
 			setTimeout(() => {
+				console.log("update, mimetypeIds: ", this.mimetypeIds)
 				let listOfLists = this.mimetypeIds.concat(["other"]).map(id => {
 					return { id: id, desc: this.desc(id), items: [] }
 				})
@@ -116,12 +123,12 @@ class AppChooser extends React.Component {
 
 
 	render = () => {
-		let {mimetype, listOfLists, selected} = this.state
+		let {appArgument, iconUrl, comment, listOfLists, selected} = this.state
 		return (
 			<div className=" content">
 				<div className="topdown">
 					<div className="heading2">Select an application to open:</div>
-					<Argument appArgument={appArgument} mimetypeId={mimetypeId} mimetype={mimetype}/>
+					<Argument appArgument={appArgument} iconUrl={iconUrl} comment={comment}/>
 					<div> <input type="checkbox" ref="remember"/>Remember</div>
 					<div className="hr"></div>
 					<List listOfLists={listOfLists} select={this.select} selected={selected} extraClasses={this.extraClasses}/>
