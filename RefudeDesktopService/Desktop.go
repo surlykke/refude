@@ -121,12 +121,24 @@ func appPath(id string) string {
 
 
 func (c* Collector) addAssociations(mimeId string, appIds...string) {
-	if mimetype, mimetypeFound := c.mimetypes[mimeId]; mimetypeFound {
-		for _,appId := range appIds {
-			if application, appFound := c.applications[appId]; appFound {
-				mimetype.AssociatedApplications = common.AppendIfNotThere(mimetype.AssociatedApplications, appId)
-				application.Mimetypes = common.AppendIfNotThere(application.Mimetypes, mimeId)
-			}
+	mimetype, ok := c.mimetypes[mimeId]
+	if !ok {
+		// So we have no description of that mimetype - we create a minimum dummy one to hold
+		// associations and default apps
+		mimetype = &Mimetype{}
+		var err error
+		mimetype.Type, mimetype.Subtype, err = extractTypeAndSubtype(mimeId)
+		if err != nil {
+			return
+		}
+		mimetype.Comment = mimetype.Type + "/" + mimetype.Subtype
+		c.mimetypes[mimeId] = mimetype
+	}
+
+	for _,appId := range appIds {
+		if application, appFound := c.applications[appId]; appFound {
+			mimetype.AssociatedApplications = common.AppendIfNotThere(mimetype.AssociatedApplications, appId)
+			application.Mimetypes = common.AppendIfNotThere(application.Mimetypes, mimeId)
 		}
 	}
 }

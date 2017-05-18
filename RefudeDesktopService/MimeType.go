@@ -17,6 +17,7 @@ import (
 	"regexp"
 	"strings"
 	"net/http"
+	"github.com/pkg/errors"
 )
 
 const freedesktopOrgXml = "/usr/share/mime/packages/freedesktop.org.xml"
@@ -44,6 +45,22 @@ func (mt *Mimetype) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+var	typePattern = func() *regexp.Regexp {
+	pattern, err := regexp.Compile(`^([^/]+)/([^/]+)$`)
+	if err != nil {
+		panic(err)
+	}
+	return pattern
+}()
+
+func extractTypeAndSubtype(mimetypeId string) (string, string, error) {
+	typeElements := typePattern.FindStringSubmatch(mimetypeId)
+	if len(typeElements) == 3 {
+		return typeElements[1], typeElements[2], nil
+	} else {
+		return "", "", errors.New("Incomprehensible mimetype")
+	}
+}
 
 func CollectMimeTypes() map[string]*Mimetype {
 	xmlCollector := struct {
@@ -83,21 +100,13 @@ func CollectMimeTypes() map[string]*Mimetype {
 		fmt.Println("Error parsing: ", parseErr)
 	}
 
-	typePattern, err := regexp.Compile(`^([^/]+)/([^/]+)$`)
-	if err != nil {
-		panic(err)
-	}
-
 	res := make(map[string]*Mimetype)
 	for _, tmp := range xmlCollector.MimeTypes {
 		mimeType := Mimetype{}
 
-		typeElements := typePattern.FindStringSubmatch(tmp.Type)
-		if len(typeElements) == 3 {
-			mimeType.Type = typeElements[1]
-			mimeType.Subtype = typeElements[2]
-		} else {
-			fmt.Println("Incomprehensible mimetype: ", tmp.Type)
+		mimeType.Type, mimeType.Subtype, err = extractTypeAndSubtype(tmp.Type)
+		if err != nil {
+			fmt.Println(err, tmp.Type)
 			continue
 		}
 
