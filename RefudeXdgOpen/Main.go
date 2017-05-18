@@ -21,6 +21,7 @@ import (
 	"io/ioutil"
 	"bytes"
 	"os/exec"
+	"regexp"
 )
 
 type MimeType struct {
@@ -81,6 +82,14 @@ func getDefaultApp(mimetypeid string) (string, error) {
 	}
 }
 
+var schemePattern = func() *regexp.Regexp {
+	pattern, err := regexp.Compile(`^(\w+):.*$`)
+	if err != nil {
+		panic(err)
+	}
+	return pattern
+}()
+
 func main() {
 	if len(os.Args) != 2 {
 		log.Fatal("Usage: RefudeXdgOpen { file | URL}")
@@ -88,24 +97,33 @@ func main() {
 
 	arg := os.Args[1]
 
-	if err := magicmime.Open(magicmime.MAGIC_MIME_TYPE | magicmime.MAGIC_SYMLINK | magicmime.MAGIC_ERROR); err != nil {
-		log.Fatal(err)
+	var mimetypeId = ""
+
+	match := schemePattern.FindStringSubmatch(arg)
+	if match != nil {
+		mimetypeId = "x-scheme-handler/" + match[1]
+	} else {
+		if err := magicmime.Open(magicmime.MAGIC_MIME_TYPE | magicmime.MAGIC_SYMLINK | magicmime.MAGIC_ERROR); err != nil {
+			log.Fatal(err)
+		}
+		defer magicmime.Close()
+		mimetypeId, _ = magicmime.TypeByFile(arg)
 	}
-	defer magicmime.Close()
 
+	log.Println("mimetypeId: ", mimetypeId)
 
-	if mimetypeId, err := magicmime.TypeByFile(arg); err != nil {
+	if len(mimetypeId) == 0 {
 		log.Fatal("Could not determine type of " + arg)
 	} else if app,err := getDefaultApp(mimetypeId); err != nil {
 		log.Fatal("Error querying default app of ", mimetypeId, err)
 	} else if len(app) > 0 {
 		path := "/application/" + app
 		payload := struct{ Arguments []string }{ Arguments: []string{arg}}
-
 		if err = postJson(path, &payload); err != nil {
 			log.Fatal("Error launching " + string(app[0]) + " with " + arg)
 		}
 	} else {
+		fmt.Println("Calling refudeAppChooser ", arg, mimetypeId)
 		exec.Command("refudeAppChooser", arg, mimetypeId).Start()
 	}
 
