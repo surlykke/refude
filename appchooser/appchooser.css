@@ -1,5 +1,5 @@
 .topdown {
-    width: 250px;
+    width: calc(100% - 10px);
 }
 .app .line-icon {
 	width: 22px;
