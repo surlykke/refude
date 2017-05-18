@@ -23,8 +23,7 @@ import (
 const freedesktopOrgXml = "/usr/share/mime/packages/freedesktop.org.xml"
 
 type Mimetype struct {
-	Type                   string
-	Subtype                string
+	Id                     string
 	Comment                string
 	Acronym                string
 	ExpandedAcronym        string
@@ -37,15 +36,7 @@ type Mimetype struct {
 	DefaultApplications    []string
 }
 
-func (mt *Mimetype) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "GET" {
-		common.ServeAsJson(w, r, mt)
-	} else {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-	}
-}
-
-var	typePattern = func() *regexp.Regexp {
+var	mimetypePattern = func() *regexp.Regexp {
 	pattern, err := regexp.Compile(`^([^/]+)/([^/]+)$`)
 	if err != nil {
 		panic(err)
@@ -53,12 +44,31 @@ var	typePattern = func() *regexp.Regexp {
 	return pattern
 }()
 
-func extractTypeAndSubtype(mimetypeId string) (string, string, error) {
-	typeElements := typePattern.FindStringSubmatch(mimetypeId)
-	if len(typeElements) == 3 {
-		return typeElements[1], typeElements[2], nil
+func NewMimetype(id string) (*Mimetype, error) {
+
+	if ! mimetypePattern.MatchString(id) {
+		return nil, errors.New("Incomprehensible mimetype: " + id)
 	} else {
-		return "", "", errors.New("Incomprehensible mimetype")
+		return &Mimetype{
+			Id:                     id,
+			Comment:                "",
+			Aliases:                make([]string, 0),
+			Globs:                  make([]string, 0),
+			SubClassOf:             make([]string, 0),
+			IconName:               "unknown",
+			GenericIcon:            "unknown",
+			AssociatedApplications: make([]string, 0),
+			DefaultApplications:    make([]string, 0),
+		}, nil
+	}
+}
+
+
+func (mt *Mimetype) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
+		common.ServeAsJson(w, r, mt)
+	} else {
+		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
 }
 
@@ -102,11 +112,9 @@ func CollectMimeTypes() map[string]*Mimetype {
 
 	res := make(map[string]*Mimetype)
 	for _, tmp := range xmlCollector.MimeTypes {
-		mimeType := Mimetype{}
-
-		mimeType.Type, mimeType.Subtype, err = extractTypeAndSubtype(tmp.Type)
+		mimeType, err := NewMimetype(tmp.Type)
 		if err != nil {
-			fmt.Println(err, tmp.Type)
+			fmt.Println(err)
 			continue
 		}
 
@@ -118,39 +126,33 @@ func CollectMimeTypes() map[string]*Mimetype {
 
 		mimeType.Acronym = tmp.Acronym
 		mimeType.ExpandedAcronym = tmp.ExpandedAcronym
+		if tmp.Icon.Name != "" {
+			mimeType.IconName = tmp.Icon.Name
+		} else {
+			mimeType.IconName = strings.Replace(mimeType.Id, "/", "-", -1)
+		}
 
-		mimeType.Aliases = make(common.StringList, 0)
 		for _, aliasStruct := range tmp.Alias {
 			mimeType.Aliases = common.AppendIfNotThere(mimeType.Aliases, aliasStruct.Type)
 		}
 
-		mimeType.Globs = make(common.StringList, 0)
 		for _, tmpGlob := range tmp.Glob {
 			mimeType.Globs = common.AppendIfNotThere(mimeType.Globs, tmpGlob.Pattern)
 		}
 
-		mimeType.SubClassOf = make(common.StringList, 0)
 		for _, tmpSubClassOf := range tmp.SubClassOf {
 			mimeType.SubClassOf = common.AppendIfNotThere(mimeType.SubClassOf, tmpSubClassOf.Type)
 		}
 
-		if tmp.Icon.Name != "" {
-			mimeType.IconName = tmp.Icon.Name
-		} else {
-			mimeType.IconName = strings.Replace(mimeType.Type, "/", "-", -1) + "-" +
-			                    strings.Replace(mimeType.Subtype, "/", "-", -1)
-		}
 
 		if tmp.GenericIcon.Name != "" {
 			mimeType.GenericIcon = tmp.GenericIcon.Name
 		} else {
-			mimeType.GenericIcon = mimeType.Type + "-x-generic"
+			slashPos := strings.Index(mimeType.Id, "/")
+			mimeType.GenericIcon = mimeType.Id[:slashPos] + "-x-generic"
 		}
 
-		mimeType.AssociatedApplications = make(common.StringList, 0)
-		mimeType.DefaultApplications = make([]string, 0)
-
-		res[mimeType.Type+"/"+mimeType.Subtype] = &mimeType
+		res[mimeType.Id] = mimeType
 	}
 
 	return res

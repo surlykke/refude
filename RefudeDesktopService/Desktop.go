@@ -115,40 +115,30 @@ func (c *Collector) collect()  {
 	}
 }
 
+func (c *Collector) getMimetype(id string) *Mimetype {
+	if mimetype, ok := c.mimetypes[id]; ok {
+		return mimetype
+	} else if mimetype, err := NewMimetype(id); err == nil {
+		mimetype.Comment = mimetype.Id
+		c.mimetypes[id] = mimetype
+		return mimetype
+	} else {
+		return nil
+	}
+}
+
 func appPath(id string) string {
 	return "/application/" + id
 }
 
 
 func (c* Collector) addAssociations(mimeId string, appIds...string) {
-	mimetype, ok := c.mimetypes[mimeId]
-	if !ok {
-		// So we have no description of that mimetype - we create a minimum dummy one to hold
-		// associations and default apps
-		tmpType, tmpSubtype, err := extractTypeAndSubtype(mimeId)
-		if err != nil {
-			return
-		}
-		mimetype = &Mimetype{
-			Type: tmpType,
-			Subtype: tmpSubtype,
-			Comment: tmpType + "/" + tmpSubtype,
-			Aliases: make([]string, 0),
-			Globs: make([]string, 0),
-			SubClassOf: make([]string, 0),
-			IconName: "unknown",
-			GenericIcon: "unknown",
-			AssociatedApplications: make([]string, 0),
-			DefaultApplications: make([]string, 0),
-		}
-		mimetype.Comment = mimetype.Type + "/" + mimetype.Subtype
-		c.mimetypes[mimeId] = mimetype
-	}
-
-	for _,appId := range appIds {
-		if application, appFound := c.applications[appId]; appFound {
-			mimetype.AssociatedApplications = common.AppendIfNotThere(mimetype.AssociatedApplications, appId)
-			application.Mimetypes = common.AppendIfNotThere(application.Mimetypes, mimeId)
+	if mimetype := c.getMimetype(mimeId); mimetype != nil {
+		for _,appId := range appIds {
+			if application, appFound := c.applications[appId]; appFound {
+				mimetype.AssociatedApplications = common.AppendIfNotThere(mimetype.AssociatedApplications, appId)
+				application.Mimetypes = common.AppendIfNotThere(application.Mimetypes, mimeId)
+			}
 		}
 	}
 }
@@ -230,7 +220,7 @@ func (c *Collector) readMimeappsList(path string) {
 	}
 
 	for mimetypeId, appIds := range mimeappsList.defaultApplications {
-		if mimetype, ok := c.mimetypes[mimetypeId]; ok {
+		if mimetype := c.getMimetype(mimetypeId); mimetype != nil {
 			for _,appId := range appIds {
 				mimetype.DefaultApplications = append(mimetype.DefaultApplications, appId)
 			}
