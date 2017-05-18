@@ -125,11 +125,21 @@ func (c* Collector) addAssociations(mimeId string, appIds...string) {
 	if !ok {
 		// So we have no description of that mimetype - we create a minimum dummy one to hold
 		// associations and default apps
-		mimetype = &Mimetype{}
-		var err error
-		mimetype.Type, mimetype.Subtype, err = extractTypeAndSubtype(mimeId)
+		tmpType, tmpSubtype, err := extractTypeAndSubtype(mimeId)
 		if err != nil {
 			return
+		}
+		mimetype = &Mimetype{
+			Type: tmpType,
+			Subtype: tmpSubtype,
+			Comment: tmpType + "/" + tmpSubtype,
+			Aliases: make([]string, 0),
+			Globs: make([]string, 0),
+			SubClassOf: make([]string, 0),
+			IconName: "unknown",
+			GenericIcon: "unknown",
+			AssociatedApplications: make([]string, 0),
+			DefaultApplications: make([]string, 0),
 		}
 		mimetype.Comment = mimetype.Type + "/" + mimetype.Subtype
 		c.mimetypes[mimeId] = mimetype
