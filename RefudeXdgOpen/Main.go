@@ -22,6 +22,8 @@ import (
 	"bytes"
 	"os/exec"
 	"regexp"
+	"github.com/surlykke/RefudeServices/xdg"
+	"path/filepath"
 )
 
 type MimeType struct {
@@ -31,7 +33,7 @@ type MimeType struct {
 var client = http.Client {
 	Transport: &http.Transport{
 		DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
-			return net.Dial("unix", "/run/user/1000/org.refude.desktop-service")
+			return net.Dial("unix", xdg.RuntimeDir() + "/org.refude.desktop-service")
 		},
 	},
 }
@@ -103,9 +105,15 @@ func main() {
 	if match != nil {
 		mimetypeId = "x-scheme-handler/" + match[1]
 	} else {
+		var err error
+		if arg, err = filepath.Abs(arg); err != nil {
+			log.Fatal(err)
+		}
+
 		if err := magicmime.Open(magicmime.MAGIC_MIME_TYPE | magicmime.MAGIC_SYMLINK | magicmime.MAGIC_ERROR); err != nil {
 			log.Fatal(err)
 		}
+
 		defer magicmime.Close()
 		mimetypeId, _ = magicmime.TypeByFile(arg)
 	}
