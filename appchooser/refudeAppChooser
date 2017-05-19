@@ -4,7 +4,7 @@
 
 echo "Checking"
 
-re="([a-zA-Z]+)://.*"
+re="([a-zA-Z]+):.*"
 if [[ $1 =~ $re ]]; then 
 	echo "match"
 	mimetype=x-scheme-handler/${BASH_REMATCH[1]}
