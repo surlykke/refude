@@ -51,8 +51,6 @@ class AppChooser extends React.Component {
 	}
 
 
-	desc = id => id === "other" ? "Other applications" : "Applications that handle " + this.mimetypes[id].Comment
-	takesArgs = app => app.Actions["_default"]["Exec"].match(/%f|%F|%u|%U/)
 
 	// We get a lot of events from appsProxy, so we collect to, at most, one update pr 20 ms
 	update = () => {
@@ -60,14 +58,17 @@ class AppChooser extends React.Component {
 			this.updatePending = true
 			setTimeout(() => {
 				console.log("update, mimetypeIds: ", this.mimetypeIds)
-				let listOfLists = this.mimetypeIds.concat(["other"]).map(id => {
-					return { id: id, desc: this.desc(id), items: [] }
-				})
-
-				appsProxy.resources().filter(this.takesArgs).forEach(app => {
+				let listOfLists = this.mimetypeIds.concat(["other"]).map(id => ({id:id, desc: "", items: []}))
+				appsProxy.resources().filter(app => app.Actions["_default"]["Exec"].match(/%f|%F|%u|%U/))
+				                     .forEach(app => {
 				 	listOfLists.find(t => app.Mimetypes.includes(t.id) || t.id === 'other').items.push(app)
 				})
 				listOfLists = listOfLists.filter(t => t.items.length > 0)
+				if (listOfLists.length > 1) {
+					listOfLists.forEach(l => {l.desc = l.id === 'other' ?
+					                                   "Other applications" :
+							   			   			   "Applications that handle " + this.mimetypes[l.id].Comment})
+				}
 				this.allItems = []
 				listOfLists.forEach(t => {this.allItems.push(...t.items)})
 				this.setState({listOfLists: listOfLists, selected: this.allItems[0]})
@@ -129,7 +130,7 @@ class AppChooser extends React.Component {
 				<div className="topdown">
 					<div className="heading2">Select an application to open:</div>
 					<Argument appArgument={appArgument} iconUrl={iconUrl} comment={comment}/>
-					<div> <input type="checkbox" ref="remember"/>Remember</div>
+					<div> <input type="checkbox" ref="remember"/>Remember my decision</div>
 					<div className="hr"></div>
 					<List listOfLists={listOfLists} select={this.select} selected={selected} extraClasses={this.extraClasses}/>
 				</div>
