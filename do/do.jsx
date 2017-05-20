@@ -5,8 +5,8 @@ import {MakeServiceProxy} from "../common/service-proxy"
 import {List} from "../common/components"
 import {Windows} from "./windows.jsx"
 
-const windowsProxy = MakeServiceProxy("http://localhost:7938/wm-service/windows", "http://localhost:7938/wm-service/notify")
-const appsProxy = MakeServiceProxy("http://localhost:7938/desktop-service/applications", "http://localhost:7938/desktop-service/notify")
+const windowsProxy = MakeServiceProxy("http://localhost:7938/wm-service/windows/", "http://localhost:7938/wm-service/notify")
+const appsProxy = MakeServiceProxy("http://localhost:7938/desktop-service/applications/", "http://localhost:7938/desktop-service/notify")
 
 const includeWindow = (term, window) => {
 	let res = window &&

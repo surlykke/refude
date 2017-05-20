@@ -5,7 +5,7 @@ import {MakeServiceProxy} from '../common/service-proxy'
 import {Argument} from "./components"
 import {List} from "../common/components"
 
-let appsProxy = MakeServiceProxy("http://localhost:7938/desktop-service/applications",
+let appsProxy = MakeServiceProxy("http://localhost:7938/desktop-service/applications/",
                                  "http://localhost:7938/desktop-service/notify")
 
 let gui = window.require('nw.gui')
@@ -32,7 +32,7 @@ class AppChooser extends React.Component {
 	}
 
 	fetch = (id) => {
-		let url = "http://localhost:7938/desktop-service/mimetype/" + id
+		let url = "http://localhost:7938/desktop-service/mimetypes/" + id
 		doHttp(url).then(mimetype => {
 			if (! this.mimetypeIds.includes(id)) {
 				console.log("pushing", id, ", mimetype: ", mimetype)

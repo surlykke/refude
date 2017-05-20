@@ -10,8 +10,8 @@ import {render} from 'react-dom'
 import {MakeServiceProxy} from '../common/service-proxy'
 import {nwHide, nwShow} from '../common/utils'
 
-const powerProxy = MakeServiceProxy("http://localhost:7938/power-service/devices", "http://localhost:7938/power-service/notify")
-const displayDeviceUrl = "http://localhost:7938/power-service/device/DisplayDevice"
+const powerProxy = MakeServiceProxy("http://localhost:7938/power-service/devices/", "http://localhost:7938/power-service/notify")
+const displayDeviceUrl = "http://localhost:7938/power-service/devices/DisplayDevice"
 const gui = window.require('nw.gui')
 const Window = gui.Window.get()
 class Panel extends React.Component {
