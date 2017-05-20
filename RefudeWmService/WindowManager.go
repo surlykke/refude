@@ -69,6 +69,7 @@ func WmRun() {
 
 	randr.Init(conn)
 	buildDisplay(conn)
+	service.Map("/", common.StringList{"/notify", "/ping", "/display", "/windows/"})
 
 	for ;; {
 		evt, err := x.Conn().WaitForEvent()
@@ -120,7 +121,7 @@ func updateWindows() {
 			windows[wId] = getWindow(xproto.Window(wId))
 		}
 
-		service.Map(fmt.Sprintf("/window/%d", wId), windows[wId])
+		service.Map(fmt.Sprintf("/windows/%d", wId), windows[wId])
 	}
 
 	mapWids(newWindowIds)
@@ -227,9 +228,9 @@ func find(windowIds []xproto.Window, windowId xproto.Window) bool {
 func mapWids(wIds []xproto.Window)  {
 	res := make(common.StringList, len(wIds))
 	for i,wId := range wIds {
-		res[i] = fmt.Sprintf("window/%d", wId)
+		res[i] = fmt.Sprintf("%d", wId)
 	}
 
-	service.Map("/windows", res)
+	service.Map("/windows/", res)
 }
 
