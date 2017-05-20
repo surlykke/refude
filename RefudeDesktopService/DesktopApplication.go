@@ -129,71 +129,77 @@ func runCmd(app string) error {
 
 
 func readDesktopFile(path string) (*DesktopApplication, common.StringList, error) {
-	iniGroups, err := common.ReadIniFile(path)
+	iniFile, err := common.ReadIniFile(path)
 
 	if err != nil {
 		return nil, nil, err
 	}
 
-	if iniGroups[0].Name != "Desktop Entry" {
-		return nil, nil, errors.New("Desktop file should start with a 'Desktop Entry' group")
+	if len(iniFile.Groups) < 1 {
+		return nil, nil, errors.New("Empty desktopfile: " + path)
+	}
+
+	desktopEntry := iniFile.Groups[0]
+
+	if desktopEntry.Name != "Desktop Entry" {
+		return nil, nil, errors.New("Desktop file should start with a 'Desktop Entry' group: " + path)
 	}
 
 	app := DesktopApplication{}
-	desktopEntry := iniGroups[0].Entry
-	app.Type = desktopEntry["Type"]
-	app.Version = desktopEntry["Version"]
-	app.Path = desktopEntry["Path"]
-	app.StartupWmClass = desktopEntry["StartupWMClass"]
-	app.Url = desktopEntry["URL"]
+	app.Type = desktopEntry.Value("Type")
+	app.Version = desktopEntry.Value("Version")
+	app.Path = desktopEntry.Value("Path")
+	app.StartupWmClass = desktopEntry.Value("StartupWMClass")
+	app.Url = desktopEntry.Value("URL")
 
-	if strings.HasPrefix(desktopEntry["Icon"], "/") {
-		resourcePath := "/icon" + desktopEntry["Icon"]
+	if strings.HasPrefix(desktopEntry.Value("Icon"), "/") {
+		resourcePath := "/icon" + desktopEntry.Value("Icon")
 		app.IconUrl = ".." + resourcePath
 		service.Map(resourcePath, Icon{"/icon"})
 	} else {
-		app.IconName = desktopEntry["Icon"]
+		app.IconName = desktopEntry.Value("Icon")
 	}
 
 	// FIXME use localized values
-	app.Name = desktopEntry["Name"]
-	app.GenericName = desktopEntry["GenericName"]
-	app.Comment = desktopEntry["Comment"]
+	app.Name = desktopEntry.Value("Name")
+	app.GenericName = desktopEntry.Value("GenericName")
+	app.Comment = desktopEntry.Value("Comment")
 
-	app.OnlyShowIn = common.Split(desktopEntry["OnlyShowIn"], ";")
-	app.NotShowIn = common.Split(desktopEntry["NotShowIn"], ";")
+	app.OnlyShowIn = common.Split(desktopEntry.Value("OnlyShowIn"), ";")
+	app.NotShowIn = common.Split(desktopEntry.Value("NotShowIn"), ";")
 	app.Mimetypes = make(common.StringList, 0)
-	app.Categories = common.Split(desktopEntry["Categories"], ";")
-	app.Implements = common.Split(desktopEntry["Implements"], ";")
-	app.Keywords = common.Split(desktopEntry["Keywords"], ";")
+	app.Categories = common.Split(desktopEntry.Value("Categories"), ";")
+	app.Implements = common.Split(desktopEntry.Value("Implements"), ";")
+	app.Keywords = common.Split(desktopEntry.Value("Keywords"), ";")
 	app.Actions = make(map[string]Action, 0)
 	app.Actions["_default"] = Action{
 		Name: app.Name,
 		Comment: app.Comment,
 		IconName: app.IconName,
 		IconUrl: app.IconUrl,
-		Exec: desktopEntry["Exec"],
+		Exec: desktopEntry.Value("Exec"),
 	}
-	actionNames := common.Split(desktopEntry["Actions"], ";")
-	for i := 1; i < len(iniGroups); i++ {
-		if iniGroups[i].Name[0:15] != "Desktop Action " {
+	actionNames := common.Split(desktopEntry.Value("Actions"), ";")
+	for i := 1; i < len(iniFile.Groups); i++ {
+		actionGroup := iniFile.Groups[i]
+		if actionGroup.Name[0:15] != "Desktop Action " {
 			continue
-		} else if actionName := iniGroups[i].Name[15:]; !common.Find(actionNames, actionName) {
-			fmt.Println("Unknown action", iniGroups[i].Name, " - ignoring")
+		} else if actionName := actionGroup.Name[15:]; !common.Find(actionNames, actionName) {
+			fmt.Println("Unknown action", actionGroup.Name, " - ignoring")
 			continue
 		} else {
 			action := Action{
-				Name: iniGroups[i].Entry["Name"],
+				Name: actionGroup.Name,
 				Comment: app.Name,
 
-				Exec: iniGroups[i].Entry["Exec"],
+				Exec: actionGroup.Value("Exec"),
 			}
-			if strings.HasPrefix(iniGroups[i].Entry["Icon"], "/") {
-				resourcePath := "/icon" + iniGroups[i].Entry["Icon"]
+			if strings.HasPrefix(actionGroup.Value("Icon"), "/") {
+				resourcePath := "/icon" + actionGroup.Value("Icon")
 				action.IconUrl = ".." + resourcePath
 				service.Map(resourcePath, Icon{"/icon"})
 			} else {
-				action.IconName = iniGroups[i].Entry["Icon"]
+				action.IconName = actionGroup.Value("Icon")
 			}
 
 			if action.IconUrl == "" && action.IconName == "" {
@@ -204,5 +210,5 @@ func readDesktopFile(path string) (*DesktopApplication, common.StringList, error
 		}
 	}
 
-	return &app, common.Split(desktopEntry["MimeType"], ";"), nil
+	return &app, common.Split(desktopEntry.Value("MimeType"), ";"), nil
 }

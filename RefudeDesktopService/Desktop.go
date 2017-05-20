@@ -184,7 +184,7 @@ func (c *Collector) readMimeappsList(path string) {
 		removedAssociations map[string][]string
 	}{make(map[string][]string), make(map[string][]string), make(map[string][]string)}
 
-	iniGroups, err := common.ReadIniFile(path)
+	iniFile, err := common.ReadIniFile(path)
 	if err != nil {
 		if !os.IsNotExist(err) {
 			fmt.Println(err)
@@ -193,7 +193,7 @@ func (c *Collector) readMimeappsList(path string) {
 		mimeappsList.removedAssociations = make(map[string][]string)
 		mimeappsList.defaultApplications = make(map[string][]string)
 	} else {
-		for _, iniGroup := range iniGroups {
+		for _, iniGroup := range iniFile.Groups {
 			var dest map[string][]string
 			switch iniGroup.Name {
 			case "Default Applications":
@@ -205,8 +205,8 @@ func (c *Collector) readMimeappsList(path string) {
 			default:
 				continue
 			}
-			for k, v := range iniGroup.Entry {
-				dest[k] = common.Split(v, ";")
+			for _, entry := range iniGroup.Entries {
+				dest[entry.Key] = common.Split(entry.Value, ";")
 			}
 		}
 	}
@@ -227,6 +227,20 @@ func (c *Collector) readMimeappsList(path string) {
 		}
 	}
 }
+
+func setDefaultApplication(mimetypeId string, applicationId string) error {
+	mimeAppsPath := xdg.ConfigHome() + "/mimeapps.list"
+	if iniFile, err := common.ReadIniFile(mimeAppsPath); err != nil {
+		return err
+	} else {
+		defaultApps := common.Split(iniFile.Value("Default Applications", mimetypeId), ";")
+		defaultApps = common.Remove(defaultApps, applicationId)
+		defaultApps =  common.Prepend(defaultApps, applicationId)
+		iniFile.SetValue("Default Applications", mimetypeId, strings.Join(defaultApps, ";"))
+		return common.WriteIniFile(mimeAppsPath, iniFile)
+	}
+}
+
 
 type Icon struct {
 	prefix string

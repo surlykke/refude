@@ -123,40 +123,42 @@ func ReadThemes() Themes {
 
 
 func readIndexTheme(themeId string, indexThemeFilePath string) (Theme, error) {
-	inigroups,err:= common.ReadIniFile(indexThemeFilePath)
+	iniFile,err:= common.ReadIniFile(indexThemeFilePath)
 	if err != nil {
 		return Theme{}, err
 	}
 
-	if len(inigroups) < 1 || inigroups[0].Name != "Icon Theme" {
+	if len(iniFile.Groups) < 1 || iniFile.Groups[0].Name != "Icon Theme" {
 		return Theme{}, fmt.Errorf("Error reading %s , expected 'Icon Theme' at start", indexThemeFilePath)
 	}
 
+	themeGroup := iniFile.Groups[0]
+
 	theme := Theme{}
 	theme.Id = themeId
-	theme.Name = inigroups[0].Entry["Name"]
-	theme.Comment = inigroups[0].Entry["Comment"]
-	theme.Inherits = common.Split(inigroups[0].Entry["Inherits"], ",")
+	theme.Name = themeGroup.Value("Name")
+	theme.Comment = themeGroup.Value("Comment")
+	theme.Inherits = common.Split(themeGroup.Value("Inherits"), ",")
 	theme.IconDirs = []IconDir{}
-	directories := common.Split(inigroups[0].Entry["Directories"], ",")
+	directories := common.Split(themeGroup.Value("Directories"), ",")
 
-	for _,iniGroup := range inigroups[1:] {
+	for _,iniGroup := range iniFile.Groups[1:] {
 
 		if ! common.Find(directories, iniGroup.Name) {
 			fmt.Fprintln(os.Stderr, iniGroup.Name, " not found in Directories")
 			continue
 		}
 
-		size, sizeGiven := readUint32(iniGroup.Entry["Size"])
+		size, sizeGiven := readUint32(iniGroup.Value("Size"))
 		if !sizeGiven  {
 			fmt.Fprintln(os.Stderr, "Skipping ", iniGroup.Name, " - no size given")
 			continue
 		}
 
-		minSize, minSizeGiven := readUint32(iniGroup.Entry["MinSize"])
-		maxSize, maxSizeGiven := readUint32(iniGroup.Entry["MaxSize"])
-		threshold := readUint32OrFallback(iniGroup.Entry["Threshold"], 2)
-		sizeType := iniGroup.Entry["Type"]
+		minSize, minSizeGiven := readUint32(iniGroup.Value("MinSize"))
+		maxSize, maxSizeGiven := readUint32(iniGroup.Value("MaxSize"))
+		threshold := readUint32OrFallback(iniGroup.Value("Threshold"), 2)
+		sizeType := iniGroup.Value("Type")
 		if sizeType == "Fixed" {
 			minSize = size
 			maxSize = size
@@ -173,7 +175,7 @@ func readIndexTheme(themeId string, indexThemeFilePath string) (Theme, error) {
 			continue
 		}
 
-		theme.IconDirs = append(theme.IconDirs, IconDir{iniGroup.Name, minSize, maxSize, iniGroup.Entry["Context"]})
+		theme.IconDirs = append(theme.IconDirs, IconDir{iniGroup.Name, minSize, maxSize, iniGroup.Value("Context")})
 	}
 
 	theme.Icons = make(map[string][]Icon)
