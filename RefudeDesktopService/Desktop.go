@@ -60,32 +60,34 @@ func update() {
 
 	for _, appId := range applicationIds {
 		if _,ok := c.applications[appId]; !ok {
-			service.Unmap("/application/" + appId)
+			service.Unmap("/applications/" + appId)
 		}
 	}
 
 	applicationIds = make(common.StringList, 0)
 	for appId, newDesktopApplication := range c.applications {
-		service.Map("/application/" + appId, newDesktopApplication)
+		service.Map("/applications/" + appId, newDesktopApplication)
 		applicationIds = append(applicationIds, appId)
 	}
 
-	service.Map("/applications", common.Prepend(applicationIds, "application/"))
+	service.Map("/applications/", applicationIds)
 
 	for _, mimetypeId := range mimetypeIds {
 		if _,ok := c.mimetypes[mimetypeId]; !ok {
-			service.Unmap("/mimetype/" + mimetypeId)
+			service.Unmap("/mimetypes/" + mimetypeId)
 		}
 	}
 
 	mimetypeIds := make(common.StringList, 0)
 
 	for mimetypeId, mimeType := range c.mimetypes {
-		service.Map("/mimetype/" + mimetypeId, mimeType)
+		service.Map("/mimetypes/" + mimetypeId, mimeType)
 		mimetypeIds = append(mimetypeIds, mimetypeId)
 	}
 
-	service.Map("/mimetypes", common.Prepend(mimetypeIds, "mimetype/"))
+	service.Map("/mimetypes/", common.Prepend(mimetypeIds, "mimetype/"))
+
+	service.Map("/", common.StringList{"notify", "ping", "applications/", "mimetypes/"})
 }
 
 
