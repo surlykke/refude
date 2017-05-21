@@ -66,7 +66,6 @@ class AppConfig extends React.Component {
 		if (exec) {
 			this.execute()
 		}
-		console.log("Select ", res)
 	}
 
 	move = up => {
@@ -78,7 +77,6 @@ class AppConfig extends React.Component {
 	}
 
 	execute = () => {
-		console.log("Execute ", this.state.selected)
 	}
 
 	onKeyDown = event => {

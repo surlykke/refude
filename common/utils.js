@@ -84,7 +84,6 @@ let nwHide = () => {
 let nwShow = (alwaysOnTop) => {
 	WIN.show();
 	if (alwaysOnTop) {
-		console.log("Setting alwaysOnTop")
 		WIN.setAlwaysOnTop(true)
 	}
 }

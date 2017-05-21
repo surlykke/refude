@@ -10,7 +10,7 @@ const appsProxy = MakeServiceProxy("http://localhost:7938/desktop-service/applic
 
 const includeWindow = (term, window) => {
 	let res = window &&
-		   !window.States.includes("_NET_WM_STATE_ABOVE") &&
+		   !(window.States || []).includes("_NET_WM_STATE_ABOVE") &&
 		   !["Refude Do", "refudeDo"].includes(window.Name) &&
 		   window.Name.toUpperCase().includes(term)
 	return res
@@ -40,7 +40,6 @@ class Container extends React.Component {
 		if (! this.updatePending) {
 			this.updatePending = true
 			setTimeout(() => {
-				console.log("Updating...")
 				let term = this.state.searchTerm.toUpperCase().trim()
 				let listOfLists = [
 					{
@@ -88,7 +87,7 @@ class Container extends React.Component {
 		let result = ""
 		if (item.X !== undefined )  { // So it's a window
 			result +=  "window"
-			if (item.States.includes("_NET_WM_STATE_HIDDEN")) {
+			if ((item.States || []).includes("_NET_WM_STATE_HIDDEN")) {
 				result += " minimized"
 			}
 		}
@@ -123,7 +122,6 @@ class Container extends React.Component {
 
 	render = () => {
 		let {windows, apps, selected, searchTerm} = this.state
-		console.log("listOfLists: ", this.state.listOfLists)
 		return (
 			<div className="content">
 				<div className="topdown" onKeyDown={this.onKeyDown}>

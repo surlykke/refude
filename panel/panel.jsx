@@ -52,7 +52,6 @@ class Panel extends React.Component {
 		let s = this.state.charging ? {fontWeight: "bold"} :
 		        this.state.level === "low" ? {color: "red"} :
 			    {}
-		console.log("state: ", this.state, ", style: ", s)
 		return s
 	}
 

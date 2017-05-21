@@ -8,7 +8,6 @@ class List extends React.Component {
 
 	componentDidUpdate() {
 		// Scroll selected app into view
-		console.log("Scrolling into view...")
 		if (this.selectedDiv) {
 			let {top: listTop, bottom: listBottom} = this.listDiv.getBoundingClientRect()
 			let {top: selectedTop, bottom: selectedBottom} = this.selectedDiv.getBoundingClientRect()
@@ -27,7 +26,6 @@ class List extends React.Component {
 
 	render = () => {
 		let {listOfLists, select, selected} = this.props
-		console.log("List render, state: ", this.state)
 		return (
 		    <div className="list" ref={listDiv => this.listDiv = listDiv }>
 				{listOfLists.map(pair => (

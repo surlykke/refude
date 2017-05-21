@@ -35,14 +35,12 @@ class AppChooser extends React.Component {
 		let url = "http://localhost:7938/desktop-service/mimetypes/" + id
 		doHttp(url).then(mimetype => {
 			if (! this.mimetypeIds.includes(id)) {
-				console.log("pushing", id, ", mimetype: ", mimetype)
 				this.mimetypeIds.push(id)
 				mimetype.url = url
 				mimetype.IconUrl = iconServiceUrl([mimetype.IconName, mimetype.GenericIcon])
 				this.mimetypes[id] = mimetype
 				mimetype.SubClassOf.forEach(subId => { this.fetch(subId)})
 				if (id === mimetypeId) {
-					console.log("setState: ", {iconUrl: mimetype.IconUrl, comment: mimetype.Comment})
 					this.setState({iconUrl: mimetype.IconUrl, comment: mimetype.Comment})
 				}
 				this.update()
@@ -57,7 +55,6 @@ class AppChooser extends React.Component {
 		if (! this.updatePending) {
 			this.updatePending = true
 			setTimeout(() => {
-				console.log("update, mimetypeIds: ", this.mimetypeIds)
 				let listOfLists = this.mimetypeIds.concat(["other"]).map(id => ({id:id, desc: "", items: []}))
 				appsProxy.resources().filter(app => app.Actions["_default"]["Exec"].match(/%f|%F|%u|%U/))
 				                     .forEach(app => {
@@ -88,7 +85,6 @@ class AppChooser extends React.Component {
 		let mimetype = this.state.mimetype
 		if (app) {
 			if (remember && mimetype) {
-				console.log("PATCHING to ", this.state.mimetype.url)
 				let defaultApps = [app.Id, ...mimetype.DefaultApplications.filter(id => app.Id !== id)]
 				doHttp(mimetype.url, "PATCH", {DefaultApplications: defaultApps})
 			}

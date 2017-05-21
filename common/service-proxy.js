@@ -50,6 +50,7 @@ export function MakeServiceProxy(indexUrl, notifyUrl) {
 	let evtSource;
 
 	let connect = () => {
+		console.log("Source connecting to ", notifyUrl)
 		evtSource = new EventSource(notifyUrl)
 		evtSource.onopen = () => {
 			fetchResource(indexUrl)
