@@ -69,7 +69,7 @@ func WmRun() {
 
 	randr.Init(conn)
 	buildDisplay(conn)
-	service.Map("/", common.StringList{"/notify", "/ping", "/display", "/windows/"})
+	service.Map("/", common.StringList{"notify", "ping", "display", "windows/"})
 
 	for ;; {
 		evt, err := x.Conn().WaitForEvent()
@@ -145,6 +145,8 @@ func getWindow(wId xproto.Window) Window {
 
 	if states, err := ewmh.WmStateGet(x, wId); err == nil {
 		window.States = states
+	} else {
+		window.States = []string{}
 	}
 
 	if iconArr, err := xprop.PropValNums(xprop.GetProperty(x, wId, "_NET_WM_ICON")); err == nil {
