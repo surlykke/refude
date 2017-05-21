@@ -78,14 +78,23 @@ func update() {
 		}
 	}
 
-	mimetypeIds := make(common.StringList, 0)
+	typeSubtypeMap := make(map[string]common.StringList)
 
 	for mimetypeId, mimeType := range c.mimetypes {
 		service.Map("/mimetypes/" + mimetypeId, mimeType)
-		mimetypeIds = append(mimetypeIds, mimetypeId)
+		typeSubtype := strings.Split(mimetypeId, "/")
+		typeSubtypeMap[typeSubtype[0]] = append(typeSubtypeMap[typeSubtype[0]], typeSubtype[1])
 	}
 
-	service.Map("/mimetypes/", common.Prepend(mimetypeIds, "mimetype/"))
+	Types := make(common.StringList, len(typeSubtypeMap))
+	pos := 0
+	for Type, Subtypes := range(typeSubtypeMap) {
+		service.Map("/mimetypes/" + Type + "/", Subtypes)
+		Types[pos] = Type
+		pos++
+	}
+
+	service.Map("/mimetypes/", Types)
 
 	service.Map("/", common.StringList{"notify", "ping", "applications/", "mimetypes/"})
 }
