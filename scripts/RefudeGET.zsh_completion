@@ -1,0 +1,28 @@
+#compdef RefudeGET
+
+_RefudeGET() { 
+    local curcontext="$curcontext" state line services service prefix paths
+    typeset -A opt_args
+ 
+    _arguments \
+        '1: :->service'\
+        '*: :->path'
+ 
+    case $state in
+		service)
+			services=(`ls $XDG_RUNTIME_DIR/org.refude.* | sed -e 's/.*org.refude.//'`)
+			_arguments '1: :(${services})'
+		;;
+		path)
+			service=$words[2]
+			prefix=`echo $words[3] | sed -e 's/[^\/]*$//'`
+			if [[ -n "$prefix" ]]; then
+				paths=(`RefudeGET $service $prefix | tr '[]",' ' '`)
+				compadd -S '' "$@" $prefix${^paths}
+			fi
+		;;	
+    esac
+}
+ 
+_RefudeGET "$@"
+

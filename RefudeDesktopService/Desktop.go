@@ -90,7 +90,7 @@ func update() {
 	pos := 0
 	for Type, Subtypes := range(typeSubtypeMap) {
 		service.Map("/mimetypes/" + Type + "/", Subtypes)
-		Types[pos] = Type
+		Types[pos] = Type + "/"
 		pos++
 	}
 
