@@ -145,69 +145,28 @@ func (d Device) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	common.ServeGetAsJson(w, r, d)
 }
 
+
 func deviceType(index uint32) string {
-	switch index {
-	case 0:
-		return "Unknown"
-	case 1:
-		return "Line Power"
-	case 2:
-		return "Battery"
-	case 3:
-		return "Ups"
-	case 4:
-		return "Monitor"
-	case 5:
-		return "Mouse"
-	case 6:
-		return "Keyboard"
-	case 7:
-		return "Pda"
-	case 8:
-		return "Phone"
-	default:
-		return "Unknown"
+	var devType = []string{"Unknown", "Line Power", "Battery", "Ups", "Monitor", "Mouse", "Keyboard", "Pda", "Phone"}
+	if index < 0 || index > 8 {
+		index = 0
 	}
+	return devType[index]
 }
 
 func deviceState(index uint32) string {
-	switch index {
-	case 0:
-		return "Unknown"
-	case 1:
-		return "Charging"
-	case 2:
-		return "Discharging"
-	case 3:
-		return "Empty"
-	case 4:
-		return "Fully charged"
-	case 5:
-		return "Pending charge"
-	case 6:
-		return "Pending discharge"
-	default:
-		return "Unknown"
+	var devState = []string{"Unknown", "Charging", "Discharging", "Empty", "Fully charged", "Pending charge", "Pending discharge"}
+	if index < 0 || index > 6 {
+		index = 0
 	}
+	return devState[index]
 }
 
 func deviceTecnology(index uint32) string {
-	switch index {
-	case 0:
-		return "Unknown"
-	case 1:
-		return "Lithium ion"
-	case 2:
-		return "Lithium polymer"
-	case 3:
-		return "Lithium iron phosphate"
-	case 4:
-		return "Lead acid"
-	case 5:
-		return "Nickel cadmium"
-	case 6:
-		return "Nickel metal hydride"
-	default:
-		return "Unknown"
+	var devTecnology = []string{"Unknown", "Lithium ion", "Lithium polymer", "Lithium iron phosphate", "Lead acid", "Nickel cadmium", "Nickel metal hydride" }
+	if index < 0 || index > 6 {
+		index = 0
 	}
+	return devTecnology[index]
 }
+

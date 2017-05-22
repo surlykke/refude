@@ -13,6 +13,7 @@ import (
 	"github.com/surlykke/RefudeServices/service"
 	"github.com/surlykke/RefudeServices/common"
 	"strings"
+	"fmt"
 )
 
 const UPowService = "org.freedesktop.UPower"
@@ -21,9 +22,10 @@ const UPowerInterface = "org.freedesktop.UPower"
 const DisplayDevicePath = "/org/freedesktop/UPower/devices/DisplayDevice"
 const IntrospectInterface = "org.freedesktop.DBus.Introspectable"
 const DBusPropertiesInterface = "org.freedesktop.DBus.Properties"
-
 const UPowerDeviceInterface = "org.freedesktop.UPower.Device"
-
+const login1Service = "org.freedesktop.login1"
+const login1Path = "/org/freedesktop/login1"
+const managerInterface = "org.freedesktop.login1.Manager"
 
 type PowerManager struct {
 	changeChans map[dbus.ObjectPath]chan map[string]dbus.Variant
@@ -63,6 +65,7 @@ func getProps(conn *dbus.Conn, path dbus.ObjectPath, dbusInterface string) map[s
 	return call.Body[0].(map[string]dbus.Variant)
 }
 
+
 func (pm *PowerManager) listenForPropChanges(path dbus.ObjectPath) {
 
 }
@@ -97,7 +100,23 @@ func (pm *PowerManager) Run() {
 	}
 
 	service.Map("/devices/", resourcePaths)
-	service.Map("/", common.StringList{"ping", "notify", "UPower", "devices/"})
+
+	actions := []*PowerAction{
+		NewPowerAction("PowerOff", "Shutdown", "Power off the machine", "system-shutdown", pm.conn),
+		NewPowerAction("Reboot", "Reboot", "Reboot the machine", "system-reboot", pm.conn),
+		NewPowerAction("Suspend", "Suspend", "Suspend the machine", "system-suspend", pm.conn),
+		NewPowerAction("Hibernate", "Hibernate", "Put the machine into hibernation", "system-suspend-hibernate", pm.conn),
+		NewPowerAction("HybridSleep", "HybridSleep", "Put the machine into hybrid sleep", "system-suspend-hibernate", pm.conn),
+	}
+	actionIds := make(common.StringList, len(actions))
+	for i,action := range(actions) {
+		actionIds[i] = action.Id
+		fmt.Println("Mapping ", "/actions/" + action.Id)
+		service.Map("/actions/" + action.Id, action)
+	}
+	service.Map("/actions/", &actionIds)
+
+	service.Map("/", common.StringList{"ping", "notify", "UPower", "actions/", "devices/"})
 	for signal := range signals {
 		if signal.Name == "org.freedesktop.DBus.Properties.PropertiesChanged" {
 			if changeChan, ok := pm.changeChans[signal.Path]; ok {
@@ -106,3 +125,5 @@ func (pm *PowerManager) Run() {
 		}
 	}
 }
+
+
