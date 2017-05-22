@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"sync"
 	"fmt"
+	"github.com/surlykke/RefudeServices/common"
 )
 
 type IconService struct {
@@ -19,9 +20,15 @@ type IconService struct {
 	themes Themes
 }
 
+var resources = []string{"ping", "icon"}
+
 func (is IconService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	switch r.URL.Path {
+	case "/":
+		if r.Method == "GET" {
+			common.ServeAsJson(w, r, resources)
+		}
 	case "/ping":
 		if r.Method == "GET" {
 			w.WriteHeader(http.StatusOK)
