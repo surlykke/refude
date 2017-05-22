@@ -1,6 +1,5 @@
-# Bash autocompletion for the RefudeGET command
-echo "RefudeComp"
-_RefudeGET()
+# Bash autocompletion for the POST command
+_RefudePOST()
 {
     local cur prev pref words
 	
@@ -19,4 +18,4 @@ _RefudeGET()
 	COMPREPLY=( $( compgen -W "$words" -- "$cur" ) )
 	[[ $COMPREPLY =~ /$ ]] && compopt -o nospace
 } &&
-complete  -F _RefudeGET RefudeGET
+complete  -F _RefudePOST RefudePOST

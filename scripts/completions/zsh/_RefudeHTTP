@@ -1,6 +1,6 @@
 #compdef RefudeGET RefudePOST
 
-_RefudeGET() { 
+_RefudeHTTP() { 
     local curcontext="$curcontext" state line services service prefix paths
     typeset -A opt_args
  
@@ -24,5 +24,5 @@ _RefudeGET() {
     esac
 }
  
-_RefudeGET "$@"
+_RefudeHTTP "$@"
 
