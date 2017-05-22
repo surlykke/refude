@@ -1,4 +1,4 @@
-#compdef RefudeGET
+#compdef RefudeGET RefudePOST
 
 _RefudeGET() { 
     local curcontext="$curcontext" state line services service prefix paths

@@ -10,6 +10,7 @@ for dir in RefudeDesktopService RefudeIconService RefudePowerService RefudeWmSer
 	(cd $dir && echo "Building $dir" && go install) || exit 1
 done
 
-cp scripts/runRefude.sh scripts/RefudeGET ${BIN_DIR}
+cp scripts/runRefude.sh scripts/RefudeGET scripts/RefudePOST ${BIN_DIR}
 cp scripts/RefudeGET.bash_completion ${BASH_COMPLETION_DIR}/RefudeGET
-cp scripts/RefudeGET.zsh_completion ${ZSH_COMPLETION_DIR}/_RefudeGET
+cp scripts/RefudePOST.bash_completion ${BASH_COMPLETION_DIR}/RefudePOST
+cp scripts/RefudeHTTP.zsh_completion ${ZSH_COMPLETION_DIR}/_RefudeHTTP
