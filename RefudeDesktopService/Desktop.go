@@ -38,10 +38,13 @@ func DesktopRun() {
 	for _,dataDir := range append(xdg.DataDirs(), xdg.DataHome()) {
 		appDir := dataDir + "/applications"
 		fmt.Println("Watching: " + appDir)
-		_, err := unix.InotifyAddWatch(fd, appDir, unix.IN_CREATE | unix.IN_MODIFY | unix.IN_DELETE)
-		if  err != nil {
+		if _, err := unix.InotifyAddWatch(fd, appDir, unix.IN_CREATE | unix.IN_MODIFY | unix.IN_DELETE); err != nil {
 			panic(err)
 		}
+	}
+
+	if _, err := unix.InotifyAddWatch(fd, xdg.ConfigHome() + "/mimeapps.list", unix.IN_CLOSE_WRITE); err != nil {
+		panic(err)
 	}
 
 	update()
@@ -51,6 +54,7 @@ func DesktopRun() {
 			panic(err)
 		}
 		fmt.Println("Something happened...")
+		update()
 	}
 }
 

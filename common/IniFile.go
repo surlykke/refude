@@ -50,7 +50,7 @@ type IniFile struct {
 	Groups []IniGroup
 }
 
-func (iniFile IniFile) Group(name string) (IniGroup, bool) {
+func (iniFile *IniFile) Group(name string) (IniGroup, bool) {
 	for _, group := range iniFile.Groups {
 		if name == group.Name {
 			return group, true
@@ -60,7 +60,7 @@ func (iniFile IniFile) Group(name string) (IniGroup, bool) {
 	return IniGroup{}, false
 }
 
-func (iniFile IniFile) Value(groupName string, key string) string {
+func (iniFile *IniFile) Value(groupName string, key string) string {
 	for _,group := range(iniFile.Groups) {
 		if groupName == group.Name {
 			for _,line := range(group.Entries) {
@@ -75,7 +75,8 @@ func (iniFile IniFile) Value(groupName string, key string) string {
 }
 
 
-func (iniFile IniFile) SetValue(groupName string, key string, value string) {
+func (iniFile *IniFile) SetValue(groupName string, key string, value string) {
+	fmt.Println("IniFile->SetValue: ", groupName, ", ", key, ", ", value)
 	var i int
 	var j int
 	for i = 0; i < len(iniFile.Groups); i++ {
@@ -85,6 +86,7 @@ func (iniFile IniFile) SetValue(groupName string, key string, value string) {
 	}
 
 	if i >= len(iniFile.Groups) {
+		fmt.Println("Appending group ", groupName)
 		iniFile.Groups = append(iniFile.Groups, IniGroup{Name: groupName, Entries: make([]IniLine, 0)})
 	}
 
@@ -95,20 +97,24 @@ func (iniFile IniFile) SetValue(groupName string, key string, value string) {
 	}
 
 	if j >= len(iniFile.Groups[i].Entries) {
+		fmt.Println("Appending key: ", key)
 		iniFile.Groups[i].Entries = append(iniFile.Groups[i].Entries, IniLine{Key: key})
 	}
 
 	iniFile.Groups[i].Entries[j].Value = value
 }
 
-func ReadIniFile(path string) (IniFile, error) {
+func ReadIniFile(path string) (*IniFile, error) {
 	var commentLine = regexp.MustCompile(`^\s*#.*`)
 	var headerLine = regexp.MustCompile(`^\s*\[(.+?)\]\s*`)
 	var keyValueLine = regexp.MustCompile(`^\s*(.+?)=(.+)`)
 
 	file, err := os.Open(path)
 	if err != nil {
-		return IniFile{}, err
+		if os.IsNotExist(err) {
+			err = nil
+		}
+		return &IniFile{}, err
 	}
 	defer file.Close()
 
@@ -122,17 +128,17 @@ func ReadIniFile(path string) (IniFile, error) {
 				currentGroup = &groups[len(groups) - 1]
 			} else if m := keyValueLine.FindStringSubmatch(scanner.Text()); len(m) > 0 {
 				if currentGroup == nil {
-					return IniFile{}, errors.New("Key value pair outside group: " + scanner.Text())
+					return &IniFile{}, errors.New("Key value pair outside group: " + scanner.Text())
 				}
 				currentGroup.Entries = append(currentGroup.Entries, IniLine{Key: m[1], Value: m[2]})
 			}
 		}
 	}
-	return IniFile{Groups: groups}, nil
+	return &IniFile{Groups: groups}, nil
 }
 
 
-func WriteIniFile(path string, iniFile IniFile) error {
+func WriteIniFile(path string, iniFile *IniFile) error {
 	if file, err := os.Create(path); err != nil {
 		return err
 	} else {
