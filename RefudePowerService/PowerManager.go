@@ -27,15 +27,23 @@ const login1Service = "org.freedesktop.login1"
 const login1Path = "/org/freedesktop/login1"
 const managerInterface = "org.freedesktop.login1.Manager"
 
+var dbusConn = 	func() *dbus.Conn {
+					if conn, err := dbus.SystemBus(); err != nil {
+						panic(err)
+					} else {
+						return conn
+					}
+				}()
+
+
 type PowerManager struct {
 	changeChans map[dbus.ObjectPath]chan map[string]dbus.Variant
-	conn *dbus.Conn
 }
 
 // Keeps an eye on UPower. PowerManager#Run redirects PropertiesChanged to this through the changes channel
-func watchUPower(conn *dbus.Conn, changes chan map[string]dbus.Variant) {
+func watchUPower(changes chan map[string]dbus.Variant) {
 	uPower := UPower{}
-	uPower.ReadDBusProps(getProps(conn, UPowPath, UPowerInterface))
+	uPower.ReadDBusProps(getProps(dbusConn, UPowPath, UPowerInterface))
 	service.Map("/UPower", uPower) // Important that we use call-by-value, ie. uPower is copied - see below
 	for {
 		uPower.ReadDBusProps(<- changes)
@@ -44,10 +52,10 @@ func watchUPower(conn *dbus.Conn, changes chan map[string]dbus.Variant) {
 }
 
 // Keeps an eye on a device. PowerManager#Run redirects PropertiesChanged to this through the changes channel
-func watchDevice(conn *dbus.Conn, dbusPath dbus.ObjectPath, changes chan map[string]dbus.Variant) {
+func watchDevice(dbusPath dbus.ObjectPath, changes chan map[string]dbus.Variant) {
 	path := "/devices/" + resourcePath(dbusPath)
 	device := Device{}
-	device.ReadDBusProps(getProps(conn, dbusPath, UPowerDeviceInterface))
+	device.ReadDBusProps(getProps(dbusConn, dbusPath, UPowerDeviceInterface))
 	service.Map(path, device) // Important to call-by-value (copy) here. Service owns what it gets
 	for {
 		device.ReadDBusProps(<-changes)
@@ -73,40 +81,36 @@ func (pm *PowerManager) listenForPropChanges(path dbus.ObjectPath) {
 func (pm *PowerManager) Run() {
 	pm.changeChans = make(map[dbus.ObjectPath]chan map[string]dbus.Variant)
 
-	if conn, err := dbus.SystemBus(); err != nil {
-		panic(err)
-	} else {
-		pm.conn = conn
-	}
+
 
 	signals := make(chan *dbus.Signal, 100)
-	pm.conn.Signal(signals)
-	pm.conn.BusObject().Call(
+	dbusConn.Signal(signals)
+	dbusConn.BusObject().Call(
 		"org.freedesktop.DBus.AddMatch",
 		0,
 		"type='signal',interface='org.freedesktop.DBus.Properties',member='PropertiesChanged', sender='org.freedesktop.UPower'")
 
 
 	pm.changeChans[UPowPath] = make(chan map[string]dbus.Variant)
-	go watchUPower(pm.conn, pm.changeChans[UPowPath])
+	go watchUPower(pm.changeChans[UPowPath])
 
-	enumCall := pm.conn.Object(UPowService, UPowPath).Call(UPowerInterface + ".EnumerateDevices", dbus.Flags(0))
+	enumCall := dbusConn.Object(UPowService, UPowPath).Call(UPowerInterface + ".EnumerateDevices", dbus.Flags(0))
 	devicePaths := append(enumCall.Body[0].([]dbus.ObjectPath), DisplayDevicePath)
 	resourcePaths := make(common.StringList, 0, len(devicePaths))
 	for _,devicePath := range devicePaths {
 		resourcePaths = append(resourcePaths, resourcePath(devicePath))
 		pm.changeChans[devicePath] = make(chan map[string]dbus.Variant)
-		go watchDevice(pm.conn, devicePath, pm.changeChans[devicePath])
+		go watchDevice(devicePath, pm.changeChans[devicePath])
 	}
 
 	service.Map("/devices/", resourcePaths)
 
 	actions := []*PowerAction{
-		NewPowerAction("PowerOff", "Shutdown", "Power off the machine", "system-shutdown", pm.conn),
-		NewPowerAction("Reboot", "Reboot", "Reboot the machine", "system-reboot", pm.conn),
-		NewPowerAction("Suspend", "Suspend", "Suspend the machine", "system-suspend", pm.conn),
-		NewPowerAction("Hibernate", "Hibernate", "Put the machine into hibernation", "system-suspend-hibernate", pm.conn),
-		NewPowerAction("HybridSleep", "HybridSleep", "Put the machine into hybrid sleep", "system-suspend-hibernate", pm.conn),
+		NewPowerAction("PowerOff", "Shutdown", "Power off the machine", "system-shutdown"),
+		NewPowerAction("Reboot", "Reboot", "Reboot the machine", "system-reboot"),
+		NewPowerAction("Suspend", "Suspend", "Suspend the machine", "system-suspend"),
+		NewPowerAction("Hibernate", "Hibernate", "Put the machine into hibernation", "system-suspend-hibernate"),
+		NewPowerAction("HybridSleep", "HybridSleep", "Put the machine into hybrid sleep", "system-suspend-hibernate"),
 	}
 	actionIds := make(common.StringList, len(actions))
 	for i,action := range(actions) {

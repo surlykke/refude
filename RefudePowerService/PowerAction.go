@@ -23,15 +23,11 @@ type PowerAction struct {
 	Comment string
 	IconName string
 	Can bool
-	conn *dbus.Conn
 }
 
-func NewPowerAction(Id string, Name string, Comment string, IconName string, conn *dbus.Conn) *PowerAction {
-	fmt.Println("NewPowerAction calling: ", login1Service, ", ", login1Path, ", ", managerInterface + ".Can" + Id)
-	res := conn.Object(login1Service, login1Path).Call(managerInterface + ".Can" + Id, dbus.Flags(0)).Body[0].(string)
-	fmt.Println("--> ", res)
-	can := "yes" == res
-	return &PowerAction{Id, Name, Comment, IconName, can, conn}
+func NewPowerAction(Id string, Name string, Comment string, IconName string) *PowerAction {
+	can := "yes" == dbusConn.Object(login1Service, login1Path).Call(managerInterface + ".Can" + Id, dbus.Flags(0)).Body[0].(string)
+	return &PowerAction{Id, Name, Comment, IconName, can}
 }
 
 func (p PowerAction) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -40,7 +36,7 @@ func (p PowerAction) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		common.ServeAsJson(w, r, p)
 	} else if r.Method == "POST" && p.Can {
 		fmt.Println("Calling: ", login1Service, ", ", login1Path, ", ", managerInterface + "." + p.Id)
-		p.conn.Object(login1Service, login1Path).Call(managerInterface + "." + p.Id, dbus.Flags(0), false)
+		dbusConn.Object(login1Service, login1Path).Call(managerInterface + "." + p.Id, dbus.Flags(0), false)
 		w.WriteHeader(http.StatusAccepted)
 	} else {
 		w.WriteHeader(http.StatusMethodNotAllowed)
