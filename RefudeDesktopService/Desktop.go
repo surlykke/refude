@@ -19,6 +19,7 @@ import (
 	"github.com/surlykke/RefudeServices/service"
 	"golang.org/x/sys/unix"
 	"net/http"
+	"regexp"
 )
 
 
@@ -239,20 +240,6 @@ func (c *Collector) readMimeappsList(path string) {
 	}
 }
 
-func setDefaultApplication(mimetypeId string, applicationId string) error {
-	mimeAppsPath := xdg.ConfigHome() + "/mimeapps.list"
-	if iniFile, err := common.ReadIniFile(mimeAppsPath); err != nil {
-		return err
-	} else {
-		defaultApps := common.Split(iniFile.Value("Default Applications", mimetypeId), ";")
-		defaultApps = common.Remove(defaultApps, applicationId)
-		defaultApps =  common.Prepend(defaultApps, applicationId)
-		iniFile.SetValue("Default Applications", mimetypeId, strings.Join(defaultApps, ";"))
-		return common.WriteIniFile(mimeAppsPath, iniFile)
-	}
-}
-
-
 type Icon struct {
 	prefix string
 }
@@ -260,5 +247,53 @@ type Icon struct {
 func (i Icon) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if strings.HasPrefix(r.URL.Path, i.prefix) {
 		http.ServeFile(w, r, r.URL.Path[len(i.prefix):])
+	}
+}
+
+var mimetypePathPattern = func() *regexp.Regexp {
+	if pattern, err := regexp.Compile(`/mimetypes/[^/]+/[^/]+`); err != nil {
+		panic(err)
+	} else {
+		return pattern
+	}
+}()
+
+type MimetypePostPayload struct {
+	DefaultApplication string
+}
+
+func POSTInterceptor(w http.ResponseWriter, r* http.Request) {
+	if r.Method == "POST" && mimetypePathPattern.MatchString(r.URL.Path) {
+		mimetypeId := r.URL.Path[len("/mimetypes/"):]
+		payload := MimetypePostPayload{}
+		if err := unmarshal(r.Body, &payload); err != nil {
+			fmt.Println(err)
+			w.WriteHeader(http.StatusNotAcceptable);
+			return
+		} else if len(payload.DefaultApplication) == 0 {
+			w.WriteHeader(http.StatusNotAcceptable)
+		} else {
+			appId := payload.DefaultApplication
+			fmt.Println("POST: ", mimetypeId, " -> ", appId)
+			path := xdg.ConfigHome() + "/mimeapps.list"
+
+			if iniFile, err := common.ReadIniFile(path); err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+			} else {
+				defaultApplications := common.Split(iniFile.Value("Default Applications", mimetypeId), ";")
+				defaultApplications = common.Remove(defaultApplications, appId)
+				defaultApplications = common.PushFront(appId, defaultApplications)
+
+				fmt.Println("Setting: ", mimetypeId, strings.Join(defaultApplications, ";"))
+				iniFile.SetValue("Default Applications", mimetypeId, strings.Join(defaultApplications, ";"))
+				if err = common.WriteIniFile(path, iniFile); err != nil {
+					w.WriteHeader(http.StatusInternalServerError)
+				} else {
+					w.WriteHeader(http.StatusNoContent)
+				}
+			}
+		}
+	} else {
+		service.ServeHTTP(w, r)
 	}
 }

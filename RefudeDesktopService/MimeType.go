@@ -36,6 +36,7 @@ type Mimetype struct {
 	DefaultApplications    []string
 }
 
+
 var	mimetypePattern = func() *regexp.Regexp {
 	pattern, err := regexp.Compile(`^([^/]+)/([^/]+)$`)
 	if err != nil {
@@ -67,7 +68,7 @@ func NewMimetype(id string) (*Mimetype, error) {
 func (mt *Mimetype) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		common.ServeAsJson(w, r, mt)
-	} else {
+	}  else {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
 }
@@ -157,3 +158,4 @@ func CollectMimeTypes() map[string]*Mimetype {
 
 	return res
 }
+

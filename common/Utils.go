@@ -30,6 +30,16 @@ func AppendIfNotThere(list StringList, s string) StringList {
 	return append(list, s)
 }
 
+func PushFront(s string, list StringList) StringList {
+	res := make(StringList, 1 + len(list))
+	res[0] = s;
+	for i,item := range list {
+		res[i + 1] = item
+	}
+
+	return res
+}
+
 func Remove(list StringList, str string) StringList {
 	res := make(StringList, 0, len(list))
 	for _,s := range list {

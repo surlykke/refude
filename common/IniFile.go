@@ -88,7 +88,7 @@ func (iniFile IniFile) SetValue(groupName string, key string, value string) {
 		iniFile.Groups = append(iniFile.Groups, IniGroup{Name: groupName, Entries: make([]IniLine, 0)})
 	}
 
-	for j = 0; i < len(iniFile.Groups[i].Entries); i++ {
+	for j = 0; j < len(iniFile.Groups[i].Entries); j++ {
 		if key == iniFile.Groups[i].Entries[j].Key {
 			break
 		}
@@ -137,7 +137,7 @@ func WriteIniFile(path string, iniFile IniFile) error {
 		return err
 	} else {
 		defer file.Close()
-		for _, group := range(iniFile.Groups) {
+		for _, group := range iniFile.Groups {
 			if _, err := file.WriteString("[" + group.Name + "]\n"); err != nil {
 				fmt.Println("Error writing to ", path, " ", err)
 				return err
