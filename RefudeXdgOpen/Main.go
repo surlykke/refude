@@ -75,7 +75,7 @@ func postJson(path string, data interface{}) error {
 func getDefaultApp(mimetypeid string) (string, error) {
 	fmt.Println("Looking for ", mimetypeid)
 	mimetype := MimeType{}
-	if err := getJson("/mimetype/" + mimetypeid, &mimetype); err != nil {
+	if err := getJson("/mimetypes/" + mimetypeid, &mimetype); err != nil {
 		return "", err
 	} else if len(mimetype.DefaultApplications) > 0 {
 		return mimetype.DefaultApplications[0], nil
@@ -125,7 +125,7 @@ func main() {
 	} else if app,err := getDefaultApp(mimetypeId); err != nil {
 		log.Fatal("Error querying default app of ", mimetypeId, err)
 	} else if len(app) > 0 {
-		path := "/application/" + app
+		path := "/applications/" + app
 		payload := struct{ Arguments []string }{ Arguments: []string{arg}}
 		if err = postJson(path, &payload); err != nil {
 			log.Fatal("Error launching " + string(app[0]) + " with " + arg)
