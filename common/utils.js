@@ -35,7 +35,7 @@ let iconServiceUrl = (iconNames, size) => {
 
 const tcpPattern = /http:\/\/(\w*)(:(\d+))?(\/.*)/
 
-let doHttp = (url, method, payload) => { // TODO payload
+let doHttp = (url, method, payload) => {
 	let m = tcpPattern.exec(url)
 
 	let opts = {

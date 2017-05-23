@@ -82,14 +82,13 @@ class AppChooser extends React.Component {
 	execute = () => {
 		let app = this.state.selected
 		let remember = this.refs.remember.value === "on"
-		let mimetype = this.state.mimetype
 		if (app) {
-			if (remember && mimetype) {
-				let defaultApps = [app.Id, ...mimetype.DefaultApplications.filter(id => app.Id !== id)]
-				doHttp(mimetype.url, "PATCH", {DefaultApplications: defaultApps})
+			if (remember) {
+				let mimetypeUrl = "http://localhost:7938/desktop-service/mimetypes/" + mimetypeId
+				doHttp(mimetypeUrl, "POST", {DefaultApplication: app.Id})
 			}
 
-			doHttp(app.url, "POST", {Arguments: [appArgument]}).then(response => {gui.App.quit()})
+			doHttp(app.url, "POST", {Arguments: [appArgument]})//.then(response => {gui.App.quit()})
 		}
 	}
 
