@@ -48,8 +48,6 @@ class AppChooser extends React.Component {
 		})
 	}
 
-
-
 	// We get a lot of events from appsProxy, so we collect to, at most, one update pr 20 ms
 	update = () => {
 		if (! this.updatePending) {
@@ -81,14 +79,14 @@ class AppChooser extends React.Component {
 
 	execute = () => {
 		let app = this.state.selected
-		let remember = this.refs.remember.value === "on"
+		console.log("this.state.remember: ", this.state.remember)
 		if (app) {
-			if (remember) {
+			if (this.state.remember) {
 				let mimetypeUrl = "http://localhost:7938/desktop-service/mimetypes/" + mimetypeId
 				doHttp(mimetypeUrl, "POST", {DefaultApplication: app.Id})
 			}
 
-			doHttp(app.url, "POST", {Arguments: [appArgument]})//.then(response => {gui.App.quit()})
+			doHttp(app.url, "POST", {Arguments: [appArgument]}).then(response => {gui.App.quit()})
 		}
 	}
 
@@ -117,6 +115,9 @@ class AppChooser extends React.Component {
 
 	extraClasses = item => "app"
 
+	checkboxChanged = event => {
+		this.setState({remember: event.target.checked})
+	}
 
 	render = () => {
 		let {appArgument, iconUrl, comment, listOfLists, selected} = this.state
@@ -125,7 +126,7 @@ class AppChooser extends React.Component {
 				<div className="topdown">
 					<div className="heading2">Select an application to open:</div>
 					<Argument appArgument={appArgument} iconUrl={iconUrl} comment={comment}/>
-					<div> <input type="checkbox" ref="remember"/>Remember my decision</div>
+					<div> <input type="checkbox" onChange={this.checkboxChanged}/>Remember my decision</div>
 					<div className="hr"></div>
 					<List listOfLists={listOfLists} select={this.select} selected={selected} extraClasses={this.extraClasses}/>
 				</div>
