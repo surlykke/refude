@@ -22,7 +22,7 @@ import (
 	"bytes"
 	"os/exec"
 	"regexp"
-	"github.com/surlykke/RefudeServices/xdg"
+	"github.com/surlykke/RefudeServices/lib/xdg"
 	"path/filepath"
 )
 
@@ -44,15 +44,16 @@ func getJson(path string, res interface{}) error {
 	if err != nil {
 		return err
 	}
+
 	defer response.Body.Close()
-	body, err := ioutil.ReadAll(response.Body)
-	if err != nil {
+	if body, err := ioutil.ReadAll(response.Body); err != nil {
 		return err
+	} else if len(body) > 0 {
+		if err = json.Unmarshal(body, res); err != nil {
+			return err
+		}
 	}
-	fmt.Println(string(body))
-	if err = json.Unmarshal(body, res); err != nil {
-		return err
-	}
+
 	return nil
 }
 
