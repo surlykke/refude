@@ -58,21 +58,21 @@ func (icon PNGIcon) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 type Img struct {
-	width  uint
-	height uint
+	Width  int32
+	Height int32
 	/*
 	 * Holds pixels in blocks of 4 bytes. Each block (from low address to high)
 	 * the A,R,G and B component of the pixel
 	 */
-	pixels []byte
+	Pixels []byte
 }
 
-func (img* Img) PixelAt(row uint, column uint) ([]byte, error) {
-	if column > img.width || row > img.height {
+func (img* Img) PixelAt(row int32, column int32) ([]byte, error) {
+	if column < 0 || column > img.Width || row < 0 || row > img.Height {
 		return nil, errors.New("Out of range")
 	} else {
-		pos := 4*(row*img.width + column)
-		return img.pixels[pos:pos + 4], nil
+		pos := 4*(row*img.Width + column)
+		return img.Pixels[pos:pos + 4], nil
 	}
 }
 
@@ -87,20 +87,20 @@ type Icon []Img
 func ExtractARGBIcon(uints []uint) []Img {
 	res := make([]Img, 0)
 	for len(uints) >= 2 {
-		width := uints[0]
-		height := uints[1]
+		width := int32(uints[0])
+		height := int32(uints[1])
 		uints = uints[2:]
 		if len(uints) < int(width*height) {
 			break
 		}
 		pixels := make([]byte, 4*width*height)
-		for pos := uint(0); pos < width*height; pos++ {
+		for pos := int32(0); pos < width*height; pos++ {
 			pixels[4*pos] = uint8((uints[pos] & 0xFF000000) >> 24)
 			pixels[4*pos + 1] = uint8((uints[pos] & 0xFF0000) >> 16)
 			pixels[4*pos + 2] = uint8((uints[pos] & 0xFF00) >> 8)
 			pixels[4*pos + 3] = uint8(uints[pos] & 0xFF)
 		}
-		res = append(res, Img{width: width, height: height, pixels: pixels})
+		res = append(res, Img{Width: width, Height: height, Pixels: pixels})
 		uints = uints[width*height:]
 	}
 
@@ -110,7 +110,7 @@ func ExtractARGBIcon(uints []uint) []Img {
 func calcHash(argbIcon Icon) string {
 	hash := fnv.New64a()
 	for _, img := range argbIcon {
-		hash.Write(img.pixels)
+		hash.Write(img.Pixels)
 	}
 	return fmt.Sprintf("%X", hash.Sum64())
 }
@@ -122,17 +122,17 @@ func ServeAsPng(argbIcon Icon) (string, error) {
 		hashes = stringlist.PushBack(hashes, hash)
 		pngIcon := make(PNGIcon, 0)
 		for _, img := range argbIcon {
-			pngData := image.NewRGBA(image.Rect(0, 0, int(img.width), int(img.height)))
+			pngData := image.NewRGBA(image.Rect(0, 0, int(img.Width), int(img.Height)))
 			buf := bytes.Buffer{}
-			for row := uint(0); row < img.height; row++ {
-				for column := uint(0); column < img.width; column++ {
+			for row := int32(0); row < img.Height; row++ {
+				for column := int32(0); column < img.Width; column++ {
 					pixelAsARGB,_ := img.PixelAt(row, column)
 					pixelRGBA := color.RGBA{R: pixelAsARGB[1], G: pixelAsARGB[2], B: pixelAsARGB[3], A: pixelAsARGB[0] }
 					pngData.Set(int(column), int(row), color.RGBA(pixelRGBA))
 				}
 			}
 			png.Encode(&buf, pngData)
-			pngIcon = append(pngIcon, PNGImg{int(img.width), buf.Bytes()})
+			pngIcon = append(pngIcon, PNGImg{int(img.Width), buf.Bytes()})
 		}
 		if len(pngIcon) < 1 {
 			return "", fmt.Errorf("No icons in argument")

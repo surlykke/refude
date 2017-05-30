@@ -6,7 +6,7 @@ BASH_COMPLETION_DIR=${XDG_DATA_HOME:-${HOME}/.local/share}/bash-completion/compl
 ZSH_COMPLETION_DIR=${XDG_DATA_HOME:-${HOME}/.local/share}/zsh/completions
 mkdir -p $BIN_DIR $BASH_COMPLETION_DIR $ZSH_COMPLETION_DIR
 
-for dir in RefudeDesktopService RefudeIconService RefudePowerService RefudeWmService RefudeXdgOpen; do
+for dir in RefudeDesktopService RefudeIconService RefudePowerService RefudeWmService RefudeXdgOpen RefudeStatusNotifierService; do
 	(cd $dir && echo "Building $dir" && go install) || exit 1
 done
 
