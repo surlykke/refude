@@ -10,10 +10,10 @@ package main
 
 import (
 	"github.com/godbus/dbus"
-	"github.com/surlykke/RefudeServices/service"
-	"github.com/surlykke/RefudeServices/common"
+	"github.com/surlykke/RefudeServices/lib/service"
 	"strings"
 	"fmt"
+	"github.com/surlykke/RefudeServices/lib/stringlist"
 )
 
 const UPowService = "org.freedesktop.UPower"
@@ -96,7 +96,7 @@ func (pm *PowerManager) Run() {
 
 	enumCall := dbusConn.Object(UPowService, UPowPath).Call(UPowerInterface + ".EnumerateDevices", dbus.Flags(0))
 	devicePaths := append(enumCall.Body[0].([]dbus.ObjectPath), DisplayDevicePath)
-	resourcePaths := make(common.StringList, 0, len(devicePaths))
+	resourcePaths := make(stringlist.StringList, 0, len(devicePaths))
 	for _,devicePath := range devicePaths {
 		resourcePaths = append(resourcePaths, resourcePath(devicePath))
 		pm.changeChans[devicePath] = make(chan map[string]dbus.Variant)
@@ -112,7 +112,7 @@ func (pm *PowerManager) Run() {
 		NewPowerAction("Hibernate", "Hibernate", "Put the machine into hibernation", "system-suspend-hibernate"),
 		NewPowerAction("HybridSleep", "HybridSleep", "Put the machine into hybrid sleep", "system-suspend-hibernate"),
 	}
-	actionIds := make(common.StringList, len(actions))
+	actionIds := make(stringlist.StringList, len(actions))
 	for i,action := range(actions) {
 		actionIds[i] = action.Id
 		fmt.Println("Mapping ", "/actions/" + action.Id)
@@ -120,9 +120,10 @@ func (pm *PowerManager) Run() {
 	}
 	service.Map("/actions/", &actionIds)
 
-	service.Map("/", common.StringList{"ping", "notify", "UPower", "actions/", "devices/"})
+	service.Map("/", stringlist.StringList{"ping", "notify", "UPower", "actions/", "devices/"})
 	for signal := range signals {
 		if signal.Name == "org.freedesktop.DBus.Properties.PropertiesChanged" {
+			fmt.Println("Incoming: ", signal)
 			if changeChan, ok := pm.changeChans[signal.Path]; ok {
 				changeChan <- signal.Body[1].(map[string]dbus.Variant)
 			}

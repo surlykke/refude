@@ -12,11 +12,11 @@ import (
 	"net/http"
 	"fmt"
 	"sync"
-	"github.com/surlykke/RefudeServices/xdg"
+	"github.com/surlykke/RefudeServices/lib/xdg"
 	"net"
 	"context"
 	"syscall"
-	"github.com/surlykke/RefudeServices/notify"
+	"github.com/surlykke/RefudeServices/lib/notify"
 	"reflect"
 )
 

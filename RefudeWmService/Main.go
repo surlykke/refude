@@ -9,7 +9,7 @@
 package main
 
 import (
-	"github.com/surlykke/RefudeServices/service"
+	"github.com/surlykke/RefudeServices/lib/service"
 )
 
 func main() {

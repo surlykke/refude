@@ -11,13 +11,13 @@ package main
 import (
 
 	"encoding/xml"
-	"github.com/surlykke/RefudeServices/common"
 	"io/ioutil"
 	"fmt"
 	"regexp"
 	"strings"
 	"net/http"
 	"github.com/pkg/errors"
+	"github.com/surlykke/RefudeServices/lib/stringlist"
 )
 
 const freedesktopOrgXml = "/usr/share/mime/packages/freedesktop.org.xml"
@@ -27,12 +27,12 @@ type Mimetype struct {
 	Comment                string
 	Acronym                string
 	ExpandedAcronym        string
-	Aliases                common.StringList
-	Globs                  common.StringList
-	SubClassOf             common.StringList
+	Aliases                stringlist.StringList
+	Globs                  stringlist.StringList
+	SubClassOf             stringlist.StringList
 	IconName               string
 	GenericIcon            string
-	AssociatedApplications common.StringList
+	AssociatedApplications stringlist.StringList
 	DefaultApplications    []string
 }
 
@@ -67,7 +67,7 @@ func NewMimetype(id string) (*Mimetype, error) {
 
 func (mt *Mimetype) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		common.ServeAsJson(w, r, mt)
+		stringlist.ServeAsJson(w, r, mt)
 	}  else {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
@@ -134,15 +134,15 @@ func CollectMimeTypes() map[string]*Mimetype {
 		}
 
 		for _, aliasStruct := range tmp.Alias {
-			mimeType.Aliases = common.AppendIfNotThere(mimeType.Aliases, aliasStruct.Type)
+			mimeType.Aliases = stringlist.AppendIfNotThere(mimeType.Aliases, aliasStruct.Type)
 		}
 
 		for _, tmpGlob := range tmp.Glob {
-			mimeType.Globs = common.AppendIfNotThere(mimeType.Globs, tmpGlob.Pattern)
+			mimeType.Globs = stringlist.AppendIfNotThere(mimeType.Globs, tmpGlob.Pattern)
 		}
 
 		for _, tmpSubClassOf := range tmp.SubClassOf {
-			mimeType.SubClassOf = common.AppendIfNotThere(mimeType.SubClassOf, tmpSubClassOf.Type)
+			mimeType.SubClassOf = stringlist.AppendIfNotThere(mimeType.SubClassOf, tmpSubClassOf.Type)
 		}
 
 

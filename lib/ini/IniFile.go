@@ -6,7 +6,7 @@
  * Please refer to the GPL2 file for a copy of the license.
  */
 
-package common
+package ini
 
 import (
 	"bufio"
@@ -46,12 +46,12 @@ func (iniGroup *IniGroup) Value(key string) string {
 }
 
 
-type IniFile struct {
+type File struct {
 	Groups []IniGroup
 }
 
-func (iniFile *IniFile) Group(name string) (IniGroup, bool) {
-	for _, group := range iniFile.Groups {
+func (file *File) Group(name string) (IniGroup, bool) {
+	for _, group := range file.Groups {
 		if name == group.Name {
 			return group, true
 		}
@@ -60,8 +60,8 @@ func (iniFile *IniFile) Group(name string) (IniGroup, bool) {
 	return IniGroup{}, false
 }
 
-func (iniFile *IniFile) Value(groupName string, key string) string {
-	for _,group := range(iniFile.Groups) {
+func (file *File) Value(groupName string, key string) string {
+	for _,group := range(file.Groups) {
 		if groupName == group.Name {
 			for _,line := range(group.Entries) {
 				if key == line.Key {
@@ -75,36 +75,36 @@ func (iniFile *IniFile) Value(groupName string, key string) string {
 }
 
 
-func (iniFile *IniFile) SetValue(groupName string, key string, value string) {
-	fmt.Println("IniFile->SetValue: ", groupName, ", ", key, ", ", value)
+func (file *File) SetValue(groupName string, key string, value string) {
+	fmt.Println("File->SetValue: ", groupName, ", ", key, ", ", value)
 	var i int
 	var j int
-	for i = 0; i < len(iniFile.Groups); i++ {
-		if groupName == iniFile.Groups[i].Name {
+	for i = 0; i < len(file.Groups); i++ {
+		if groupName == file.Groups[i].Name {
 			break
 		}
 	}
 
-	if i >= len(iniFile.Groups) {
+	if i >= len(file.Groups) {
 		fmt.Println("Appending group ", groupName)
-		iniFile.Groups = append(iniFile.Groups, IniGroup{Name: groupName, Entries: make([]IniLine, 0)})
+		file.Groups = append(file.Groups, IniGroup{Name: groupName, Entries: make([]IniLine, 0)})
 	}
 
-	for j = 0; j < len(iniFile.Groups[i].Entries); j++ {
-		if key == iniFile.Groups[i].Entries[j].Key {
+	for j = 0; j < len(file.Groups[i].Entries); j++ {
+		if key == file.Groups[i].Entries[j].Key {
 			break
 		}
 	}
 
-	if j >= len(iniFile.Groups[i].Entries) {
+	if j >= len(file.Groups[i].Entries) {
 		fmt.Println("Appending key: ", key)
-		iniFile.Groups[i].Entries = append(iniFile.Groups[i].Entries, IniLine{Key: key})
+		file.Groups[i].Entries = append(file.Groups[i].Entries, IniLine{Key: key})
 	}
 
-	iniFile.Groups[i].Entries[j].Value = value
+	file.Groups[i].Entries[j].Value = value
 }
 
-func ReadIniFile(path string) (*IniFile, error) {
+func ReadIniFile(path string) (*File, error) {
 	var commentLine = regexp.MustCompile(`^\s*#.*`)
 	var headerLine = regexp.MustCompile(`^\s*\[(.+?)\]\s*`)
 	var keyValueLine = regexp.MustCompile(`^\s*(.+?)=(.+)`)
@@ -114,7 +114,7 @@ func ReadIniFile(path string) (*IniFile, error) {
 		if os.IsNotExist(err) {
 			err = nil
 		}
-		return &IniFile{}, err
+		return &File{}, err
 	}
 	defer file.Close()
 
@@ -128,17 +128,17 @@ func ReadIniFile(path string) (*IniFile, error) {
 				currentGroup = &groups[len(groups) - 1]
 			} else if m := keyValueLine.FindStringSubmatch(scanner.Text()); len(m) > 0 {
 				if currentGroup == nil {
-					return &IniFile{}, errors.New("Key value pair outside group: " + scanner.Text())
+					return &File{}, errors.New("Key value pair outside group: " + scanner.Text())
 				}
 				currentGroup.Entries = append(currentGroup.Entries, IniLine{Key: m[1], Value: m[2]})
 			}
 		}
 	}
-	return &IniFile{Groups: groups}, nil
+	return &File{Groups: groups}, nil
 }
 
 
-func WriteIniFile(path string, iniFile *IniFile) error {
+func WriteIniFile(path string, iniFile *File) error {
 	if file, err := os.Create(path); err != nil {
 		return err
 	} else {

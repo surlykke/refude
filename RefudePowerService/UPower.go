@@ -11,7 +11,7 @@ package main
 import (
 	"github.com/godbus/dbus"
 	"net/http"
-	"github.com/surlykke/RefudeServices/common"
+	"github.com/surlykke/RefudeServices/lib/stringlist"
 )
 
 type UPowerObject interface {
@@ -56,7 +56,7 @@ func (up *UPower) ReadDBusProps(m map[string]dbus.Variant) {
 }
 
 func (up UPower) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	common.ServeGetAsJson(w, r, up)
+	stringlist.ServeGetAsJson(w, r, up)
 }
 
 type Device struct {
@@ -142,7 +142,7 @@ func (d *Device) ReadDBusProps(m map[string]dbus.Variant) {
 }
 
 func (d Device) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	common.ServeGetAsJson(w, r, d)
+	stringlist.ServeGetAsJson(w, r, d)
 }
 
 

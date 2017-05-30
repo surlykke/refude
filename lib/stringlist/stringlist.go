@@ -6,7 +6,7 @@
  * Please refer to the GPL2 file for a copy of the license.
  */
 
-package common
+package stringlist
 
 import (
 	"encoding/json"
@@ -16,8 +16,18 @@ import (
 
 type StringList []string
 
-func (pl StringList) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	ServeGetAsJson(w, r, pl)
+func (sl StringList) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	ServeGetAsJson(w, r, sl)
+}
+
+func (sl StringList) Has(s string) bool {
+	for _, str := range sl {
+		if str == s {
+			return true
+		}
+	}
+
+	return false
 }
 
 func AppendIfNotThere(list StringList, s string) StringList {
@@ -40,6 +50,14 @@ func PushFront(s string, list StringList) StringList {
 	return res
 }
 
+func PushBack(list StringList, s string) StringList {
+	res := make(StringList, 1 + len(list))
+	copy(res, list)
+	res[len(list)] = s
+	return res
+}
+
+
 func Remove(list StringList, str string) StringList {
 	res := make(StringList, 0, len(list))
 	for _,s := range list {
@@ -50,15 +68,6 @@ func Remove(list StringList, str string) StringList {
 	return res
 }
 
-func Find(list StringList, str string) bool {
-	for _,s := range list {
-		if s == str {
-			return true
-		}
-	}
-
-	return false
-}
 
 func Split(str string, sep string) StringList {
 	tmp := strings.Split(str, sep)
@@ -72,7 +81,7 @@ func Split(str string, sep string) StringList {
 	return res
 }
 
-func Prepend(stringList StringList, prefix string) StringList {
+func PrependEach(stringList StringList, prefix string) StringList {
 	res := make(StringList, 0, len(stringList))
 	for _,str := range stringList {
 		res = append(res, prefix + str)

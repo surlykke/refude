@@ -9,13 +9,14 @@
 package main
 
 import (
-	"github.com/surlykke/RefudeServices/common"
-	"github.com/surlykke/RefudeServices/xdg"
+	"github.com/surlykke/RefudeServices/lib/xdg"
 	"path/filepath"
 	"fmt"
 	"os"
 	"math"
 	"strconv"
+	"github.com/surlykke/RefudeServices/lib/stringlist"
+	"github.com/surlykke/RefudeServices/lib/ini"
 )
 
 type Themes struct {
@@ -73,7 +74,7 @@ func ReadThemes() Themes {
 
 	for themeId, theme := range res.themes {
 		fmt.Println("parents for ", themeId, ": ", theme.Inherits)
-		ancestors := getAncestors(themeId, make(common.StringList, 0), res.themes)
+		ancestors := getAncestors(themeId, make(stringlist.StringList, 0), res.themes)
 		fmt.Println("ancestors for ", themeId, ": ", ancestors)
 		ancestors = append(ancestors, "hicolor")
 		theme.Ancestors = ancestors
@@ -123,7 +124,7 @@ func ReadThemes() Themes {
 
 
 func readIndexTheme(themeId string, indexThemeFilePath string) (Theme, error) {
-	iniFile,err:= common.ReadIniFile(indexThemeFilePath)
+	iniFile,err:= ini.ReadIniFile(indexThemeFilePath)
 	if err != nil {
 		return Theme{}, err
 	}
@@ -138,13 +139,13 @@ func readIndexTheme(themeId string, indexThemeFilePath string) (Theme, error) {
 	theme.Id = themeId
 	theme.Name = themeGroup.Value("Name")
 	theme.Comment = themeGroup.Value("Comment")
-	theme.Inherits = common.Split(themeGroup.Value("Inherits"), ",")
+	theme.Inherits = stringlist.Split(themeGroup.Value("Inherits"), ",")
 	theme.IconDirs = []IconDir{}
-	directories := common.Split(themeGroup.Value("Directories"), ",")
+	directories := stringlist.Split(themeGroup.Value("Directories"), ",")
 
 	for _,iniGroup := range iniFile.Groups[1:] {
 
-		if ! common.Find(directories, iniGroup.Name) {
+		if ! directories.Has(iniGroup.Name) {
 			fmt.Fprintln(os.Stderr, iniGroup.Name, " not found in Directories")
 			continue
 		}
@@ -183,10 +184,10 @@ func readIndexTheme(themeId string, indexThemeFilePath string) (Theme, error) {
 	return theme, nil
 }
 
-func getAncestors(themeId string, visited common.StringList, themeMap map[string]Theme) []string {
+func getAncestors(themeId string, visited stringlist.StringList, themeMap map[string]Theme) []string {
 	ancestors := make([]string, 0)
-	if themeId != "hicolor" && !common.Find(visited,themeId) {
-		common.AppendIfNotThere(visited, themeId)
+	if themeId != "hicolor" && !visited.Has(themeId) {
+		stringlist.AppendIfNotThere(visited, themeId)
 		if theme, ok := themeMap[themeId]; ok {
 			ancestors = append(ancestors, themeId)
 			for _,parentId := range theme.Inherits {
@@ -284,7 +285,7 @@ func getSearchDirectories() []string {
 
 func reverse(strings []string) []string {
 	res := make([]string, len(strings))
-	for i,_ := range strings {
+	for i := range strings {
 		res[len(strings) - 1 - i] = strings[i]
 	}
 	return res

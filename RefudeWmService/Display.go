@@ -10,7 +10,7 @@ package main
 
 import (
 	"net/http"
-	"github.com/surlykke/RefudeServices/common"
+	"github.com/surlykke/RefudeServices/lib/stringlist"
 )
 
 type Rect struct {
@@ -24,5 +24,5 @@ type Display struct {
 }
 
 func (d* Display) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	common.ServeGetAsJson(w, r, d)
+	stringlist.ServeGetAsJson(w, r, d)
 }

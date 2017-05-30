@@ -10,16 +10,17 @@ package main
 
 import (
 	"errors"
-	"github.com/surlykke/RefudeServices/common"
 	"net/http"
 	"fmt"
 	"os/exec"
 	"io/ioutil"
 	"regexp"
 	"strings"
-	"github.com/surlykke/RefudeServices/service"
+	"github.com/surlykke/RefudeServices/lib/service"
 	"encoding/json"
 	"io"
+	"github.com/surlykke/RefudeServices/lib/ini"
+	"github.com/surlykke/RefudeServices/lib/stringlist"
 )
 
 type DesktopApplication struct {
@@ -32,16 +33,16 @@ type DesktopApplication struct {
 	IconName        string `json:",omitempty"`
 	IconUrl         string `json:",omitempty"`
 	Hidden          bool
-	OnlyShowIn      common.StringList
-	NotShowIn       common.StringList
+	OnlyShowIn      stringlist.StringList
+	NotShowIn       stringlist.StringList
 	DbusActivatable bool   `json:",omitempty"`
 	TryExec         string `json:",omitempty"`
 	Path            string `json:",omitempty"`
 	Terminal        bool
-	Mimetypes       common.StringList
-	Categories      common.StringList
-	Implements      common.StringList
-	Keywords        common.StringList
+	Mimetypes       stringlist.StringList
+	Categories      stringlist.StringList
+	Implements      stringlist.StringList
+	Keywords        stringlist.StringList
 	StartupNotify   bool
 	StartupWmClass  string `json:",omitempty"`
 	Url             string `json:",omitempty"`
@@ -74,7 +75,7 @@ func unmarshal(data io.Reader, dest interface{}) error {
 
 func (app *DesktopApplication) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		common.ServeAsJson(w, r, app)
+		stringlist.ServeAsJson(w, r, app)
 	} else if r.Method == "POST" {
 		payload := DesktopPostPayload{}
 		if err := unmarshal(r.Body, &payload); err != nil {
@@ -128,8 +129,8 @@ func runCmd(app string) error {
 
 
 
-func readDesktopFile(path string) (*DesktopApplication, common.StringList, error) {
-	iniFile, err := common.ReadIniFile(path)
+func readDesktopFile(path string) (*DesktopApplication, stringlist.StringList, error) {
+	iniFile, err := ini.ReadIniFile(path)
 
 	if err != nil {
 		return nil, nil, err
@@ -165,12 +166,12 @@ func readDesktopFile(path string) (*DesktopApplication, common.StringList, error
 	app.GenericName = desktopEntry.Value("GenericName")
 	app.Comment = desktopEntry.Value("Comment")
 
-	app.OnlyShowIn = common.Split(desktopEntry.Value("OnlyShowIn"), ";")
-	app.NotShowIn = common.Split(desktopEntry.Value("NotShowIn"), ";")
-	app.Mimetypes = make(common.StringList, 0)
-	app.Categories = common.Split(desktopEntry.Value("Categories"), ";")
-	app.Implements = common.Split(desktopEntry.Value("Implements"), ";")
-	app.Keywords = common.Split(desktopEntry.Value("Keywords"), ";")
+	app.OnlyShowIn = stringlist.Split(desktopEntry.Value("OnlyShowIn"), ";")
+	app.NotShowIn = stringlist.Split(desktopEntry.Value("NotShowIn"), ";")
+	app.Mimetypes = make(stringlist.StringList, 0)
+	app.Categories = stringlist.Split(desktopEntry.Value("Categories"), ";")
+	app.Implements = stringlist.Split(desktopEntry.Value("Implements"), ";")
+	app.Keywords = stringlist.Split(desktopEntry.Value("Keywords"), ";")
 	app.Actions = make(map[string]Action, 0)
 	app.Actions["_default"] = Action{
 		Name: app.Name,
@@ -179,12 +180,12 @@ func readDesktopFile(path string) (*DesktopApplication, common.StringList, error
 		IconUrl: app.IconUrl,
 		Exec: desktopEntry.Value("Exec"),
 	}
-	actionNames := common.Split(desktopEntry.Value("Actions"), ";")
+	actionNames := stringlist.Split(desktopEntry.Value("Actions"), ";")
 	for i := 1; i < len(iniFile.Groups); i++ {
 		actionGroup := iniFile.Groups[i]
 		if actionGroup.Name[0:15] != "Desktop Action " {
 			continue
-		} else if actionName := actionGroup.Name[15:]; !common.Find(actionNames, actionName) {
+		} else if actionName := actionGroup.Name[15:]; !actionNames.Has(actionName) {
 			fmt.Println("Unknown action", actionGroup.Name, " - ignoring")
 			continue
 		} else {
@@ -210,5 +211,5 @@ func readDesktopFile(path string) (*DesktopApplication, common.StringList, error
 		}
 	}
 
-	return &app, common.Split(desktopEntry.Value("MimeType"), ";"), nil
+	return &app, stringlist.Split(desktopEntry.Value("MimeType"), ";"), nil
 }

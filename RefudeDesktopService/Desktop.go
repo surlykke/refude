@@ -14,17 +14,18 @@ import (
 	"path/filepath"
 	"strings"
 	"fmt"
-	"github.com/surlykke/RefudeServices/xdg"
-	"github.com/surlykke/RefudeServices/common"
-	"github.com/surlykke/RefudeServices/service"
+	"github.com/surlykke/RefudeServices/lib/xdg"
+	"github.com/surlykke/RefudeServices/lib/service"
 	"golang.org/x/sys/unix"
 	"net/http"
 	"regexp"
+	"github.com/surlykke/RefudeServices/lib/ini"
+	"github.com/surlykke/RefudeServices/lib/stringlist"
 )
 
 
-var applicationIds = make(common.StringList, 0)
-var mimetypeIds = make(common.StringList, 0)
+var applicationIds = make(stringlist.StringList, 0)
+var mimetypeIds = make(stringlist.StringList, 0)
 
 
 func DesktopRun() {
@@ -69,7 +70,7 @@ func update() {
 		}
 	}
 
-	applicationIds = make(common.StringList, 0)
+	applicationIds = make(stringlist.StringList, 0)
 	for appId, newDesktopApplication := range c.applications {
 		service.Map("/applications/" + appId, newDesktopApplication)
 		applicationIds = append(applicationIds, appId)
@@ -83,7 +84,7 @@ func update() {
 		}
 	}
 
-	typeSubtypeMap := make(map[string]common.StringList)
+	typeSubtypeMap := make(map[string]stringlist.StringList)
 
 	for mimetypeId, mimeType := range c.mimetypes {
 		service.Map("/mimetypes/" + mimetypeId, mimeType)
@@ -91,7 +92,7 @@ func update() {
 		typeSubtypeMap[typeSubtype[0]] = append(typeSubtypeMap[typeSubtype[0]], typeSubtype[1])
 	}
 
-	Types := make(common.StringList, len(typeSubtypeMap))
+	Types := make(stringlist.StringList, len(typeSubtypeMap))
 	pos := 0
 	for Type, Subtypes := range(typeSubtypeMap) {
 		service.Map("/mimetypes/" + Type + "/", Subtypes)
@@ -101,7 +102,7 @@ func update() {
 
 	service.Map("/mimetypes/", Types)
 
-	service.Map("/", common.StringList{"notify", "ping", "applications/", "mimetypes/"})
+	service.Map("/", stringlist.StringList{"notify", "ping", "applications/", "mimetypes/"})
 }
 
 
@@ -152,8 +153,8 @@ func (c* Collector) addAssociations(mimeId string, appIds...string) {
 	if mimetype := c.getMimetype(mimeId); mimetype != nil {
 		for _,appId := range appIds {
 			if application, appFound := c.applications[appId]; appFound {
-				mimetype.AssociatedApplications = common.AppendIfNotThere(mimetype.AssociatedApplications, appId)
-				application.Mimetypes = common.AppendIfNotThere(application.Mimetypes, mimeId)
+				mimetype.AssociatedApplications = stringlist.AppendIfNotThere(mimetype.AssociatedApplications, appId)
+				application.Mimetypes = stringlist.AppendIfNotThere(application.Mimetypes, mimeId)
 			}
 		}
 	}
@@ -164,10 +165,10 @@ func (c* Collector) removeAssociations(mimeId string, appIds...string) {
 
 	for _,appId := range appIds {
 		if app, ok := c.applications[appId]; ok {
-			app.Mimetypes = common.Remove(app.Mimetypes, mimeId)
+			app.Mimetypes = stringlist.Remove(app.Mimetypes, mimeId)
 		}
 		if mimetypeFound {
-			mimetype.AssociatedApplications = common.Remove(mimetype.AssociatedApplications, appId)
+			mimetype.AssociatedApplications = stringlist.Remove(mimetype.AssociatedApplications, appId)
 		}
 	}
 }
@@ -200,7 +201,7 @@ func (c *Collector) readMimeappsList(path string) {
 		removedAssociations map[string][]string
 	}{make(map[string][]string), make(map[string][]string), make(map[string][]string)}
 
-	iniFile, err := common.ReadIniFile(path)
+	iniFile, err := ini.ReadIniFile(path)
 	if err != nil {
 		if !os.IsNotExist(err) {
 			fmt.Println(err)
@@ -222,7 +223,7 @@ func (c *Collector) readMimeappsList(path string) {
 				continue
 			}
 			for _, entry := range iniGroup.Entries {
-				dest[entry.Key] = common.Split(entry.Value, ";")
+				dest[entry.Key] = stringlist.Split(entry.Value, ";")
 			}
 		}
 	}
@@ -281,16 +282,16 @@ func POSTInterceptor(w http.ResponseWriter, r* http.Request) {
 			fmt.Println("POST: ", mimetypeId, " -> ", appId)
 			path := xdg.ConfigHome() + "/mimeapps.list"
 
-			if iniFile, err := common.ReadIniFile(path); err != nil {
+			if iniFile, err := ini.ReadIniFile(path); err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 			} else {
-				defaultApplications := common.Split(iniFile.Value("Default Applications", mimetypeId), ";")
-				defaultApplications = common.Remove(defaultApplications, appId)
-				defaultApplications = common.PushFront(appId, defaultApplications)
+				defaultApplications := stringlist.Split(iniFile.Value("Default Applications", mimetypeId), ";")
+				defaultApplications = stringlist.Remove(defaultApplications, appId)
+				defaultApplications = stringlist.PushFront(appId, defaultApplications)
 
 				fmt.Println("Setting: ", mimetypeId, strings.Join(defaultApplications, ";"))
 				iniFile.SetValue("Default Applications", mimetypeId, strings.Join(defaultApplications, ";"))
-				if err = common.WriteIniFile(path, iniFile); err != nil {
+				if err = ini.WriteIniFile(path, iniFile); err != nil {
 					w.WriteHeader(http.StatusInternalServerError)
 				} else {
 					w.WriteHeader(http.StatusNoContent)

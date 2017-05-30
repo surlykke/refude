@@ -10,18 +10,18 @@ package main
 
 import (
 	"fmt"
-	"hash/fnv"
 	"github.com/BurntSushi/xgbutil"
 	"github.com/BurntSushi/xgbutil/xwindow"
 	"github.com/BurntSushi/xgb/xproto"
 	"github.com/BurntSushi/xgbutil/ewmh"
 	"github.com/BurntSushi/xgbutil/icccm"
 	"github.com/BurntSushi/xgbutil/xprop"
-	"github.com/surlykke/RefudeServices/service"
+	"github.com/surlykke/RefudeServices/lib/service"
 	"github.com/BurntSushi/xgb/randr"
 	"github.com/BurntSushi/xgb"
-	"github.com/surlykke/RefudeServices/common"
 	"time"
+	"github.com/surlykke/RefudeServices/lib/stringlist"
+	"github.com/surlykke/RefudeServices/lib/argb"
 )
 
 
@@ -58,6 +58,10 @@ func WmRun() {
 	if x, err = getXConnection(); err != nil {
 		panic(err)
 	}
+	service.Map("/", stringlist.StringList{"notify", "ping", "display", "windows/", "icons/"})
+	service.Map("/windows/", stringlist.StringList{})
+	fmt.Println("Serving /icons/: []")
+	service.Map("/icons/", stringlist.StringList{})
 
 	xwindow.New(x, x.RootWin()).Listen(xproto.EventMaskSubstructureNotify)
 	updateWindows()
@@ -69,7 +73,6 @@ func WmRun() {
 
 	randr.Init(conn)
 	buildDisplay(conn)
-	service.Map("/", common.StringList{"notify", "ping", "display", "windows/"})
 
 	for ;; {
 		evt, err := x.Conn().WaitForEvent()
@@ -107,7 +110,7 @@ func updateWindows() {
 		newWindowIds[len(tmp) - 1 -i] = wId
 	}
 
-	for wId,_ := range windows {
+	for wId := range windows {
 		if ! find(newWindowIds, wId) {
 			delete(windows, wId)
 			service.Unmap(fmt.Sprintf("/window/%d", wId))
@@ -150,21 +153,10 @@ func getWindow(wId xproto.Window) Window {
 	}
 
 	if iconArr, err := xprop.PropValNums(xprop.GetProperty(x, wId, "_NET_WM_ICON")); err == nil {
-		hash := fnv.New64a()
-		for _,val := range iconArr {
-			hash.Write([]byte{byte((val & 0xFF000000) >> 24), byte((val & 0xFF0000) >> 16), byte((val & 0xFF00) >> 8), byte(val & 0xFF)})
+		argbIcon := argb.ExtractARGBIcon(iconArr)
+		if iconUrl, err := argb.ServeAsPng(argbIcon); err == nil {
+			window.IconUrl = ".." + iconUrl
 		}
-
-		iconUrl := fmt.Sprintf("/icon/%d", hash.Sum64())
-
-		if !iconHashes[hash.Sum64()] {
-			if icon, err := MakeIcon(hash.Sum64(), iconArr); err == nil {
-				iconHashes[icon.hash] = true
-				service.Map(iconUrl, icon)
-			}
-		}
-
-		window.IconUrl = ".." + iconUrl
 	}
 
 	window.Actions = make(map[string]Action)
@@ -228,7 +220,7 @@ func find(windowIds []xproto.Window, windowId xproto.Window) bool {
 }
 
 func mapWids(wIds []xproto.Window)  {
-	res := make(common.StringList, len(wIds))
+	res := make(stringlist.StringList, len(wIds))
 	for i,wId := range wIds {
 		res[i] = fmt.Sprintf("%d", wId)
 	}
