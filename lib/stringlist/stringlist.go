@@ -51,12 +51,8 @@ func PushFront(s string, list StringList) StringList {
 }
 
 func PushBack(list StringList, s string) StringList {
-	res := make(StringList, 1 + len(list))
-	copy(res, list)
-	res[len(list)] = s
-	return res
+	return append(list, s)
 }
-
 
 func Remove(list StringList, str string) StringList {
 	res := make(StringList, 0, len(list))

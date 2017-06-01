@@ -70,13 +70,9 @@ func update() {
 		}
 	}
 
-	applicationIds = make(stringlist.StringList, 0)
 	for appId, newDesktopApplication := range c.applications {
 		service.Map("/applications/" + appId, newDesktopApplication)
-		applicationIds = append(applicationIds, appId)
 	}
-
-	service.Map("/applications/", applicationIds)
 
 	for _, mimetypeId := range mimetypeIds {
 		if _,ok := c.mimetypes[mimetypeId]; !ok {
@@ -84,27 +80,11 @@ func update() {
 		}
 	}
 
-	typeSubtypeMap := make(map[string]stringlist.StringList)
-
 	for mimetypeId, mimeType := range c.mimetypes {
 		service.Map("/mimetypes/" + mimetypeId, mimeType)
-		typeSubtype := strings.Split(mimetypeId, "/")
-		typeSubtypeMap[typeSubtype[0]] = append(typeSubtypeMap[typeSubtype[0]], typeSubtype[1])
 	}
 
-	Types := make(stringlist.StringList, len(typeSubtypeMap))
-	pos := 0
-	for Type, Subtypes := range(typeSubtypeMap) {
-		service.Map("/mimetypes/" + Type + "/", Subtypes)
-		Types[pos] = Type + "/"
-		pos++
-	}
-
-	service.Map("/mimetypes/", Types)
-
-	service.Map("/", stringlist.StringList{"notify", "ping", "applications/", "mimetypes/"})
 }
-
 
 
 type Collector struct {

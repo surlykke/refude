@@ -18,78 +18,143 @@ import (
 	"syscall"
 	"github.com/surlykke/RefudeServices/lib/notify"
 	"reflect"
+	"github.com/surlykke/RefudeServices/lib/stringlist"
+	"strings"
+	"log"
 )
 
-// NotifierPath is reserved. Get requests to this path will
-// be answered with a server-sent-event stream. Attemts to map
-// a resource to NotifierPath will panic
-const NotifierPath = "/notify"
+type PingResource struct{}
 
-// PingPath is reserved. Get request to this path will be answered with a http 200 ok
-// Attempts to map to PingPath will panic
-const PingPath = "/ping"
+func (pr PingResource) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
+		w.WriteHeader(http.StatusOK)
+	} else {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	}
+}
+
+func init() {
+	Map("/ping", PingResource{})
+	Map("/notify", notify.NotifierResource{})
+}
+
 
 var	resources  map[string]http.Handler = make(map[string]http.Handler)
 var mutex      sync.Mutex
 
 
-func Map(path string, res http.Handler) {
-	var eventType string
+// Adds/owerwrites a resource. Adds/owerwrites containing directories as necessary
+// Returns a list of modified resources (not created)
+func addResource(path string, resource http.Handler) stringlist.StringList {
+	if !strings.HasPrefix(path, "/") {
+		log.Println("Attempt to map", path, "- paths must begin with '/'")
+		return []string{}
+	}
+
+	if strings.HasSuffix(path, "/") {
+		log.Println("Attempt to map", path, "- paths must not end in '/'")
+		return []string{}
+	}
+
+	updated := make(stringlist.StringList, 0)
 
 	mutex.Lock()
-	if oldRes, ok := resources[path]; ok {
-		if !reflect.DeepEqual(res, oldRes) {
-			eventType = "resource-updated"
-			resources[path] = res
-		}
-	} else {
-		eventType = "resource-added"
-		resources[path] = res
-	}
-	mutex.Unlock()
+	defer mutex.Unlock()
 
-	if eventType != "" {
-		notify.Notify(eventType, path[1:])
+	if oldRes,ok := resources[path]; ok && !reflect.DeepEqual(oldRes, resource) {
+		updated = stringlist.PushBack(updated, path)
+	}
+	resources[path] = resource
+
+	for len(path) > 0 {
+		lastSlashPos := strings.LastIndex(path[0: len(path) - 1], "/")
+		if lastSlashPos < 0 {
+			break
+		}
+		directory, element := path[0:lastSlashPos + 1],path[lastSlashPos + 1:]
+		if elements,ok := resources[directory].(stringlist.StringList); ok {
+			if !elements.Has(element) {
+				updated = stringlist.PushBack(updated, directory)
+				resources[directory] = stringlist.PushBack(elements, element)
+			}
+			break
+		} else {
+			resources[directory] = stringlist.StringList{element}
+			path = directory
+		}
+	}
+
+	return updated
+}
+
+func removeResource(path string) (string, string) {
+	if !strings.HasPrefix(path, "/") {
+		log.Println("Attempt to unmap", path, "- paths must begin with '/'")
+		return "",""
+	}
+
+	if strings.HasSuffix(path, "/") {
+		log.Println("Attempt to unmap", path, "- paths must not end in '/'")
+		return "",""
+	}
+
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	if _, ok := resources[path]; ok {
+		delete(resources, path)
+		lastSlashPos := strings.LastIndex(path, "/")
+		directory, element := path[0: lastSlashPos + 1], path[lastSlashPos + 1:]
+		elements,_ := resources[directory].(stringlist.StringList)
+		elements = stringlist.Remove(elements, element)
+		resources[directory] = elements
+		// TOCONSIDER: Should we auto-unmap empty directories?
+
+		return path, directory
+	} else {
+		return "", ""
+	}
+}
+
+func Map(path string, res http.Handler) {
+	updated := addResource(path, res)
+
+	for _,path := range updated {
+		notify.Notify("resource-updated", "." + path)
 	}
 }
 
 func Unmap(path string) {
-	var found bool
+	removed, updated := removeResource(path)
 
+	if removed != "" {
+		notify.Notify("resource-removed", "." + removed)
+	}
+
+	if updated != "" {
+		notify.Notify("resource-updated", "." + updated)
+	}
+}
+
+func Has(path string) bool {
+	_,has := get(path)
+	return has
+}
+
+func get(path string) (http.Handler, bool) {
 	mutex.Lock()
-	if _,ok := resources[path]; ok {
-		found = true
-		delete(resources, path)
-	}
-	mutex.Unlock()
-
-	if found {
-		notify.Notify("resource-removed", path[1:])
-	}
+	defer mutex.Unlock()
+	res, ok := resources[path]
+	return res,ok
 }
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path == NotifierPath {
-		notify.ServeHTTP(w, r)
-	} else if r.URL.Path == PingPath {
-		if r.Method == "GET" {
-			w.WriteHeader(http.StatusOK)
-		} else {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-		}
+	if handlerCopy, ok := get(r.URL.Path); ok {
+		handlerCopy.ServeHTTP(w, r)
 	} else {
-		mutex.Lock()
-		handlerCopy, ok := resources[r.URL.Path]
-		mutex.Unlock()
-		if ok {
-			handlerCopy.ServeHTTP(w, r)
-		} else {
-			fmt.Println("Service doesn't have it..")
-			w.WriteHeader(http.StatusNotFound)
-		}
+		w.WriteHeader(http.StatusNotFound)
 	}
 }
-
 
 func seemsToBeRunning(socketPath string) bool {
 	client := http.Client{

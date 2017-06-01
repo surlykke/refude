@@ -8,6 +8,7 @@ import (
 	"sync"
 	"github.com/godbus/dbus/introspect"
 	"github.com/surlykke/RefudeServices/lib/stringlist"
+	"strings"
 )
 
 // Takes care of the dbus-side of things
@@ -15,19 +16,10 @@ import (
 const WATCHER_SERVICE = "org.kde.StatusNotifierWatcher"
 const WATCHER_PATH = "/StatusNotifierWatcher"
 const WATCHER_INTERFACE = WATCHER_SERVICE
-
 const HOST_SERVICE = "org.kde.StatusNotifierHost"
-
 const ITEM_PATH = "/StatusNotifierItem"
 const ITEM_INTERFACE = "org.kde.StatusNotifierItem"
-
-const ITEM_REGISTERED = WATCHER_INTERFACE + ".StatusNotifierItemRegistered"
-const ITEM_UNREGISTERED = WATCHER_INTERFACE + ".StatusNotifierItemUnRegistered"
-const HOST_REGISTERED = WATCHER_INTERFACE + ".StatusNotifierHostRegistered"
-
 const INTROSPECT_INTERFACE = "org.freedesktop.DBus.Introspectable"
-const PROPERTIES_INTERFACE = "org.freedesktop.DBus.Properties"
-
 const INTROSPECT_XML =
 `<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
         "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
@@ -91,35 +83,29 @@ type PropChangeChannel chan Props
 type ChannelMap map[string]PropChangeChannel
 
 var	conn *dbus.Conn
-var registerChannel= make(chan string, 20)
-var unregisterChannel = make(chan string, 20)
 var dbusSignals = make(chan *dbus.Signal, 50)
 
+var properties *prop.Properties = nil
+var	channels = make(ChannelMap)
+var	mutex = sync.Mutex{}
 
-type WatcherObject struct {
-	properties *prop.Properties
-	channels ChannelMap
-	mutex sync.Mutex
-}
+type WatcherObject struct {}
 
 
 func (wo WatcherObject) RegisterStatusNotifierItem(serviceName string) *dbus.Error {
 	fmt.Println("Regster", serviceName)
-	wo.mutex.Lock()
-	defer wo.mutex.Unlock()
+	mutex.Lock()
+	defer mutex.Unlock()
 
-	fmt.Println("RegisterStatusNotifierItem: ", serviceName)
-	if _, weHaveIt := wo.channels[serviceName]; weHaveIt {
+	if _, weHaveIt := channels[serviceName]; weHaveIt {
 		return &dbus.Error{Name: "Already registered"}
 	} else {
-		wo.channels[serviceName] = make(PropChangeChannel)
-		listenForSignals(serviceName)
-		go StatusNotifierItem(serviceName, wo.channels[serviceName])
+		channels[serviceName] = make(PropChangeChannel)
+		go StatusNotifierItem(serviceName, channels[serviceName])
 		conn.Emit(WATCHER_PATH, WATCHER_INTERFACE + ".StatusNotifierItemRegistered", serviceName)
 		if props, err := getItemProps(serviceName); err == nil && len(props) > 0 {
-			wo.channels[serviceName] <- props
-			registerChannel <- serviceName
-			wo.updateProperties()
+			channels[serviceName] <- props
+			updateWatcherProperties()
 			return nil
 		} else {
 			fmt.Println("Error retrieving props:", err)
@@ -127,106 +113,24 @@ func (wo WatcherObject) RegisterStatusNotifierItem(serviceName string) *dbus.Err
 		}
 
 	}
+
 }
 
-func (wo WatcherObject) UnregisterStatusNotifierItem(serviceName string) *dbus.Error {
-	wo.mutex.Lock()
-	defer wo.mutex.Unlock()
+func (wo* WatcherObject) UnregisterStatusNotifierItem(serviceName string) *dbus.Error {
+	mutex.Lock()
+	defer mutex.Unlock()
 
-	fmt.Println("RegisterStatusNotifierItem: ", serviceName)
-	if channel, ok := wo.channels[serviceName]; ok {
+	if channel, ok := channels[serviceName]; ok {
+		fmt.Println("UnregisterStatusNotifierItem: ", serviceName)
 		close(channel)
-		delete(wo.channels, serviceName)
+		delete(channels, serviceName)
 		conn.Emit(WATCHER_PATH, WATCHER_INTERFACE + ".StatusNotifierItemUnregistered", serviceName)
-		unregisterChannel <- serviceName
-		wo.updateProperties()
+		updateWatcherProperties()
 	}
 
 	return nil
 }
 
-func (wo WatcherObject) RegisterStatusNotifierHost(service string) {
-}
-
-var watcherObject WatcherObject
-
-
-func SetupWatcherObject() {
-	watcherObject = WatcherObject{nil, make(ChannelMap), sync.Mutex{}}
-	props := map[string]map[string]*prop.Prop{
-		WATCHER_INTERFACE : {
-				"IsStatusNotifierHostRegistered" : { true, false, prop.EmitTrue, nil},
-				"ProtocolVersion" : {0, false, prop.EmitTrue, nil},
-				"RegisteredStatusItems": { []string{}, false, prop.EmitTrue, nil},
-		},
-	}
-	watcherObject.properties = prop.New(conn, WATCHER_PATH, props)
-	conn.Export(watcherObject, WATCHER_PATH, WATCHER_INTERFACE)
-	conn.Export(introspect.Introspectable(INTROSPECT_XML), WATCHER_PATH, INTROSPECT_INTERFACE)
-
-}
-
-
-
-func init() {
-	var err error
-	conn, err = dbus.SessionBus()
-	if err != nil {
-		panic(err)
-	} else if reply, err := conn.RequestName(WATCHER_SERVICE, dbus.NameFlagDoNotQueue); err != nil {
-		panic(err)
-	} else if reply != dbus.RequestNameReplyPrimaryOwner {
-		panic(errors.New(WATCHER_SERVICE + " taken"))
-	} else if reply, err = conn.RequestName(HOST_SERVICE, dbus.NameFlagDoNotQueue); err != nil {
-		panic(err)
-	} else if reply != dbus.RequestNameReplyPrimaryOwner {
-		panic(errors.New(HOST_SERVICE + " taken"))
-	}
-
-	SetupWatcherObject()
-
-	conn.Signal(dbusSignals)
-}
-
-func listenForSignals(serviceName string) {
-	rule := "type='signal'," +
-			"interface='org.freedesktop.DBus.Properties'," +
-			"member='PropertiesChanged'," +
-			"sender='" + serviceName + "'"
-
-	conn.BusObject().Call( "org.freedesktop.DBus.AddMatch", 0, rule)
-}
-
-
-// Caller must take mutex
-func (wo WatcherObject) updateProperties() {
-	items := make(stringlist.StringList, len(wo.channels))
-	pos := 0
-	for serviceName := range wo.channels {
-		items[pos] = serviceName
-		pos++
-	}
-
-	wo.properties.Set(WATCHER_INTERFACE, "RegisteredStatusItems", dbus.MakeVariant(items))
-}
-
-func consumeSignals() {
-	fmt.Println("Waiting for signals")
-	for signal := range dbusSignals {
-		watcherObject.dispatch(signal)
-	}
-}
-
-func (wo WatcherObject) dispatch(signal *dbus.Signal) {
-	wo.mutex.Lock()
-	defer wo.mutex.Unlock()
-
-	if signal.Name == "org.freedesktop.DBus.Properties.PropertiesChanged" {
-		if channel, ok := wo.channels[signal.Sender]; ok {
-			channel <- signal.Body[0].(map[string]dbus.Variant)
-		}
-	}
-}
 
 var itemFields = []string{
 			"Id",
@@ -258,3 +162,100 @@ func getItemProps(serviceName string) (Props, error) {
 
 	return props,nil
 }
+
+var watcherObject WatcherObject
+
+// Caller must take mutex
+func updateWatcherProperties() {
+	items := make(stringlist.StringList, len(channels))
+	pos := 0
+	for serviceName := range channels {
+		items[pos] = serviceName
+		pos++
+	}
+
+	properties.Set(WATCHER_INTERFACE, "RegisteredStatusItems", dbus.MakeVariant(items))
+}
+
+func handleSignalFromItem(signal *dbus.Signal) {
+	shortName := signal.Name[len("org.kde.StatusNotifierItem."):]
+	fmt.Println("Signal from :", signal.Sender)
+	switch (shortName) {
+	case "NewTitle":
+		fmt.Println("--> get title")
+	case "NewIcon":
+		fmt.Println("--> get icon")
+	case "NewAttentionIcon":
+		fmt.Println("--> get attentionIcon")
+	case "NewOverlayIcon":
+		fmt.Println("--> get overlayIcon")
+	case "NewStatus":
+		fmt.Println("--> get status")
+	case "NewToolTip":
+		fmt.Println("--> get tooltip")
+	}
+}
+
+func runWatcher() {
+	var err error
+
+	// Get on the bus
+	conn, err = dbus.SessionBus()
+	if err != nil {
+		panic(err)
+	} else if reply, err := conn.RequestName(WATCHER_SERVICE, dbus.NameFlagDoNotQueue); err != nil {
+		panic(err)
+	} else if reply != dbus.RequestNameReplyPrimaryOwner {
+		panic(errors.New(WATCHER_SERVICE + " taken"))
+	} else if reply, err = conn.RequestName(HOST_SERVICE, dbus.NameFlagDoNotQueue); err != nil {
+		panic(err)
+	} else if reply != dbus.RequestNameReplyPrimaryOwner {
+		panic(errors.New(HOST_SERVICE + " taken"))
+	}
+
+	// Map dbus objects
+	props := map[string]map[string]*prop.Prop{
+		WATCHER_INTERFACE : {
+				"IsStatusNotifierHostRegistered" : { true, false, prop.EmitTrue, nil},
+				"ProtocolVersion" : {0, false, prop.EmitTrue, nil},
+				"RegisteredStatusItems": { []string{}, false, prop.EmitTrue, nil},
+		},
+	}
+	properties = prop.New(conn, WATCHER_PATH, props)
+	conn.Export(watcherObject, WATCHER_PATH, WATCHER_INTERFACE)
+	conn.Export(introspect.Introspectable(INTROSPECT_XML), WATCHER_PATH, INTROSPECT_INTERFACE)
+
+	// Observe the world
+	conn.Signal(dbusSignals)
+	itemSignalsRule := "type='signal', interface='org.kde.StatusNotifierItem'"
+	conn.BusObject().Call("org.freedesktop.DBus.AddMatch", 0, itemSignalsRule)
+	nameOwnerChangedRule := "type='signal', interface='org.freedesktop.DBus'"
+	conn.BusObject().Call("org.freedesktop.DBus.AddMatch", 0, nameOwnerChangedRule)
+
+	fmt.Println("Waiting for signals")
+	for signal := range dbusSignals {
+		/*fmt.Print("signal: " + signal.Name + "(")
+		sep := ""
+		for _,inf := range signal.Body {
+			fmt.Print(sep, "'", inf, "' ")
+			sep = ", "
+		}
+		fmt.Print(")\n  sender: ", signal.Sender, "\n  path: ", signal.Path, "\n\n")
+		*/
+
+		if strings.HasPrefix(signal.Name, "org.kde.StatusNotifierItem.") {
+			handleSignalFromItem(signal)
+
+		} else if signal.Name == "org.freedesktop.DBus.NameOwnerChanged" && len(signal.Body) == 3 {
+			arg0 := signal.Body[0].(string)
+			arg1 := signal.Body[1].(string)
+			arg2 := signal.Body[2].(string)
+
+			if len(arg1) > 0 && len(arg2) == 0 {
+				watcherObject.UnregisterStatusNotifierItem(arg0)
+			}
+		}
+	}
+}
+
+

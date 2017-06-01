@@ -20,7 +20,6 @@ import (
 	"github.com/BurntSushi/xgb/randr"
 	"github.com/BurntSushi/xgb"
 	"time"
-	"github.com/surlykke/RefudeServices/lib/stringlist"
 	"github.com/surlykke/RefudeServices/lib/argb"
 )
 
@@ -58,10 +57,6 @@ func WmRun() {
 	if x, err = getXConnection(); err != nil {
 		panic(err)
 	}
-	service.Map("/", stringlist.StringList{"notify", "ping", "display", "windows/", "icons/"})
-	service.Map("/windows/", stringlist.StringList{})
-	fmt.Println("Serving /icons/: []")
-	service.Map("/icons/", stringlist.StringList{})
 
 	xwindow.New(x, x.RootWin()).Listen(xproto.EventMaskSubstructureNotify)
 	updateWindows()
@@ -113,7 +108,7 @@ func updateWindows() {
 	for wId := range windows {
 		if ! find(newWindowIds, wId) {
 			delete(windows, wId)
-			service.Unmap(fmt.Sprintf("/window/%d", wId))
+			service.Unmap(fmt.Sprintf("/windows/%d", wId))
 		}
 	}
 
@@ -126,8 +121,6 @@ func updateWindows() {
 
 		service.Map(fmt.Sprintf("/windows/%d", wId), windows[wId])
 	}
-
-	mapWids(newWindowIds)
 }
 
 func getWindow(wId xproto.Window) Window {
@@ -217,14 +210,5 @@ func find(windowIds []xproto.Window, windowId xproto.Window) bool {
 	}
 
 	return false
-}
-
-func mapWids(wIds []xproto.Window)  {
-	res := make(stringlist.StringList, len(wIds))
-	for i,wId := range wIds {
-		res[i] = fmt.Sprintf("%d", wId)
-	}
-
-	service.Map("/windows/", res)
 }
 

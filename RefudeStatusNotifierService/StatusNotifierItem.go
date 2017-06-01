@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"github.com/surlykke/RefudeServices/lib/stringlist"
 	"github.com/surlykke/RefudeServices/lib/argb"
+	"regexp"
+	"errors"
 )
 
 var ItemFields = []string{ "Id", "Category", "Status", "Title", "ItemIsMenu", "IconName", "AttentionIconName", "OverlayIconName", "AttentionMovieName", "IconUrl", "AttentionIconUrl", "OverlayIconUrl", "ToolTip" }
@@ -106,4 +108,14 @@ func StatusNotifierItem(serviceId string, propUpdates PropChangeChannel) {
 	service.Unmap(path)
 }
 
+var serviceNameReg = regexp.MustCompile(`org.kde.StatusNotifierItem-(.*)`)
+
+func getId(serviceName string) (string, error) {
+	m := serviceNameReg.FindStringSubmatch(serviceName)
+	if len(m) > 0 {
+		return  m[1], nil
+	} else {
+		return "", errors.New(serviceName + " does not match")
+	}
+}
 // TODO MenuBar stuff...

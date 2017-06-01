@@ -96,14 +96,10 @@ func (pm *PowerManager) Run() {
 
 	enumCall := dbusConn.Object(UPowService, UPowPath).Call(UPowerInterface + ".EnumerateDevices", dbus.Flags(0))
 	devicePaths := append(enumCall.Body[0].([]dbus.ObjectPath), DisplayDevicePath)
-	resourcePaths := make(stringlist.StringList, 0, len(devicePaths))
 	for _,devicePath := range devicePaths {
-		resourcePaths = append(resourcePaths, resourcePath(devicePath))
 		pm.changeChans[devicePath] = make(chan map[string]dbus.Variant)
 		go watchDevice(devicePath, pm.changeChans[devicePath])
 	}
-
-	service.Map("/devices/", resourcePaths)
 
 	actions := []*PowerAction{
 		NewPowerAction("PowerOff", "Shutdown", "Power off the machine", "system-shutdown"),
@@ -115,12 +111,9 @@ func (pm *PowerManager) Run() {
 	actionIds := make(stringlist.StringList, len(actions))
 	for i,action := range(actions) {
 		actionIds[i] = action.Id
-		fmt.Println("Mapping ", "/actions/" + action.Id)
 		service.Map("/actions/" + action.Id, action)
 	}
-	service.Map("/actions/", &actionIds)
 
-	service.Map("/", stringlist.StringList{"ping", "notify", "UPower", "actions/", "devices/"})
 	for signal := range signals {
 		if signal.Name == "org.freedesktop.DBus.Properties.PropertiesChanged" {
 			fmt.Println("Incoming: ", signal)

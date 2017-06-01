@@ -107,19 +107,14 @@ func ExtractARGBIcon(uints []uint) []Img {
 	return res
 }
 
-func calcHash(argbIcon Icon) string {
+func ServeAsPng(argbIcon Icon) (string, error) {
 	hash := fnv.New64a()
 	for _, img := range argbIcon {
 		hash.Write(img.Pixels)
 	}
-	return fmt.Sprintf("%X", hash.Sum64())
-}
+	path := fmt.Sprintf("/icons/%X", hash.Sum64())
 
-
-func ServeAsPng(argbIcon Icon) (string, error) {
-	hash := calcHash(argbIcon)
-	if !hashes.Has(hash) {
-		hashes = stringlist.PushBack(hashes, hash)
+	if !service.Has(path) {
 		pngIcon := make(PNGIcon, 0)
 		for _, img := range argbIcon {
 			pngData := image.NewRGBA(image.Rect(0, 0, int(img.Width), int(img.Height)))
@@ -137,13 +132,10 @@ func ServeAsPng(argbIcon Icon) (string, error) {
 		if len(pngIcon) < 1 {
 			return "", fmt.Errorf("No icons in argument")
 		}
-		fmt.Println("Serving: /icons/:", hashes)
-		service.Map("/icons/", hashes)
 
-		fmt.Println("Serving: /icons/" + hash)
-		service.Map("/icons/" +hash, pngIcon)
+		service.Map(path, pngIcon)
 	}
 
-	return "/icons/" + hash, nil
+	return path, nil
 }
 

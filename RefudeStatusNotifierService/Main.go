@@ -3,7 +3,6 @@ package main
 import "github.com/surlykke/RefudeServices/lib/service"
 
 func main() {
-	go consumeSignals()
-	go StatusNotifierWatcher(registerChannel, unregisterChannel)
+	go runWatcher()
 	service.Serve("org.refude.statusnotifier-service")
 }

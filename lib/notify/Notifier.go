@@ -103,4 +103,8 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+type NotifierResource struct {}
 
+func (nr NotifierResource) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	ServeHTTP(w, r)
+}
