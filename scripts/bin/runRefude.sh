@@ -4,7 +4,7 @@
 # are needed by the services.
 #
 
-REFUDESERVICES="RefudeDesktopService RefudeIconService RefudePowerService RefudeWmService"
+REFUDESERVICES="RefudeDesktopService RefudeIconService RefudePowerService RefudeWmService RefudeStatusNotifierService"
 
 if [[ "--restart" == "$1" ]]; then
     for app in $REFUDESERVICES  haproxy; do
