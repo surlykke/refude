@@ -8,26 +8,12 @@ import (
 	"github.com/surlykke/RefudeServices/lib/argb"
 	"regexp"
 	"errors"
+	"github.com/godbus/dbus"
+	"reflect"
 )
 
-var ItemFields = []string{ "Id", "Category", "Status", "Title", "ItemIsMenu", "IconName", "AttentionIconName", "OverlayIconName", "AttentionMovieName", "IconUrl", "AttentionIconUrl", "OverlayIconUrl", "ToolTip" }
+type Item map[string]interface{}
 
-type Item struct {
-	Id string
-	Category string
-	Status string
-	Title string
-	ItemIsMenu bool
-
-	IconName string
-	AttentionIconName string
-	OverlayIconName string
-	AttentionMovieName string
-	IconUrl string
-	AttentionIconUrl string
-	OverlayIconUrl string
-	ToolTip  ToolTip
-}
 
 type ToolTip struct {
 	Title       string
@@ -45,6 +31,92 @@ func (item Item) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 
+
+func StatusNotifierItem(serviceName string, signals chan string) {
+
+	var item = make(Item)
+
+	fetchProperties(serviceName, item, itemFields...)
+	itemId, ok := item["Id"]
+	if !ok || itemId == "" {
+		fmt.Println("No Id on ", serviceName)
+		return
+	}
+	path := "/items/" + itemId.(string)
+	serveCopy(path, item)
+
+	defer service.Unmap(path)
+
+	for signal := range signals {
+		fmt.Println("Got signal", signal)
+		switch (signal) {
+		case "NewTitle":
+			fetchProperties(serviceName, item, "Title")
+		case "NewIcon":
+			fetchProperties(serviceName, item, "IconName", "IconPixmap")
+		case "NewAttentionIcon":
+			fetchProperties(serviceName, item, "AttentionIconName", "AttentionIconPixmap")
+		case "NewOverlayIcon":
+			fetchProperties(serviceName, item, "OverlayIconName", "OverlayIconPixmap")
+		case "NewStatus":
+			fetchProperties(serviceName, item, "Status")
+		}
+
+		serveCopy(path, item)
+	}
+}
+
+var serviceNameReg = regexp.MustCompile(`org.kde.StatusNotifierItem-(.*)`)
+
+func getId(serviceName string) (string, error) {
+	m := serviceNameReg.FindStringSubmatch(serviceName)
+	if len(m) > 0 {
+		return  m[1], nil
+	} else {
+		return "", errors.New(serviceName + " does not match")
+	}
+}
+
+var itemFields = []string{
+			"Id",
+			"Category",
+			"Status",
+			"Title",
+			"ItemIsMenu",
+			"IconName",
+			"AttentionIconName",
+			"OverlayIconName",
+			"AttentionMovieName",
+			"IconPixmap",
+			"AttentionIconPixmap",
+			"OverlayIconPixmap",
+//			"ToolTip",
+}
+
+func fetchProperties(serviceName string, dest Item, propNames...string) {
+	obj := conn.Object(serviceName, dbus.ObjectPath(ITEM_PATH))
+	for _,propName := range propNames {
+		call := obj.Call("org.freedesktop.DBus.Properties.Get", dbus.Flags(0), ITEM_INTERFACE, propName)
+		if call.Err != nil {
+			fmt.Println("Error getting", propName, call.Err)
+			continue
+		}
+		value := call.Body[0].(dbus.Variant).Value()
+		switch value.(type) {
+		case bool, string:
+			dest[propName] = value
+		case [][]interface{}:
+			icon := collectPixMap(value.([][]interface{}))
+			url, err := argb.ServeAsPng(icon)
+			if err == nil {
+				dest[propName] = url
+			}
+		default:
+			fmt.Println("Unable to handle ", reflect.TypeOf(value))
+		}
+	}
+}
+
 func collectPixMap(dbusValue [][]interface{}) argb.Icon {
 	res := make(argb.Icon, 0)
 	for _,arr := range(dbusValue) {
@@ -60,62 +132,12 @@ func collectPixMap(dbusValue [][]interface{}) argb.Icon {
 	return res
 }
 
-func StatusNotifierItem(serviceId string, propUpdates PropChangeChannel) {
-	id, err := getId(serviceId)
-	if err != nil {
-		return
-	}
-	path := "/items/" + id
-	var itemData Item = Item{}
-
-	for update := range propUpdates {
-		for key, variant := range update {
-			switch key {
-			case "Id":
-				itemData.Id = variant.Value().(string)
-			case "Category":
-				itemData.Category = variant.Value().(string)
-			case "Status":
-				itemData.Status = variant.Value().(string)
-			case "Title":
-				itemData.Title = variant.Value().(string)
-			case "ItemIsMenu":
-				itemData.ItemIsMenu = variant.Value().(bool)
-			case "IconName":
-				itemData.IconName = variant.Value().(string)
-			case "AttentionIconName":
-				itemData.AttentionIconName = variant.Value().(string)
-			case "OverlayIconName":
-				itemData.OverlayIconName = variant.Value().(string)
-			case "AttentionMovieName":
-				itemData.AttentionMovieName = variant.Value().(string)
-			case "IconPixmap":
-				icon := collectPixMap(variant.Value().([][]interface{}))
-				itemData.IconUrl,_ = argb.ServeAsPng(icon)
-			case "AttentionIconUrl":
-				itemData.AttentionIconUrl = variant.Value().(string)
-			case "OverlayIconUrl":
-				itemData.OverlayIconUrl = variant.Value().(string)
-			case "ToolTip":
-				fmt.Println("ToolTip: ", variant.Value())
-			}
-		}
-
-		fmt.Println("mapping to ", path)
-		service.Map(path, itemData)
+func serveCopy(path string, m Item) {
+	copy := make(Item)
+	for key,value := range m {
+		copy[key] = value
 	}
 
-	service.Unmap(path)
+	service.Map(path, copy)
 }
 
-var serviceNameReg = regexp.MustCompile(`org.kde.StatusNotifierItem-(.*)`)
-
-func getId(serviceName string) (string, error) {
-	m := serviceNameReg.FindStringSubmatch(serviceName)
-	if len(m) > 0 {
-		return  m[1], nil
-	} else {
-		return "", errors.New(serviceName + " does not match")
-	}
-}
-// TODO MenuBar stuff...

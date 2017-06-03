@@ -3,6 +3,6 @@ package main
 import "github.com/surlykke/RefudeServices/lib/service"
 
 func main() {
-	go runWatcher()
+	go run()
 	service.Serve("org.refude.statusnotifier-service")
 }
