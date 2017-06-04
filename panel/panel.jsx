@@ -10,49 +10,16 @@ import {render} from 'react-dom'
 import {MakeServiceProxy} from '../common/service-proxy'
 import {nwHide, nwShow} from '../common/utils'
 
-const powerProxy = MakeServiceProxy("http://localhost:7938/power-service/devices/", "http://localhost:7938/power-service/notify")
-const displayDeviceUrl = "http://localhost:7938/power-service/devices/DisplayDevice"
+import {Clock} from './clock/clock'
+import {Battery} from './battery/battery'
+import {NotifierItems} from './notifieritems/notifieritems'
+
 const gui = window.require('nw.gui')
 const Window = gui.Window.get()
 class Panel extends React.Component {
 
 	constructor(props) {
 		super(props)
-		this.state = {time: "--:--:--", charge: "?", level: "low", charging: false}
-	}
-
-	componentDidMount = () => {
-		powerProxy.subscribe(this.updateBattery)
-		this.runClock()
-	}
-
-	updateBattery = url => {
-		if (url === displayDeviceUrl) {
-			let displayDevice = powerProxy.get(displayDeviceUrl)
-			if (displayDevice) {
-				this.setState({charge: displayDevice.Percentage + "%",
-							   level: displayDevice.Percentage < 20 ? "low" : "ok",
-				               charging: ["Charging", "Fully charged"].includes(displayDevice.State)
-							  })
-			}
-			else {
-				this.setState({charge: "?", level: "low", charging: false})
-			}
-		}
-	}
-
-    runClock = () => {
-		let now = new Date()
-        this.setState({time: now.toLocaleTimeString()});
-        setTimeout(this.runClock, 1000 - now.getMilliseconds() + 1); // Just after next turn of second..
-    };
-
-	style = () => {
-
-		let s = this.state.charging ? {fontWeight: "bold"} :
-		        this.state.level === "low" ? {color: "red"} :
-			    {}
-		return s
 	}
 
 	onClick = (event) => {
@@ -62,9 +29,9 @@ class Panel extends React.Component {
 
 	render = () =>
         <div className="content" onClick={this.onClick}>
-			&nbsp;
-			<span id="battery" style={this.style()}>{this.state.charge}</span>&nbsp;
-			<span id="clock">{this.state.time}</span> &nbsp;
+			<Clock/>
+			<Battery/>
+			<NotifierItems/>
         </div>
 }
 

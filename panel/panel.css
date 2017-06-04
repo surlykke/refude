@@ -6,12 +6,16 @@ html, body {
     overflow: hidden;
 }
 .content {
-    margin-left: 2px; 
-    margin-top: 2px; 
+    margin-left: 4px;
+    margin-top: 2px;
     padding: 0px;
     height: calc(100% - 4px);
     width: calc(100% - 4px);
-    white-space: nowrap;
     background-color: rgba(200,200,200,0.8);
 }
-
+.panel-plugin {
+	float: left;
+	height: 20px;
+	font-size: 1.2em;
+	margin-right: 6px;
+}

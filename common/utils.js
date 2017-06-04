@@ -8,17 +8,13 @@
 const http = require('http')
 
 let combinedUrl = (absoluteUrl, relativeUrl) =>  {
-	if (relativeUrl[0] === "/") {
-		return relativeUrl;
-	}
-
 	let p = absoluteUrl.lastIndexOf("/");
 
 	if (p < 0) {
 		return undefined;
 	}
 
-	return absoluteUrl.substr(0, p + 1) + relativeUrl;
+	return new URL(absoluteUrl.substr(0, p + 1) + relativeUrl).href
 }
 
 let combinedUrls = (absoluteUrl, relativeUrls) => {

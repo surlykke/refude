@@ -12,7 +12,7 @@ gulp.task('assets', function() {
 })
 
 gulp.task('js', function() {
-	browserify({ entries: ["./panel.jsx"], extensions: [".jsx", ".js"], debug: true })
+	browserify({ entries: ["panel.jsx"], extensions: [".jsx", ".js"], debug: true })
 		.transform(babelify, {presets: ["react", "es2015", "stage-0"]})
 		.bundle()
 		.on('error',gutil.log)
@@ -24,7 +24,7 @@ gulp.task('default', ['assets', 'js']);
 
 gulp.task('watch',function() {
 	gulp.start('default')
-	gulp.watch(['./*', '../common/*'],['default'])
+	gulp.watch(['./*', './*/*', '../common/*'],['default'])
 });
 
 gulp.task('run', ['default', 'watch'])
