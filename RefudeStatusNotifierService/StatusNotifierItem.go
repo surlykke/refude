@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"github.com/surlykke/RefudeServices/lib/service"
 	"net/http"
-	"github.com/surlykke/RefudeServices/lib/stringlist"
 	"github.com/surlykke/RefudeServices/lib/argb"
 	"regexp"
 	"errors"
 	"github.com/godbus/dbus"
 	"reflect"
+	"github.com/surlykke/RefudeServices/lib/common"
 )
 
 type Item map[string]interface{}
@@ -24,7 +24,7 @@ type ToolTip struct {
 
 func (item Item) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		stringlist.ServeAsJson(w, r, item)
+		common.ServeAsJson(w, r, item)
 	} else {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	}

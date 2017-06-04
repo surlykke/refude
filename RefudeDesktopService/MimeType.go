@@ -18,6 +18,7 @@ import (
 	"net/http"
 	"github.com/pkg/errors"
 	"github.com/surlykke/RefudeServices/lib/stringlist"
+	"github.com/surlykke/RefudeServices/lib/common"
 )
 
 const freedesktopOrgXml = "/usr/share/mime/packages/freedesktop.org.xml"
@@ -67,7 +68,7 @@ func NewMimetype(id string) (*Mimetype, error) {
 
 func (mt *Mimetype) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		stringlist.ServeAsJson(w, r, mt)
+		common.ServeAsJson(w, r, mt)
 	}  else {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	}

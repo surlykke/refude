@@ -12,7 +12,7 @@ import (
 	"net/http"
 	"sync"
 	"fmt"
-	"github.com/surlykke/RefudeServices/lib/stringlist"
+	"github.com/surlykke/RefudeServices/lib/common"
 )
 
 type IconService struct {
@@ -27,7 +27,7 @@ func (is IconService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch r.URL.Path {
 	case "/":
 		if r.Method == "GET" {
-			stringlist.ServeAsJson(w, r, resources)
+			common.ServeAsJson(w, r, resources)
 		}
 	case "/ping":
 		if r.Method == "GET" {

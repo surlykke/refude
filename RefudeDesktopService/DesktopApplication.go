@@ -21,6 +21,7 @@ import (
 	"io"
 	"github.com/surlykke/RefudeServices/lib/ini"
 	"github.com/surlykke/RefudeServices/lib/stringlist"
+	"github.com/surlykke/RefudeServices/lib/common"
 )
 
 type DesktopApplication struct {
@@ -75,7 +76,7 @@ func unmarshal(data io.Reader, dest interface{}) error {
 
 func (app *DesktopApplication) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		stringlist.ServeAsJson(w, r, app)
+		common.ServeAsJson(w, r, app)
 	} else if r.Method == "POST" {
 		payload := DesktopPostPayload{}
 		if err := unmarshal(r.Body, &payload); err != nil {

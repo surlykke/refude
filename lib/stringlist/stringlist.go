@@ -9,9 +9,9 @@
 package stringlist
 
 import (
-	"encoding/json"
 	"strings"
 	"net/http"
+	"github.com/surlykke/RefudeServices/lib/common"
 )
 
 type StringList []string
@@ -87,19 +87,11 @@ func PrependEach(stringList StringList, prefix string) StringList {
 
 func ServeGetAsJson(w http.ResponseWriter, r *http.Request, i interface{}) {
 	if r.Method == "GET" {
-		ServeAsJson(w, r, i)
+		common.ServeAsJson(w, r, i)
 	} else {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
 }
 
-func ServeAsJson(w http.ResponseWriter, r *http.Request, i interface{}) {
-	bytes, err := json.Marshal(i)
-	if err != nil {
-		panic("Could not json-marshal")
-	};
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(bytes)
-}
 
 

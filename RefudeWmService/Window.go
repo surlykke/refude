@@ -13,7 +13,7 @@ import (
 	"net/http"
 	"github.com/BurntSushi/xgbutil/ewmh"
 	"github.com/BurntSushi/xgbutil"
-	"github.com/surlykke/RefudeServices/lib/stringlist"
+	"github.com/surlykke/RefudeServices/lib/common"
 )
 
 
@@ -36,7 +36,7 @@ type Action struct {
 
 func (win Window) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		stringlist.ServeAsJson(w, r, win)
+		common.ServeAsJson(w, r, win)
 	} else if r.Method == "POST" {
 		if actionv,ok := r.URL.Query()["action"]; ok && len(actionv) > 0 && actionv[0] != "_default" {
 			w.WriteHeader(http.StatusNotAcceptable)

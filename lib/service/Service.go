@@ -42,6 +42,21 @@ func init() {
 var	resources  map[string]http.Handler = make(map[string]http.Handler)
 var mutex      sync.Mutex
 
+func CreateEmptyDir(path string) bool {
+	if ! strings.HasSuffix(path, "/") {
+		path += "/"
+	}
+
+	if Has(path) {
+		return false
+	}
+
+	for _,path := range addResource(path, stringlist.StringList{}) {
+		notify.Notify("resource-updated", "." + path)
+	}
+
+	return true
+}
 
 // Adds/owerwrites a resource. Adds/owerwrites containing directories as necessary
 // Returns a list of modified resources (not created)
@@ -51,10 +66,6 @@ func addResource(path string, resource http.Handler) stringlist.StringList {
 		return []string{}
 	}
 
-	if strings.HasSuffix(path, "/") {
-		log.Println("Attempt to map", path, "- paths must not end in '/'")
-		return []string{}
-	}
 
 	updated := make(stringlist.StringList, 0)
 
@@ -117,9 +128,12 @@ func removeResource(path string) (string, string) {
 }
 
 func Map(path string, res http.Handler) {
-	updated := addResource(path, res)
+	if strings.HasSuffix(path, "/") {
+		log.Println("Attempt to map", path, "- paths must not end in '/'")
+		return
+	}
 
-	for _,path := range updated {
+	for _,path := range addResource(path, res) {
 		notify.Notify("resource-updated", "." + path)
 	}
 }

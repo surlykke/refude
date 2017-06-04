@@ -12,7 +12,7 @@ import (
 	"net/http"
 	"github.com/godbus/dbus"
 	"fmt"
-	"github.com/surlykke/RefudeServices/lib/stringlist"
+	"github.com/surlykke/RefudeServices/lib/common"
 )
 
 
@@ -33,7 +33,7 @@ func NewPowerAction(Id string, Name string, Comment string, IconName string) *Po
 func (p PowerAction) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	fmt.Println(p.Id, "POST, can: ", p.Can)
 	if r.Method == "GET" {
-		stringlist.ServeAsJson(w, r, p)
+		common.ServeAsJson(w, r, p)
 	} else if r.Method == "POST" && p.Can {
 		fmt.Println("Calling: ", login1Service, ", ", login1Path, ", ", managerInterface + "." + p.Id)
 		dbusConn.Object(login1Service, login1Path).Call(managerInterface + "." + p.Id, dbus.Flags(0), false)
