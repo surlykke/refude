@@ -11,20 +11,24 @@ html, body {
     margin-top: 2px;
     padding: 0px;
     height: calc(100% - 4px);
-    width: calc(100% - 4px);
+	width: 800px;
     background-color: rgba(200,200,200,0.8);
+	overflow: none;
 }
 .panel-plugin {
-	float: left;
+	display: inline-block;
 	height: 20px;
 	margin-right: 6px;
+	margin-top: 0px;
+	margin-left: 0px;
+	margin-bottom: 0px;
 	-webkit-app-region: no-drag;
-}
-.battery, .clock {
-	margin-top: 0.1em;
+	vertical-align: middle;
 }
 .hidebutton {
 	width: 16px;
+	padding 2px;
 	background-color: grey;
 	border-radius: 3px;
+	margin: 0px;
 }
