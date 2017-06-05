@@ -17,7 +17,7 @@ class Battery extends React.Component {
 
 	constructor(props) {
 		super(props)
-		this.state = {charge: "?", style: {color: "red"}}
+		this.state = { charge: "?", style: {color: "red"}}
 	}
 
 	componentDidMount = () => {
@@ -46,7 +46,7 @@ class Battery extends React.Component {
 	}
 
 	render = () =>
-        <div className="panel-plugin" style={this.state.style}>
+        <div className="panel-plugin battery" style={this.state.style}>
 			{this.state.charge}%
         </div>
 }

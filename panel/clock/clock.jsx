@@ -25,7 +25,7 @@ class Clock extends React.Component {
 	}
 
 	render = () =>
-		<div id="clock" className="panel-plugin">{this.state.time}</div>
+		<div id="clock" className="panel-plugin clock">{this.state.time}</div>
 }
 
 export {Clock}

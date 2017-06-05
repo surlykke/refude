@@ -7,35 +7,26 @@
  */
 import React from 'react'
 import {render} from 'react-dom'
-import {MakeServiceProxy} from '../common/service-proxy'
-import {nwHide, nwShow} from '../common/utils'
 
 import {Clock} from './clock/clock'
 import {Battery} from './battery/battery'
 import {NotifierItems} from './notifieritems/notifieritems'
+import {HideButton} from './hidebutton/hidebutton'
 
-const gui = window.require('nw.gui')
-const Window = gui.Window.get()
 class Panel extends React.Component {
 
 	constructor(props) {
 		super(props)
 	}
 
-	onClick = (event) => {
-		Window.minimize()
-		setTimeout(() => {Window.restore()}, 5000)
-	}
-
 	render = () =>
-        <div className="content" onClick={this.onClick}>
+        <div className="content" id="content">
 			<Clock/>
 			<Battery/>
 			<NotifierItems/>
+			<HideButton/>
         </div>
 }
-
-
 
 render(
 	<Panel/>,

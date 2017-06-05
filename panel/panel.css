@@ -4,6 +4,7 @@ html, body {
     margin: 0;
     padding: 0;
     overflow: hidden;
+	-webkit-app-region: drag;
 }
 .content {
     margin-left: 4px;
@@ -16,6 +17,14 @@ html, body {
 .panel-plugin {
 	float: left;
 	height: 20px;
-	font-size: 1.2em;
 	margin-right: 6px;
+	-webkit-app-region: no-drag;
+}
+.battery, .clock {
+	margin-top: 0.1em;
+}
+.hidebutton {
+	width: 16px;
+	background-color: grey;
+	border-radius: 3px;
 }
