@@ -17,7 +17,7 @@ HAPROXYCFG="$GOPATH/src/github.com/surlykke/RefudeServices/haproxy.cfg"
 
 # Run refudeservices.
 for app in $REFUDESERVICES; do
-	nohup $app >/dev/null 2>/dev/null &
+	nohup $app >/tmp/${app}.log 2>/tmp/${app}.log &
 done
 
 # Start haproxy

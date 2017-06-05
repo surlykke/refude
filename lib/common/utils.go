@@ -14,3 +14,11 @@ func ServeAsJson(w http.ResponseWriter, r *http.Request, i interface{}) {
 	w.Write(bytes)
 }
 
+
+func GetSingleQueryParameter(r *http.Request, parameterName string, fallbackValue string) string {
+	if len(r.URL.Query()[parameterName]) == 0 {
+		return fallbackValue
+	} else {
+		return r.URL.Query()[parameterName][0]
+	}
+}
