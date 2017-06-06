@@ -13,20 +13,39 @@ import {Battery} from './battery/battery'
 import {NotifierItems} from './notifieritems/notifieritems'
 import {HideButton} from './hidebutton/hidebutton'
 
+const Window  = window.require('nw.gui').Window.get()
+
 class Panel extends React.Component {
 
 	constructor(props) {
 		super(props)
 	}
 
+	componentDidMount = () => {
+		this.adjustSize()
+	}
+
+	adjustSize = () => {
+		setTimeout(
+			() => {
+				let {width, height} = this.content.getBoundingClientRect()
+				Window.resizeTo(Math.round(width) - 1, Math.round(height))
+			},
+			10
+		)
+	}
+
 	render = () =>
-        <div className="content" id="content">
-			<Clock/>
-			<Battery/>
-			<NotifierItems/>
-			<HideButton/>
-        </div>
-}
+		<div className="wrapper">
+	        <div className="content" id="content" ref={div => {this.content = div}}>
+				<Clock/>
+				<Battery/>
+				<NotifierItems onUpdated={this.adjustSize}/>
+				<HideButton/>
+				<div className="panel-plugin dragfield"/>
+	        </div>
+		</div>
+	}
 
 render(
 	<Panel/>,

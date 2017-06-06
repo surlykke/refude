@@ -4,31 +4,37 @@ html, body {
     margin: 0;
     padding: 0;
     overflow: hidden;
-	-webkit-app-region: drag;
+}
+.wrapper {
+    height: 100%;
+	width: 500px;
 }
 .content {
-    margin-left: 4px;
-    margin-top: 2px;
-    padding: 0px;
-    height: calc(100% - 4px);
-	width: 800px;
-    background-color: rgba(200,200,200,0.8);
-	overflow: none;
-}
-.panel-plugin {
 	display: inline-block;
-	height: 20px;
-	margin-right: 6px;
+    margin: 0px;
+    padding: 2px;
+    height: 20px;
+    background-color: rgba(255,255,255,0.5);
+}
+.panel-plugin, .dragfield {
+	display: inline-block;
+	height: 100%;
 	margin-top: 0px;
 	margin-left: 0px;
 	margin-bottom: 0px;
-	-webkit-app-region: no-drag;
+	margin-right: 6px;
 	vertical-align: middle;
 }
-.hidebutton {
-	width: 16px;
-	padding 2px;
-	background-color: grey;
-	border-radius: 3px;
+.notifier-items, .dragfield {
 	margin: 0px;
+}
+.dragfield {
+	-webkit-app-region: drag;
+}
+.hidebutton, .dragfield {
+	width: 16px;
+	height: 16px;
+	padding 2px;
+	border-radius: 3px;
+	border: solid black 1px;
 }

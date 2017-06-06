@@ -56,22 +56,25 @@ class NotifierItems extends React.Component {
 	constructor(props) {
 		super(props)
 		this.state = {items : []}
+		this.onUpdated = props.onUpdated
 		console.log("constructor: this.state.items:", this.state.items)
 	}
 
 	componentDidMount() {
-		console.log("Mount: this.state.items:", this.state.items)
 		statusNotifierItems.subscribe(this.updateItems)
+	}
+
+	componentDidUpdate() {
+		this.onUpdated()
 	}
 
 	updateItems = () => {
 		let items = statusNotifierItems.resources()
 		this.setState({items: items})
-		console.log("Update: this.state.items:", this.state.items)
 	}
 
 	render = () =>
-		<div className="panel-plugin">
+		<div className="panel-plugin notifier-items">
 			{this.state.items.map((item) => (<NotifierItem key={item.id} item={item} /> ))}
 		</div>
 }
