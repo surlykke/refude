@@ -14,7 +14,7 @@ class DragField extends React.Component {
 			<svg viewBox="0 0 100 100" >
 				<g fillOpacity="1">
 					{circleCenters.map(c => (
-						<circle cx={c.x} cy={c.y} r="10" stroke="black" stroke-width="3" fill="gray" />
+						<circle cx={c.x} cy={c.y} r="10" stroke="black" stroke-width="3" fill="dark-gray" />
 					))}
 				</g>
 			</svg>
