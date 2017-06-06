@@ -14,7 +14,15 @@ class HideButton extends React.Component {
 		setTimeout(() => {Window.restore()}, 5000)
 	}
 
-	render = () => <div className="panel-plugin hidebutton" onClick={this.hide5s}/>
+	render = () =>
+		<div className="panel-plugin hidebutton" onClick={this.hide5s}>
+			<svg viewBox="0 0 100 100" >
+				<g fillOpacity="0" strokeWidth="10" stroke="black">
+				    <rect x="5" y="5" width="90" height="90" />
+					<rect x="40" y="40" width="53" height="53"/>
+				</g>
+			</svg>
+		</div>
 }
 
 export {HideButton}

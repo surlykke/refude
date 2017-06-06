@@ -12,6 +12,7 @@ import {Clock} from './clock/clock'
 import {Battery} from './battery/battery'
 import {NotifierItems} from './notifieritems/notifieritems'
 import {HideButton} from './hidebutton/hidebutton'
+import {DragField} from './dragfield/dragfield'
 
 const Window  = window.require('nw.gui').Window.get()
 
@@ -42,7 +43,7 @@ class Panel extends React.Component {
 				<Battery/>
 				<NotifierItems onUpdated={this.adjustSize}/>
 				<HideButton/>
-				<div className="panel-plugin dragfield"/>
+				<DragField/>
 	        </div>
 		</div>
 	}
