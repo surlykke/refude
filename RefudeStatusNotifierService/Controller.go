@@ -18,6 +18,7 @@ const HOST_SERVICE = "org.kde.StatusNotifierHost"
 const ITEM_PATH = "/StatusNotifierItem"
 const ITEM_INTERFACE = "org.kde.StatusNotifierItem"
 const INTROSPECT_INTERFACE = "org.freedesktop.DBus.Introspectable"
+const PROPERTIES_INTERFACE = "org.freedesktop.DBus.Properties"
 
 var	conn *dbus.Conn
 var dbusSignals = make(chan *dbus.Signal, 50)
@@ -26,15 +27,26 @@ var	mutex = sync.Mutex{}
 
 var watcherProperties *prop.Properties
 
+
+func GetNameOwner(serviceName string) (string, error) {
+	call := conn.BusObject().Call("GetNameOwner", dbus.Flags(0), serviceName)
+	return call.Body[0].(string), call.Err
+}
+
 func addItem(serviceName string) *dbus.Error {
+	serviceOwner, err := GetNameOwner(serviceName)
+	if err != nil {
+		return dbus.MakeFailedError(err)
+	}
+
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	if _,exists := channels[serviceName]; !exists {
-		channels[serviceName] = make(chan string)
-		go StatusNotifierItem(serviceName, channels[serviceName])
+	if _,exists := channels[serviceOwner]; !exists {
+		channels[serviceOwner] = make(chan string)
+		go StatusNotifierItem(serviceOwner, channels[serviceOwner])
 		watcherProperties.Set(WATCHER_INTERFACE, "RegisteredStatusItems", dbus.MakeVariant(getItems()))
-		conn.Emit(WATCHER_PATH, WATCHER_INTERFACE + ".StatusNotifierItemRegistered", serviceName)
+		conn.Emit(WATCHER_PATH, WATCHER_INTERFACE + ".StatusNotifierItemRegistered", serviceOwner)
 		return nil
 	} else {
 		return dbus.MakeFailedError(errors.New("Already registered"))
@@ -66,7 +78,6 @@ func getItems() stringlist.StringList {
 
 func dispatchSignal(signal *dbus.Signal) {
 	shortName := signal.Name[len("org.kde.StatusNotifierItem."):]
-	fmt.Println("Signal from :", signal.Sender)
 	mutex.Lock()
 	defer mutex.Unlock()
 	if channel, ok := channels[signal.Sender]; ok {
@@ -130,7 +141,6 @@ func run() {
 			arg0 := signal.Body[0].(string)
 			arg1 := signal.Body[1].(string)
 			arg2 := signal.Body[2].(string)
-
 			if len(arg1) > 0 && len(arg2) == 0 { // Someone had the name and now no-one does
 												 // We take that to mean that the app has exited
 				removeItem(arg0)
