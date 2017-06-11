@@ -9,7 +9,10 @@ const statusNotifierItems = MakeServiceProxy("http://localhost:7938/statusnotifi
 let NotifierItem = (props) => {
 	let style = {
 		display: "inline-block",
-		background: "url(" + props.item.IconUrl + ")",
+		backgroundImage: 'url(' + props.item.IconUrl + ')',
+		backgroundPositionX: 'center',
+		backgroundPositionY: 'center',
+		backgroundRepeat: 'no-repeat',
 		backgroundSize: "contain",
 		padding: "0px",
 		margin: "0px",
