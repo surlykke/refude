@@ -105,9 +105,9 @@ func (item Item) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 
 
-func StatusNotifierItem(serviceOwner string, signals chan string) {
+func StatusNotifierItem(serviceOwner string, objectPath dbus.ObjectPath, signals chan string) {
 
-	item := MakeItem(conn.Object(serviceOwner, "/StatusNotifierItem"))
+	item := MakeItem(conn.Object(serviceOwner, objectPath))
 
 	path := "/items/" + serviceOwner[1:] // Omit leading colon
 	service.Map(path, item.copy())

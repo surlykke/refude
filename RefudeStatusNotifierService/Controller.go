@@ -9,6 +9,7 @@ import (
 	"strings"
 	"github.com/surlykke/RefudeServices/lib/stringlist"
 	"github.com/godbus/dbus/prop"
+	"regexp"
 )
 
 const WATCHER_SERVICE = "org.kde.StatusNotifierWatcher"
@@ -33,10 +34,16 @@ func GetNameOwner(serviceName string) (string, error) {
 	return call.Body[0].(string), call.Err
 }
 
-func addItem(serviceName string) *dbus.Error {
-	serviceOwner, err := GetNameOwner(serviceName)
-	if err != nil {
-		return dbus.MakeFailedError(err)
+func addItem(serviceName string, sender dbus.Sender) *dbus.Error {
+	// Problem: We cant handle more than one item pr sender. Not sure
+	// how to do that with the spec as it is
+	fmt.Println("serviceName: ", serviceName, ", sender: ", sender)
+	serviceOwner := string(sender)
+	var objectPath dbus.ObjectPath = ""
+	if regexp.MustCompile("^(/\\w+)+$").MatchString(serviceName) {
+		objectPath = dbus.ObjectPath(serviceName)
+	} else {
+		objectPath = dbus.ObjectPath("/StatusNotifierItem")
 	}
 
 	mutex.Lock()
@@ -44,7 +51,7 @@ func addItem(serviceName string) *dbus.Error {
 
 	if _,exists := channels[serviceOwner]; !exists {
 		channels[serviceOwner] = make(chan string)
-		go StatusNotifierItem(serviceOwner, channels[serviceOwner])
+		go StatusNotifierItem(serviceOwner, objectPath, channels[serviceOwner])
 		watcherProperties.Set(WATCHER_INTERFACE, "RegisteredStatusItems", dbus.MakeVariant(getItems()))
 		conn.Emit(WATCHER_PATH, WATCHER_INTERFACE + ".StatusNotifierItemRegistered", serviceOwner)
 		return nil
