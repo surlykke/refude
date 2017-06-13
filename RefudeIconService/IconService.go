@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"sync"
 	"fmt"
-	"github.com/surlykke/RefudeServices/lib/common"
 )
 
 type IconService struct {
@@ -24,18 +23,7 @@ var resources = []string{"ping", "icon"}
 
 func (is IconService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
-	switch r.URL.Path {
-	case "/":
-		if r.Method == "GET" {
-			common.ServeAsJson(w, r, resources)
-		}
-	case "/ping":
-		if r.Method == "GET" {
-			w.WriteHeader(http.StatusOK)
-		} else {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-		}
-	case "/icon":
+	if "/icon" == r.URL.Path {
 		fmt.Println("Serving ", r.URL.Path)
 		if r.Method == "GET" {
 			is.mutex.RLock()
@@ -56,7 +44,7 @@ func (is IconService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		} else {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 		}
-	default:
+	} else {
 		w.WriteHeader(http.StatusNotFound)
 	}
 }

@@ -13,7 +13,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/service"
 	"strings"
 	"fmt"
-	"github.com/surlykke/RefudeServices/lib/stringlist"
+	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
 const UPowService = "org.freedesktop.UPower"
@@ -44,10 +44,13 @@ type PowerManager struct {
 func watchUPower(changes chan map[string]dbus.Variant) {
 	uPower := UPower{}
 	uPower.ReadDBusProps(getProps(dbusConn, UPowPath, UPowerInterface))
-	service.Map("/UPower", uPower) // Important that we use call-by-value, ie. uPower is copied - see below
+
+    // Important that we use a copy - see below
+	service.Map( "/UPower", resource.JsonResource(uPower, nil))
+
 	for {
 		uPower.ReadDBusProps(<- changes)
-		service.Map("/UPower", uPower) // Do
+		service.Map( "/UPower", resource.JsonResource(uPower, nil))
 	}
 }
 
@@ -56,10 +59,12 @@ func watchDevice(dbusPath dbus.ObjectPath, changes chan map[string]dbus.Variant)
 	path := "/devices/" + resourcePath(dbusPath)
 	device := Device{}
 	device.ReadDBusProps(getProps(dbusConn, dbusPath, UPowerDeviceInterface))
-	service.Map(path, device) // Important to call-by-value (copy) here. Service owns what it gets
+	// Important to call-by-value (copy) here. Service owns what it gets
+	service.Map( path, resource.JsonResource(device, nil))
+
 	for {
 		device.ReadDBusProps(<-changes)
-		service.Map(path, device) // do.
+		service.Map( path, resource.JsonResource(device, nil))
 	}
 }
 
@@ -108,10 +113,10 @@ func (pm *PowerManager) Run() {
 		NewPowerAction("Hibernate", "Hibernate", "Put the machine into hibernation", "system-suspend-hibernate"),
 		NewPowerAction("HybridSleep", "HybridSleep", "Put the machine into hybrid sleep", "system-suspend-hibernate"),
 	}
-	actionIds := make(stringlist.StringList, len(actions))
+	actionIds := make([]string, len(actions))
 	for i,action := range(actions) {
 		actionIds[i] = action.Id
-		service.Map("/actions/" + action.Id, action)
+		service.Map( "/actions/" + action.Id, resource.JsonResource(action, ActionPOST))
 	}
 
 	for signal := range signals {

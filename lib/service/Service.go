@@ -17,148 +17,123 @@ import (
 	"context"
 	"syscall"
 	"github.com/surlykke/RefudeServices/lib/notify"
-	"reflect"
-	"github.com/surlykke/RefudeServices/lib/stringlist"
+	"github.com/surlykke/RefudeServices/lib/utils"
 	"strings"
+	"github.com/surlykke/RefudeServices/lib/resource"
 	"log"
 )
 
-type PingResource struct{}
 
-func (pr PingResource) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "GET" {
-		w.WriteHeader(http.StatusOK)
-	} else {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-	}
+var	resources  = make(map[string]*resource.Resource)
+var mutex      sync.Mutex
+
+
+func OK200(this *resource.Resource, w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
 }
 
 func init() {
-	Map("/ping", PingResource{})
-	Map("/notify", notify.NotifierResource{})
+	Map("/ping", &resource.Resource{GET: OK200})
+	Map("/notify", &resource.Resource{GET: notify.NotifyGET})
 }
 
 
-var	resources  map[string]http.Handler = make(map[string]http.Handler)
-var mutex      sync.Mutex
+func splitInBaseNameAndName(path string) (string, string) {
+	baseNameLen := strings.LastIndex(path[0:len(path) - 1], "/") + 1
+	return path[0:baseNameLen], path[baseNameLen:]
+}
+
+// Caller must ensure path is proper and that
+// mutex is taken
+func _map(path string, res *resource.Resource) {
+	baseName, name := splitInBaseNameAndName(path)
+	if old, found := resources[path]; found {
+		if !res.Equal(old) {
+			resources[path] = res
+			notify.Notify("resource-updated", path[1:])
+		}
+	} else {
+		if len(baseName) > 0 {
+			elements := []string{}
+			if parent,ok := resources[baseName]; ok {
+				elements = parent.Data.([]string)
+			}
+			elements = append(elements, name)
+
+			_map(baseName, resource.JsonResource(elements, nil))
+		}
+
+		resources[path] = res
+		notify.Notify("resource-added", path[1:])
+	}
+}
+
+func unmap(path string) {
+	baseName, name := splitInBaseNameAndName(path)
+	delete(resources, path)
+	notify.Notify("resource-removed", path[1:])
+	if len(baseName) > 0 {
+		parent := resources[baseName]
+		elements := utils.Remove(parent.Data.([]string), name)
+		resources[baseName] = resource.JsonResource(elements, nil)
+		notify.Notify("resource-updated", baseName[1:])
+	}
+}
+
+func checkPath(path string) {
+	if strings.HasSuffix(path, "/") || !strings.HasPrefix(path, "/") {
+		panic("Illegal path " + path + ". A path must begin with- and not end in '/'")
+	}
+}
 
 func CreateEmptyDir(path string) bool {
-	if ! strings.HasSuffix(path, "/") {
-		path += "/"
-	}
-
-	if Has(path) {
-		return false
-	}
-
-	for _,path := range addResource(path, stringlist.StringList{}) {
-		notify.Notify("resource-updated", "." + path)
-	}
-
-	return true
-}
-
-// Adds/owerwrites a resource. Adds/owerwrites containing directories as necessary
-// Returns a list of modified resources (not created)
-func addResource(path string, resource http.Handler) stringlist.StringList {
-	if !strings.HasPrefix(path, "/") {
-		log.Println("Attempt to map", path, "- paths must begin with '/'")
-		return []string{}
-	}
-
-
-	updated := make(stringlist.StringList, 0)
-
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	if oldRes,ok := resources[path]; ok && !reflect.DeepEqual(oldRes, resource) {
-		updated = stringlist.PushBack(updated, path)
-	}
-	resources[path] = resource
-
-	for len(path) > 0 {
-		lastSlashPos := strings.LastIndex(path[0: len(path) - 1], "/")
-		if lastSlashPos < 0 {
-			break
-		}
-		directory, element := path[0:lastSlashPos + 1],path[lastSlashPos + 1:]
-		if elements,ok := resources[directory].(stringlist.StringList); ok {
-			if !elements.Has(element) {
-				updated = stringlist.PushBack(updated, directory)
-				resources[directory] = stringlist.PushBack(elements, element)
-			}
-			break
-		} else {
-			resources[directory] = stringlist.StringList{element}
-			path = directory
-		}
-	}
-
-	return updated
-}
-
-func removeResource(path string) (string, string) {
-	if !strings.HasPrefix(path, "/") {
-		log.Println("Attempt to unmap", path, "- paths must begin with '/'")
-		return "",""
-	}
-
-	if strings.HasSuffix(path, "/") {
-		log.Println("Attempt to unmap", path, "- paths must not end in '/'")
-		return "",""
-	}
-
-	mutex.Lock()
-	defer mutex.Unlock()
-
+	checkPath(path)
+	mutex.Lock();
+	defer mutex.Unlock();
 	if _, ok := resources[path]; ok {
-		delete(resources, path)
-		lastSlashPos := strings.LastIndex(path, "/")
-		directory, element := path[0: lastSlashPos + 1], path[lastSlashPos + 1:]
-		elements,_ := resources[directory].(stringlist.StringList)
-		elements = stringlist.Remove(elements, element)
-		resources[directory] = elements
-		// TOCONSIDER: Should we auto-unmap empty directories?
-
-		return path, directory
+		return false
 	} else {
-		return "", ""
+		_map(path+"/", resource.JsonResource([]string{}, nil))
+		return true
 	}
 }
 
-func Map(path string, res http.Handler) {
-	if strings.HasSuffix(path, "/") {
-		log.Println("Attempt to map", path, "- paths must not end in '/'")
-		return
-	}
-
-	for _,path := range addResource(path, res) {
-		notify.Notify("resource-updated", "." + path)
-	}
+func Map(path string, res *resource.Resource) {
+	checkPath(path)
+	mutex.Lock()
+	defer mutex.Unlock()
+	_map(path, res)
 }
 
 func Unmap(path string) {
-	removed, updated := removeResource(path)
-
-	if removed != "" {
-		notify.Notify("resource-removed", "." + removed)
+	checkPath(path)
+	mutex.Lock()
+	defer mutex.Unlock()
+	if _,ok := resources[path]; ok {
+		unmap(path)
 	}
+}
 
-	if updated != "" {
-		notify.Notify("resource-updated", "." + updated)
+func UnMapIfMatch(path string, eTag string) {
+	if res,ok := resources[path]; ok {
+		if res.ETag == eTag {
+			unmap(path)
+		}
 	}
 }
 
 func Has(path string) bool {
-	_,has := get(path)
+	checkPath(path)
+	mutex.Lock()
+	defer mutex.Unlock()
+	_, has := resources[path]
 	return has
 }
 
-func get(path string) (http.Handler, bool) {
+func get(path string) (*resource.Resource, bool) {
 	mutex.Lock()
 	defer mutex.Unlock()
-	res, ok := resources[path]
+	res,ok := resources[path]
 	return res,ok
 }
 
@@ -190,8 +165,7 @@ func makeListener(socketName string) (*net.UnixListener, bool) {
 	socketPath := xdg.RuntimeDir() + "/" + socketName
 
 	if seemsToBeRunning(socketPath) {
-		fmt.Println("Application seems to be running. Let's leave it at that")
-		return nil, false
+		log.Fatal("Application seems to be running. Let's leave it at that")
 	}
 
 	syscall.Unlink(socketPath)

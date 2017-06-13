@@ -19,10 +19,8 @@ import (
 	"github.com/surlykke/RefudeServices/lib/service"
 	"hash/fnv"
 	"github.com/pkg/errors"
-	"github.com/surlykke/RefudeServices/lib/stringlist"
+	"github.com/surlykke/RefudeServices/lib/resource"
 )
-
-var hashes = make(stringlist.StringList, 0)
 
 type PNGImg struct {
 	Size int
@@ -32,29 +30,26 @@ type PNGImg struct {
 type PNGIcon []PNGImg
 
 
-func (icon PNGIcon) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-	} else {
-		var data []byte = nil
+func PNGIconGET(this *resource.Resource, w http.ResponseWriter, r *http.Request) {
+    icon := this.Data.(PNGIcon)
+	var data []byte = nil
 
-		size := 32
-		if sizes, ok := r.URL.Query()["size"]; ok && len(sizes) == 1 {
-			if tmp, err := strconv.Atoi(sizes[0]); err == nil {
-				size = tmp
-			}
+	size := 32
+	if sizes, ok := r.URL.Query()["size"]; ok && len(sizes) == 1 {
+		if tmp, err := strconv.Atoi(sizes[0]); err == nil {
+			size = tmp
 		}
-
-		for _,sizedPng := range icon {
-			data = sizedPng.pngData
-			if sizedPng.Size > size {
-				break
-			}
-		}
-
-		w.Header().Set("Content-Type", "image/png")
-		w.Write(data)
 	}
+
+	for _,sizedPng := range icon {
+		data = sizedPng.pngData
+		if sizedPng.Size > size {
+			break
+		}
+	}
+
+	w.Header().Set("Content-Type", "image/png")
+	w.Write(data)
 }
 
 type Img struct {
@@ -133,7 +128,7 @@ func ServeAsPng(argbIcon Icon) (string, error) {
 			return "", fmt.Errorf("No icons in argument")
 		}
 
-		service.Map(path, pngIcon)
+		service.Map(path, &resource.Resource{Data: pngIcon, GET: PNGIconGET})
 	}
 
 	return path, nil

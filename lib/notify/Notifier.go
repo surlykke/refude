@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net"
 	"sync"
+	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
 const initialResponse string =
@@ -90,11 +91,8 @@ func write(conn net.Conn, msg string) bool {
 }
 
 
-
-func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-	} else if hj, ok := w.(http.Hijacker); !ok {
+func NotifyGET(this *resource.Resource, w http.ResponseWriter, r *http.Request) {
+	if hj, ok := w.(http.Hijacker); !ok {
 		w.WriteHeader(http.StatusInternalServerError)
 	} else if conn, _, err := hj.Hijack(); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -103,8 +101,3 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-type NotifierResource struct {}
-
-func (nr NotifierResource) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	ServeHTTP(w, r)
-}

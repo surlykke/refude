@@ -20,12 +20,13 @@ import (
 	"net/http"
 	"regexp"
 	"github.com/surlykke/RefudeServices/lib/ini"
-	"github.com/surlykke/RefudeServices/lib/stringlist"
+	"github.com/surlykke/RefudeServices/lib/utils"
+	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
 
-var applicationIds = make(stringlist.StringList, 0)
-var mimetypeIds = make(stringlist.StringList, 0)
+var applicationIds = make([]string, 0)
+var mimetypeIds = make([]string, 0)
 
 
 func DesktopRun() {
@@ -71,7 +72,7 @@ func update() {
 	}
 
 	for appId, newDesktopApplication := range c.applications {
-		service.Map("/applications/" + appId, newDesktopApplication)
+		service.Map("/applications/" + appId, resource.JsonResource(newDesktopApplication, DesktopApplicationPOST))
 	}
 
 	for _, mimetypeId := range mimetypeIds {
@@ -81,7 +82,7 @@ func update() {
 	}
 
 	for mimetypeId, mimeType := range c.mimetypes {
-		service.Map("/mimetypes/" + mimetypeId, mimeType)
+		service.Map("/mimetypes/" + mimetypeId, resource.JsonResource(mimeType, nil))
 	}
 
 }
@@ -133,8 +134,8 @@ func (c* Collector) addAssociations(mimeId string, appIds...string) {
 	if mimetype := c.getMimetype(mimeId); mimetype != nil {
 		for _,appId := range appIds {
 			if application, appFound := c.applications[appId]; appFound {
-				mimetype.AssociatedApplications = stringlist.AppendIfNotThere(mimetype.AssociatedApplications, appId)
-				application.Mimetypes = stringlist.AppendIfNotThere(application.Mimetypes, mimeId)
+				mimetype.AssociatedApplications = utils.AppendIfNotThere(mimetype.AssociatedApplications, appId)
+				application.Mimetypes = utils.AppendIfNotThere(application.Mimetypes, mimeId)
 			}
 		}
 	}
@@ -145,10 +146,10 @@ func (c* Collector) removeAssociations(mimeId string, appIds...string) {
 
 	for _,appId := range appIds {
 		if app, ok := c.applications[appId]; ok {
-			app.Mimetypes = stringlist.Remove(app.Mimetypes, mimeId)
+			app.Mimetypes = utils.Remove(app.Mimetypes, mimeId)
 		}
 		if mimetypeFound {
-			mimetype.AssociatedApplications = stringlist.Remove(mimetype.AssociatedApplications, appId)
+			mimetype.AssociatedApplications = utils.Remove(mimetype.AssociatedApplications, appId)
 		}
 	}
 }
@@ -203,7 +204,7 @@ func (c *Collector) readMimeappsList(path string) {
 				continue
 			}
 			for _, entry := range iniGroup.Entries {
-				dest[entry.Key] = stringlist.Split(entry.Value, ";")
+				dest[entry.Key] = utils.Split(entry.Value, ";")
 			}
 		}
 	}
@@ -225,13 +226,12 @@ func (c *Collector) readMimeappsList(path string) {
 	}
 }
 
-type Icon struct {
-	prefix string
-}
-
-func (i Icon) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if strings.HasPrefix(r.URL.Path, i.prefix) {
-		http.ServeFile(w, r, r.URL.Path[len(i.prefix):])
+func IconGet(this *resource.Resource, w http.ResponseWriter, r *http.Request) {
+	prefix := this.Data.(string)
+	if strings.HasPrefix(r.URL.Path, prefix) {
+		http.ServeFile(w, r, r.URL.Path[len(prefix):])
+	} else {
+		w.WriteHeader(http.StatusNotFound)
 	}
 }
 
@@ -265,9 +265,9 @@ func POSTInterceptor(w http.ResponseWriter, r* http.Request) {
 			if iniFile, err := ini.ReadIniFile(path); err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 			} else {
-				defaultApplications := stringlist.Split(iniFile.Value("Default Applications", mimetypeId), ";")
-				defaultApplications = stringlist.Remove(defaultApplications, appId)
-				defaultApplications = stringlist.PushFront(appId, defaultApplications)
+				defaultApplications := utils.Split(iniFile.Value("Default Applications", mimetypeId), ";")
+				defaultApplications = utils.Remove(defaultApplications, appId)
+				defaultApplications = utils.PushFront(appId, defaultApplications)
 
 				fmt.Println("Setting: ", mimetypeId, strings.Join(defaultApplications, ";"))
 				iniFile.SetValue("Default Applications", mimetypeId, strings.Join(defaultApplications, ";"))

@@ -15,7 +15,7 @@ import (
 	"os"
 	"math"
 	"strconv"
-	"github.com/surlykke/RefudeServices/lib/stringlist"
+	"github.com/surlykke/RefudeServices/lib/utils"
 	"github.com/surlykke/RefudeServices/lib/ini"
 )
 
@@ -74,7 +74,7 @@ func ReadThemes() Themes {
 
 	for themeId, theme := range res.themes {
 		fmt.Println("parents for ", themeId, ": ", theme.Inherits)
-		ancestors := getAncestors(themeId, make(stringlist.StringList, 0), res.themes)
+		ancestors := getAncestors(themeId, make([]string, 0), res.themes)
 		fmt.Println("ancestors for ", themeId, ": ", ancestors)
 		ancestors = append(ancestors, "hicolor")
 		theme.Ancestors = ancestors
@@ -139,13 +139,13 @@ func readIndexTheme(themeId string, indexThemeFilePath string) (Theme, error) {
 	theme.Id = themeId
 	theme.Name = themeGroup.Value("Name")
 	theme.Comment = themeGroup.Value("Comment")
-	theme.Inherits = stringlist.Split(themeGroup.Value("Inherits"), ",")
+	theme.Inherits = utils.Split(themeGroup.Value("Inherits"), ",")
 	theme.IconDirs = []IconDir{}
-	directories := stringlist.Split(themeGroup.Value("Directories"), ",")
+	directories := utils.Split(themeGroup.Value("Directories"), ",")
 
 	for _,iniGroup := range iniFile.Groups[1:] {
 
-		if ! directories.Has(iniGroup.Name) {
+		if ! utils.Contains(directories, iniGroup.Name) {
 			fmt.Fprintln(os.Stderr, iniGroup.Name, " not found in Directories")
 			continue
 		}
@@ -184,10 +184,10 @@ func readIndexTheme(themeId string, indexThemeFilePath string) (Theme, error) {
 	return theme, nil
 }
 
-func getAncestors(themeId string, visited stringlist.StringList, themeMap map[string]Theme) []string {
+func getAncestors(themeId string, visited []string, themeMap map[string]Theme) []string {
 	ancestors := make([]string, 0)
-	if themeId != "hicolor" && !visited.Has(themeId) {
-		stringlist.AppendIfNotThere(visited, themeId)
+	if themeId != "hicolor" && !utils.Contains(visited, themeId) {
+		utils.AppendIfNotThere(visited, themeId)
 		if theme, ok := themeMap[themeId]; ok {
 			ancestors = append(ancestors, themeId)
 			for _,parentId := range theme.Inherits {

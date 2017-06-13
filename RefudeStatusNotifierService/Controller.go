@@ -7,7 +7,6 @@ import (
 	"sync"
 	"github.com/godbus/dbus/introspect"
 	"strings"
-	"github.com/surlykke/RefudeServices/lib/stringlist"
 	"github.com/godbus/dbus/prop"
 	"regexp"
 )
@@ -75,8 +74,8 @@ func removeItem(serviceName string) *dbus.Error {
 }
 
 // Caller holds mutex
-func getItems() stringlist.StringList {
-	res := make(stringlist.StringList, 0)
+func getItems() []string {
+	res := make([]string, 0)
 	for serviceName,_ := range channels {
 		res = append(res, serviceName)
 	}

@@ -11,7 +11,6 @@ package main
 import (
 	"github.com/godbus/dbus"
 	"net/http"
-	"github.com/surlykke/RefudeServices/lib/stringlist"
 )
 
 type UPowerObject interface {
@@ -53,10 +52,6 @@ func (up *UPower) ReadDBusProps(m map[string]dbus.Variant) {
 			up.LidIsPresent = variant.Value().(bool)
 		}
 	}
-}
-
-func (up UPower) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	stringlist.ServeGetAsJson(w, r, up)
 }
 
 type Device struct {
@@ -140,11 +135,6 @@ func (d *Device) ReadDBusProps(m map[string]dbus.Variant) {
 		}
 	}
 }
-
-func (d Device) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	stringlist.ServeGetAsJson(w, r, d)
-}
-
 
 func deviceType(index uint32) string {
 	var devType = []string{"Unknown", "Line Power", "Battery", "Ups", "Monitor", "Mouse", "Keyboard", "Pda", "Phone"}

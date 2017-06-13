@@ -13,7 +13,7 @@ import (
 	"net/http"
 	"github.com/BurntSushi/xgbutil/ewmh"
 	"github.com/BurntSushi/xgbutil"
-	"github.com/surlykke/RefudeServices/lib/common"
+	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
 
@@ -34,18 +34,13 @@ type Action struct {
 	X,Y,W,H int
 }
 
-func (win Window) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "GET" {
-		common.ServeAsJson(w, r, win)
-	} else if r.Method == "POST" {
-		if actionv,ok := r.URL.Query()["action"]; ok && len(actionv) > 0 && actionv[0] != "_default" {
-			w.WriteHeader(http.StatusNotAcceptable)
-		} else {
-			ewmh.ActiveWindowReq(win.x, xproto.Window(win.Id))
-			w.WriteHeader(http.StatusAccepted)
-		}
+func WindowPOST(this *resource.Resource, w http.ResponseWriter, r *http.Request) {
+	win := this.Data.(Window)
+	if actionv,ok := r.URL.Query()["action"]; ok && len(actionv) > 0 && actionv[0] != "_default" {
+		w.WriteHeader(http.StatusNotAcceptable)
 	} else {
-		w.WriteHeader(http.StatusMethodNotAllowed)
+		ewmh.ActiveWindowReq(win.x, xproto.Window(win.Id))
+		w.WriteHeader(http.StatusAccepted)
 	}
 }
 

@@ -20,8 +20,8 @@ import (
 	"encoding/json"
 	"io"
 	"github.com/surlykke/RefudeServices/lib/ini"
-	"github.com/surlykke/RefudeServices/lib/stringlist"
-	"github.com/surlykke/RefudeServices/lib/common"
+	"github.com/surlykke/RefudeServices/lib/utils"
+	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
 type DesktopApplication struct {
@@ -34,16 +34,16 @@ type DesktopApplication struct {
 	IconName        string `json:",omitempty"`
 	IconUrl         string `json:",omitempty"`
 	Hidden          bool
-	OnlyShowIn      stringlist.StringList
-	NotShowIn       stringlist.StringList
+	OnlyShowIn      []string
+	NotShowIn       []string
 	DbusActivatable bool   `json:",omitempty"`
 	TryExec         string `json:",omitempty"`
 	Path            string `json:",omitempty"`
 	Terminal        bool
-	Mimetypes       stringlist.StringList
-	Categories      stringlist.StringList
-	Implements      stringlist.StringList
-	Keywords        stringlist.StringList
+	Mimetypes       []string
+	Categories      []string
+	Implements      []string
+	Keywords        []string
 	StartupNotify   bool
 	StartupWmClass  string `json:",omitempty"`
 	Url             string `json:",omitempty"`
@@ -74,37 +74,33 @@ func unmarshal(data io.Reader, dest interface{}) error {
 	}
 }
 
-func (app *DesktopApplication) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "GET" {
-		common.ServeAsJson(w, r, app)
-	} else if r.Method == "POST" {
-		payload := DesktopPostPayload{}
-		if err := unmarshal(r.Body, &payload); err != nil {
-			fmt.Println(err)
-			w.WriteHeader(http.StatusNotAcceptable);
-			return
-		}
+func DesktopApplicationPOST(this *resource.Resource, w http.ResponseWriter, r *http.Request) {
+	app := this.Data.(*DesktopApplication)
 
-		if len(payload.ActionId) == 0 {
-			payload.ActionId = "_default"
-		}
+	payload := DesktopPostPayload{}
+	if err := unmarshal(r.Body, &payload); err != nil {
+		fmt.Println(err)
+		w.WriteHeader(http.StatusNotAcceptable);
+		return
+	}
 
-		fmt.Println("action: ", payload.ActionId, ", args")
-		if action, ok := app.Actions[payload.ActionId]; !ok {
-			w.WriteHeader(http.StatusNotAcceptable)
-		} else {
-			args := strings.Join(payload.Arguments, " ")
-			cmd := regexp.MustCompile("%[uUfF]").ReplaceAllString(action.Exec, args)
-			fmt.Println("Running cmd: " + cmd)
-			if err := runCmd(cmd); err != nil {
-				fmt.Println(err)
-				w.WriteHeader(http.StatusInternalServerError)
-			} else {
-				w.WriteHeader(http.StatusAccepted)
-			}
-		}
+	if len(payload.ActionId) == 0 {
+		payload.ActionId = "_default"
+	}
+
+	fmt.Println("action: ", payload.ActionId, ", args")
+	if action, ok := app.Actions[payload.ActionId]; !ok {
+		w.WriteHeader(http.StatusNotAcceptable)
 	} else {
-		w.WriteHeader(http.StatusMethodNotAllowed)
+		args := strings.Join(payload.Arguments, " ")
+		cmd := regexp.MustCompile("%[uUfF]").ReplaceAllString(action.Exec, args)
+		fmt.Println("Running cmd: " + cmd)
+		if err := runCmd(cmd); err != nil {
+			fmt.Println(err)
+			w.WriteHeader(http.StatusInternalServerError)
+		} else {
+			w.WriteHeader(http.StatusAccepted)
+		}
 	}
 }
 
@@ -128,9 +124,7 @@ func runCmd(app string) error {
 	return nil
 }
 
-
-
-func readDesktopFile(path string) (*DesktopApplication, stringlist.StringList, error) {
+func readDesktopFile(path string) (*DesktopApplication, []string, error) {
 	iniFile, err := ini.ReadIniFile(path)
 
 	if err != nil {
@@ -157,7 +151,7 @@ func readDesktopFile(path string) (*DesktopApplication, stringlist.StringList, e
 	if strings.HasPrefix(desktopEntry.Value("Icon"), "/") {
 		resourcePath := "/icon" + desktopEntry.Value("Icon")
 		app.IconUrl = ".." + resourcePath
-		service.Map(resourcePath, Icon{"/icon"})
+		service.Map(resourcePath, &resource.Resource{Data: "/icon", GET: IconGet})
 	} else {
 		app.IconName = desktopEntry.Value("Icon")
 	}
@@ -167,12 +161,12 @@ func readDesktopFile(path string) (*DesktopApplication, stringlist.StringList, e
 	app.GenericName = desktopEntry.Value("GenericName")
 	app.Comment = desktopEntry.Value("Comment")
 
-	app.OnlyShowIn = stringlist.Split(desktopEntry.Value("OnlyShowIn"), ";")
-	app.NotShowIn = stringlist.Split(desktopEntry.Value("NotShowIn"), ";")
-	app.Mimetypes = make(stringlist.StringList, 0)
-	app.Categories = stringlist.Split(desktopEntry.Value("Categories"), ";")
-	app.Implements = stringlist.Split(desktopEntry.Value("Implements"), ";")
-	app.Keywords = stringlist.Split(desktopEntry.Value("Keywords"), ";")
+	app.OnlyShowIn = utils.Split(desktopEntry.Value("OnlyShowIn"), ";")
+	app.NotShowIn = utils.Split(desktopEntry.Value("NotShowIn"), ";")
+	app.Mimetypes = make([]string, 0)
+	app.Categories = utils.Split(desktopEntry.Value("Categories"), ";")
+	app.Implements = utils.Split(desktopEntry.Value("Implements"), ";")
+	app.Keywords = utils.Split(desktopEntry.Value("Keywords"), ";")
 	app.Actions = make(map[string]Action, 0)
 	app.Actions["_default"] = Action{
 		Name: app.Name,
@@ -181,12 +175,12 @@ func readDesktopFile(path string) (*DesktopApplication, stringlist.StringList, e
 		IconUrl: app.IconUrl,
 		Exec: desktopEntry.Value("Exec"),
 	}
-	actionNames := stringlist.Split(desktopEntry.Value("Actions"), ";")
+	actionNames := utils.Split(desktopEntry.Value("Actions"), ";")
 	for i := 1; i < len(iniFile.Groups); i++ {
 		actionGroup := iniFile.Groups[i]
 		if actionGroup.Name[0:15] != "Desktop Action " {
 			continue
-		} else if actionName := actionGroup.Name[15:]; !actionNames.Has(actionName) {
+		} else if actionName := actionGroup.Name[15:]; !utils.Contains(actionNames, actionName) {
 			fmt.Println("Unknown action", actionGroup.Name, " - ignoring")
 			continue
 		} else {
@@ -199,7 +193,7 @@ func readDesktopFile(path string) (*DesktopApplication, stringlist.StringList, e
 			if strings.HasPrefix(actionGroup.Value("Icon"), "/") {
 				resourcePath := "/icon" + actionGroup.Value("Icon")
 				action.IconUrl = ".." + resourcePath
-				service.Map(resourcePath, Icon{"/icon"})
+				service.Map(resourcePath, &resource.Resource{Data: "/icon", GET: IconGet})
 			} else {
 				action.IconName = actionGroup.Value("Icon")
 			}
@@ -212,5 +206,5 @@ func readDesktopFile(path string) (*DesktopApplication, stringlist.StringList, e
 		}
 	}
 
-	return &app, stringlist.Split(desktopEntry.Value("MimeType"), ";"), nil
+	return &app, utils.Split(desktopEntry.Value("MimeType"), ";"), nil
 }

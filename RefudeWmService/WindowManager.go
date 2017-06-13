@@ -21,6 +21,7 @@ import (
 	"github.com/BurntSushi/xgb"
 	"time"
 	"github.com/surlykke/RefudeServices/lib/argb"
+	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
 
@@ -90,7 +91,7 @@ func buildDisplay(conn *xgb.Conn) {
 
 	// TODO add screens
 
-	service.Map("/display", &display)
+	service.Map("/display", resource.JsonResource(display, nil))
 }
 
 func updateWindows() {
@@ -119,7 +120,7 @@ func updateWindows() {
 			windows[wId] = getWindow(xproto.Window(wId))
 		}
 
-		service.Map(fmt.Sprintf("/windows/%d", wId), windows[wId])
+		service.Map(fmt.Sprintf("/windows/%d", wId), resource.JsonResource(windows[wId], WindowPOST))
 	}
 }
 
