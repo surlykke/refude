@@ -28,6 +28,11 @@ class Container extends React.Component {
 		super(props)
 		this.state = {listOfLists: [], windows: [], searchTerm: ""}
 		this.allItems = []
+
+		nwSetup(() => {
+			console.log("show")
+			this.move(false)
+		})
 	}
 
 	componentDidMount = () => {
@@ -138,8 +143,6 @@ class Container extends React.Component {
 			</div>
 		)}
 }
-
-nwSetup()
 
 render(
 	<Container/>,

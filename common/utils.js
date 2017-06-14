@@ -77,15 +77,14 @@ let nwHide = () => {
 		WIN.hide()
 }
 
-let nwShow = (alwaysOnTop) => {
-	WIN.show();
-	if (alwaysOnTop) {
-		WIN.setAlwaysOnTop(true)
-	}
-}
 
-let nwSetup = () => {
+let nwSetup = (onShow) => {
+	let nwShow = () => {
+		WIN.show();
+		onShow && onShow()
+	}
+
 	NW.App.on("open", (args) => {nwShow()})
 }
 
-export {nwHide, nwShow, nwSetup, combinedUrl, combinedUrls, iconServiceUrl, doHttp}
+export {nwHide,  nwSetup, combinedUrl, combinedUrls, iconServiceUrl, doHttp}
