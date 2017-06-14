@@ -14,7 +14,7 @@ html, body {
     margin: 0px;
     padding: 2px;
     height: 20px;
-    background-color: rgba(255,255,255,0.5);
+    background-color: rgba(255,255,255,0.8);
 }
 .panel-plugin, .dragfield {
 	display: inline-block;
@@ -27,6 +27,16 @@ html, body {
 }
 .notifier-items, .dragfield {
 	margin: 0px;
+}
+.notifier-item {
+	display: "inline-block";
+	background-size: "contain";
+	padding: "0px";
+	margin: "0px";
+	margin-right: "4px";
+	font-size: "1.3em";
+	height: "20px";
+	width: "20px",
 }
 .dragfield {
 	-webkit-app-region: drag;
