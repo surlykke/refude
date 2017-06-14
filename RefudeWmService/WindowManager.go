@@ -113,18 +113,18 @@ func updateWindows() {
 		}
 	}
 
-	for _,wId := range newWindowIds {
+	for i,wId := range newWindowIds {
 		if _, ok := windows[wId]; ok {
-			windows[wId] = updateWindow(windows[wId])
+			windows[wId] = updateWindow(windows[wId], i)
 		} else {
-			windows[wId] = getWindow(xproto.Window(wId))
+			windows[wId] = getWindow(xproto.Window(wId), i)
 		}
 
 		service.Map(fmt.Sprintf("/windows/%d", wId), resource.JsonResource(windows[wId], WindowPOST))
 	}
 }
 
-func getWindow(wId xproto.Window) Window {
+func getWindow(wId xproto.Window, stackingOrder int) Window {
 	window := Window{}
 	window.x = x
 	window.Id = wId
@@ -133,6 +133,7 @@ func getWindow(wId xproto.Window) Window {
 		name,_ = icccm.WmNameGet(x, wId)
 	}
 	window.Name = name
+	window.RelevanceHint = -stackingOrder
 	if rect, err := xwindow.New(x, wId).DecorGeometry(); err == nil {
 		window.X = rect.X()
 		window.Y = rect.Y()
@@ -167,7 +168,7 @@ func getWindow(wId xproto.Window) Window {
 	return window
 }
 
-func updateWindow(window Window) Window {
+func updateWindow(window Window, stackOrder int) Window {
 	newWindow := Window{}
 	newWindow.x = x
 	newWindow.Id = window.Id

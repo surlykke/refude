@@ -49,6 +49,7 @@ type DesktopApplication struct {
 	Url             string `json:",omitempty"`
 	Actions         map[string]Action
 	Id              string
+	RelevanceHint   int
 }
 
 type Action struct {

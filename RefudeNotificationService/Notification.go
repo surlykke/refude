@@ -6,10 +6,11 @@ import (
 )
 
 type Notification struct {
-	Id uint32
-	Subject string
-	Body string
-	Actions map[string]string
+	Id            uint32
+	Subject       string
+	Body          string
+	Actions       map[string]string
+	RelevanceHint int
 }
 
 func NotificationPOST(this *resource.Resource, w http.ResponseWriter, r *http.Request) {

@@ -18,13 +18,14 @@ import (
 
 
 type Window struct {
-	x       *xgbutil.XUtil
-	Id      xproto.Window
-	X,Y,H,W int
-	Name    string
-	IconUrl string
-	States  []string
-	Actions map[string]Action
+	x             *xgbutil.XUtil
+	Id            xproto.Window
+	X,Y,H,W       int
+	Name          string
+	IconUrl       string
+	States        []string
+	Actions       map[string]Action
+	RelevanceHint int
 }
 
 type Action struct {
