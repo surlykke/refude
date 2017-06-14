@@ -105,21 +105,29 @@ func Map(path string, res *resource.Resource) {
 	_map(path, res)
 }
 
-func Unmap(path string) {
+func Unmap(path string) *resource.Resource {
 	checkPath(path)
 	mutex.Lock()
 	defer mutex.Unlock()
-	if _,ok := resources[path]; ok {
+	if res,ok := resources[path]; ok {
 		unmap(path)
+		return res
+	} else {
+		return nil
 	}
 }
 
-func UnMapIfMatch(path string, eTag string) {
+func UnMapIfMatch(path string, eTag string) *resource.Resource {
+	checkPath(path)
+	mutex.Lock()
 	if res,ok := resources[path]; ok {
 		if res.ETag == eTag {
 			unmap(path)
+			return res
 		}
 	}
+
+	return nil
 }
 
 func Has(path string) bool {

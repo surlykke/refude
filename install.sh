@@ -6,8 +6,10 @@ BASH_COMPLETION_DIR=${XDG_DATA_HOME:-${HOME}/.local/share}/bash-completion/compl
 ZSH_COMPLETION_DIR=${XDG_DATA_HOME:-${HOME}/.local/share}/zsh/completions
 FISH_COMPLETION_DIR=${XDG_CONFIG_HOME:-${HOME}/.config}/fish/completions
 mkdir -p $BIN_DIR $BASH_COMPLETION_DIR $ZSH_COMPLETION_DIR $FISH_COMPLETION_DIR
+APPS="RefudeDesktopService RefudeIconService RefudePowerService RefudeWmService RefudeXdgOpen RefudeStatusNotifierService RefudeNotificationService"
 
-for dir in RefudeDesktopService RefudeIconService RefudePowerService RefudeWmService RefudeXdgOpen RefudeStatusNotifierService; do
+
+for dir in $APPS; do
 	(cd $dir && echo "Building $dir" && go install) || exit 1
 done
 
