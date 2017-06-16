@@ -29,9 +29,8 @@ class Container extends React.Component {
 		this.state = {listOfLists: [], windows: [], searchTerm: ""}
 		this.allItems = []
 
-		nwSetup(() => {
-			console.log("show")
-			this.move(false)
+		nwSetup((argv) => {
+			this.readArgs(argv)
 		})
 	}
 
@@ -124,6 +123,13 @@ class Container extends React.Component {
 		}
 	}
 
+	readArgs = (args) => {
+		if (args.indexOf("-u") > -1) {
+			this.move(true)
+		} else if (args.indexOf("-d") > -1) {
+			this.move(false)
+		}
+	}
 
 	render = () => {
 		let {windows, apps, selected, searchTerm} = this.state

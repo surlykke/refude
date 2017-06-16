@@ -78,13 +78,16 @@ let nwHide = () => {
 }
 
 
-let nwSetup = (onShow) => {
-	let nwShow = () => {
+let nwSetup = (onOpen) => {
+	NW.App.on("open", (args) => {
 		WIN.show();
-		onShow && onShow()
-	}
-
-	NW.App.on("open", (args) => {nwShow()})
+		if (onOpen) {
+			let tmp = args.lastIndexOf("-- refudeArgsBegin")
+			if (tmp > -1) {
+				onOpen(args.slice(tmp + "-- refudeArgsBegin".length))
+			}
+		}
+	})
 }
 
-export {nwHide,  nwSetup, combinedUrl, combinedUrls, iconServiceUrl, doHttp}
+export {nwHide, nwSetup, combinedUrl, combinedUrls, iconServiceUrl, doHttp}
