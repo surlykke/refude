@@ -11,7 +11,7 @@ import {doHttp} from '../common/utils'
 import {MakeServiceProxy} from "../common/service-proxy"
 import {MimetypeList} from "./mimetypelist.jsx"
 
-const mimetypesProxy = MakeServiceProxy("http://localhost:7938/desktop-service/mimetypes", "http://localhost:7938/desktop-service/notify")
+const mimetypesProxy = MakeServiceProxy("http://localhost:7938/desktop-service", "/mimetypes/")
 
 const includeMimetype = (term, mimetype) => mimetype && mimetype.Comment.toUpperCase().includes(term)
 

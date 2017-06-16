@@ -3,8 +3,7 @@ import {render} from 'react-dom'
 import {MakeServiceProxy} from '../../common/service-proxy'
 import {doHttp} from '../../common/utils'
 
-const statusNotifierItems = MakeServiceProxy("http://localhost:7938/statusnotifier-service/items/",
-                                             "http://localhost:7938/statusnotifier-service/notify")
+const statusNotifierItems = MakeServiceProxy("http://localhost:7938/statusnotifier-service","/items/")
 
 let NotifierItem = (props) => {
 	let style = {

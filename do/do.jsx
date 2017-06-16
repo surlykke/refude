@@ -8,18 +8,30 @@ import {Windows} from "./windows.jsx"
 const windowsProxy = MakeServiceProxy("http://localhost:7938/wm-service/windows/", "http://localhost:7938/wm-service/notify")
 const appsProxy = MakeServiceProxy("http://localhost:7938/desktop-service/applications/", "http://localhost:7938/desktop-service/notify")
 
+const windows = {
+	id: "windows",
+	desc: "Switch to",
+	proxy: MakeServiceProxy("http://localhost:7938/wm-service", "/windows/")
+}
+
+const others = [{
+		id: "applications",
+		desc: "Launch application",
+		proxy: MakeServiceProxy("http://localhost:7938/desktop-service", "/applications/")
+	},
+]
+
 const includeWindow = (term, window) => {
-	let res = window &&
+	return window &&
 		   !(window.States || []).includes("_NET_WM_STATE_ABOVE") &&
 		   !["Refude Do", "refudeDo"].includes(window.Name) &&
 		   window.Name.toUpperCase().includes(term)
-	return res
 }
 
-const includeApp = (term, app) =>
-	app &&
+const includeOther = (term, item) =>
+	item &&
 	term !== "" &&
-	app.Name.toUpperCase().includes(term)
+	item.Name.toUpperCase().includes(term)
 
 
 class Container extends React.Component {
@@ -35,8 +47,10 @@ class Container extends React.Component {
 	}
 
 	componentDidMount = () => {
-		windowsProxy.subscribe(url => { this.update() })
-		appsProxy.subscribe(url => { this.update() })
+		windows.proxy.subscribe(url => { this.update() })
+		others.forEach(other => {
+			other.proxy.subscribe(url => { this.update() })
+		})
 		this.update()
 	}
 
@@ -45,15 +59,16 @@ class Container extends React.Component {
 			this.updatePending = true
 			setTimeout(() => {
 				let term = this.state.searchTerm.toUpperCase().trim()
-				let listOfLists = [
-					{
-						desc: "Switch to",
-					 	items: windowsProxy.resources().filter(win => includeWindow(term, win))
-				    },
-					{	desc: "Launch",
-					 	items: appsProxy.resources().filter(app => includeApp(term, app))
-					}
-				]
+				let listOfLists = [ {
+					desc: windows.desc,
+				 	items: windows.proxy.resources().filter(win => includeWindow(term, win))
+			    }]
+				others.forEach(other => {
+					listOfLists.push({
+						desc: other.desc,
+						items: other.proxy.resources().filter(res => includeOther(term, res))
+					})
+				})
 				this.setState({listOfLists: listOfLists.filter(t => t.items.length > 0), windows: listOfLists[0].items})
 				this.allItems = []
 				listOfLists.forEach(t => {this.allItems.push(...t.items)})

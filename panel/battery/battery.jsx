@@ -8,8 +8,7 @@
 import React from 'react'
 import {MakeServiceProxy} from '../../common/service-proxy'
 
-const powerProxy = MakeServiceProxy("http://localhost:7938/power-service/devices/",
-									"http://localhost:7938/power-service/notify")
+const powerProxy = MakeServiceProxy("http://localhost:7938/power-service", "/devices/")
 
 const displayDeviceUrl = "http://localhost:7938/power-service/devices/DisplayDevice"
 

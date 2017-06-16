@@ -1,6 +1,9 @@
 import {combinedUrl, combinedUrls, iconServiceUrl, doHttp} from '../common/utils'
 
-export function MakeServiceProxy(indexUrl, notifyUrl) {
+export function MakeServiceProxy(service, directory) {
+	let indexUrl = service + directory
+	let notifyUrl = service + "/notify"
+	
 	let subscribers = []
 
 	let proxy = {

@@ -5,8 +5,7 @@ import {MakeServiceProxy} from '../common/service-proxy'
 import {Argument} from "./components"
 import {List} from "../common/components"
 
-let appsProxy = MakeServiceProxy("http://localhost:7938/desktop-service/applications/",
-                                 "http://localhost:7938/desktop-service/notify")
+let appsProxy = MakeServiceProxy("http://localhost:7938/desktop-service", "/applications/")
 
 let gui = window.require('nw.gui')
 let appArgument = gui.App.argv[0]
