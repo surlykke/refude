@@ -34,7 +34,7 @@ func OK200(this *resource.Resource, w http.ResponseWriter, r *http.Request) {
 
 func init() {
 	Map("/ping", &resource.Resource{GET: OK200})
-	Map("/notify", &resource.Resource{GET: notify.NotifyGET})
+	Map("/notify", &resource.Resource{GET: notify.GET})
 }
 
 

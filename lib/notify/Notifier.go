@@ -12,8 +12,8 @@ import (
 	"fmt"
 	"net/http"
 	"net"
-	"sync"
 	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib/pubsub"
 )
 
 const initialResponse string =
@@ -30,28 +30,13 @@ const chunkTemplate =
 	"\n" +
 	"\r\n";
 
-type Notification struct {
-	message string
-	next    *Notification
-}
-
-var nextNotification = &Notification{}
-var mutex = sync.RWMutex{}
-var cond = sync.NewCond(mutex.RLocker())
+var publisher = pubsub.MakePublisher()
 
 // Notify promises that for nextNotification _either_ both message and next are nil _or_ both are non-nil
 func Notify(eventType string, data string) {
 	message := fmt.Sprintf(chunkTemplate, len(eventType) + len(data) + 14, eventType, data)
-
-	mutex.Lock()
-	nextNotification.next = &Notification{}
-	nextNotification.message = message
-	nextNotification = nextNotification.next
-	mutex.Unlock()
-
-	cond.Broadcast()
+	publisher.Publish(message)
 }
-
 
 func client(conn net.Conn) {
 	defer conn.Close()
@@ -60,28 +45,16 @@ func client(conn net.Conn) {
 		return
 	}
 
-	mutex.RLock()
+	subscription := publisher.MakeSubscriber()
 
-	myNextNotification := nextNotification
 	for {
-		for myNextNotification.message == "" {
-			cond.Wait()
-		}
-
-		// At this point, both conditions hold:
-		//   myNextNotification.message != ""
-		//   myNextNotification.nextNotification != nil
-		// see Notify
-		msg := myNextNotification.message
-
-		mutex.RUnlock()
-		if !write(conn, msg) {
+		if msg, ok := subscription.Next(); !ok {
+			return
+		} else if !write(conn, msg.(string)){
 			return
 		}
-		mutex.RLock()
-
-		myNextNotification = myNextNotification.next
 	}
+
 }
 
 func write(conn net.Conn, msg string) bool {
@@ -91,7 +64,7 @@ func write(conn net.Conn, msg string) bool {
 }
 
 
-func NotifyGET(this *resource.Resource, w http.ResponseWriter, r *http.Request) {
+func GET(this *resource.Resource, w http.ResponseWriter, r *http.Request) {
 	if hj, ok := w.(http.Hijacker); !ok {
 		w.WriteHeader(http.StatusInternalServerError)
 	} else if conn, _, err := hj.Hijack(); err != nil {
