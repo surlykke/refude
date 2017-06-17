@@ -32,7 +32,7 @@ func NewPowerAction(Id string, Name string, Comment string, IconName string) *Po
 }
 
 func ActionPOST(this *resource.Resource, w http.ResponseWriter, r *http.Request) {
-	pa := this.Data.(PowerAction)
+	pa := this.Data.(*PowerAction)
 	fmt.Println("Calling: ", login1Service, ", ", login1Path, ", ", managerInterface + "." + pa.Id)
 	dbusConn.Object(login1Service, login1Path).Call(managerInterface + "." + pa.Id, dbus.Flags(0), false)
 	w.WriteHeader(http.StatusAccepted)
