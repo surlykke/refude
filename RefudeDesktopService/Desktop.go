@@ -37,7 +37,7 @@ func DesktopRun() {
 	if err != nil {
 		panic(err)
 	}
-	for _,dataDir := range append(xdg.DataDirs(), xdg.DataHome()) {
+	for _,dataDir := range append(xdg.DataDirs, xdg.DataHome) {
 		appDir := dataDir + "/applications"
 		fmt.Println("Watching: " + appDir)
 		if _, err := unix.InotifyAddWatch(fd, appDir, unix.IN_CREATE | unix.IN_MODIFY | unix.IN_DELETE); err != nil {
@@ -45,7 +45,7 @@ func DesktopRun() {
 		}
 	}
 
-	if _, err := unix.InotifyAddWatch(fd, xdg.ConfigHome() + "/mimeapps.list", unix.IN_CLOSE_WRITE); err != nil {
+	if _, err := unix.InotifyAddWatch(fd, xdg.ConfigHome + "/mimeapps.list", unix.IN_CLOSE_WRITE); err != nil {
 		panic(err)
 	}
 
@@ -101,14 +101,14 @@ func (c *Collector) collect()  {
 	c.mimetypes = CollectMimeTypes()
 	c.applications = make(map[string]*DesktopApplication)
 
-	for _, dir := range xdg.DataDirs() {
+	for _, dir := range xdg.DataDirs {
 		c.collectApplications(dir + "/applications")
 		c.readMimeappsList(dir + "/applications/mimeapps.list")
 	}
 
-	c.collectApplications(xdg.DataHome() + "/applications")
+	c.collectApplications(xdg.DataHome + "/applications")
 
-	for _,dir := range append(xdg.ConfigDirs(), xdg.ConfigHome()) {
+	for _,dir := range append(xdg.ConfigDirs, xdg.ConfigHome) {
 		c.readMimeappsList(dir + "/mimeapps.list")
 	}
 }
@@ -161,6 +161,12 @@ func (c *Collector) collectApplications(appdir string) {
 			if err == nil {
 				app.Id = strings.Replace(path[len(appdir)+1:], "/", "-", -1)
 				if app.Hidden {
+					delete(c.applications, app.Id)
+				} else if len(app.OnlyShowIn) > 0 &&
+					      !utils.ElementsInCommon(xdg.CurrentDesktop, app.OnlyShowIn){
+					delete(c.applications, app.Id)
+				} else if len(app.NotShowIn) > 0 &&
+					      utils.ElementsInCommon(xdg.CurrentDesktop, app.NotShowIn){
 					delete(c.applications, app.Id)
 				} else {
 					c.applications[app.Id] = app
@@ -260,7 +266,7 @@ func POSTInterceptor(w http.ResponseWriter, r* http.Request) {
 		} else {
 			appId := payload.DefaultApplication
 			fmt.Println("POST: ", mimetypeId, " -> ", appId)
-			path := xdg.ConfigHome() + "/mimeapps.list"
+			path := xdg.ConfigHome + "/mimeapps.list"
 
 			if iniFile, err := ini.ReadIniFile(path); err != nil {
 				w.WriteHeader(http.StatusInternalServerError)

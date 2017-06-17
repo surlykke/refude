@@ -33,7 +33,7 @@ type MimeType struct {
 var client = http.Client {
 	Transport: &http.Transport{
 		DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
-			return net.Dial("unix", xdg.RuntimeDir() + "/org.refude.desktop-service")
+			return net.Dial("unix", xdg.RuntimeDir + "/org.refude.desktop-service")
 		},
 	},
 }

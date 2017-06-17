@@ -163,6 +163,7 @@ func readDesktopFile(path string) (*DesktopApplication, []string, error) {
 	app.Comment = desktopEntry.Value("Comment")
 
 	app.OnlyShowIn = utils.Split(desktopEntry.Value("OnlyShowIn"), ";")
+
 	app.NotShowIn = utils.Split(desktopEntry.Value("NotShowIn"), ";")
 	app.Mimetypes = make([]string, 0)
 	app.Categories = utils.Split(desktopEntry.Value("Categories"), ";")

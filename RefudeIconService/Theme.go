@@ -275,8 +275,8 @@ func FindIcon(icons map[string][]Icon,  size uint32, iconname string) (Icon, boo
 // If both $HOME/.local/share/icons/hicolor/22x22/apps/myIcon.png and /usr/share/icons/hicolor/22x22/apps/myIcon.png
 // exists, we prefer the one under $HOME/.local
 func getSearchDirectories() []string {
-	searchDirs := []string{xdg.Home() + "/.icons", xdg.DataHome() + "/icons"}
-	for _,datadir := range reverse(xdg.DataDirs()) {
+	searchDirs := []string{xdg.Home + "/.icons", xdg.DataHome + "/icons"}
+	for _,datadir := range reverse(xdg.DataDirs) {
 		searchDirs = append(searchDirs, datadir + "/icons")
 	}
 	searchDirs = append(searchDirs, "/usr/share/pixmaps")

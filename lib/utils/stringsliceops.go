@@ -12,7 +12,6 @@ import (
 	"strings"
 )
 
-
 func Contains(sl []string, s string) bool {
 	for _, str := range sl {
 		if str == s {
@@ -22,6 +21,17 @@ func Contains(sl []string, s string) bool {
 
 	return false
 }
+
+func ElementsInCommon(l1 []string, l2 []string) bool {
+	for _,s := range l1 {
+		if Contains(l2, s) {
+			return true
+		}
+	}
+
+	return false
+}
+
 
 func AppendIfNotThere(list []string, s string) []string {
 	for _, v := range list {
@@ -34,45 +44,54 @@ func AppendIfNotThere(list []string, s string) []string {
 }
 
 func PushFront(s string, list []string) []string {
-	res := make([]string, 1 + len(list))
+	res := make([]string, 1+len(list))
 	res[0] = s;
-	for i,item := range list {
-		res[i + 1] = item
+	for i, item := range list {
+		res[i+1] = item
 	}
 
 	return res
 }
 
 func Remove(list []string, str string) []string {
+	return Filter(list, func(s string) bool {
+		return s != str
+	})
+}
+
+func Filter(list []string, test func(s string) bool) []string {
 	res := make([]string, 0, len(list))
-	for _,s := range list {
-		if s != str {
+	for _, s := range list {
+		if test(s) {
 			res = append(res, s)
 		}
+	}
+
+	return res
+}
+
+func Map(list []string, mapper func(s string) string) []string {
+	res := make([]string, len(list))
+	for i, s := range list {
+		res[i] = mapper(s)
 	}
 	return res
 }
 
 
 func Split(str string, sep string) []string {
-	tmp := strings.Split(str, sep)
-	res := make([]string, 0, len(tmp))
-	for _,s := range tmp {
-		trimmed := strings.TrimSpace(s)
-		if trimmed != "" {
-			res = AppendIfNotThere(res, trimmed)
-		}
-	}
-	return res
+	return Filter(Map(strings.Split(str, sep),
+		func(s string) string {
+			return strings.TrimSpace(s)
+		}),
+		func(s string) bool {
+			return s != ""
+		})
 }
 
 func PrependEach(sl []string, prefix string) []string {
-	res := make([]string, 0, len(sl))
-	for _,str := range sl {
-		res = append(res, prefix + str)
-	}
-	return res
+	return Map(sl, func(s string) string {
+		return prefix + s
+	})
 }
-
-
 

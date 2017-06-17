@@ -170,7 +170,7 @@ func seemsToBeRunning(socketPath string) bool {
 }
 
 func makeListener(socketName string) (*net.UnixListener, bool) {
-	socketPath := xdg.RuntimeDir() + "/" + socketName
+	socketPath := xdg.RuntimeDir + "/" + socketName
 
 	if seemsToBeRunning(socketPath) {
 		log.Fatal("Application seems to be running. Let's leave it at that")
