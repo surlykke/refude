@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-nw $(dirname $(realpath $0)) -- refudeArgsBegin $@ 
+nw $(dirname $(realpath $0)) $@ 

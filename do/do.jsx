@@ -1,84 +1,88 @@
 import React from 'react';
 import {render} from 'react-dom';
-import {nwHide, nwSetup, doHttp} from '../common/utils'
-import {MakeServiceProxy} from "../common/service-proxy"
+import {NW, nwHide, nwSetup, doHttp} from '../common/utils'
+import {MakeCollection} from "../common/resource-collection"
 import {List} from "../common/components"
 import {Windows} from "./windows.jsx"
-
-const windows = {
-	id: "windows",
-	desc: "Switch to",
-	proxy: MakeServiceProxy("http://localhost:7938/wm-service", "/windows/")
-}
-
-const others = [{
-		id: "applications",
-		desc: "Launch application",
-		proxy: MakeServiceProxy("http://localhost:7938/desktop-service", "/applications/")
-	}, {
-		id: "poweractions",
-		desc: "Leave...",
-		proxy: MakeServiceProxy("http://localhost:7938/power-service", "/actions/")
-	},
-]
-
-const includeWindow = (term, window) => {
-	return window &&
-		   !(window.States || []).includes("_NET_WM_STATE_ABOVE") &&
-		   !["Refude Do", "refudeDo"].includes(window.Name) &&
-		   window.Name.toUpperCase().includes(term)
-}
-
-const includeOther = (term, item) =>
-	item &&
-	term !== "" &&
-	item.Name.toUpperCase().includes(term)
-
 
 class Container extends React.Component {
 
 	constructor(props) {
 		super(props)
-		this.state = {listOfLists: [], windows: [], searchTerm: ""}
+		this.state = {
+			listOfLists: [],
+			windows: [],
+			searchTerm: ""
+		}
+
 		this.allItems = []
+
+		this.collectionIds = ["windows", "applications", "poweractions"]
+		this.collectionDescription = {
+			windows: "Switch to",
+			applications: "Launch",
+			poweractions: "Leave"
+		}
+		this.collection = {
+			windows:MakeCollection("wm-service", "/windows", this.update),
+			applications: MakeCollection("desktop-service", "/applications", this.update),
+			poweractions: MakeCollection("power-service", "/actions", this.update)
+		}
+
+		this.updatePending = false
 
 		nwSetup((argv) => {
 			this.readArgs(argv)
 		})
 	}
 
+
 	componentDidMount = () => {
-		windows.proxy.subscribe(url => { this.update() })
-		others.forEach(other => {
-			other.proxy.subscribe(url => { this.update() })
-		})
+		this.readArgs(NW.App.argv)
 		this.update()
 	}
 
-	update = () => {
-		if (! this.updatePending) {
-			this.updatePending = true
-			setTimeout(() => {
-				let term = this.state.searchTerm.toUpperCase().trim()
-				let listOfLists = [ {
-					desc: windows.desc,
-				 	items: windows.proxy.resources().filter(win => includeWindow(term, win))
-			    }]
-				others.forEach(other => {
-					listOfLists.push({
-						desc: other.desc,
-						items: other.proxy.resources().filter(res => includeOther(term, res))
-					})
+	updateHelper = () => {
+		let listOfLists = []
+		this.allItems = []
+		let term = this.state.searchTerm.toUpperCase().trim()
+
+		let addMatching = (id) => {
+			let items = this.collection[id].filter(res => res.Name.toUpperCase().includes(term))
+			if (items.length > 0) {
+				listOfLists.push({desc: this.collectionDescription[id], items: items})
+				this.allItems.push(...items)
+			}
+		}
+
+		if (this.onlyShow) {
+			if (this.collectionIds.includes(this.onlyShow)) {
+				addMatching(this.onlyShow)
+			}
+		}
+		else {
+			addMatching("windows")
+			if (term !== "") {
+				this.collectionIds.slice(1).forEach(id => {
+					addMatching(id)
 				})
-				this.setState({listOfLists: listOfLists.filter(t => t.items.length > 0), windows: listOfLists[0].items})
-				this.allItems = []
-				listOfLists.forEach(t => {this.allItems.push(...t.items)})
-				if (! (this.state.selected && this.allItems.includes(this.state.selected))) {
-					this.setState({selected: this.allItems[0]})
-				}
-				this.updatePending = false
-			},
-			20)
+			}
+		}
+		let windows = this.collection["windows"].filter(res => true)
+		this.setState({listOfLists: listOfLists, windows: windows})
+		if (! (this.state.selected && this.allItems.includes(this.state.selected))) {
+			this.setState({selected: this.allItems[0]})
+		}
+		this.updatePending = false
+	}
+
+	update = () => {
+		if (!this.updatePending) {
+			this.updatePending = true
+			setTimeout(
+				this.updateHelper,
+				100
+			)
 		}
 	}
 
@@ -92,13 +96,18 @@ class Container extends React.Component {
 		if (execute) this.execute()
 	}
 
+	dismiss = () => {
+		this.onlyShow = undefined
+		this.setState({selected: undefined, searchTerm: ""})
+		this.update()
+		nwHide()
+	}
+
 	execute = () => {
 		let item = this.state.selected
 		if (item) {
 			doHttp(item.url, "POST").then(response => {
-				this.setState({selected: undefined, searchTerm: ""})
-				this.update()
-				nwHide()
+				this.dismiss()
 			})
 		}
 	}
@@ -130,7 +139,7 @@ class Container extends React.Component {
 	        ArrowUp :  () => {this.move(true)},
 	        Enter : () => {this.select(this.state.selected, true)},
 	        " " : () => {this.select(this.state.selected, true)},
-			"Escape" : () => {nwHide()}
+			"Escape" : this.dismiss
 		}[key]
 
 		if (op) {
@@ -140,10 +149,20 @@ class Container extends React.Component {
 	}
 
 	readArgs = (args) => {
-		if (args.indexOf("-u") > -1) {
+		console.log("readArgs", args)
+		if (args.includes("refude::up")) {
 			this.move(true)
-		} else if (args.indexOf("-d") > -1) {
+		}
+		else if (args.includes("refude::down")) {
 			this.move(false)
+		}
+		else {
+			let onlyShowArg = args.find(arg => arg.startsWith("refudeOnlyShow::"))
+			console.log("onlyShowArg:", onlyShowArg)
+			if (onlyShowArg) {
+				this.onlyShow = onlyShowArg.slice("refudeOnlyShow::".length)
+			}
+			this.update()
 		}
 	}
 

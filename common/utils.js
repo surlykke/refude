@@ -80,14 +80,10 @@ let nwHide = () => {
 
 let nwSetup = (onOpen) => {
 	NW.App.on("open", (args) => {
+		console.log("onOpen, args: ", NW.App.argv)
 		WIN.show();
-		if (onOpen) {
-			let tmp = args.lastIndexOf("-- refudeArgsBegin")
-			if (tmp > -1) {
-				onOpen(args.slice(tmp + "-- refudeArgsBegin".length))
-			}
-		}
+		onOpen && onOpen(args.split(/\s+/))
 	})
 }
 
-export {nwHide, nwSetup, combinedUrl, combinedUrls, iconServiceUrl, doHttp}
+export {nwHide, NW, nwSetup, combinedUrl, combinedUrls, iconServiceUrl, doHttp}
