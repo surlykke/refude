@@ -47,8 +47,16 @@ class Container extends React.Component {
 		this.allItems = []
 		let term = this.state.searchTerm.toUpperCase().trim()
 
+		let windows = this.collection["windows"].filter(res => {
+			return res.Name.toUpperCase().includes(term) &&
+				   (!(res.States || []).includes("_NET_WM_STATE_ABOVE")) &&
+				   (!["Refude Do", "refudeDo"].includes(res.Name))
+		})
+
 		let addMatching = (id) => {
-			let items = this.collection[id].filter(res => res.Name.toUpperCase().includes(term))
+			let items = id === "windows" ?
+			                   windows :
+			                   this.collection[id].filter(res => res.Name.toUpperCase().includes(term))
 			if (items.length > 0) {
 				listOfLists.push({desc: this.collectionDescription[id], items: items})
 				this.allItems.push(...items)
@@ -68,7 +76,6 @@ class Container extends React.Component {
 				})
 			}
 		}
-		let windows = this.collection["windows"].filter(res => true)
 		this.setState({listOfLists: listOfLists, windows: windows})
 		if (! (this.state.selected && this.allItems.includes(this.state.selected))) {
 			this.setState({selected: this.allItems[0]})
