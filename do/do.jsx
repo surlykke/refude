@@ -164,10 +164,10 @@ class Container extends React.Component {
 			this.move(false)
 		}
 		else {
-			let onlyShowArg = args.find(arg => arg.startsWith("refudeOnlyShow::"))
+			let onlyShowArg = args.find(arg => arg.startsWith("refude::onlyShow::"))
 			console.log("onlyShowArg:", onlyShowArg)
 			if (onlyShowArg) {
-				this.onlyShow = onlyShowArg.slice("refudeOnlyShow::".length)
+				this.onlyShow = onlyShowArg.slice("refude::onlyShow::".length)
 			}
 			this.update()
 		}
