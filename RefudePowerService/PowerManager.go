@@ -113,10 +113,13 @@ func (pm *PowerManager) Run() {
 		NewPowerAction("Hibernate", "Hibernate", "Put the machine into hibernation", "system-suspend-hibernate"),
 		NewPowerAction("HybridSleep", "HybridSleep", "Put the machine into hybrid sleep", "system-suspend-hibernate"),
 	}
-	actionIds := make([]string, len(actions))
-	for i,action := range(actions) {
-		actionIds[i] = action.Id
-		service.Map( "/actions/" + action.Id, resource.JsonResource(action, ActionPOST))
+
+	for _,action := range(actions) {
+		res := resource.JsonResource(action, ActionPOST)
+		if action.Can {
+			service.Map( "/actions/" + action.Id, res)
+		}
+		service.Map("/allactions/" + action.Id, res)
 	}
 
 	for signal := range signals {
