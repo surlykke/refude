@@ -180,7 +180,9 @@ class Container extends React.Component {
 						  selected={this.state.selected}
 						  extraClasses={this.extraClasses}/>
 				</div>
-				<Windows windows={windows} selected={selected}/>
+				{selected && selected.X != undefined &&
+					<Windows windows={windows} selected={selected}/>
+				}
 			</div>
 		)}
 }
