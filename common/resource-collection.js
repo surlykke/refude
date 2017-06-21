@@ -23,8 +23,8 @@ export function MakeCollection(service, pathPrefix, onUpdate) {
 			if (resourceMap[url]) {
 				resourceCollection.push(resourceMap[url])
 			}
-			onUpdate()
 		})
+		onUpdate()
 	}
 
 	let setResource = (url, res) => {
