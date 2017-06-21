@@ -120,6 +120,7 @@ func Unmap(path string) *resource.Resource {
 func UnMapIfMatch(path string, eTag string) *resource.Resource {
 	checkPath(path)
 	mutex.Lock()
+	defer mutex.Unlock()
 	if res,ok := resources[path]; ok {
 		if res.ETag == eTag {
 			unmap(path)
