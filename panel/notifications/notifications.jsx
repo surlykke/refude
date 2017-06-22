@@ -9,11 +9,11 @@ let Notification = (props) => {
 		console.log(event)
 	}
 
-	return (<div className="notification"
-				 onClick={onClick}>
-				 <p><b>{props.item.Subject}</b></p>
-				 <p>{props.item.Body}</p>
-			 </div>)
+	return (
+		<div className="notification" onClick={onClick}>
+			<div className="notificationHeading">{props.item.Subject}</div>
+			<div className="notificationBody">{props.item.Body}</div>
+		</div>)
 }
 
 
