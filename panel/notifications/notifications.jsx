@@ -5,12 +5,12 @@ import {doHttp} from '../../common/utils'
 
 let Notification = (props) => {
 
-	let onClick = (event) => {
-		console.log(event)
+	let dismiss = (event) => {
+		doHttp(props.item.url, "DELETE")
 	}
 
 	return (
-		<div className="notification" onClick={onClick}>
+		<div className="notification" onClick={dismiss}>
 			<div className="notificationHeading">{props.item.Subject}</div>
 			<div className="notificationBody">{props.item.Body}</div>
 		</div>)

@@ -7,7 +7,7 @@
  */
 import React from 'react'
 import {render} from 'react-dom'
-
+import {nwSetup} from '../common/utils'
 import {Clock} from './clock/clock'
 import {Battery} from './battery/battery'
 import {NotifierItems} from './notifieritems/notifieritems'
@@ -21,6 +21,8 @@ class Panel extends React.Component {
 
 	constructor(props) {
 		super(props)
+
+		nwSetup((argv) => {})
 	}
 
 	componentDidMount = () => {
