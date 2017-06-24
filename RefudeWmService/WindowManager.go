@@ -133,6 +133,7 @@ func getWindow(wId xproto.Window, stackingOrder int) Window {
 		name,_ = icccm.WmNameGet(x, wId)
 	}
 	window.Name = name
+	fmt.Println("Setting RelevanceHint: ", -stackingOrder)
 	window.RelevanceHint = -stackingOrder
 	if rect, err := xwindow.New(x, wId).DecorGeometry(); err == nil {
 		window.X = rect.X()
@@ -201,6 +202,7 @@ func updateWindow(window Window, stackOrder int) Window {
 		H:       newWindow.H,
 	}
 
+	newWindow.RelevanceHint = -stackOrder
 	return newWindow
 }
 
