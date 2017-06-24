@@ -1,6 +1,6 @@
 import React from 'react';
 import {render} from 'react-dom';
-import {NW, nwHide, nwSetup, doHttp} from '../common/utils'
+import {NW, devtools, nwHide, nwSetup, doHttp} from '../common/utils'
 import {MakeCollection} from "../common/resource-collection"
 import {List} from "../common/components"
 import {Windows} from "./windows.jsx"
@@ -100,7 +100,9 @@ class Container extends React.Component {
 
 	select = (item, execute) => {
 		this.setState({selected: item})
-		if (execute) this.execute()
+		if (execute && item) {
+			this.execute(item)
+		}
 	}
 
 	dismiss = () => {
@@ -110,8 +112,8 @@ class Container extends React.Component {
 		nwHide()
 	}
 
-	execute = () => {
-		let item = this.state.selected
+	execute = (item) => {
+		item = item || this.state.selected
 		if (item) {
 			doHttp(item.url, "POST").then(response => {
 				this.dismiss()
@@ -137,26 +139,38 @@ class Container extends React.Component {
 		this.select(this.allItems[i])
 	}
 
-
 	onKeyDown = (event) => {
 		let {key, ctrlKey, shiftKey, altKey, metaKey} = event
-		let op = {
-			Tab: () => {this.move(shiftKey)},
-	        ArrowDown : () => {this.move()},
-	        ArrowUp :  () => {this.move(true)},
-	        Enter : () => {this.select(this.state.selected, true)},
-	        " " : () => {this.select(this.state.selected, true)},
-			"Escape" : this.dismiss
-		}[key]
+		let handled = true
+		if (key === "Tab") this.move(shiftKey)
+		else if (key === "ArrowDown") this.move()
+		else if (key === "ArrowUp") this.move(true)
+		else if (["Enter", " "].includes(key)) this.select(this.state.selected, true)
+		else if (key === "Escape") this.dismiss()
+		else if (key === "Alt") this.collected = 0
+		else if (["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"].includes(key)) {
+			if (this.collected !== undefined) {
+				this.collected = 10*this.collected + (key - "0")
+			}
+		}
+		else handled = false
 
-		if (op) {
-			op()
+		if (handled) {
 			event.preventDefault()
 		}
 	}
 
+	onKeyUp = (event) => {
+		if ("Alt" === event.key && this.collected !== undefined) {
+			let win = this.state.windows[this.collected - 1]
+			if (win) {
+				this.select(win, true)
+			}
+			this.collected = undefined
+		}
+	}
+
 	readArgs = (args) => {
-		console.log("readArgs", args)
 		if (args.includes("refude::up")) {
 			this.move(true)
 		}
@@ -165,7 +179,6 @@ class Container extends React.Component {
 		}
 		else {
 			let onlyShowArg = args.find(arg => arg.startsWith("refude::onlyShow::"))
-			console.log("onlyShowArg:", onlyShowArg)
 			if (onlyShowArg) {
 				this.onlyShow = onlyShowArg.slice("refude::onlyShow::".length)
 			}
@@ -177,7 +190,7 @@ class Container extends React.Component {
 		let {windows, apps, selected, searchTerm} = this.state
 		return (
 			<div className="content">
-				<div className="topdown" onKeyDown={this.onKeyDown}>
+				<div className="topdown" onKeyDown={this.onKeyDown} onKeyUp={this.onKeyUp}>
 				    <div className="searchInput" onChange={this.onTermChange} >
 				        <input type="search" autoFocus value={searchTerm}/>
 				    </div>

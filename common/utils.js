@@ -77,6 +77,9 @@ let nwHide = () => {
 		WIN.hide()
 }
 
+let devtools = () => {
+	WIN.showDevTools()
+}
 
 let nwSetup = (onOpen) => {
 	NW.App.on("open", (args) => {
@@ -86,4 +89,4 @@ let nwSetup = (onOpen) => {
 	})
 }
 
-export {nwHide, NW, nwSetup, combinedUrl, combinedUrls, iconServiceUrl, doHttp}
+export {nwHide, devtools, NW, nwSetup, combinedUrl, combinedUrls, iconServiceUrl, doHttp}
