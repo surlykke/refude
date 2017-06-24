@@ -8,12 +8,16 @@ let Notification = (props) => {
 	let dismiss = (event) => {
 		doHttp(props.item.url, "DELETE")
 	}
-
+	// dangerouslySetInnterHtml should be safe here - we rely on
+	// RefudeNotificationsServic to sanitize notification body
 	return (
 		<div className="notification" onClick={dismiss}>
 			<div className="notificationHeading">{props.item.Subject}</div>
-			<div className="notificationBody">{props.item.Body}</div>
-		</div>)
+			<div
+				className="notificationBody"
+				dangerouslySetInnerHTML={{__html: props.item.Body}} />
+		</div>
+	 )
 }
 
 
