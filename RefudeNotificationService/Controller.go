@@ -133,6 +133,7 @@ func Notify(app_name string,
 
 	notification := Notification{
 		Id : id,
+		Sender: app_name,
 		Subject: summary,
 		Body: body,
 		Actions: map[string]string{},

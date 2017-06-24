@@ -7,6 +7,7 @@ import (
 
 type Notification struct {
 	Id            uint32
+	Sender        string
 	Subject       string
 	Body          string
 	Actions       map[string]string
