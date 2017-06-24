@@ -24,6 +24,7 @@ export function MakeCollection(service, pathPrefix, onUpdate) {
 				resourceCollection.push(resourceMap[url])
 			}
 		})
+		resourceCollection.sort((res1, res2) => (res2.RelevanceHint || 0) - (res1.RelevanceHint || 0))
 		onUpdate()
 	}
 
