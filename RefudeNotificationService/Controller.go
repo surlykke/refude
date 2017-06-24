@@ -8,6 +8,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/service"
 	"time"
 	"github.com/surlykke/RefudeServices/lib/resource"
+	"strings"
 )
 
 const NOTIFICATIONS_SERVICE = "org.freedesktop.Notifications"
@@ -111,8 +112,8 @@ func GetCapabilities() ([]string, *dbus.Error) {
 		"actions",
 		"body",
 		"body-hyperlinks",
-		"body-images",
 		"body-markup",
+		"icon-static",
 	},
 	nil
 }
@@ -134,8 +135,8 @@ func Notify(app_name string,
 	notification := Notification{
 		Id : id,
 		Sender: app_name,
-		Subject: summary,
-		Body: body,
+		Subject: sanitize(summary, []string{}, []string{}),
+		Body: sanitize(body, allowedTags, allowedEscapes),
 		Actions: map[string]string{},
 	}
 
@@ -191,6 +192,51 @@ func notificationClosed(id uint32, reason uint32) {
 
 func GetServerInformation() (string, string, string, string, *dbus.Error) {
 	return "Refude", "Refude", "0.1-alpha", "1.2", nil
+}
+
+
+var allowedEscapes =
+	[]string{ "&amp;", "&#38;", "&#x26;", "&lt;", "&#60;", "&#x3C;", "&#x3c;", "&gt;", "&#62;", "&#x3E;", "&#x3e;", "&apos;", "&quot;"}
+
+var allowedTags =
+	[]string{"<b>", "</b>", "<i>", "</i>", "<u>", "</u>"}
+
+func sanitize(text string, allowedTags []string, allowedEscapes []string) string {
+	sanitized := ""
+	for len(text) > 0 {
+		switch text[0:1] {
+		case "<":
+			helper(&text, &sanitized, allowedTags, ">")
+		case "&":
+			helper(&text, &sanitized, allowedEscapes, ";")
+		default:
+			sanitized += text[0:1]
+			text = text[1:]
+		}
+	}
+	return sanitized
+}
+
+func helper(src *string, dest *string, allowedPrefixes []string, endMarker string) {
+	for _, prefix := range allowedPrefixes {
+		if strings.HasPrefix(*src, prefix) {
+			*dest += prefix
+			*src = (*src)[len(prefix):]
+			return
+		}
+	}
+	endMarkerPos := strings.Index(*src, endMarker)
+	if endMarkerPos < 0 {
+		endMarkerPos = len(*src) - 1
+	}
+	*src = (*src)[endMarkerPos + 1:]
+}
+
+
+// Returns length of matched prefix, if found, -1 otherwise
+func prefixeByOneOf(text string, prefixes []string) int {
+
+	return -1
 }
 
 func Setup() {
