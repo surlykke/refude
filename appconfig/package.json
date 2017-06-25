@@ -1,7 +1,0 @@
-{
-  "name": "refudeAppConfig",
-  "main": "main.html",
-  "window": {
-    "id": "org.refude.AppConfig"
-  }
-}
