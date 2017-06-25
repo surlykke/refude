@@ -1,9 +1,7 @@
 import React from 'react'
 import {render} from 'react-dom'
-import {MakeServiceProxy} from '../../common/service-proxy'
+import {MakeCollection} from '../../common/resource-collection'
 import {doHttp} from '../../common/utils'
-
-const statusNotifierItems = MakeServiceProxy("http://localhost:7938/statusnotifier-service","/items/")
 
 let NotifierItem = (props) => {
 	let style = {
@@ -63,16 +61,15 @@ class NotifierItems extends React.Component {
 	}
 
 	componentDidMount() {
-		statusNotifierItems.subscribe(this.updateItems)
+		this.items = MakeCollection("statusnotifier-service", "/items", this.update)
 	}
 
 	componentDidUpdate() {
 		this.onUpdated()
 	}
 
-	updateItems = () => {
-		let items = statusNotifierItems.resources()
-		this.setState({items: items})
+	update = () => {
+		this.setState({items: this.items.slice()})
 	}
 
 	render = () =>
