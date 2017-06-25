@@ -1,11 +1,10 @@
 import React from 'react';
 import {render} from 'react-dom';
 import {doHttp, iconServiceUrl} from '../common/utils'
-import {MakeServiceProxy} from '../common/service-proxy'
+import {MakeCollection} from '../common/resource-collection'
 import {Argument} from "./components"
 import {List} from "../common/components"
 
-let appsProxy = MakeServiceProxy("http://localhost:7938/desktop-service", "/applications/")
 
 let gui = window.require('nw.gui')
 let appArgument = gui.App.argv[0]
@@ -25,9 +24,9 @@ class AppChooser extends React.Component {
 	}
 
 	componentDidMount() {
-		this.fetch(mimetypeId)
-		appsProxy.subscribe(url => {this.update()})
+		this.apps = MakeCollection("desktop-service", "/applications	", this.update)
 		document.body.addEventListener("keydown", this.onKeyDown)
+		this.fetch(mimetypeId)
 	}
 
 	fetch = (id) => {
@@ -47,28 +46,31 @@ class AppChooser extends React.Component {
 		})
 	}
 
-	// We get a lot of events from appsProxy, so we collect to, at most, one update pr 20 ms
+	// We get a lot of events from apps, so we collect to, at most, one update pr 20 ms
 	update = () => {
 		if (! this.updatePending) {
 			this.updatePending = true
-			setTimeout(() => {
-				let listOfLists = this.mimetypeIds.concat(["other"]).map(id => ({id:id, desc: "", items: []}))
-				appsProxy.resources().filter(app => app.Actions["_default"]["Exec"].match(/%f|%F|%u|%U/))
-				                     .forEach(app => {
-				 	listOfLists.find(t => app.Mimetypes.includes(t.id) || t.id === 'other').items.push(app)
-				})
-				listOfLists = listOfLists.filter(t => t.items.length > 0)
-				if (listOfLists.length > 1) {
-					listOfLists.forEach(l => {l.desc = l.id === 'other' ?
-					                                   "Other applications" :
-							   			   			   "Applications that handle " + this.mimetypes[l.id].Comment})
-				}
-				this.allItems = []
-				listOfLists.forEach(t => {this.allItems.push(...t.items)})
-				this.setState({listOfLists: listOfLists, selected: this.allItems[0]})
-				this.updatePending = false
-			}, 20)
+			setTimeout(this.updateHelper, 20)
 		}
+	}
+
+	updateHelper = () => {
+		let listOfLists = this.mimetypeIds.concat(["other"]).map(id => ({id:id, desc: "", items: []}))
+		let appsTakingArgs = this.apps.filter(app => app.Actions["_default"]["Exec"].match(/%f|%F|%u|%U/))
+		appsTakingArgs.forEach(app => {
+		 	listOfLists.find(t => app.Mimetypes.includes(t.id) || t.id === 'other').items.push(app)
+		})
+		listOfLists = listOfLists.filter(t => t.items.length > 0)
+		if (listOfLists.length > 1) {
+			listOfLists.forEach(l => {
+				l.desc = l.id === 'other' ? "Other applications" :
+				   			   			    "Applications that handle " + this.mimetypes[l.id].Comment
+			})
+		}
+		this.allItems = []
+		listOfLists.forEach(t => {this.allItems.push(...t.items)})
+		this.setState({listOfLists: listOfLists, selected: this.allItems[0]})
+		this.updatePending = false
 	}
 
 	select = (item, execute) => {

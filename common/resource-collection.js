@@ -46,7 +46,9 @@ export function MakeCollection(service, pathPrefix, onUpdate) {
 	}
 
 	let fetchResource = (url) => {
-		doHttp(url).then( res => { setResource(url, res) })
+		doHttp(url).then(res => { setResource(url, res) })
+		           .catch(err => { console.log("Error fetching", url, err)})
+
 	}
 
 	let fetchIfRelevant = url => {
