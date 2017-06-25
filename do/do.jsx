@@ -1,7 +1,7 @@
 import React from 'react';
 import {render} from 'react-dom';
 import {NW, devtools, nwHide, nwSetup, doHttp} from '../common/utils'
-import {MakeCollection} from "../common/resource-collection"
+import {MakeCollection} from "../common/resources"
 import {List} from "../common/components"
 import {Windows} from "./windows.jsx"
 

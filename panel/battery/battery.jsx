@@ -6,7 +6,7 @@
  * Please refer to the LICENSE file for a copy of the license.
  */
 import React from 'react'
-import {MakeResource} from '../../common/resource-collection'
+import {MakeResource} from '../../common/resources'
 
 class Battery extends React.Component {
 

@@ -1,7 +1,7 @@
 import React from 'react';
 import {render} from 'react-dom';
 import {doHttp, iconServiceUrl} from '../common/utils'
-import {MakeCollection} from '../common/resource-collection'
+import {MakeCollection} from '../common/resources'
 import {Argument} from "./components"
 import {List} from "../common/components"
 

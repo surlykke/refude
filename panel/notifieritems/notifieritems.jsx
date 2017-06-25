@@ -1,6 +1,6 @@
 import React from 'react'
 import {render} from 'react-dom'
-import {MakeCollection} from '../../common/resource-collection'
+import {MakeCollection} from '../../common/resources'
 import {doHttp} from '../../common/utils'
 
 let NotifierItem = (props) => {
