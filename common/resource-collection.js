@@ -7,10 +7,9 @@ let dressup = (url, resource) => {
                        undefined
 }
 
-export function MakeCollection(service, pathPrefix, onUpdate) {
+let MakeCollection = (service, pathPrefix, onUpdate) => {
 	let indexUrl = "http://localhost:7938/" + service + pathPrefix + "/"
 	let notifyUrl = "http://localhost:7938/" + service + "/notify"
-	let searchTerm = ""
 
 	let index = []
 	let resourceMap = new Map()
@@ -81,4 +80,63 @@ export function MakeCollection(service, pathPrefix, onUpdate) {
 	return resourceCollection
 }
 
-let http = require('http')
+let MakeResource = (service, path, onUpdate) => {
+	let resourceUrl = "http://localhost:7938/" + service + path
+	let notifyUrl = "http://localhost:7938/" + service + "/notify"
+	let resource = {}
+
+	let setResource = (res) => {
+		for (let k in resource) {
+			resource[k] = undefined
+		}
+		for (let k in res) {
+			resource[k] = res[k]
+		}
+		dressup(resourceUrl, resource)
+		onUpdate()
+	}
+
+	let fetch = () => {
+		doHttp(resourceUrl)
+			.then(setResource)
+            .catch(err => {
+				console.log("Error fetching", url, err)
+				setResource({})
+			})
+
+	}
+
+	let evtSource;
+
+	let connect = () => {
+		console.log("Source connecting to ", notifyUrl)
+		evtSource = new EventSource(notifyUrl)
+		evtSource.onopen = () => {
+			fetch()
+		}
+
+		evtSource.onerror = event => {
+			if (evtSource.readyState === 2) {
+				setTimeout(() => {connect()}, 5000)
+			}
+			setResource({})
+		}
+
+		evtSource.addEventListener("resource-updated", event =>  {
+			if (resourceUrl === combinedUrl(notifyUrl, event.data)) fetch()
+		})
+
+		evtSource.addEventListener("resource-added", event =>  {
+			if (resourceUrl === combinedUrl(notifyUrl, event.data)) fetch()
+		})
+
+		evtSource.addEventListener("resource-removed", event =>  {
+			if (resourceUrl === combinedUrl(notifyUrl, event.data)) setResource({})
+		})
+	}
+
+	connect()
+	return resource
+}
+
+export {MakeResource, MakeCollection}

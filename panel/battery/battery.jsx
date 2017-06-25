@@ -6,48 +6,37 @@
  * Please refer to the LICENSE file for a copy of the license.
  */
 import React from 'react'
-import {MakeServiceProxy} from '../../common/service-proxy'
-
-const powerProxy = MakeServiceProxy("http://localhost:7938/power-service", "/devices/")
-
-const displayDeviceUrl = "http://localhost:7938/power-service/devices/DisplayDevice"
+import {MakeResource} from '../../common/resource-collection'
 
 class Battery extends React.Component {
 
 	constructor(props) {
 		super(props)
-		this.state = { charge: "?", style: {color: "red"}}
+		this.onUpdated = props.onUpdated
+		this.state = {}
 	}
 
 	componentDidMount = () => {
-		powerProxy.subscribe(this.updateBattery)
+		this.battery = MakeResource("power-service", "/devices/DisplayDevice", this.update)
 	}
 
-	updateBattery = url => {
-		if (url === displayDeviceUrl) {
-			let displayDevice = powerProxy.get(displayDeviceUrl)
-			if (displayDevice) {
-				this.setState({charge: displayDevice.Percentage})
-				if (["Charging", "Fully charged"].includes(displayDevice.State)) {
-					this.setState({style: {fontWeight: "bold"}})
-				}
-				else if (displayDevice.Percentage < 20) {
-					this.setState({style: {color: "red"}})
-				}
-				else {
-					this.setState({style: {}})
-				}
-			}
-			else {
-				this.setState({charge: "?", level: "low", charging: false})
-			}
-		}
+	update = () => {
+		// status: 1: warning, 2: discharging, 3: charging/fully charged
+		let status = ["Charging", "Fully charged"].includes(this.battery.State) ? 3 :
+		             this.battery.Percentage >= 20 ? 2 :
+					 1
+		this.setState({charge: this.battery.Percentage || "? ", status: status})
+		this.onUpdated()
 	}
 
-	render = () =>
-        <div className="panel-plugin battery" style={this.state.style}>
-			{this.state.charge}%
-        </div>
+	render = () => {
+		let style = this.state.status === 3 ? {fontWeight: "bold"} :
+		            this.state.status === 1 ? {color: "red"} :
+					{}
+		return <div className="panel-plugin battery" style={style}>
+					{this.state.charge}%
+        	   </div>
+	}
 }
 
 export {Battery}

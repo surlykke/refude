@@ -43,7 +43,7 @@ class Panel extends React.Component {
 		<div className="wrapper">
 	        <div className="content" id="content" ref={div => {this.content = div}}>
 				<Clock/>
-				<Battery/>
+				<Battery onUpdated={this.adjustSize}/>
 				<NotifierItems onUpdated={this.adjustSize}/>
 				<HideButton/>
 				<DragField/>
