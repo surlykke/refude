@@ -9,19 +9,20 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
-	"net/http"
 	"fmt"
-	"os/exec"
+	"io"
 	"io/ioutil"
+	"net/http"
+	"os/exec"
 	"regexp"
 	"strings"
-	"github.com/surlykke/RefudeServices/lib/service"
-	"encoding/json"
-	"io"
+
 	"github.com/surlykke/RefudeServices/lib/ini"
-	"github.com/surlykke/RefudeServices/lib/utils"
 	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib/service"
+	"github.com/surlykke/RefudeServices/lib/utils"
 )
 
 type DesktopApplication struct {
@@ -61,7 +62,7 @@ type Action struct {
 }
 
 type DesktopPostPayload struct {
-	ActionId string
+	ActionId  string
 	Arguments []string
 }
 
@@ -81,7 +82,7 @@ func DesktopApplicationPOST(this *resource.Resource, w http.ResponseWriter, r *h
 	payload := DesktopPostPayload{}
 	if err := unmarshal(r.Body, &payload); err != nil {
 		fmt.Println(err)
-		w.WriteHeader(http.StatusNotAcceptable);
+		w.WriteHeader(http.StatusNotAcceptable)
 		return
 	}
 
@@ -171,11 +172,11 @@ func readDesktopFile(path string) (*DesktopApplication, []string, error) {
 	app.Keywords = utils.Split(desktopEntry.Value("Keywords"), ";")
 	app.Actions = make(map[string]Action, 0)
 	app.Actions["_default"] = Action{
-		Name: app.Name,
-		Comment: app.Comment,
+		Name:     app.Name,
+		Comment:  app.Comment,
 		IconName: app.IconName,
-		IconUrl: app.IconUrl,
-		Exec: desktopEntry.Value("Exec"),
+		IconUrl:  app.IconUrl,
+		Exec:     desktopEntry.Value("Exec"),
 	}
 	actionNames := utils.Split(desktopEntry.Value("Actions"), ";")
 	for i := 1; i < len(iniFile.Groups); i++ {
@@ -187,7 +188,7 @@ func readDesktopFile(path string) (*DesktopApplication, []string, error) {
 			continue
 		} else {
 			action := Action{
-				Name: actionGroup.Name,
+				Name:    actionGroup.Name,
 				Comment: app.Name,
 
 				Exec: actionGroup.Value("Exec"),

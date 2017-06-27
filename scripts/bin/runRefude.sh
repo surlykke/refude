@@ -4,22 +4,18 @@
 # are needed by the services.
 #
 
-REFUDESERVICES="RefudeDesktopService RefudeIconService RefudePowerService RefudeWmService RefudeStatusNotifierService RefudeNotificationService"
+REFUDESERVICES="RefudeDesktopService RefudeIconService RefudePowerService RefudeWmService RefudeStatusNotifierService RefudeNotificationService RefudeProxy"
 
 if [[ "--restart" == "$1" ]]; then
-    for app in $REFUDESERVICES  haproxy; do
+    for app in $REFUDESERVICES; do
         killall $app
     done
 fi
 
 GOPATH="${GOPATH:-$HOME/go}"
-HAPROXYCFG="$GOPATH/src/github.com/surlykke/RefudeServices/haproxy.cfg"
 
 # Run refudeservices.
 for app in $REFUDESERVICES; do
 	nohup $app >/tmp/${app}.log 2>/tmp/${app}.log &
 done
 
-# Start haproxy
-HAPIDFILE=$XDG_RUNTIME_DIR/refude-haproxy.pid
-ps --pid `cat $HAPIDFILE` >/dev/null || haproxy -f $HAPROXYCFG -p $HAPIDFILE
