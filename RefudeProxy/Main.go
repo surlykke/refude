@@ -30,18 +30,17 @@ func director(req *http.Request) {
 		// We will find one that matches
 		if strings.HasPrefix(req.URL.Path, prefix) {
 			req.URL.Scheme = "http"
-			req.URL.Host = prefix[1:len(prefix) - 1]
-			req.URL.Path = req.URL.Path[len(prefix) - 1:]
+			req.URL.Host = prefix[1 : len(prefix)-1]
+			req.URL.Path = req.URL.Path[len(prefix)-1:]
 			return
 		}
 	}
 }
 
-
-var reverseProxy = 	httputil.ReverseProxy{
+var reverseProxy = httputil.ReverseProxy{
 	Director:      director,
 	Transport:     &http.Transport{DialContext: dialContext},
-	FlushInterval: 10 * time.Millisecond,
+	FlushInterval: time.Second,
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
@@ -54,7 +53,6 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusNotFound)
 }
-
 
 func main() {
 	http.ListenAndServe(":7938", http.HandlerFunc(handler))
