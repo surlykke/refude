@@ -16,7 +16,7 @@ type Notification struct {
 
 func NotificationPOST(this *resource.Resource, w http.ResponseWriter, r *http.Request) {
 	action := resource.GetSingleQueryParameter(r, "action", "default")
-	conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE + ".ActionInvoced", this.Data.(Notification).Id, action)
+	conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE + ".ActionInvoked", this.Data.(Notification).Id, action)
 	w.WriteHeader(http.StatusAccepted)
 }
 
