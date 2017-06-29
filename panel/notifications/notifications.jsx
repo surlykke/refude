@@ -5,17 +5,27 @@ import {doHttp} from '../../common/utils'
 
 let Notification = (props) => {
 
-	let dismiss = (event) => {
+	let dismiss = () => {
 		doHttp(props.item.url, "DELETE")
 	}
+
+	let action = (id) => {
+		doHttp(props.item.url + "?action=" + id)
+	}
+
+	let {item} = props
+	console.log("Actions: ", item.Actions, ", keys: ", Object.keys(item.Actions))
 	// dangerouslySetInnterHtml should be safe here - we rely on
-	// RefudeNotificationsServic to sanitize notification body
+	// RefudeNotificationsService to sanitize notification body
 	return (
-		<div className="notification" onClick={dismiss}>
-			<div className="notificationHeading">{props.item.Subject}</div>
+		<div className="notification" onClick={() => action("default")}>
+			<div className="notificationHeading">{item.Subject}</div>
 			<div
 				className="notificationBody"
-				dangerouslySetInnerHTML={{__html: props.item.Body}} />
+				dangerouslySetInnerHTML={{__html: item.Body}} />
+			{Object.keys(item.Actions).filter(k => k !== "default").map(k =>
+				<input type="submit" id={k} value={item.Actions[k]} onClick={() => {action(k)}}/>)
+			}
 		</div>
 	 )
 }
