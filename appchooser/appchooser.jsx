@@ -2,9 +2,9 @@ import React from 'react';
 import {render} from 'react-dom';
 import {doHttp, iconServiceUrl} from '../common/utils'
 import {MakeCollection} from '../common/resources'
-import {Argument} from "./components"
-import {List} from "../common/components"
-
+import {ItemList} from "../common/itemlist"
+import {Item} from "../common/item"
+import {SearchBox} from "../common/searchbox"
 
 let gui = window.require('nw.gui')
 let appArgument = gui.App.argv[0]
@@ -16,15 +16,15 @@ class AppChooser extends React.Component {
 		this.mimetypeIds = []
 		this.mimetypes = new Map()
 		this.state = {
-			appArgument: appArgument,
 			iconUrl: iconServiceUrl(["unknown"], 32),
 			comment: mimetypeId,
-			listOfLists: []}
-		this.allItems = []
+			apps: [],
+			searchTerm: "",
+		}
 	}
 
 	componentDidMount() {
-		this.apps = MakeCollection("desktop-service", "/applications	", this.update)
+		this.apps = MakeCollection("desktop-service", "/applications	", this.scheduleUpdate)
 		document.body.addEventListener("keydown", this.onKeyDown)
 		this.fetch(mimetypeId)
 	}
@@ -47,40 +47,43 @@ class AppChooser extends React.Component {
 	}
 
 	// We get a lot of events from apps, so we collect to, at most, one update pr 20 ms
-	update = () => {
+	scheduleUpdate = () => {
 		if (! this.updatePending) {
 			this.updatePending = true
-			setTimeout(this.updateHelper, 20)
+			setTimeout(this.update, 20)
 		}
 	}
 
-	updateHelper = () => {
-		let listOfLists = this.mimetypeIds.concat(["other"]).map(id => ({id:id, desc: "", items: []}))
-		let appsTakingArgs = this.apps.filter(app => app.Actions["_default"]["Exec"].match(/%f|%F|%u|%U/))
-		appsTakingArgs.forEach(app => {
-		 	listOfLists.find(t => app.Mimetypes.includes(t.id) || t.id === 'other').items.push(app)
+	update = () => {
+		let term = this.state.searchTerm.toUpperCase().trim()
+		let apps = this.apps.filter(app => app.Actions["_default"]["Exec"].match(/%f|%F|%u|%U/))
+		                    .filter(app => app.Name.toUpperCase().includes(term))
+
+		apps.forEach(app => {
+			let mimetypeId = this.mimetypeIds.find(id => app.Mimetypes.includes(id))
+			if (mimetypeId) {
+				app.group = "Applications that handle: '" + this.mimetypes[mimetypeId].Comment + "'"
+				app.order = this.mimetypeIds.indexOf(mimetypeId)
+			} else {
+				app.group = "Other applications"
+				app.order = this.mimetypeIds.length
+			}
+			console.log(app.Name: ": ", app.order, app.group)
 		})
-		listOfLists = listOfLists.filter(t => t.items.length > 0)
-		if (listOfLists.length > 1) {
-			listOfLists.forEach(l => {
-				l.desc = l.id === 'other' ? "Other applications" :
-				   			   			    "Applications that handle " + this.mimetypes[l.id].Comment
-			})
+		apps.sort((app1, app2) => app1.order !== app2.order ? app1.order - app2.order : app1.Name.localeCompare(app2.Name))
+		if (!(this.state.selected && apps.includes(this.state.selected))) {
+			this.setState({selected: apps[0]})
 		}
-		this.allItems = []
-		listOfLists.forEach(t => {this.allItems.push(...t.items)})
-		this.setState({listOfLists: listOfLists, selected: this.allItems[0]})
+		this.setState({apps: apps})
 		this.updatePending = false
 	}
 
-	select = (item, execute) => {
-		this.setState({selected: item})
-		if (execute) this.execute()
+	select = (app) => {
+		this.setState({selected: app})
 	}
 
-	execute = () => {
-		let app = this.state.selected
-		console.log("this.state.remember: ", this.state.remember)
+	execute = (app) => {
+		this.select(app)
 		if (app) {
 			if (this.state.remember) {
 				let mimetypeUrl = "http://localhost:7938/desktop-service/mimetypes/" + mimetypeId
@@ -91,46 +94,69 @@ class AppChooser extends React.Component {
 		}
 	}
 
-	move = up => {
-		let i = this.allItems.indexOf(this.state.selected)
-		i = (i + (up ? -1 : 1) + this.allItems.length) % this.allItems.length
-		this.select(this.allItems[i])
-	}
-
-
 	onKeyDown = (event) => {
 		let {key, ctrlKey, shiftKey, altKey, metaKey} = event
-		let op = {
-			Tab: () => {this.move(shiftKey)},
-	        ArrowDown : () => {this.move()},
-	        ArrowUp :  () => {this.move(true)},
-	        Enter : () => {this.select(this.state.selected, true)},
-	        " " : () => {this.select(this.state.selected, true)}
-		}[key]
-
-		if (op) {
-			op()
-			event.preventDefault()
-		}
+		if      (key === "Tab" && !ctrlKey &&  shiftKey && !altKey && !metaKey) this.move(false)
+		else if (key === "Tab" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.move(true)
+		else if (key === "ArrowUp" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.move(false)
+		else if (key === "ArrowDown" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.move(true)
+		else if (key === "Enter" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.execute(this.state.selected)
+		else if (key === " " && !ctrlKey && !shiftKey && !altKey && !metaKey) this.execute(this.state.selected)
+		else if (key === "Escape" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.dismiss()
+		else return;
+		event.stopPropagation
 	}
 
-	extraClasses = item => "app"
+	move = (down) => {
+		let {apps, selected} = this.state
+		let index = apps.indexOf(selected)
+		if (index > -1) {
+			index = (index + apps.length + (down ? 1 : -1)) % apps.length
+		}
+		this.setState({selected: apps[index]})
+	}
 
-	checkboxChanged = event => {
-		this.setState({remember: event.target.checked})
+	onTermChange = (event) => {
+		console.log("onTermChange:", event)
+		this.setState({searchTerm: event.target.value})
+		this.scheduleUpdate()
 	}
 
 	render = () => {
-		let {appArgument, iconUrl, comment, listOfLists, selected} = this.state
+		let {iconUrl, comment, apps, selected} = this.state
+		let contentStyle = {
+			position: "relative",
+			display: "flex",
+			flexDirection: "column",
+			boxSizing: "border-box",
+			width: "calc(100% - 8px)",
+			height: "calc(100% - 8px)",
+			margin: "8px 0px 0px 8px",
+		}
+		let headingStyle = {
+			marginBottom: "8px",
+		}
+		let item = {
+			IconUrl: iconUrl,
+			Name: appArgument,
+			Comment: comment
+		}
+		let itemStyle = {
+			marginBottom: "8px",
+		}
+		let searchBoxStyle = {
+			width: "calc(100% - 16px)",
+			marginBottom: "3px",
+		}
+		let listStyle = {
+			flex: "1",
+		}
 		return (
-			<div className=" content">
-				<div className="topdown">
-					<div className="heading2">Select an application to open:</div>
-					<Argument appArgument={appArgument} iconUrl={iconUrl} comment={comment}/>
-					<div> <input type="checkbox" onChange={this.checkboxChanged}/>Remember my decision</div>
-					<div className="hr"></div>
-					<List listOfLists={listOfLists} select={this.select} selected={selected} extraClasses={this.extraClasses}/>
-				</div>
+			<div style={contentStyle}>
+				<div style={headingStyle}>Select an application to open:</div>
+				<Item item={item} style={itemStyle}/>
+				<SearchBox style={searchBoxStyle} onChange={this.onTermChange} searchTerm={this.state.searchTerm}/>
+				<ItemList style={listStyle} items={apps} selected={selected} select={this.select} execute={this.execute}/>
 			</div>
 		)
 	}

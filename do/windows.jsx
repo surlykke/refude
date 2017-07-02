@@ -5,7 +5,7 @@ let zIndex = (win, index, selected) => win === selected ? 1 : -index
 let fillOpacity = (win, selected) => win === selected ? "0.1" : "0.05"
 
 let Windows = props =>
-	<div id="disp" className="display">
+	<div id="disp" style={props.style || {}}>
 		<svg viewBox="0 0 1920 1080" >
 		{props.windows.map((win, index) => (
 			<g key={win.url} z={zIndex(win, index, props.selected)} fontFamily="Verdana" fillOpacity={fillOpacity(win, props.selected)}>
