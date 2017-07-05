@@ -2,6 +2,7 @@
 cd `dirname $0`
 
 BIN_DIR=${HOME}/.local/bin
+GO_BIN_DIR=${HOME}/go/bin
 BASH_COMPLETION_DIR=${XDG_DATA_HOME:-${HOME}/.local/share}/bash-completion/completions
 ZSH_COMPLETION_DIR=${XDG_DATA_HOME:-${HOME}/.local/share}/zsh/completions
 FISH_COMPLETION_DIR=${XDG_CONFIG_HOME:-${HOME}/.config}/fish/completions
@@ -17,3 +18,4 @@ cp scripts/bin/* ${BIN_DIR}
 cp scripts/completions/bash/* ${BASH_COMPLETION_DIR}
 cp scripts/completions/zsh/* ${ZSH_COMPLETION_DIR}
 cp scripts/completions/fish/* ${FISH_COMPLETION_DIR}
+ln -f $GO_BIN_DIR/RefudeXdgOpen $BIN_DIR/xdg-open
