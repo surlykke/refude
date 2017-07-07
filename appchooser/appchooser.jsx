@@ -25,7 +25,6 @@ class AppChooser extends React.Component {
 
 	componentDidMount() {
 		this.apps = MakeCollection("desktop-service", "/applications	", this.scheduleUpdate)
-		document.body.addEventListener("keydown", this.onKeyDown)
 		this.fetch(mimetypeId)
 	}
 
@@ -68,29 +67,37 @@ class AppChooser extends React.Component {
 				app.group = "Other applications"
 				app.order = this.mimetypeIds.length
 			}
-			console.log(app.Name: ": ", app.order, app.group)
 		})
 		apps.sort((app1, app2) => app1.order !== app2.order ? app1.order - app2.order : app1.Name.localeCompare(app2.Name))
-		if (!(this.state.selected && apps.includes(this.state.selected))) {
+
+		if (!this.userHasMadeSelection || !this.state.selected || !apps.includes(this.state.selected)) {
 			this.setState({selected: apps[0]})
 		}
+
 		this.setState({apps: apps})
 		this.updatePending = false
 	}
 
 	select = (app) => {
+		this.userHasMadeSelection = true
 		this.setState({selected: app})
 	}
 
-	execute = (app) => {
+	run = (app) => {
 		this.select(app)
-		if (app) {
-			if (this.state.remember) {
-				let mimetypeUrl = "http://localhost:7938/desktop-service/mimetypes/" + mimetypeId
-				doHttp(mimetypeUrl, "POST", {DefaultApplication: app.Id})
-			}
-
-			doHttp(app.url, "POST", {Arguments: [appArgument]}).then(response => {gui.App.quit()})
+		if (this.state.useAsDefault)  {
+			let mimetypeUrl = "http://localhost:7938/desktop-service/mimetypes/" + mimetypeId
+			console.log("set default ", app.id, ", on ", mimetypeId)
+			doHttp(mimetypeUrl, "POST", {DefaultApplication: app.Id}).then(resp => {
+				console.log("Running ", app.url, appArgument)
+				doHttp(app.url, "POST", {Arguments: [appArgument]}).then(resp => {
+					gui.App.quit()
+				})
+			})
+		} else {
+			doHttp(app.url, "POST", {Arguments: [appArgument]}).then(resp => {
+				gui.App.quit()
+			})
 		}
 	}
 
@@ -100,11 +107,11 @@ class AppChooser extends React.Component {
 		else if (key === "Tab" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.move(true)
 		else if (key === "ArrowUp" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.move(false)
 		else if (key === "ArrowDown" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.move(true)
-		else if (key === "Enter" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.execute(this.state.selected)
-		else if (key === " " && !ctrlKey && !shiftKey && !altKey && !metaKey) this.execute(this.state.selected)
-		else if (key === "Escape" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.dismiss()
+		else if (key === "Enter" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.run(this.state.selected)
+		else if (key === " " && !ctrlKey && !shiftKey && !altKey && !metaKey) this.run(this.state.selected)
+		else if (key === "Escape" && !ctrlKey && !shiftKey && !altKey && !metaKey) gui.App.quit()
 		else return;
-		event.stopPropagation
+		event.stopPropagation()
 	}
 
 	move = (down) => {
@@ -113,50 +120,73 @@ class AppChooser extends React.Component {
 		if (index > -1) {
 			index = (index + apps.length + (down ? 1 : -1)) % apps.length
 		}
-		this.setState({selected: apps[index]})
+		this.select(apps[index])
 	}
 
 	onTermChange = (event) => {
-		console.log("onTermChange:", event)
 		this.setState({searchTerm: event.target.value})
 		this.scheduleUpdate()
 	}
 
 	render = () => {
-		let {iconUrl, comment, apps, selected} = this.state
-		let contentStyle = {
-			position: "relative",
-			display: "flex",
-			flexDirection: "column",
-			boxSizing: "border-box",
-			width: "calc(100% - 8px)",
-			height: "calc(100% - 8px)",
-			margin: "8px 0px 0px 8px",
+		let {iconUrl, comment, apps, selected, confirm} = this.state
+
+		let styles = {
+			content: {
+				position: "relative",
+				display: "flex",
+				flexDirection: "column",
+				boxSizing: "border-box",
+				width: "calc(100% - 8px)",
+				height: "calc(100% - 8px)",
+				margin: "8px 0px 0px 8px",
+			},
+			heading: {
+				marginBottom: "8px",
+			},
+			item: {
+				marginBottom: "8px",
+			},
+			searchBox: {
+				width: "calc(100% - 16px)",
+				marginBottom: "3px",
+			},
+			list: {
+				flex: "1",
+				borderTop: "solid 1px lightgrey",
+			},
+			useAsDefault: {
+				boxSizing: "border-box",
+				paddingTop: "8px",
+				paddingBottom: "8px",
+				display: "flex",
+				borderTop: "solid 1px lightgrey",
+			},
 		}
-		let headingStyle = {
-			marginBottom: "8px",
-		}
+
 		let item = {
 			IconUrl: iconUrl,
 			Name: appArgument,
 			Comment: comment
 		}
-		let itemStyle = {
-			marginBottom: "8px",
-		}
-		let searchBoxStyle = {
-			width: "calc(100% - 16px)",
-			marginBottom: "3px",
-		}
-		let listStyle = {
-			flex: "1",
-		}
+
 		return (
-			<div style={contentStyle}>
-				<div style={headingStyle}>Select an application to open:</div>
-				<Item item={item} style={itemStyle}/>
-				<SearchBox style={searchBoxStyle} onChange={this.onTermChange} searchTerm={this.state.searchTerm}/>
-				<ItemList style={listStyle} items={apps} selected={selected} select={this.select} execute={this.execute}/>
+			<div style={styles.content} onKeyDown={this.onKeyDown}>
+				<div style={styles.heading}>Select an application to open:</div>
+				<Item item={item} style={styles.item}/>
+				<SearchBox style={styles.searchBox} onChange={this.onTermChange} searchTerm={this.state.searchTerm}/>
+				<ItemList style={styles.list} items={apps} selected={selected} select={this.select} execute={this.run}/>
+				{	this.state.selected &&
+					<div style={styles.useAsDefault}>
+						<input id="checkbox"
+							   type="checkbox"
+							   value={this.state.useAsDefault}
+							   onChange={(evt) => {this.setState({useAsDefault: evt.target.checked})}}/>
+						<label htmlFor="checkbox" accessKey="M">
+							Set <em>{this.state.selected.Name}</em> as default for <em> {this.state.comment}</em> ?
+						</label>
+					</div>
+				}
 			</div>
 		)
 	}

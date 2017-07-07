@@ -15,8 +15,8 @@ class ItemList extends React.Component {
 				let listDiv = document.getElementById("itemListDiv")
 				let {top: listTop, bottom: listBottom} = listDiv.getBoundingClientRect()
 				let {top: selectedTop, bottom: selectedBottom} = selectedDiv.getBoundingClientRect()
-				if (selectedTop < listTop) listDiv.scrollTop -=  (listTop - selectedTop + 15)
-				else if (selectedBottom > listBottom) listDiv.scrollTop += (selectedBottom - listBottom + 15)
+				if (selectedTop < listTop) listDiv.scrollTop -=  (listTop - selectedTop + 25)
+				else if (selectedBottom > listBottom) listDiv.scrollTop += (selectedBottom - listBottom + 10)
 			}
 		}
 	}
@@ -43,7 +43,7 @@ class ItemList extends React.Component {
 				content.push(<div style={headingStyle}>{item.group}</div>)
 				prevGroup = item.group
 			}
-			content.push(<Item item={item} selected={item === selected} select={select} execute={execute}/>)
+			content.push(<Item key={item.url} item={item} selected={item === selected} select={select} execute={execute}/>)
 		})
 		return (
 			<div id="itemListDiv" style={style}>
