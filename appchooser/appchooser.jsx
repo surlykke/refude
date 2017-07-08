@@ -9,6 +9,7 @@ import {SearchBox} from "../common/searchbox"
 let gui = window.require('nw.gui')
 let appArgument = gui.App.argv[0]
 let mimetypeId = gui.App.argv[1]
+let isUrl = mimetypeId.startsWith("x-scheme-handler")
 
 class AppChooser extends React.Component {
 	constructor(props) {
@@ -21,10 +22,10 @@ class AppChooser extends React.Component {
 			apps: [],
 			searchTerm: "",
 		}
+		this.apps = MakeCollection("desktop-service", "/applications	", this.scheduleUpdate)
 	}
 
 	componentDidMount() {
-		this.apps = MakeCollection("desktop-service", "/applications	", this.scheduleUpdate)
 		this.fetch(mimetypeId)
 	}
 
@@ -45,7 +46,7 @@ class AppChooser extends React.Component {
 		})
 	}
 
-	// We get a lot of events from apps, so we collect to, at most, one update pr 20 ms
+	// We get a lot of events from this.apps, so we collect to, at most, one update pr 20 ms
 	scheduleUpdate = () => {
 		if (! this.updatePending) {
 			this.updatePending = true
@@ -55,8 +56,10 @@ class AppChooser extends React.Component {
 
 	update = () => {
 		let term = this.state.searchTerm.toUpperCase().trim()
-		let apps = this.apps.filter(app => app.Actions["_default"]["Exec"].match(/%f|%F|%u|%U/))
-		                    .filter(app => app.Name.toUpperCase().includes(term))
+		let reg = isUrl ? /%u/i : /%f|%u/i
+		let apps = this.apps.
+			filter(app => app.Actions["_default"]["Exec"].match(reg)).
+			filter(app => app.Name.toUpperCase().includes(term))
 
 		apps.forEach(app => {
 			let mimetypeId = this.mimetypeIds.find(id => app.Mimetypes.includes(id))
@@ -137,9 +140,10 @@ class AppChooser extends React.Component {
 				display: "flex",
 				flexDirection: "column",
 				boxSizing: "border-box",
-				width: "calc(100% - 8px)",
-				height: "calc(100% - 8px)",
-				margin: "8px 0px 0px 8px",
+				width: "100%",
+				height: "100%",
+				padding: "8px",
+				//margin: "8px 8px 0px 8px",
 			},
 			heading: {
 				marginBottom: "8px",
@@ -153,14 +157,16 @@ class AppChooser extends React.Component {
 			},
 			list: {
 				flex: "1",
-				borderTop: "solid 1px lightgrey",
+				paddingBottom: "80px",
 			},
 			useAsDefault: {
 				boxSizing: "border-box",
-				paddingTop: "8px",
+				width: "calc(100% - 16px)",
+				paddingTop: "12px",
 				paddingBottom: "8px",
 				display: "flex",
-				borderTop: "solid 1px lightgrey",
+				borderRadius: "5px",
+				backgroundColor: "rgba(245,245,245,1)",
 			},
 		}
 
@@ -176,6 +182,7 @@ class AppChooser extends React.Component {
 				<Item item={item} style={styles.item}/>
 				<SearchBox style={styles.searchBox} onChange={this.onTermChange} searchTerm={this.state.searchTerm}/>
 				<ItemList style={styles.list} items={apps} selected={selected} select={this.select} execute={this.run}/>
+				<div style={{height: "8px"}}/>
 				{	this.state.selected &&
 					<div style={styles.useAsDefault}>
 						<input id="checkbox"
@@ -183,7 +190,7 @@ class AppChooser extends React.Component {
 							   value={this.state.useAsDefault}
 							   onChange={(evt) => {this.setState({useAsDefault: evt.target.checked})}}/>
 						<label htmlFor="checkbox" accessKey="M">
-							Set <em>{this.state.selected.Name}</em> as default for <em> {this.state.comment}</em> ?
+							Always use <em>{this.state.selected.Name}</em> to open {isUrl ? "urls" : "files"} of this type?
 						</label>
 					</div>
 				}
