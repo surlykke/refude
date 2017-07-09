@@ -31,7 +31,7 @@ class Battery extends React.Component {
 		let status = ["Charging", "Fully charged"].includes(this.battery.State) ? 3 :
 		             this.battery.Percentage >= 20 ? 2 :
 					 1
-		this.setState({charge: this.battery.Percentage || "? ", status: status})
+		this.setState({charge: this.battery.Percentage === undefined ?  "? " : this.battery.Percentage, status: status})
 		this.onUpdated()
 	}
 
