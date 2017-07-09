@@ -1,7 +1,0 @@
-{
-  "name": "refudePower",
-  "main": "index.html",
-  "window": {
-    "id": "org.refude.Power"
-  }
-}
