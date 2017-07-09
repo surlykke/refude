@@ -2,7 +2,8 @@
 cd `dirname $0`
 
 BIN_DIR=${HOME}/.local/bin
-GO_BIN_DIR=${HOME}/go/bin
+GOPATH=${GOPATH:-${HOME}/go}
+GO_BIN_DIR=${GOPATH}/bin
 BASH_COMPLETION_DIR=${XDG_DATA_HOME:-${HOME}/.local/share}/bash-completion/completions
 ZSH_COMPLETION_DIR=${XDG_DATA_HOME:-${HOME}/.local/share}/zsh/completions
 FISH_COMPLETION_DIR=${XDG_CONFIG_HOME:-${HOME}/.config}/fish/completions
