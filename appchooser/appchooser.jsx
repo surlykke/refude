@@ -94,17 +94,16 @@ class AppChooser extends React.Component {
 
 	run = (app) => {
 		this.select(app)
+		let launchUrl = app.url + "?arg=" + appArgument
 		if (this.state.useAsDefault)  {
-			let mimetypeUrl = "http://localhost:7938/desktop-service/mimetypes/" + mimetypeId
-			console.log("set default ", app.id, ", on ", mimetypeId)
-			doHttp(mimetypeUrl, "POST", {DefaultApplication: app.Id}).then(resp => {
-				console.log("Running ", app.url, appArgument)
-				doHttp(app.url, "POST", {Arguments: [appArgument]}).then(resp => {
+			let postUrl = "http://localhost:7938/desktop-service/mimetypes/" + mimetypeId + "?defaultApp=" + app.Id
+			doHttp(postUrl, "POST").then(resp => {
+				doHttp(launchUrl, "POST").then(resp => {
 					gui.App.quit()
 				})
 			})
 		} else {
-			doHttp(app.url + "?arg=" + appArgument, "POST").then(resp => {
+			doHttp(launchUrl, "POST").then(resp => {
 				gui.App.quit()
 			})
 		}
