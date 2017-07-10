@@ -13,5 +13,5 @@ import (
 
 func main() {
 	go DesktopRun()
-	service.ServeWith("org.refude.desktop-service", http.HandlerFunc(POSTInterceptor))
+	service.ServeWith("org.refude.desktop-service", http.HandlerFunc(RequestInterceptor))
 }

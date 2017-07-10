@@ -80,7 +80,7 @@ func update() {
 	}
 
 	for mimetypeId, mimeType := range c.mimetypes {
-		service.Map("/mimetypes/" + mimetypeId, resource.JsonResource(mimeType, nil))
+		service.Map("/mimetypes/" + mimetypeId, resource.JsonResource(mimeType, MimetypePOST))
 	}
 
 }
@@ -115,7 +115,6 @@ func (c *Collector) getMimetype(id string) *Mimetype {
 	if mimetype, ok := c.mimetypes[id]; ok {
 		return mimetype
 	} else if mimetype, err := NewMimetype(id); err == nil {
-		mimetype.Comment = mimetype.Id
 		c.mimetypes[id] = mimetype
 		return mimetype
 	} else {
@@ -251,38 +250,21 @@ type MimetypePostPayload struct {
 	DefaultApplication string
 }
 
-func POSTInterceptor(w http.ResponseWriter, r* http.Request) {
-	if r.Method == "POST" && mimetypePathPattern.MatchString(r.URL.Path) {
+
+
+func RequestInterceptor(w http.ResponseWriter, r* http.Request) {
+	if strings.HasPrefix(r.URL.Path, "/mimetypes/x-scheme-handler/") && ! service.Has(r.URL.Path) {
 		mimetypeId := r.URL.Path[len("/mimetypes/"):]
-		payload := MimetypePostPayload{}
-		if err := unmarshal(r.Body, &payload); err != nil {
-			fmt.Println(err)
-			w.WriteHeader(http.StatusNotAcceptable);
+		if mimetype, err := NewMimetype(mimetypeId); err != nil {
+			w.WriteHeader(http.StatusNotFound)
 			return
-		} else if len(payload.DefaultApplication) == 0 {
-			w.WriteHeader(http.StatusNotAcceptable)
 		} else {
-			appId := payload.DefaultApplication
-			fmt.Println("POST: ", mimetypeId, " -> ", appId)
-			path := xdg.ConfigHome + "/mimeapps.list"
-
-			if iniFile, err := ini.ReadIniFile(path); err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-			} else {
-				defaultApplications := utils.Split(iniFile.Value("Default Applications", mimetypeId), ";")
-				defaultApplications = utils.Remove(defaultApplications, appId)
-				defaultApplications = utils.PushFront(appId, defaultApplications)
-
-				fmt.Println("Setting: ", mimetypeId, strings.Join(defaultApplications, ";"))
-				iniFile.SetValue("Default Applications", mimetypeId, strings.Join(defaultApplications, ";"))
-				if err = ini.WriteIniFile(path, iniFile); err != nil {
-					w.WriteHeader(http.StatusInternalServerError)
-				} else {
-					w.WriteHeader(http.StatusNoContent)
-				}
-			}
+			fmt.Println("Mapping ", mimetype)
+			service.Map(r.URL.Path, resource.JsonResource(mimetype, MimetypePOST))
 		}
-	} else {
-		service.ServeHTTP(w, r)
 	}
+
+	service.ServeHTTP(w, r)
 }
+
+

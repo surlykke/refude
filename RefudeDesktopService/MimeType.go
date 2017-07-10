@@ -15,6 +15,10 @@ import (
 	"strings"
 	"github.com/pkg/errors"
 	"github.com/surlykke/RefudeServices/lib/utils"
+	"github.com/surlykke/RefudeServices/lib/resource"
+	"net/http"
+	"github.com/surlykke/RefudeServices/lib/xdg"
+	"github.com/surlykke/RefudeServices/lib/ini"
 )
 
 const freedesktopOrgXml = "/usr/share/mime/packages/freedesktop.org.xml"
@@ -47,7 +51,7 @@ func NewMimetype(id string) (*Mimetype, error) {
 	if ! mimetypePattern.MatchString(id) {
 		return nil, errors.New("Incomprehensible mimetype: " + id)
 	} else {
-		return &Mimetype{
+		mt := &Mimetype{
 			Id:                     id,
 			Comment:                "",
 			Aliases:                make([]string, 0),
@@ -57,11 +61,47 @@ func NewMimetype(id string) (*Mimetype, error) {
 			GenericIcon:            "unknown",
 			AssociatedApplications: make([]string, 0),
 			DefaultApplications:    make([]string, 0),
-		}, nil
+		}
+		if strings.HasPrefix(id, "x-scheme-handler/") {
+			mt.Comment = id[len("x-scheme-handler/"):] + " url"
+		} else {
+			mt.Comment = id
+		}
+
+		return mt, nil
 	}
 }
 
+func MimetypePOST(this *resource.Resource, w http.ResponseWriter, r *http.Request) {
+	defaultAppId := r.URL.Query()["defaultApp"]
+	if len(defaultAppId) != 1 {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		return
+	}
 
+	mimetypeId := this.Data.(*Mimetype).Id
+	appId := defaultAppId[0]
+
+	fmt.Println("Setting default application: ", mimetypeId, " -> ", appId)
+
+	path := xdg.ConfigHome + "/mimeapps.list"
+
+	if iniFile, err := ini.ReadIniFile(path); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	} else {
+		defaultApplications := utils.Split(iniFile.Value("Default Applications", mimetypeId), ";")
+		defaultApplications = utils.Remove(defaultApplications, appId)
+		defaultApplications = utils.PushFront(appId, defaultApplications)
+
+		fmt.Println("Setting: ", mimetypeId, strings.Join(defaultApplications, ";"))
+		iniFile.SetValue("Default Applications", mimetypeId, strings.Join(defaultApplications, ";"))
+		if err = ini.WriteIniFile(path, iniFile); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		} else {
+			w.WriteHeader(http.StatusNoContent)
+		}
+	}
+}
 
 func CollectMimeTypes() map[string]*Mimetype {
 	xmlCollector := struct {
