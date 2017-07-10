@@ -76,23 +76,12 @@ func unmarshal(data io.Reader, dest interface{}) error {
 
 func DesktopApplicationPOST(this *resource.Resource, w http.ResponseWriter, r *http.Request) {
 	app := this.Data.(*DesktopApplication)
+	actionId := resource.GetSingleQueryParameter(r, "action", "_default")
 
-	payload := DesktopPostPayload{}
-	if err := unmarshal(r.Body, &payload); err != nil {
-		fmt.Println(err)
-		w.WriteHeader(http.StatusNotAcceptable)
-		return
-	}
-
-	if len(payload.ActionId) == 0 {
-		payload.ActionId = "_default"
-	}
-
-	fmt.Println("action: ", payload.ActionId, ", args")
-	if action, ok := app.Actions[payload.ActionId]; !ok {
+	if action, ok := app.Actions[actionId]; !ok {
 		w.WriteHeader(http.StatusNotAcceptable)
 	} else {
-		args := strings.Join(payload.Arguments, " ")
+		args := strings.Join(r.URL.Query()["arg"], " ")
 		cmd := regexp.MustCompile("%[uUfF]").ReplaceAllString(action.Exec, args)
 		fmt.Println("Running cmd: " + cmd)
 		if err := runCmd(cmd); err != nil {
