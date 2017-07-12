@@ -15,6 +15,7 @@ import (
 	"time"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"strings"
+	"strconv"
 )
 
 const NOTIFICATIONS_SERVICE = "org.freedesktop.Notifications"
@@ -176,19 +177,23 @@ func CloseNotification(id uint32) *dbus.Error {
 }
 
 func close(path string, eTag string, reason uint32) {
-	switch reason {
-	case Expired:
-		if res := service.UnMapIfMatch(path, eTag); res != nil {
-			notificationClosed(res.Data.(Notification).Id, reason)
+	if reason == Expired {
+		if service.UnMapIfMatch(path, eTag) {
+			notificationClosed(idFromPath(path), reason)
 		}
-	case Dismissed:
-		if res := service.Unmap(path); res != nil {
-			notificationClosed(res.Data.(Notification).Id, reason)
+	} else {
+		if service.Unmap(path) {
+			notificationClosed(idFromPath(path), reason)
 		}
-	case Closed:
-		if res := service.Unmap(path); res != nil {
-			notificationClosed(res.Data.(Notification).Id, reason)
-		}
+	}
+}
+
+func idFromPath(path string) uint32 {
+	idS := path[len("/notifications/"):]
+	if id, err := strconv.ParseUint(idS, 10, 32); err != nil {
+		panic("Invalid id: " + idS)
+	} else  {
+		return uint32(id)
 	}
 }
 

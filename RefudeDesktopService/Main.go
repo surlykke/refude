@@ -12,6 +12,6 @@ import (
 )
 
 func main() {
-	go DesktopRun()
+	go Run()
 	service.ServeWith("org.refude.desktop-service", http.HandlerFunc(RequestInterceptor))
 }

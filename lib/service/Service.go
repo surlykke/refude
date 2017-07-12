@@ -35,98 +35,96 @@ func init() {
 	Map("/notify", &resource.Resource{GET: notify.GET})
 }
 
-
-func splitInBaseNameAndName(path string) (string, string) {
-	baseNameLen := strings.LastIndex(path[0:len(path) - 1], "/") + 1
-	return path[0:baseNameLen], path[baseNameLen:]
-}
-
-// Caller must ensure path is proper and that
-// mutex is taken
-func _map(path string, res *resource.Resource) {
-	baseName, name := splitInBaseNameAndName(path)
-	if old, found := resources[path]; found {
-		if !res.Equal(old) {
-			resources[path] = res
-			notify.Notify("resource-updated", path[1:])
-		}
-	} else {
-		if len(baseName) > 0 {
-			elements := []string{}
-			if parent,ok := resources[baseName]; ok {
-				elements = parent.Data.([]string)
-			}
-			elements = append(elements, name)
-
-			_map(baseName, resource.JsonResource(elements, nil))
-		}
-
-		resources[path] = res
-		notify.Notify("resource-added", path[1:])
-	}
-}
-
-func unmap(path string) {
-	baseName, name := splitInBaseNameAndName(path)
-	delete(resources, path)
-	notify.Notify("resource-removed", path[1:])
-	if len(baseName) > 0 {
-		parent := resources[baseName]
-		elements := utils.Remove(parent.Data.([]string), name)
-		resources[baseName] = resource.JsonResource(elements, nil)
-		notify.Notify("resource-updated", baseName[1:])
-	}
-}
-
 func checkPath(path string) {
 	if strings.HasSuffix(path, "/") || !strings.HasPrefix(path, "/") {
 		panic("Illegal path " + path + ". A path must begin with- and not end in '/'")
 	}
 }
 
-func CreateEmptyDir(path string) bool {
-	checkPath(path)
-	mutex.Lock();
-	defer mutex.Unlock();
-	if _, ok := resources[path]; ok {
-		return false
+func splitInBaseNameAndName(path string) (string, string) {
+	baseNameLen := strings.LastIndex(path[0:len(path) - 1], "/") + 1
+	return path[0:baseNameLen], path[baseNameLen:]
+}
+
+func addEntryToDir(dirPath string, entry string) {
+	var dir []string
+	if res, ok := resources[dirPath]; !ok {
+		dir = []string{entry}
+		if dirPath != "/" {
+			addEntryToDir(splitInBaseNameAndName(dirPath))
+		}
+		notify.ResourceAdded(dirPath)
+	} else if dir, ok = res.Data.([]string); !ok {
+		log.Fatal("Adding entry", entry, "to nondir", dirPath)
 	} else {
-		_map(path+"/", resource.JsonResource([]string{}, nil))
-		return true
+		dir = append(dir, entry)
 	}
+	resources[dirPath] = resource.JsonResource(dir, nil)
+	notify.ResourceUpdated(dirPath)
+}
+
+func mapEntry(path string, res *resource.Resource) {
+	if oldRes,ok := resources[path]; ok {
+		if _,ok = oldRes.Data.([]string); ok {
+			log.Fatal("Directory exists", path)
+		} else if !oldRes.Equal(res) {
+			notify.ResourceUpdated(path)
+		}
+	} else {
+		addEntryToDir(splitInBaseNameAndName(path))
+		notify.ResourceAdded(path)
+	}
+	resources[path] = res
+}
+
+
+func unmapEntry(path string) bool {
+	if res,ok := resources[path]; ok {
+		dirPath, entry := splitInBaseNameAndName(path)
+		if _,ok := res.Data.([]string); ok {
+			log.Fatal("Unmapping directory path", path)
+		}
+		delete(resources, path)
+		notify.ResourceRemoved(path)
+		dir := utils.Remove(resources[dirPath].Data.([]string), entry)
+		resources[dirPath] = resource.JsonResource(dir, nil)
+		notify.ResourceUpdated(dirPath)
+		return true
+	} else {
+		return false
+	}
+}
+
+
+func MkDir(path string) {
+	checkPath(path)
+	mapEntry(path, resource.JsonResource([]string{}, nil))
 }
 
 func Map(path string, res *resource.Resource) {
 	checkPath(path)
 	mutex.Lock()
 	defer mutex.Unlock()
-	_map(path, res)
+	mapEntry(path, res)
 }
 
-func Unmap(path string) *resource.Resource {
+func Unmap(path string) bool {
 	checkPath(path)
 	mutex.Lock()
 	defer mutex.Unlock()
-	if res,ok := resources[path]; ok {
-		unmap(path)
-		return res
+	return unmapEntry(path)
+}
+
+func UnMapIfMatch(path string, eTag string) bool {
+	checkPath(path)
+	mutex.Lock()
+	defer mutex.Unlock()
+	if res,ok := resources[path]; ok && res.ETag == eTag {
+		unmapEntry(path)
+		return true
 	} else {
-		return nil
+		return false;
 	}
-}
-
-func UnMapIfMatch(path string, eTag string) *resource.Resource {
-	checkPath(path)
-	mutex.Lock()
-	defer mutex.Unlock()
-	if res,ok := resources[path]; ok {
-		if res.ETag == eTag {
-			unmap(path)
-			return res
-		}
-	}
-
-	return nil
 }
 
 func Has(path string) bool {
@@ -137,15 +135,16 @@ func Has(path string) bool {
 	return has
 }
 
-func get(path string) (*resource.Resource, bool) {
+func Get(path string) (*resource.Resource, bool) {
+	checkPath(path)
 	mutex.Lock()
 	defer mutex.Unlock()
-	res,ok := resources[path]
+	res, ok := resources[path]
 	return res,ok
 }
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if handlerCopy, ok := get(r.URL.Path); ok {
+	if handlerCopy, ok := resources[r.URL.Path]; ok {
 		handlerCopy.ServeHTTP(w, r)
 	} else {
 		w.WriteHeader(http.StatusNotFound)
@@ -154,7 +153,8 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func seemsToBeRunning(socketPath string) bool {
 	client := http.Client{
-		Transport: &http.Transport{ DialContext: func(ctx context.Context, _, _ string) (net.Conn, error){
+		Transport: &http.Transport{
+			DialContext: func(ctx context.Context, _, _ string) (net.Conn, error){
 				return net.Dial("unix", socketPath)
 			},
 		},
@@ -177,7 +177,12 @@ func makeListener(socketName string) (*net.UnixListener, bool) {
 
 	syscall.Unlink(socketPath)
 
-	if listener,err := net.ListenUnix("unix", &net.UnixAddr{Name: socketPath, Net: "unix"}); err != nil {
+	listener,err := net.ListenUnix("unix", &net.UnixAddr{
+		Name: socketPath,
+		Net: "unix",
+	});
+
+	if err != nil {
 		fmt.Println(err)
 		return nil, false
 	} else {

@@ -10,6 +10,15 @@ import (
 	"strings"
 )
 
+func Copy(sl []string) []string {
+	res := make([]string, len(sl))
+	for i, s := range sl {
+		res[i] = s
+	}
+
+	return res
+}
+
 func Contains(sl []string, s string) bool {
 	for _, str := range sl {
 		if str == s {

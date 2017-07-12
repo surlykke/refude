@@ -36,6 +36,10 @@ func Notify(eventType string, data string) {
 	publisher.Publish(message)
 }
 
+func ResourceAdded(path string) { Notify("resource-added", path[1:])}
+func ResourceUpdated(path string) { Notify("resource-updated", path[1:]) }
+func ResourceRemoved(path string) { Notify("resource-removed", path[1:]) }
+
 func client(conn net.Conn) {
 	defer conn.Close()
 	fmt.Println("Into client, writing initialResponse..")

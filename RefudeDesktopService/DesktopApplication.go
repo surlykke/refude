@@ -7,10 +7,8 @@
 package main
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"os/exec"
@@ -48,7 +46,7 @@ type DesktopApplication struct {
 	Url             string `json:",omitempty"`
 	Actions         map[string]Action
 	Id              string
-	RelevanceHint   int
+	RelevanceHint   int64
 }
 
 type Action struct {
@@ -59,19 +57,22 @@ type Action struct {
 	IconUrl  string
 }
 
-type DesktopPostPayload struct {
-	ActionId  string
-	Arguments []string
-}
 
-func unmarshal(data io.Reader, dest interface{}) error {
-	if extractedData, err := ioutil.ReadAll(data); err != nil {
-		return err
-	} else if len(extractedData) > 0 {
-		return json.Unmarshal(extractedData, dest)
-	} else {
-		return nil
+func (da *DesktopApplication) Copy() *DesktopApplication {
+	cp := *da
+	cp.OnlyShowIn = utils.Copy(cp.OnlyShowIn)
+	cp.NotShowIn = utils.Copy(cp.NotShowIn)
+	cp.Mimetypes = utils.Copy(cp.Mimetypes)
+	cp.Categories = utils.Copy(cp.Categories)
+	cp.Implements = utils.Copy(cp.Implements)
+	cp.Keywords = utils.Copy(cp.Keywords)
+	actionMap := make(map[string]Action)
+	for id,action := range cp.Actions {
+		actionMap[id] = action
 	}
+	cp.Actions = actionMap
+
+	return &cp
 }
 
 func DesktopApplicationPOST(this *resource.Resource, w http.ResponseWriter, r *http.Request) {
@@ -89,6 +90,7 @@ func DesktopApplicationPOST(this *resource.Resource, w http.ResponseWriter, r *h
 			w.WriteHeader(http.StatusInternalServerError)
 		} else {
 			w.WriteHeader(http.StatusAccepted)
+			launch <- app.Id
 		}
 	}
 }

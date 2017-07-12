@@ -14,7 +14,7 @@ import (
 func main() {
 	// Initially, put an empty list of notifications up, signalling we don't have any yet
 	fmt.Println("Createing empty /notifications/")
-	service.CreateEmptyDir("/notifications")
+	service.MkDir("/notifications")
 	Setup()
 	service.Serve("org.refude.notifications-service")
 }
