@@ -44,6 +44,14 @@ In addition to the services there are two applications:
 
 All services will have these resources:
 
+##### /ping
+
+Can be used to check if the service is alive. Will respond to a Http GET with Status 200 Ok.
+
+##### /doc
+
+A markdown document, documenting the resource
+
 ##### /notify 
 A server-sent event stream notifying about changes to the services resources. It will emit 3 types of events:
 
