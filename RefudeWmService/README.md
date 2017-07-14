@@ -73,5 +73,20 @@ The fields are:
 - `Actions`: Window actions. Only one action is offered: `_default` which raises and focuses the window
 - `RelevanceHint`: Minus stacking order. The window on top of the windowstack has value 0, next -1 and so on
 
+## Icons
+
+Serves window icons in png format. Try for example:
+
+`RefudeGET wm-service /windows/`
+
+to get a list of your open windows. Get one of them, say:
+
+`RefudeGET wm-service /windows/46137349`
+
+Resolve the IconUrl relative to the window url, to do something like:
+
+`RefudeGET wm-service /icons/7BABF63233A8D30F | feh -`
+
+(substitute any image-viewing application for 'feh' as you wish)
 
 

@@ -104,7 +104,7 @@ and then navigate to `$GOPATH/src/github.com/surlykke/RefudeServices` and do
 
 `install.sh` will do:
 
-* Build the services and applications and install them to `$GOPATH/bi`
+* Build the services and applications and install them to `$GOPATH/bin`
 * Install the scripts `RefudeGET`, `RefudePOST` and `runRefude.sh` to `~/.local/bin`
 * Install `RefudeGET`/`RefudePOST` completion-scripts for bash, zsh and fish to various directories beneath `~/.local`
 * Make a soft-link from `~/.local/bin/xdg-open` to `$GOPATH/bin/RefudeXdgOpen`. This effectively replaces the xdg-open 
