@@ -31,7 +31,7 @@ func Run() {
 		case appId := <-launch:
 			path := "/applications/" + appId
 			fmt.Println("Launch: ", path)
-			if res,ok := service.Get(path); ok {
+			if res := service.Get(path); res != nil {
 				desktopApplication := res.Data.(*DesktopApplication).Copy()
 				desktopApplication.RelevanceHint = time.Now().UnixNano()/1000000
 				service.Map(path, resource.JsonResource(desktopApplication, DesktopApplicationPOST))
