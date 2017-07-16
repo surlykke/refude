@@ -157,11 +157,6 @@ func getWindow(wId xproto.Window, stackingOrder int) Window {
 	window.Actions["_default"] = Action{
 		Name: window.Name,
 		Comment: "Raise and focus",
-		IconUrl: window.IconUrl,
-		X: window.X,
-		Y: window.Y,
-		W: window.W,
-		H: window.H,
 	}
 
 	return window
@@ -193,11 +188,6 @@ func updateWindow(window Window, stackOrder int) Window {
 	newWindow.Actions["_default"] = Action{
 		Name:    newWindow.Name,
 		Comment: "Raise and focus",
-		IconUrl: newWindow.IconUrl,
-		X:       newWindow.X,
-		Y:       newWindow.Y,
-		W:       newWindow.W,
-		H:       newWindow.H,
 	}
 
 	newWindow.RelevanceHint = -stackOrder

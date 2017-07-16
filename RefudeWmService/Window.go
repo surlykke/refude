@@ -29,8 +29,6 @@ type Window struct {
 type Action struct {
 	Name    string
 	Comment string
-	IconUrl string
-	X,Y,W,H int
 }
 
 func WindowPOST(this *resource.Resource, w http.ResponseWriter, r *http.Request) {
