@@ -29,8 +29,11 @@ func NewPowerAction(Id string, Name string, Comment string, IconName string) *Po
 	return &PowerAction{Id, Name, Comment, IconName, can, 0}
 }
 
-func ActionPOST(this *resource.Resource, w http.ResponseWriter, r *http.Request) {
-	pa := this.Data.(*PowerAction)
+func (pa *PowerAction) GET(w http.ResponseWriter, r *http.Request) {
+	resource.JsonGET(pa, w)
+}
+
+func (pa *PowerAction) POST(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Calling: ", login1Service, ", ", login1Path, ", ", managerInterface + "." + pa.Id)
 	dbusConn.Object(login1Service, login1Path).Call(managerInterface + "." + pa.Id, dbus.Flags(0), false)
 	w.WriteHeader(http.StatusAccepted)

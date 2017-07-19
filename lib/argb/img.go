@@ -17,7 +17,6 @@ import (
 	"github.com/surlykke/RefudeServices/lib/service"
 	"hash/fnv"
 	"github.com/pkg/errors"
-	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
 type PNGImg struct {
@@ -28,8 +27,8 @@ type PNGImg struct {
 type PNGIcon []PNGImg
 
 
-func PNGIconGET(this *resource.Resource, w http.ResponseWriter, r *http.Request) {
-    icon := this.Data.(PNGIcon)
+
+func (icon PNGIcon) GET(w http.ResponseWriter, r *http.Request) {
 	var data []byte = nil
 
 	size := 32
@@ -126,7 +125,7 @@ func ServeAsPng(argbIcon Icon) (string, error) {
 			return "", fmt.Errorf("No icons in argument")
 		}
 
-		service.Map(path, &resource.Resource{Data: pngIcon, GET: PNGIconGET})
+		service.Map(path, pngIcon)
 	}
 
 	return path, nil

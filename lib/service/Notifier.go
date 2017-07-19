@@ -4,13 +4,12 @@
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
 //
-package notify
+package service
 
 import (
 	"fmt"
 	"net/http"
 	"net"
-	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/pubsub"
 )
 
@@ -65,8 +64,10 @@ func write(conn net.Conn, msg string) bool {
 	return err == nil
 }
 
+type NotifyResource struct {
+}
 
-func GET(this *resource.Resource, w http.ResponseWriter, r *http.Request) {
+func (nr* NotifyResource) GET(w http.ResponseWriter, r *http.Request) {
 	if hj, ok := w.(http.Hijacker); !ok {
 		w.WriteHeader(http.StatusInternalServerError)
 	} else if conn, _, err := hj.Hijack(); err != nil {

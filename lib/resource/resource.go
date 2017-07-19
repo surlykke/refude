@@ -9,61 +9,62 @@ package resource
 import (
 	"encoding/json"
 	"net/http"
-	"sync"
-	"reflect"
 )
 
-type ResourceHandler func(this *Resource, w http.ResponseWriter, r *http.Request)
+type ETagHandler interface {
+	ETag() string
+}
 
-func defaultHandler(this *Resource, w http.ResponseWriter, r *http.Request) {
+type GETHandler interface {
+	GET(w http.ResponseWriter, r *http.Request)
+}
+
+type PATCHHandler interface {
+	PATCH(w http.ResponseWriter, r *http.Request)
+}
+
+type POSTHandler interface {
+	POST(w http.ResponseWriter, r *http.Request)
+}
+
+type DELETEHandler interface {
+	DELETE(w http.ResponseWriter, r *http.Request)
+}
+
+
+func ServeHTTP(res interface{},  w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
+		if getHandler, ok := res.(GETHandler); ok {
+			getHandler.GET(w, r)
+			return
+		}
+	} else if r.Method == "PATCH" {
+		if patchHandler, ok := res.(PATCHHandler); ok {
+			patchHandler.PATCH(w, r)
+			return
+		}
+	} else if r.Method == "POST" {
+		if postHandler, ok := res.(POSTHandler); ok {
+			postHandler.POST(w, r)
+			return
+		}
+	} else if r.Method == "DELETE" {
+		if deleteHandler, ok := res.(DELETEHandler); ok {
+			deleteHandler.DELETE(w, r)
+			return
+		}
+	}
+
 	w.WriteHeader(http.StatusMethodNotAllowed)
 }
 
-type Resource struct {
-	Data     interface{}
-	ETag     string
-	mutex    sync.Mutex
-	GET    ResourceHandler
-	PATCH  ResourceHandler
-	POST   ResourceHandler
-	DELETE ResourceHandler
-}
-
-func (res *Resource) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	var handler ResourceHandler = nil
-	switch r.Method {
-	case "GET": handler = res.GET
-	case "PATCH": handler = res.PATCH
-	case "POST": handler = res.POST
-	case "DELETE": handler = res.DELETE
-	}
-
-	if handler != nil {
-		handler(res, w, r)
-	} else {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-	}
-}
-
-func (res *Resource) Equal(other *Resource) bool {
-	return reflect.DeepEqual(res.Data, other.Data)
-}
-
-func JsonResource(data interface{}, postHandler ResourceHandler) *Resource {
-	return & Resource{
-		Data: data,
-		GET: JsonGET,
-		POST: postHandler,
-	}
-}
-
-func JsonGET(this *Resource, w http.ResponseWriter, r *http.Request) {
-	bytes, err := json.Marshal(this.Data)
-	if err != nil {
+func JsonGET(res interface{}, w http.ResponseWriter) {
+	if bytes, err := json.Marshal(res); err != nil {
 		panic("Could not json-marshal")
-	};
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(bytes)
+	} else {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(bytes)
+	}
 }
 
 func GetSingleQueryParameter(r *http.Request, parameterName string, fallbackValue string) string {

@@ -19,11 +19,10 @@ import (
 	"github.com/BurntSushi/xgb"
 	"time"
 	"github.com/surlykke/RefudeServices/lib/argb"
-	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
 
-var windows = make(map[xproto.Window]Window)
+var windows = make(map[xproto.Window]*Window)
 var display = Display{Screens: make([]Rect, 0)}
 var iconHashes = make(map[uint64]bool)
 var x  *xgbutil.XUtil
@@ -89,7 +88,7 @@ func buildDisplay(conn *xgb.Conn) {
 
 	// TODO add screens
 
-	service.Map("/display", resource.JsonResource(display, nil))
+	service.Map("/display", &display)
 }
 
 func updateWindows() {
@@ -118,11 +117,11 @@ func updateWindows() {
 			windows[wId] = getWindow(xproto.Window(wId), i)
 		}
 
-		service.Map(fmt.Sprintf("/windows/%d", wId), resource.JsonResource(windows[wId], WindowPOST))
+		service.Map(fmt.Sprintf("/windows/%d", wId), windows[wId])
 	}
 }
 
-func getWindow(wId xproto.Window, stackingOrder int) Window {
+func getWindow(wId xproto.Window, stackingOrder int) *Window {
 	window := Window{}
 	window.x = x
 	window.Id = wId
@@ -159,10 +158,10 @@ func getWindow(wId xproto.Window, stackingOrder int) Window {
 		Comment: "Raise and focus",
 	}
 
-	return window
+	return &window
 }
 
-func updateWindow(window Window, stackOrder int) Window {
+func updateWindow(window *Window, stackOrder int) *Window {
 	newWindow := Window{}
 	newWindow.x = x
 	newWindow.Id = window.Id
@@ -191,7 +190,7 @@ func updateWindow(window Window, stackOrder int) Window {
 	}
 
 	newWindow.RelevanceHint = -stackOrder
-	return newWindow
+	return &newWindow
 }
 
 func find(windowIds []xproto.Window, windowId xproto.Window) bool {

@@ -9,6 +9,7 @@ package main
 import (
 	"github.com/godbus/dbus"
 	"net/http"
+	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
 type UPowerObject interface {
@@ -26,6 +27,11 @@ type UPower struct {
 	LidIsClosed   bool
 	LidIsPresent  bool
 }
+
+func (up *UPower) GET(w http.ResponseWriter, r *http.Request) {
+	resource.JsonGET(up, w)
+}
+
 
 type PropertyObject interface {
 	ReadDBusProps(m map[string]dbus.Variant)
@@ -77,6 +83,10 @@ type Device struct {
 	IsRechargeable   bool
 	Capacity         float64
 	Technology       string
+}
+
+func (d *Device) GET(w http.ResponseWriter, r *http.Request) {
+	resource.JsonGET(d, w)
 }
 
 func (d *Device) ReadDBusProps(m map[string]dbus.Variant) {

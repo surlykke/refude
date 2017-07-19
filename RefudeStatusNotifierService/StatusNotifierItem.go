@@ -40,6 +40,27 @@ type Item struct {
 	dbusObj dbus.BusObject
 }
 
+func (item *Item) GET(w http.ResponseWriter, r *http.Request) {
+	resource.JsonGET(item, w)
+}
+
+func (item *Item) POST(w http.ResponseWriter, r *http.Request) {
+	method := resource.GetSingleQueryParameter(r, "method", "Activate")
+	x, errX := strconv.Atoi(resource.GetSingleQueryParameter(r, "x", "0"))
+	y, errY := strconv.Atoi(resource.GetSingleQueryParameter(r, "y", "0"))
+	if (method != "Activate" && method != "SecondaryActivate" && method != "ContextMenu") ||
+		errX != nil ||
+		errY != nil {
+		w.WriteHeader(http.StatusNotAcceptable)
+		return
+	}
+
+	item.dbusObj.Call("org.kde.StatusNotifierItem."+method, dbus.Flags(0), x, y)
+	w.WriteHeader(http.StatusAccepted)
+}
+
+
+
 func (item Item) fetchProps(propNames ...string) {
 	for _, propName := range propNames {
 		delete(item.props, propName)
@@ -87,28 +108,13 @@ func MakeItem(dbusObj dbus.BusObject) Item {
 	return item
 }
 
-func ItemPOST(this *resource.Resource, w http.ResponseWriter, r *http.Request) {
-	item := this.Data.(Item)
-	method := resource.GetSingleQueryParameter(r, "method", "Activate")
-	x, errX := strconv.Atoi(resource.GetSingleQueryParameter(r, "x", "0"))
-	y, errY := strconv.Atoi(resource.GetSingleQueryParameter(r, "y", "0"))
-	if (method != "Activate" && method != "SecondaryActivate" && method != "ContextMenu") ||
-		errX != nil ||
-		errY != nil {
-		w.WriteHeader(http.StatusNotAcceptable)
-		return
-	}
-
-	item.dbusObj.Call("org.kde.StatusNotifierItem."+method, dbus.Flags(0), x, y)
-	w.WriteHeader(http.StatusAccepted)
-}
 
 func StatusNotifierItem(serviceOwner string, objectPath dbus.ObjectPath, signals chan string) {
 
 	item := MakeItem(conn.Object(serviceOwner, objectPath))
 
 	path := "/items/" + serviceOwner[1:] // Omit leading colon
-	service.Map(path, resource.JsonResource(item.copy(), ItemPOST))
+	service.Map(path, item.copy())
 
 	defer service.Unmap(path)
 
@@ -125,7 +131,7 @@ func StatusNotifierItem(serviceOwner string, objectPath dbus.ObjectPath, signals
 		case "NewStatus":
 			item.fetchProps("Status")
 		}
-		service.Map( path, resource.JsonResource(item.copy(), ItemPOST))
+		service.Map( path, item.copy())
 	}
 }
 

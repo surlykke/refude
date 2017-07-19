@@ -14,8 +14,6 @@ import (
 	"golang.org/x/sys/unix"
 	"net/http"
 	"regexp"
-	"github.com/surlykke/RefudeServices/lib/resource"
-	"time"
 )
 
 
@@ -24,28 +22,6 @@ var launch = make(chan string)
 
 func Run() {
 	LoadLastLaunched()
-	go WatchFiles()
-	update()
-	for {
-		select {
-		case appId := <-launch:
-			path := "/applications/" + appId
-			fmt.Println("Launch: ", path)
-			if res := service.Get(path); res != nil {
-				desktopApplication := res.Data.(*DesktopApplication).Copy()
-				desktopApplication.RelevanceHint = time.Now().UnixNano()/1000000
-				service.Map(path, resource.JsonResource(desktopApplication, DesktopApplicationPOST))
-				lastLaunched[appId] = desktopApplication.RelevanceHint
-				SaveLastLaunched()
-			}
-		case <-fileChange:
-			update()
-		}
-	}
-
-}
-
-func WatchFiles() {
 
 	fd, err := unix.InotifyInit()
 	defer unix.Close(fd)
@@ -65,13 +41,14 @@ func WatchFiles() {
 		panic(err)
 	}
 
+	update()
 	dummy := make([]byte, 100)
 	for {
 		if _, err := unix.Read(fd, dummy); err != nil {
 			panic(err)
 		}
 		fmt.Println("Something happened...")
-		fileChange <- ""
+		update()
 	}
 }
 
@@ -90,7 +67,19 @@ func update() {
 
 	for appId, newDesktopApplication := range c.applications {
 		newDesktopApplication.RelevanceHint = lastLaunched[newDesktopApplication.Id]
-		service.Map("/applications/" + appId, resource.JsonResource(newDesktopApplication, DesktopApplicationPOST))
+		service.Map("/applications/" + appId, newDesktopApplication)
+		if newDesktopApplication.IconUrl != "" {
+			iconPath := IconPath(newDesktopApplication.IconPath)
+			urlPath := string("/icons" + iconPath)
+			service.Map(urlPath, iconPath)
+		}
+		for actionId,action := range newDesktopApplication.Actions {
+			if actionId != "_default" && action.IconUrl != "" {
+				iconPath := IconPath(action.IconPath)
+				urlPath := string("/icons" + iconPath)
+				service.Map(urlPath, iconPath)
+			}
+		}
 	}
 
 	for _, mimetypeId := range mimetypeIds {
@@ -100,19 +89,11 @@ func update() {
 	}
 
 	for mimetypeId, mimeType := range c.mimetypes {
-		service.Map("/mimetypes/" + mimetypeId, resource.JsonResource(mimeType, MimetypePOST))
+		service.Map("/mimetypes/" + mimetypeId, mimeType)
 	}
 
 }
 
-func IconGet(this *resource.Resource, w http.ResponseWriter, r *http.Request) {
-	prefix := this.Data.(string)
-	if strings.HasPrefix(r.URL.Path, prefix) {
-		http.ServeFile(w, r, r.URL.Path[len(prefix):])
-	} else {
-		w.WriteHeader(http.StatusNotFound)
-	}
-}
 
 var mimetypePathPattern = func() *regexp.Regexp {
 	if pattern, err := regexp.Compile(`/mimetypes/[^/]+/[^/]+`); err != nil {
@@ -126,8 +107,6 @@ type MimetypePostPayload struct {
 	DefaultApplication string
 }
 
-
-
 func RequestInterceptor(w http.ResponseWriter, r* http.Request) {
 	if strings.HasPrefix(r.URL.Path, "/mimetypes/x-scheme-handler/") && ! service.Has(r.URL.Path) {
 		mimetypeId := r.URL.Path[len("/mimetypes/"):]
@@ -136,7 +115,7 @@ func RequestInterceptor(w http.ResponseWriter, r* http.Request) {
 			return
 		} else {
 			fmt.Println("Mapping ", mimetype)
-			service.Map(r.URL.Path, resource.JsonResource(mimetype, MimetypePOST))
+			service.Map(r.URL.Path, mimetype)
 		}
 	}
 

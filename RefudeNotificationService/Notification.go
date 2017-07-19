@@ -18,14 +18,23 @@ type Notification struct {
 	Body          string
 	Actions       map[string]string
 	RelevanceHint int
+	eTag          string
 }
 
-func NotificationPOST(this *resource.Resource, w http.ResponseWriter, r *http.Request) {
+func (n *Notification) GET(w http.ResponseWriter, r *http.Request) {
+	resource.JsonGET(n, w)
+}
+
+func (n *Notification) POST(w http.ResponseWriter, r *http.Request) {
 	action := resource.GetSingleQueryParameter(r, "action", "default")
-	conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE + ".ActionInvoked", this.Data.(Notification).Id, action)
+	conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE + ".ActionInvoked", n.Id, action)
 	w.WriteHeader(http.StatusAccepted)
 }
 
-func NotificationDELETE(this *resource.Resource,  w http.ResponseWriter, r *http.Request) {
+func (n *Notification) ETag() string {
+	return n.eTag
+}
+
+func (n *Notification) DELETE(w http.ResponseWriter, r *http.Request) {
 	close(r.URL.Path, "", Dismissed)
 }

@@ -14,25 +14,28 @@ import (
 	"net"
 	"context"
 	"syscall"
-	"github.com/surlykke/RefudeServices/lib/notify"
 	"github.com/surlykke/RefudeServices/lib/utils"
 	"strings"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"log"
+	"reflect"
 )
 
 
-var	resources  = make(map[string]*resource.Resource)
+var	resources  = make(map[string]interface{})
 var mutex      sync.Mutex
 
+type PingResource struct {
+}
 
-func OK200(this *resource.Resource, w http.ResponseWriter, r *http.Request) {
+func (pr* PingResource) GET(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
 func init() {
-	Map("/ping", &resource.Resource{GET: OK200})
-	Map("/notify", &resource.Resource{GET: notify.GET})
+	Map("/ping", &PingResource{})
+
+	Map("/notify", &NotifyResource{})
 }
 
 func panicIfPathNotOk(path string) {
@@ -63,26 +66,26 @@ func addEntryToDir(dirPath string, entry string) {
 			addEntryToDir(split(dirPath))
 		}
 		dir = directory{entry}
-		notify.ResourceAdded(dirPath)
+		ResourceAdded(dirPath)
 	} else {
-		dir = directory(append(utils.Copy(res.Data.(directory)), entry))
-		notify.ResourceUpdated(dirPath)
+		dir = directory(append(utils.Copy(res.(directory)), entry))
+		ResourceUpdated(dirPath)
 	}
 
-	resources[dirPath] = resource.JsonResource(dir, nil)
+	resources[dirPath] = dir
 }
 
-func mapEntry(path string, res *resource.Resource) {
+func mapEntry(path string, res interface{}) {
 	if _,ok := resources[path + "/"]; ok {
 		log.Fatal("There's a directory there: ", path)
 	} else if oldRes, ok := resources[path]; ok {
-		if !oldRes.Equal(res) {
-			notify.ResourceUpdated(path)
+		if !reflect.DeepEqual(oldRes, res) {
+			ResourceUpdated(path)
 			resources[path] = res
 		}
 	} else {
 		addEntryToDir(split(path))
-		notify.ResourceAdded(path)
+		ResourceAdded(path)
 		resources[path] = res
 	}
 }
@@ -90,14 +93,14 @@ func mapEntry(path string, res *resource.Resource) {
 func unmapEntry(path string) bool {
 	if res,ok := resources[path]; ok {
 		dirPath, entry := split(path)
-		if _,ok := res.Data.(directory); ok {
+		if _,ok := res.(directory); ok {
 			log.Fatal("Unmapping directory path", path)
 		}
 		delete(resources, path)
-		notify.ResourceRemoved(path)
-		dir := directory(utils.Remove(resources[dirPath].Data.(directory), entry))
-		resources[dirPath] = resource.JsonResource(dir, nil)
-		notify.ResourceUpdated(dirPath)
+		ResourceRemoved(path)
+		dir := directory(utils.Remove(resources[dirPath].(directory), entry))
+		resources[dirPath] = dir
+		ResourceUpdated(dirPath)
 		return true
 	} else {
 		return false
@@ -109,10 +112,10 @@ func MkDir(path string) {
 	panicIfPathNotOk(path)
 	mutex.Lock()
 	defer mutex.Unlock()
-	mapEntry(path + "/", resource.JsonResource(directory{}, nil))
+	mapEntry(path + "/", directory{})
 }
 
-func Map(path string, res *resource.Resource) {
+func Map(path string, res interface{}) {
 	panicIfPathNotOk(path)
 	mutex.Lock()
 	defer mutex.Unlock()
@@ -130,12 +133,15 @@ func UnMapIfMatch(path string, eTag string) bool {
 	panicIfPathNotOk(path)
 	mutex.Lock()
 	defer mutex.Unlock()
-	if res,ok := resources[path]; ok && res.ETag == eTag {
-		unmapEntry(path)
-		return true
-	} else {
-		return false;
+	if res,ok := resources[path]; ok {
+		if etagHandler, ok := res.(resource.ETagHandler); ok {
+			if etagHandler.ETag() == eTag {
+				unmapEntry(path)
+				return true
+			}
+		}
 	}
+	return false;
 }
 
 func Has(path string) bool {
@@ -146,22 +152,23 @@ func Has(path string) bool {
 	return has
 }
 
-func Get(path string) *resource.Resource {
+func Get(path string) (interface{}, bool) {
 	panicIfPathNotOk(path)
 	return get(path)
 }
 
-func get(path string) *resource.Resource {
+func get(path string) (interface{}, bool) {
 	mutex.Lock()
 	defer mutex.Unlock()
-	return resources[path]
+	i, ok := resources[path]
+	return i,ok
 }
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if res := get(r.URL.Path); res != nil {
-		res.ServeHTTP(w, r)
-	} else if res = get(r.URL.Path + "/"); res != nil {
-		res.ServeHTTP(w, r)
+	if res,ok := get(r.URL.Path); ok {
+		resource.ServeHTTP(res, w, r)
+	} else if res, ok = get(r.URL.Path + "/"); ok {
+		resource.ServeHTTP(res, w, r)
 	} else {
 		w.WriteHeader(http.StatusNotFound)
 	}

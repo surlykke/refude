@@ -19,6 +19,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/service"
 	"github.com/surlykke/RefudeServices/lib/utils"
+	"time"
 )
 
 type DesktopApplication struct {
@@ -29,6 +30,7 @@ type DesktopApplication struct {
 	NoDisplay       bool
 	Comment         string `json:",omitempty"`
 	IconName        string `json:",omitempty"`
+	IconPath        string `json:",omitempty"`
 	IconUrl         string `json:",omitempty"`
 	Hidden          bool
 	OnlyShowIn      []string
@@ -54,9 +56,15 @@ type Action struct {
 	Name     string
 	Exec     string
 	IconName string
+	IconPath string
 	IconUrl  string
 }
 
+type IconPath string
+
+func (ip IconPath) GET(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, string(ip))
+}
 
 func (da *DesktopApplication) Copy() *DesktopApplication {
 	cp := *da
@@ -75,11 +83,14 @@ func (da *DesktopApplication) Copy() *DesktopApplication {
 	return &cp
 }
 
-func DesktopApplicationPOST(this *resource.Resource, w http.ResponseWriter, r *http.Request) {
-	app := this.Data.(*DesktopApplication)
+func (da *DesktopApplication) GET(w http.ResponseWriter, r *http.Request) {
+	resource.JsonGET(da, w)
+}
+
+func (da *DesktopApplication) POST(w http.ResponseWriter, r *http.Request) {
 	actionId := resource.GetSingleQueryParameter(r, "action", "_default")
 
-	if action, ok := app.Actions[actionId]; !ok {
+	if action, ok := da.Actions[actionId]; !ok {
 		w.WriteHeader(http.StatusNotAcceptable)
 	} else {
 		args := strings.Join(r.URL.Query()["arg"], " ")
@@ -90,7 +101,9 @@ func DesktopApplicationPOST(this *resource.Resource, w http.ResponseWriter, r *h
 			w.WriteHeader(http.StatusInternalServerError)
 		} else {
 			w.WriteHeader(http.StatusAccepted)
-			launch <- app.Id
+			updatedApp := da.Copy()
+			updatedApp.RelevanceHint = time.Now().UnixNano()/1000000
+			service.Map(r.URL.Path, updatedApp)
 		}
 	}
 }
@@ -114,6 +127,8 @@ func runCmd(app string) error {
 
 	return nil
 }
+
+type GenericApplicationIcon string
 
 func readDesktopFile(path string) (*DesktopApplication, []string, error) {
 	iniFile, err := ini.ReadIniFile(path)
@@ -140,9 +155,8 @@ func readDesktopFile(path string) (*DesktopApplication, []string, error) {
 	app.Url = desktopEntry.Value("URL")
 
 	if strings.HasPrefix(desktopEntry.Value("Icon"), "/") {
-		resourcePath := "/icon" + desktopEntry.Value("Icon")
-		app.IconUrl = ".." + resourcePath
-		service.Map(resourcePath, &resource.Resource{Data: "/icon", GET: IconGet})
+		app.IconPath = desktopEntry.Value("Icon")
+		app.IconUrl = "../icons" + app.IconPath
 	} else {
 		app.IconName = desktopEntry.Value("Icon")
 	}
@@ -164,6 +178,7 @@ func readDesktopFile(path string) (*DesktopApplication, []string, error) {
 		Name:     app.Name,
 		Comment:  app.Comment,
 		IconName: app.IconName,
+		IconPath: app.IconPath,
 		IconUrl:  app.IconUrl,
 		Exec:     desktopEntry.Value("Exec"),
 	}
@@ -183,9 +198,8 @@ func readDesktopFile(path string) (*DesktopApplication, []string, error) {
 				Exec: actionGroup.Value("Exec"),
 			}
 			if strings.HasPrefix(actionGroup.Value("Icon"), "/") {
-				resourcePath := "/icon" + actionGroup.Value("Icon")
-				action.IconUrl = ".." + resourcePath
-				service.Map(resourcePath, &resource.Resource{Data: "/icon", GET: IconGet})
+				action.IconPath = actionGroup.Value("Icon")
+				action.IconUrl = "../icons" + action.IconPath
 			} else {
 				action.IconName = actionGroup.Value("Icon")
 			}

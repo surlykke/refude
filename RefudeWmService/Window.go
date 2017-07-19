@@ -31,8 +31,11 @@ type Action struct {
 	Comment string
 }
 
-func WindowPOST(this *resource.Resource, w http.ResponseWriter, r *http.Request) {
-	win := this.Data.(Window)
+func (win *Window) GET(w http.ResponseWriter, r *http.Request) {
+	resource.JsonGET(win, w)
+}
+
+func (win *Window) POST(w http.ResponseWriter, r *http.Request) {
 	if actionv,ok := r.URL.Query()["action"]; ok && len(actionv) > 0 && actionv[0] != "_default" {
 		w.WriteHeader(http.StatusNotAcceptable)
 	} else {

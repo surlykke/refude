@@ -11,7 +11,6 @@ import (
 	"github.com/surlykke/RefudeServices/lib/service"
 	"strings"
 	"fmt"
-	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
 const UPowService = "org.freedesktop.UPower"
@@ -44,25 +43,30 @@ func watchUPower(changes chan map[string]dbus.Variant) {
 	uPower.ReadDBusProps(getProps(dbusConn, UPowPath, UPowerInterface))
 
     // Important that we use a copy - see below
-	service.Map( "/UPower", resource.JsonResource(uPower, nil))
+	copy := uPower
+	service.Map( "/UPower", &copy)
 
 	for {
 		uPower.ReadDBusProps(<- changes)
-		service.Map( "/UPower", resource.JsonResource(uPower, nil))
+		copy := uPower
+		service.Map( "/UPower", &copy)
 	}
 }
 
-// Keeps an eye on a device. PowerManager#Run redirects PropertiesChanged to this through the changes channel
+// Keeps an eye on a device.
+// PowerManager#Run redirects PropertiesChanged to this through the changes channel
 func watchDevice(dbusPath dbus.ObjectPath, changes chan map[string]dbus.Variant) {
 	path := "/devices/" + resourcePath(dbusPath)
 	device := Device{}
 	device.ReadDBusProps(getProps(dbusConn, dbusPath, UPowerDeviceInterface))
-	// Important to call-by-value (copy) here. Service owns what it gets
-	service.Map( path, resource.JsonResource(device, nil))
+	// Important to use copy here. Service owns what it gets
+	copy := device
+	service.Map( path, &copy)
 
 	for {
 		device.ReadDBusProps(<-changes)
-		service.Map( path, resource.JsonResource(device, nil))
+		copy := device
+		service.Map(path, &copy)
 	}
 }
 
@@ -113,11 +117,10 @@ func (pm *PowerManager) Run() {
 	}
 
 	for _,action := range(actions) {
-		res := resource.JsonResource(action, ActionPOST)
 		if action.Can {
-			service.Map( "/actions/" + action.Id, res)
+			service.Map( "/actions/" + action.Id, action)
 		}
-		service.Map("/allactions/" + action.Id, res)
+		service.Map("/allactions/" + action.Id, action)
 	}
 
 	for signal := range signals {

@@ -13,7 +13,6 @@ import (
 	"github.com/godbus/dbus/introspect"
 	"github.com/surlykke/RefudeServices/lib/service"
 	"time"
-	"github.com/surlykke/RefudeServices/lib/resource"
 	"strings"
 	"strconv"
 )
@@ -139,32 +138,30 @@ func Notify(app_name string,
 		id = <- ids
 	}
 
+	path := fmt.Sprintf("/notifications/%d", id)
+
 	notification := Notification{
 		Id : id,
 		Sender: app_name,
 		Subject: sanitize(summary, []string{}, []string{}),
 		Body: sanitize(body, allowedTags, allowedEscapes),
 		Actions: map[string]string{},
+		eTag : fmt.Sprintf("%d", id),
 	}
 
 	for i := 0; i + 1 < len(actions); i = i + 2 {
 		notification.Actions[actions[i]] = actions[i + 1]
 	}
 
-	path := fmt.Sprintf("/notifications/%d", id)
-	eTag := fmt.Sprintf("%d", id)
 
-	res := resource.JsonResource(notification, NotificationPOST)
-	res.ETag = eTag
-	res.DELETE = NotificationDELETE
-	service.Map( path, res)
+	service.Map( path, &notification)
 
 	if expire_timeout == 0 {
 		expire_timeout = 10000
 	}
 
 	if expire_timeout > 0 {
-		go closeNotificationAfter(path, eTag, expire_timeout)
+		go closeNotificationAfter(path, notification.eTag, expire_timeout)
 	}
 
 	return id, nil

@@ -15,7 +15,6 @@ import (
 	"strings"
 	"github.com/pkg/errors"
 	"github.com/surlykke/RefudeServices/lib/utils"
-	"github.com/surlykke/RefudeServices/lib/resource"
 	"net/http"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 	"github.com/surlykke/RefudeServices/lib/ini"
@@ -37,6 +36,36 @@ type Mimetype struct {
 	DefaultApplications    []string
 }
 
+func (mt *Mimetype) POST(w http.ResponseWriter, r *http.Request) {
+	defaultAppId := r.URL.Query()["defaultApp"]
+	if len(defaultAppId) != 1 {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		return
+	}
+
+	mimetypeId := mt.Id
+	appId := defaultAppId[0]
+
+	fmt.Println("Setting default application: ", mimetypeId, " -> ", appId)
+
+	path := xdg.ConfigHome + "/mimeapps.list"
+
+	if iniFile, err := ini.ReadIniFile(path); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	} else {
+		defaultApplications := utils.Split(iniFile.Value("Default Applications", mimetypeId), ";")
+		defaultApplications = utils.Remove(defaultApplications, appId)
+		defaultApplications = utils.PushFront(appId, defaultApplications)
+
+		fmt.Println("Setting: ", mimetypeId, strings.Join(defaultApplications, ";"))
+		iniFile.SetValue("Default Applications", mimetypeId, strings.Join(defaultApplications, ";"))
+		if err = ini.WriteIniFile(path, iniFile); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		} else {
+			w.WriteHeader(http.StatusNoContent)
+		}
+	}
+}
 
 var	mimetypePattern = func() *regexp.Regexp {
 	pattern, err := regexp.Compile(`^([^/]+)/([^/]+)$`)
@@ -72,36 +101,7 @@ func NewMimetype(id string) (*Mimetype, error) {
 	}
 }
 
-func MimetypePOST(this *resource.Resource, w http.ResponseWriter, r *http.Request) {
-	defaultAppId := r.URL.Query()["defaultApp"]
-	if len(defaultAppId) != 1 {
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		return
-	}
 
-	mimetypeId := this.Data.(*Mimetype).Id
-	appId := defaultAppId[0]
-
-	fmt.Println("Setting default application: ", mimetypeId, " -> ", appId)
-
-	path := xdg.ConfigHome + "/mimeapps.list"
-
-	if iniFile, err := ini.ReadIniFile(path); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-	} else {
-		defaultApplications := utils.Split(iniFile.Value("Default Applications", mimetypeId), ";")
-		defaultApplications = utils.Remove(defaultApplications, appId)
-		defaultApplications = utils.PushFront(appId, defaultApplications)
-
-		fmt.Println("Setting: ", mimetypeId, strings.Join(defaultApplications, ";"))
-		iniFile.SetValue("Default Applications", mimetypeId, strings.Join(defaultApplications, ";"))
-		if err = ini.WriteIniFile(path, iniFile); err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-		} else {
-			w.WriteHeader(http.StatusNoContent)
-		}
-	}
-}
 
 func CollectMimeTypes() map[string]*Mimetype {
 	xmlCollector := struct {

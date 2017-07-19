@@ -6,6 +6,11 @@
 //
 package main
 
+import (
+	"net/http"
+	"github.com/surlykke/RefudeServices/lib/resource"
+)
+
 type Rect struct {
 	X,Y int16
 	W,H uint16
@@ -14,4 +19,8 @@ type Rect struct {
 type Display struct {
 	W,H uint16
 	Screens []Rect
+}
+
+func (d *Display) GET(w http.ResponseWriter, r *http.Request) {
+	resource.JsonGET(d, w)
 }
