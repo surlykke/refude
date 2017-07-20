@@ -8,6 +8,7 @@ import (
 	"strings"
 	"github.com/surlykke/RefudeServices/lib/ini"
 	"fmt"
+	"log"
 )
 
 type collection struct {
@@ -94,6 +95,8 @@ func (c *collection) collectApplications(appdir string) {
 						c.addAssociations(mimetypeId, app.Id)
 					}
 				}
+			} else {
+				log.Println("Error processing ", path, ":\n\t", err)
 			}
 		}
 		return nil
