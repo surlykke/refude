@@ -18,11 +18,28 @@ import (
 	"net/http"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 	"github.com/surlykke/RefudeServices/lib/ini"
+	"github.com/surlykke/RefudeServices/lib/resource"
+	"golang.org/x/text/language"
 )
 
 const freedesktopOrgXml = "/usr/share/mime/packages/freedesktop.org.xml"
 
 type Mimetype struct {
+	Id                     string
+	Comment                localizedString
+	Acronym                localizedString
+	ExpandedAcronym        localizedString
+	Aliases                []string
+	Globs                  []string
+	SubClassOf             []string
+	IconName               string
+	GenericIcon            string
+	AssociatedApplications []string
+	DefaultApplications    []string
+	languages              language.Matcher
+}
+
+type LocalizedMimetype struct {
 	Id                     string
 	Comment                string
 	Acronym                string
@@ -34,6 +51,29 @@ type Mimetype struct {
 	GenericIcon            string
 	AssociatedApplications []string
 	DefaultApplications    []string
+}
+
+func (mt *Mimetype) localize(locale string) *LocalizedMimetype {
+	return &LocalizedMimetype{
+		Id: mt.Id,
+		Comment: mt.Comment.localize(locale),
+		Acronym: mt.Acronym.localize(locale),
+		ExpandedAcronym: mt.ExpandedAcronym.localize(locale),
+		Aliases: mt.Aliases,
+		Globs: mt.Globs,
+		SubClassOf: mt.SubClassOf,
+		IconName: mt.IconName,
+		GenericIcon: mt.GenericIcon,
+		AssociatedApplications: mt.AssociatedApplications,
+		DefaultApplications: mt.DefaultApplications,
+	}
+}
+
+
+func (mt *Mimetype) GET(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("Incoming: ", r)
+	var locale = getPreferredLocale(r, mt.languages)
+	resource.JsonGET(mt.localize(locale), w)
 }
 
 func (mt *Mimetype) POST(w http.ResponseWriter, r *http.Request) {
@@ -82,7 +122,9 @@ func NewMimetype(id string) (*Mimetype, error) {
 	} else {
 		mt := &Mimetype{
 			Id:                     id,
-			Comment:                "",
+			Comment:                make(localizedString),
+			Acronym:                make(localizedString),
+			ExpandedAcronym:        make(localizedString),
 			Aliases:                make([]string, 0),
 			Globs:                  make([]string, 0),
 			SubClassOf:             make([]string, 0),
@@ -92,9 +134,9 @@ func NewMimetype(id string) (*Mimetype, error) {
 			DefaultApplications:    make([]string, 0),
 		}
 		if strings.HasPrefix(id, "x-scheme-handler/") {
-			mt.Comment = id[len("x-scheme-handler/"):] + " url"
+			mt.Comment[""] = id[len("x-scheme-handler/"):] + " url"
 		} else {
-			mt.Comment = id
+			mt.Comment[""] = id
 		}
 
 		return mt, nil
@@ -104,6 +146,7 @@ func NewMimetype(id string) (*Mimetype, error) {
 
 
 func CollectMimeTypes() map[string]*Mimetype {
+	var allCollectedLocales = make(map[string]bool)
 	xmlCollector := struct {
 		XMLName   xml.Name `xml:"mime-info"`
 		MimeTypes []struct {
@@ -112,8 +155,14 @@ func CollectMimeTypes() map[string]*Mimetype {
 				Lang string `xml:"lang,attr"`
 				Text string `xml:",chardata"`
 			} `xml:"comment"`
-			Acronym         string `xml:"acronym"`
-			ExpandedAcronym string `xml:"expanded-acronym"`
+			Acronym []struct {
+				Lang string `xml:"lang,attr"`
+				Text string `xml:",chardata"`
+			} `xml:"acronym"`
+			ExpandedAcronym []struct {
+				Lang string `xml:"lang,attr"`
+				Text string `xml:",chardata"`
+			} `xml:"expanded-acronym"`
 			Alias           []struct {
 				Type string `xml:"type,attr"`
 			} `xml:"alias"`
@@ -144,19 +193,33 @@ func CollectMimeTypes() map[string]*Mimetype {
 	res := make(map[string]*Mimetype)
 	for _, tmp := range xmlCollector.MimeTypes {
 		mimeType, err := NewMimetype(tmp.Type)
+		var collectedLocales = make(map[string]bool)
 		if err != nil {
 			fmt.Println(err)
 			continue
 		}
 
 		for _, tmpComment := range tmp.Comment {
-			if tmpComment.Lang == "" {
-				mimeType.Comment = tmpComment.Text // FIXME
-			}
+			locale := transformLanguageTag(tmpComment.Lang)
+			mimeType.Comment[locale] = tmpComment.Text
+			collectedLocales[locale] = true
+			allCollectedLocales[locale] = true
 		}
 
-		mimeType.Acronym = tmp.Acronym
-		mimeType.ExpandedAcronym = tmp.ExpandedAcronym
+		for _, tmpAcronym := range tmp.Acronym {
+			locale := transformLanguageTag(tmpAcronym.Lang)
+			mimeType.Acronym[locale] = tmpAcronym.Text
+			collectedLocales[locale] = true
+			allCollectedLocales[locale] = true
+		}
+
+		for _, tmpExpandedAcronym := range tmp.ExpandedAcronym {
+			locale := transformLanguageTag(tmpExpandedAcronym.Lang)
+			mimeType.ExpandedAcronym[locale] = tmpExpandedAcronym.Text
+			collectedLocales[locale] = true
+			allCollectedLocales[locale] = true
+		}
+
 		if tmp.Icon.Name != "" {
 			mimeType.IconName = tmp.Icon.Name
 		} else {
@@ -183,9 +246,20 @@ func CollectMimeTypes() map[string]*Mimetype {
 			mimeType.GenericIcon = mimeType.Id[:slashPos] + "-x-generic"
 		}
 
+		var tags = make([]language.Tag, len(collectedLocales))
+		for locale,_ := range collectedLocales {
+			tags = append(tags, language.Make(locale))
+		}
+		mimeType.languages = language.NewMatcher(tags)
+
 		res[mimeType.Id] = mimeType
 	}
 
+	fmt.Println("Collected locales: ")
+	for locale, _ := range allCollectedLocales {
+		fmt.Print(locale, " ")
+	}
+	fmt.Println()
 	return res
 }
 

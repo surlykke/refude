@@ -240,16 +240,20 @@ func (a *Action) Copy() *Action {
 }
 
 func (da *DesktopApplication) GET(w http.ResponseWriter, r *http.Request) {
-	locale := ""
+	locale := getPreferredLocale(r, da.languages)
+	resource.JsonGET(da.localize(locale), w)
+}
+
+func getPreferredLocale(r *http.Request, matcher language.Matcher) (string) {
 	if acceptLanguage := r.Header.Get("Accept-Language"); acceptLanguage != "" {
 		if tags, _, err := language.ParseAcceptLanguage(acceptLanguage); err == nil {
-			tag,_, confidence := da.languages.Match(tags...)
+			tag, _, confidence := matcher.Match(tags...)
 			if confidence > language.Low {
-				locale = tag.String()
+				return tag.String()
 			}
 		}
 	}
-	resource.JsonGET(da.localize(locale), w)
+	return ""
 }
 
 func (da *DesktopApplication) POST(w http.ResponseWriter, r *http.Request) {
