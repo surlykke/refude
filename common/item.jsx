@@ -66,7 +66,7 @@ let Item = props => {
 
 	return (
 		<div id={props.item.url} style={style} onClick={() => {select(item)}} onDoubleClick={() => {execute(item)}}>
-			<img width="24px" height="24px" style={iconStyle} src={item.IconUrl}/>
+			<img width="24px" height="24px" style={iconStyle} src={item.IconUrl} />
 		    <div style={nameStyle}>{item.Name}</div>
 		    <div style={commentStyle}>{item.Comment}</div>
 		</div>

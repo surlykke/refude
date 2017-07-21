@@ -64,7 +64,7 @@ class AppChooser extends React.Component {
 		let term = this.state.searchTerm.toUpperCase().trim()
 		let reg = isUrl ? /%u/i : /%f|%u/i
 		let apps = this.apps.
-			filter(app => app.Actions["_default"]["Exec"].match(reg)).
+			filter(app => app.Exec && app.Exec.match(reg)).
 			filter(app => app.Name.toUpperCase().includes(term))
 
 		apps.forEach(app => {
