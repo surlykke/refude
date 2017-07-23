@@ -1,19 +1,20 @@
 package main
 
 import (
-	"github.com/surlykke/RefudeServices/lib/utils"
-	"github.com/surlykke/RefudeServices/lib/xdg"
-	"path/filepath"
-	"os"
-	"strings"
-	"github.com/surlykke/RefudeServices/lib/ini"
 	"fmt"
 	"log"
+	"os"
+	"path/filepath"
+	"strings"
+
+	"github.com/surlykke/RefudeServices/lib/ini"
+	"github.com/surlykke/RefudeServices/lib/utils"
+	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
 type collection struct {
 	applications map[string]*DesktopApplication
-	mimetypes map[string]*Mimetype
+	mimetypes    map[string]*Mimetype
 }
 
 func Collect() collection {
@@ -28,7 +29,7 @@ func Collect() collection {
 
 	c.collectApplications(xdg.DataHome + "/applications")
 
-	for _,dir := range append(xdg.ConfigDirs, xdg.ConfigHome) {
+	for _, dir := range append(xdg.ConfigDirs, xdg.ConfigHome) {
 		c.readMimeappsList(dir + "/mimeapps.list")
 	}
 
@@ -50,10 +51,9 @@ func appPath(id string) string {
 	return "/application/" + id
 }
 
-
-func (c*collection) addAssociations(mimeId string, appIds...string) {
+func (c *collection) addAssociations(mimeId string, appIds ...string) {
 	if mimetype := c.getMimetype(mimeId); mimetype != nil {
-		for _,appId := range appIds {
+		for _, appId := range appIds {
 			if application, appFound := c.applications[appId]; appFound {
 				mimetype.AssociatedApplications = utils.AppendIfNotThere(mimetype.AssociatedApplications, appId)
 				application.Mimetypes = utils.AppendIfNotThere(application.Mimetypes, mimeId)
@@ -62,10 +62,10 @@ func (c*collection) addAssociations(mimeId string, appIds...string) {
 	}
 }
 
-func (c*collection) removeAssociations(mimeId string, appIds...string) {
+func (c *collection) removeAssociations(mimeId string, appIds ...string) {
 	mimetype, mimetypeFound := c.mimetypes[mimeId]
 
-	for _,appId := range appIds {
+	for _, appId := range appIds {
 		if app, ok := c.applications[appId]; ok {
 			app.Mimetypes = utils.Remove(app.Mimetypes, mimeId)
 		}
@@ -84,10 +84,10 @@ func (c *collection) collectApplications(appdir string) {
 				if app.Hidden {
 					delete(c.applications, app.Id)
 				} else if len(app.OnlyShowIn) > 0 &&
-					      !utils.ElementsInCommon(xdg.CurrentDesktop, app.OnlyShowIn){
+					!utils.ElementsInCommon(xdg.CurrentDesktop, app.OnlyShowIn) {
 					delete(c.applications, app.Id)
 				} else if len(app.NotShowIn) > 0 &&
-					      utils.ElementsInCommon(xdg.CurrentDesktop, app.NotShowIn){
+					utils.ElementsInCommon(xdg.CurrentDesktop, app.NotShowIn) {
 					delete(c.applications, app.Id)
 				} else {
 					c.applications[app.Id] = app
@@ -105,7 +105,7 @@ func (c *collection) collectApplications(appdir string) {
 }
 
 func (c *collection) readMimeappsList(path string) {
-    mimeappsList := struct {
+	mimeappsList := struct {
 		defaultApplications map[string][]string
 		addedAssociations   map[string][]string
 		removedAssociations map[string][]string
@@ -148,7 +148,7 @@ func (c *collection) readMimeappsList(path string) {
 
 	for mimetypeId, appIds := range mimeappsList.defaultApplications {
 		if mimetype := c.getMimetype(mimetypeId); mimetype != nil {
-			for _,appId := range appIds {
+			for _, appId := range appIds {
 				mimetype.DefaultApplications = append(mimetype.DefaultApplications, appId)
 			}
 		}

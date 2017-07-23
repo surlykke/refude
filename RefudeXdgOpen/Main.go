@@ -7,31 +7,31 @@
 package main
 
 import (
-
-	"os"
-	"github.com/rakyll/magicmime"
-	"log"
-	"fmt"
-	"net/http"
-	"net"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
-	"bytes"
+	"log"
+	"net"
+	"net/http"
+	"net/url"
+	"os"
 	"os/exec"
-	"regexp"
-	"github.com/surlykke/RefudeServices/lib/xdg"
 	"path/filepath"
+	"regexp"
+
+	"github.com/rakyll/magicmime"
+	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
 type MimeType struct {
 	DefaultApplications []string
 }
 
-var client = http.Client {
+var client = http.Client{
 	Transport: &http.Transport{
 		DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
-			return net.Dial("unix", xdg.RuntimeDir + "/org.refude.desktop-service")
+			return net.Dial("unix", xdg.RuntimeDir+"/org.refude.desktop-service")
 		},
 	},
 }
@@ -55,14 +55,12 @@ func getJson(path string, res interface{}) error {
 	return nil
 }
 
-func postJson(path string, data interface{}) error {
+func postJson(path string) error {
 	url := "http://localhost" + path
 	fmt.Println("Posting against: ", url)
-	if byteArr, err := json.Marshal(data); err != nil {
+	if request, err := http.NewRequest("POST", url, nil); err != nil {
 		return err
-	} else if request,err := http.NewRequest("POST", url, bytes.NewReader(byteArr)); err != nil {
-		return err
-	} else if response,err := client.Do(request); err != nil {
+	} else if response, err := client.Do(request); err != nil {
 		return err
 	} else {
 		defer response.Body.Close()
@@ -74,7 +72,7 @@ func postJson(path string, data interface{}) error {
 func getDefaultApp(mimetypeid string) (string, error) {
 	fmt.Println("Looking for ", mimetypeid)
 	mimetype := MimeType{}
-	if err := getJson("/mimetypes/" + mimetypeid, &mimetype); err != nil {
+	if err := getJson("/mimetypes/"+mimetypeid, &mimetype); err != nil {
 		return "", err
 	} else if len(mimetype.DefaultApplications) > 0 {
 		return mimetype.DefaultApplications[0], nil
@@ -121,12 +119,11 @@ func main() {
 
 	if len(mimetypeId) == 0 {
 		log.Fatal("Could not determine type of " + arg)
-	} else if app,err := getDefaultApp(mimetypeId); err != nil {
+	} else if app, err := getDefaultApp(mimetypeId); err != nil {
 		log.Fatal("Error querying default app of ", mimetypeId, err)
 	} else if len(app) > 0 {
-		path := "/applications/" + app
-		payload := struct{ Arguments []string }{ Arguments: []string{arg}}
-		if err = postJson(path, &payload); err != nil {
+		path := "/applications/" + app + "?arg=" + url.QueryEscape(arg)
+		if err = postJson(path); err != nil {
 			log.Fatal("Error launching " + string(app[0]) + " with " + arg)
 		}
 	} else {
