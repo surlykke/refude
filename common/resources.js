@@ -1,6 +1,6 @@
 // Copyright (c) 2015, 2016, 2017 Christian Surlykke
 //
-// This file is part of the refude project. 
+// This file is part of the refude project.
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
 //
@@ -13,23 +13,42 @@ let dressup = (url, resource) => {
                        undefined
 }
 
-let MakeCollection = (service, pathPrefix, onUpdate) => {
+let MakeCollection = (service, pathPrefix, onUpdate, filter) => {
 	let indexUrl = "http://localhost:7938/" + service + pathPrefix + "/"
 	let notifyUrl = "http://localhost:7938/" + service + "/notify"
 
 	let index = []
 	let resourceMap = new Map()
+	let term = ""
 
-	let resourceCollection = []
+	let collection = {
+		setterm: _term => {
+			term = _term.toUpperCase().trim()
+			scheduleUpdate()
+		},
+		filtered: []
+	}
+
+	let updateScheduled = false
+
+	let scheduleUpdate = () => {
+		if (!updateScheduled) {
+			updateScheduled = true
+			setTimeout(() => {
+				update()
+				updateScheduled = false
+			}, 100)
+		}
+	}
 
 	let update = () => {
-		resourceCollection.length = 0
+		collection.filtered = []
 		index.forEach(url => {
-			if (resourceMap[url]) {
-				resourceCollection.push(resourceMap[url])
+			if (resourceMap[url] && filter(resourceMap[url], term)) {
+				collection.filtered.push(resourceMap[url])
 			}
 		})
-		resourceCollection.sort((res1, res2) => (res2.RelevanceHint || 0) - (res1.RelevanceHint || 0))
+		collection.filtered.sort((res1, res2) => (res2.RelevanceHint || 0) - (res1.RelevanceHint || 0))
 		onUpdate()
 	}
 
@@ -47,7 +66,7 @@ let MakeCollection = (service, pathPrefix, onUpdate) => {
 			dressup(url, res)
 			resourceMap[url] = res
 		}
-		update()
+		scheduleUpdate()
 	}
 
 	let fetchResource = (url) => {
@@ -83,7 +102,7 @@ let MakeCollection = (service, pathPrefix, onUpdate) => {
 	}
 
 	connect()
-	return resourceCollection
+	return collection
 }
 
 let MakeResource = (service, path, onUpdate) => {

@@ -1,6 +1,6 @@
 // Copyright (c) 2015, 2016, 2017 Christian Surlykke
 //
-// This file is part of the refude project. 
+// This file is part of the refude project.
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
 //
@@ -18,10 +18,17 @@ class Container extends React.Component {
 		super(props)
 		this.state = { items: [], windows: [], searchTerm: "" }
 
+		let match = (item, term) => item.Name.toUpperCase().includes(term)
+
 		this.collections = {
-			windows: MakeCollection("wm-service", "/windows", this.scheduleUpdate),
-			applications: MakeCollection("desktop-service", "/applications", this.scheduleUpdate),
-			poweractions: MakeCollection("power-service", "/actions", this.scheduleUpdate),
+			windows: MakeCollection("wm-service", "/windows", this.scheduleUpdate, (win, term) =>
+				!(win.States && win.States.includes("_NET_WM_STATE_ABOVE") || ["Refude Do", "refudeDo"].includes(win.Name)) &&
+				match(win, term)
+			),
+			applications: MakeCollection("desktop-service", "/applications", this.scheduleUpdate, (app, term) =>
+				!app.NoDisplay && match(app, term)
+			),
+			poweractions: MakeCollection("power-service", "/actions", this.scheduleUpdate, (app, term) => match(app, term))
 		}
 
 		this.collectionHeadings = {
@@ -41,38 +48,18 @@ class Container extends React.Component {
 	}
 
 	update = () => {
-		let term = this.state.searchTerm.toUpperCase().trim()
-
-		let matchEmpty = (item) => {
-			return !(item.States && item.States.includes("_NET_WM_STATE_ABOVE") ||
-			         ["Refude Do", "refudeDo"].includes(item.Name)) &&
-				   item.Name.toUpperCase().includes(term)
-		}
-
-		let matchNonEmpty = (item) => term !== "" && item.Name.toUpperCase().includes(term)
-
-		let collect = (id, test) => {
-			let result = []
-			this.collections[id].forEach(item => {
-				if (test(item)) {
-					item.group = this.collectionHeadings[id]
-					result.push(item)
-				}
-			})
-
-			return result
-		}
-
 		let items = []
 		let windows = []
 		if (this.onlyShow) {
-			items = collect(this.onlyShow, matchEmpty)
+			items = this.collections[this.onlyShow].filtered
 		}
 		else {
-			items.push(...collect("windows",matchEmpty));
-			windows.push(...items)
-			items.push(...collect("applications", matchNonEmpty));
-			items.push(...collect("poweractions", matchNonEmpty));
+			windows.push(...this.collections["windows"].filtered)
+			items.push(...this.collections["windows"].filtered)
+			if (this.state.searchTerm.trim() !== "") {
+				items.push(...this.collections["applications"].filtered)
+				items.push(...this.collections["poweractions"].filtered)
+			}
 		}
 
 		this.setState({items: items, windows: windows})
@@ -89,6 +76,9 @@ class Container extends React.Component {
 
 	onTermChange = (event) => {
 		console.log("onTermChange:", event)
+		this.collections["windows"].setterm(event.target.value)
+		this.collections["applications"].setterm(event.target.value)
+		this.collections["poweractions"].setterm(event.target.value)
 		this.setState({searchTerm: event.target.value})
 		this.scheduleUpdate()
 	}

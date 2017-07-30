@@ -28,7 +28,11 @@ class AppChooser extends React.Component {
 			apps: [],
 			searchTerm: "",
 		}
-		this.apps = MakeCollection("desktop-service", "/applications	", this.scheduleUpdate)
+		this.apps = MakeCollection("desktop-service", "/applications", this.scheduleUpdate, (app, term) => {
+			return !app.NoDisplay &&
+			       app.Name.toUpperCase().includes(term) &&
+				   (app.Exec.toUpperCase().includes("%F") || app.Exec.toUpperCase().includes("%U"))
+		})
 	}
 
 	componentDidMount() {
@@ -61,12 +65,8 @@ class AppChooser extends React.Component {
 	}
 
 	update = () => {
-		let term = this.state.searchTerm.toUpperCase().trim()
-		let reg = isUrl ? /%u/i : /%f|%u/i
-		let apps = this.apps.
-			filter(app => app.Exec && app.Exec.match(reg)).
-			filter(app => app.Name.toUpperCase().includes(term))
-
+		let apps = []
+		apps.push(...this.apps.filtered)
 		apps.forEach(app => {
 			let mimetypeId = this.mimetypeIds.find(id => app.Mimetypes.includes(id))
 			if (mimetypeId) {
@@ -132,8 +132,8 @@ class AppChooser extends React.Component {
 	}
 
 	onTermChange = (event) => {
+		this.apps.setterm(event.target.value)
 		this.setState({searchTerm: event.target.value})
-		this.scheduleUpdate()
 	}
 
 	render = () => {
