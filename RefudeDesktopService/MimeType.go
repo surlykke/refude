@@ -7,68 +7,68 @@
 package main
 
 import (
-
 	"encoding/xml"
-	"io/ioutil"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"regexp"
 	"strings"
+
 	"github.com/pkg/errors"
-	"github.com/surlykke/RefudeServices/lib/utils"
-	"net/http"
-	"github.com/surlykke/RefudeServices/lib/xdg"
-	"github.com/surlykke/RefudeServices/lib/ini"
 	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib/utils"
 	"golang.org/x/text/language"
+	"github.com/surlykke/RefudeServices/lib/ini"
+	"github.com/surlykke/RefudeServices/lib/xdg"
+	"os"
 )
 
 const freedesktopOrgXml = "/usr/share/mime/packages/freedesktop.org.xml"
 
 type Mimetype struct {
 	Id                     string
-	Comment                localizedString
-	Acronym                localizedString
-	ExpandedAcronym        localizedString
+	Comment                ini.LocalizedString
+	Acronym                ini.LocalizedString
+	ExpandedAcronym        ini.LocalizedString
 	Aliases                []string
 	Globs                  []string
 	SubClassOf             []string
 	IconName               string
 	GenericIcon            string
 	AssociatedApplications []string
-	DefaultApplications    []string
+	DefaultApplication     string
 	languages              language.Matcher
 }
 
 type LocalizedMimetype struct {
 	Id                     string
 	Comment                string
-	Acronym                string
-	ExpandedAcronym        string
+	Acronym                string `json:",omitempty"`
+	ExpandedAcronym        string `json:",omitempty"`
 	Aliases                []string
 	Globs                  []string
 	SubClassOf             []string
 	IconName               string
 	GenericIcon            string
 	AssociatedApplications []string
-	DefaultApplications    []string
+	DefaultApplication     string `json:",omitempty"`
 }
 
 func (mt *Mimetype) localize(locale string) *LocalizedMimetype {
 	return &LocalizedMimetype{
-		Id: mt.Id,
-		Comment: mt.Comment.localize(locale),
-		Acronym: mt.Acronym.localize(locale),
-		ExpandedAcronym: mt.ExpandedAcronym.localize(locale),
-		Aliases: mt.Aliases,
-		Globs: mt.Globs,
-		SubClassOf: mt.SubClassOf,
-		IconName: mt.IconName,
-		GenericIcon: mt.GenericIcon,
+		Id:                     mt.Id,
+		Comment:                mt.Comment.LocalOrDefault(locale),
+		Acronym:                mt.Acronym.LocalOrDefault(locale),
+		ExpandedAcronym:        mt.ExpandedAcronym.LocalOrDefault(locale),
+		Aliases:                mt.Aliases,
+		Globs:                  mt.Globs,
+		SubClassOf:             mt.SubClassOf,
+		IconName:               mt.IconName,
+		GenericIcon:            mt.GenericIcon,
 		AssociatedApplications: mt.AssociatedApplications,
-		DefaultApplications: mt.DefaultApplications,
+		DefaultApplication:     mt.DefaultApplication,
 	}
 }
-
 
 func (mt *Mimetype) GET(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Incoming: ", r)
@@ -79,35 +79,40 @@ func (mt *Mimetype) GET(w http.ResponseWriter, r *http.Request) {
 func (mt *Mimetype) POST(w http.ResponseWriter, r *http.Request) {
 	defaultAppId := r.URL.Query()["defaultApp"]
 	if len(defaultAppId) != 1 {
-		w.WriteHeader(http.StatusUnprocessableEntity)
 		return
 	}
 
 	mimetypeId := mt.Id
-	appId := defaultAppId[0]
-
-	fmt.Println("Setting default application: ", mimetypeId, " -> ", appId)
-
-	path := xdg.ConfigHome + "/mimeapps.list"
-
-	if iniFile, err := ini.ReadIniFile(path); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+	appId := resource.GetSingleQueryParameter(r, "defaultApp", "")
+	if appId == "" {
+		w.WriteHeader(http.StatusUnprocessableEntity)
 	} else {
-		defaultApplications := utils.Split(iniFile.Value("Default Applications", mimetypeId), ";")
-		defaultApplications = utils.Remove(defaultApplications, appId)
-		defaultApplications = utils.PushFront(appId, defaultApplications)
+		fmt.Println("Setting default application: ", mimetypeId, " -> ", appId)
+		path := xdg.ConfigHome + "/mimeapps.list"
 
-		fmt.Println("Setting: ", mimetypeId, strings.Join(defaultApplications, ";"))
-		iniFile.SetValue("Default Applications", mimetypeId, strings.Join(defaultApplications, ";"))
-		if err = ini.WriteIniFile(path, iniFile); err != nil {
+		if iniFile, err := ini.ReadIniFile(path); err != nil && !os.IsNotExist(err){
 			w.WriteHeader(http.StatusInternalServerError)
 		} else {
-			w.WriteHeader(http.StatusNoContent)
+			var defaultGroup = iniFile.FindGroup("Default Applications")
+			if defaultGroup == nil {
+				defaultGroup = &ini.Group{"Default Applications", make(map[string]ini.LocalizedString)}
+				iniFile = append(iniFile, defaultGroup)
+			}
+			var defaultApps = utils.Split(defaultGroup.Entries[mimetypeId][""], ";")
+			defaultApps =  utils.PushFront(appId, utils.Remove(defaultApps, appId))
+			defaultGroup.Entries[mimetypeId][""] = strings.Join(defaultApps, ";")
+			if err = ini.WriteIniFile(path, iniFile); err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+			} else {
+				w.WriteHeader(http.StatusNoContent)
+			}
 		}
 	}
+
+
 }
 
-var	mimetypePattern = func() *regexp.Regexp {
+var mimetypePattern = func() *regexp.Regexp {
 	pattern, err := regexp.Compile(`^([^/]+)/([^/]+)$`)
 	if err != nil {
 		panic(err)
@@ -117,22 +122,23 @@ var	mimetypePattern = func() *regexp.Regexp {
 
 func NewMimetype(id string) (*Mimetype, error) {
 
-	if ! mimetypePattern.MatchString(id) {
+	if !mimetypePattern.MatchString(id) {
 		return nil, errors.New("Incomprehensible mimetype: " + id)
 	} else {
 		mt := &Mimetype{
 			Id:                     id,
-			Comment:                make(localizedString),
-			Acronym:                make(localizedString),
-			ExpandedAcronym:        make(localizedString),
+			Comment:                make(ini.LocalizedString),
+			Acronym:                make(ini.LocalizedString),
+			ExpandedAcronym:        make(ini.LocalizedString),
 			Aliases:                make([]string, 0),
 			Globs:                  make([]string, 0),
 			SubClassOf:             make([]string, 0),
 			IconName:               "unknown",
 			GenericIcon:            "unknown",
 			AssociatedApplications: make([]string, 0),
-			DefaultApplications:    make([]string, 0),
+			DefaultApplication:     "",
 		}
+
 		if strings.HasPrefix(id, "x-scheme-handler/") {
 			mt.Comment[""] = id[len("x-scheme-handler/"):] + " url"
 		} else {
@@ -142,8 +148,6 @@ func NewMimetype(id string) (*Mimetype, error) {
 		return mt, nil
 	}
 }
-
-
 
 func CollectMimeTypes() map[string]*Mimetype {
 	var allCollectedLocales = make(map[string]bool)
@@ -163,7 +167,7 @@ func CollectMimeTypes() map[string]*Mimetype {
 				Lang string `xml:"lang,attr"`
 				Text string `xml:",chardata"`
 			} `xml:"expanded-acronym"`
-			Alias           []struct {
+			Alias []struct {
 				Type string `xml:"type,attr"`
 			} `xml:"alias"`
 			Glob []struct {
@@ -238,7 +242,6 @@ func CollectMimeTypes() map[string]*Mimetype {
 			mimeType.SubClassOf = utils.AppendIfNotThere(mimeType.SubClassOf, tmpSubClassOf.Type)
 		}
 
-
 		if tmp.GenericIcon.Name != "" {
 			mimeType.GenericIcon = tmp.GenericIcon.Name
 		} else {
@@ -247,7 +250,7 @@ func CollectMimeTypes() map[string]*Mimetype {
 		}
 
 		var tags = make([]language.Tag, len(collectedLocales))
-		for locale,_ := range collectedLocales {
+		for locale, _ := range collectedLocales {
 			tags = append(tags, language.Make(locale))
 		}
 		mimeType.languages = language.NewMatcher(tags)
@@ -262,4 +265,3 @@ func CollectMimeTypes() map[string]*Mimetype {
 	fmt.Println()
 	return res
 }
-

@@ -7,9 +7,9 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"sync"
-	"fmt"
 )
 
 type IconService struct {
@@ -30,6 +30,7 @@ func (is IconService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			if names, size, theme, ok := is.extractNameSizeAndTheme(r.URL.Query()); !ok {
 				w.WriteHeader(http.StatusUnprocessableEntity)
 			} else {
+				fmt.Println("names:", names, ", size:", size, ", theme:", theme)
 				for _, name := range names {
 					if icon, ok := themesCopy.FindIcon(theme, size, name); ok {
 						fmt.Println("Serving: ", icon.Path)
@@ -46,7 +47,6 @@ func (is IconService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 	}
 }
-
 
 func (is IconService) extractNameSizeAndTheme(query map[string][]string) ([]string, uint32, string, bool) {
 	if len(query["name"]) < 1 || len(query["themeName"]) > 1 || len(query["size"]) > 1 {
@@ -71,12 +71,9 @@ func (is IconService) extractNameSizeAndTheme(query map[string][]string) ([]stri
 	return name, iconSize, theme, true
 }
 
-
 func (is IconService) defaultTheme() string {
-    return "oxygen" // TODO
+	return "oxygen" // TODO
 }
-
-
 
 func (is *IconService) update() {
 	is.mutex.Lock()

@@ -7,15 +7,15 @@
 package main
 
 import (
-	"strings"
 	"fmt"
-	"github.com/surlykke/RefudeServices/lib/xdg"
-	"github.com/surlykke/RefudeServices/lib/service"
-	"golang.org/x/sys/unix"
 	"net/http"
 	"regexp"
-)
+	"strings"
 
+	"github.com/surlykke/RefudeServices/lib/service"
+	"github.com/surlykke/RefudeServices/lib/xdg"
+	"golang.org/x/sys/unix"
+)
 
 var fileChange = make(chan string)
 var launch = make(chan string)
@@ -29,15 +29,15 @@ func Run() {
 	if err != nil {
 		panic(err)
 	}
-	for _,dataDir := range append(xdg.DataDirs, xdg.DataHome) {
+	for _, dataDir := range append(xdg.DataDirs, xdg.DataHome) {
 		appDir := dataDir + "/applications"
 		fmt.Println("Watching: " + appDir)
-		if _, err := unix.InotifyAddWatch(fd, appDir, unix.IN_CREATE | unix.IN_MODIFY | unix.IN_DELETE); err != nil {
+		if _, err := unix.InotifyAddWatch(fd, appDir, unix.IN_CREATE|unix.IN_MODIFY|unix.IN_DELETE); err != nil {
 			panic(err)
 		}
 	}
 
-	if _, err := unix.InotifyAddWatch(fd, xdg.ConfigHome + "/mimeapps.list", unix.IN_CLOSE_WRITE); err != nil {
+	if _, err := unix.InotifyAddWatch(fd, xdg.ConfigHome+"/mimeapps.list", unix.IN_CLOSE_WRITE); err != nil {
 		panic(err)
 	}
 
@@ -52,7 +52,6 @@ func Run() {
 	}
 }
 
-
 var applicationIds = make([]string, 0)
 var mimetypeIds = make([]string, 0)
 
@@ -60,20 +59,20 @@ func update() {
 	c := Collect()
 
 	for _, appId := range applicationIds {
-		if _,ok := c.applications[appId]; !ok {
+		if _, ok := c.applications[appId]; !ok {
 			service.Unmap("/applications/" + appId)
 		}
 	}
 
 	for appId, newDesktopApplication := range c.applications {
 		newDesktopApplication.RelevanceHint = lastLaunched[newDesktopApplication.Id]
-		service.Map("/applications/" + appId, newDesktopApplication)
+		service.Map("/applications/"+appId, newDesktopApplication)
 		if newDesktopApplication.IconUrl != "" {
 			iconPath := IconPath(newDesktopApplication.IconPath)
 			urlPath := string("/icons" + iconPath)
 			service.Map(urlPath, iconPath)
 		}
-		for actionId,action := range newDesktopApplication.Actions {
+		for actionId, action := range newDesktopApplication.Actions {
 			if actionId != "_default" && action.IconUrl != "" {
 				iconPath := IconPath(action.IconPath)
 				urlPath := string("/icons" + iconPath)
@@ -83,17 +82,16 @@ func update() {
 	}
 
 	for _, mimetypeId := range mimetypeIds {
-		if _,ok := c.mimetypes[mimetypeId]; !ok {
+		if _, ok := c.mimetypes[mimetypeId]; !ok {
 			service.Unmap("/mimetypes/" + mimetypeId)
 		}
 	}
 
 	for mimetypeId, mimeType := range c.mimetypes {
-		service.Map("/mimetypes/" + mimetypeId, mimeType)
+		service.Map("/mimetypes/"+mimetypeId, mimeType)
 	}
 
 }
-
 
 var mimetypePathPattern = func() *regexp.Regexp {
 	if pattern, err := regexp.Compile(`/mimetypes/[^/]+/[^/]+`); err != nil {
@@ -107,8 +105,8 @@ type MimetypePostPayload struct {
 	DefaultApplication string
 }
 
-func RequestInterceptor(w http.ResponseWriter, r* http.Request) {
-	if strings.HasPrefix(r.URL.Path, "/mimetypes/x-scheme-handler/") && ! service.Has(r.URL.Path) {
+func RequestInterceptor(w http.ResponseWriter, r *http.Request) {
+	if strings.HasPrefix(r.URL.Path, "/mimetypes/x-scheme-handler/") && !service.Has(r.URL.Path) {
 		mimetypeId := r.URL.Path[len("/mimetypes/"):]
 		if mimetype, err := NewMimetype(mimetypeId); err != nil {
 			w.WriteHeader(http.StatusNotFound)
@@ -121,5 +119,3 @@ func RequestInterceptor(w http.ResponseWriter, r* http.Request) {
 
 	service.ServeHTTP(w, r)
 }
-
-

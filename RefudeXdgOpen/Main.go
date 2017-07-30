@@ -25,7 +25,7 @@ import (
 )
 
 type MimeType struct {
-	DefaultApplications []string
+	DefaultApplication string
 }
 
 var client = http.Client{
@@ -74,10 +74,8 @@ func getDefaultApp(mimetypeid string) (string, error) {
 	mimetype := MimeType{}
 	if err := getJson("/mimetypes/"+mimetypeid, &mimetype); err != nil {
 		return "", err
-	} else if len(mimetype.DefaultApplications) > 0 {
-		return mimetype.DefaultApplications[0], nil
 	} else {
-		return "", nil
+		return mimetype.DefaultApplication, nil
 	}
 }
 
@@ -119,12 +117,12 @@ func main() {
 
 	if len(mimetypeId) == 0 {
 		log.Fatal("Could not determine type of " + arg)
-	} else if app, err := getDefaultApp(mimetypeId); err != nil {
+	} else if appId, err := getDefaultApp(mimetypeId); err != nil {
 		log.Fatal("Error querying default app of ", mimetypeId, err)
-	} else if len(app) > 0 {
-		path := "/applications/" + app + "?arg=" + url.QueryEscape(arg)
+	} else if appId != "" {
+		path := "/applications/" + appId + "?arg=" + url.QueryEscape(arg)
 		if err = postJson(path); err != nil {
-			log.Fatal("Error launching " + string(app[0]) + " with " + arg)
+			log.Fatal("Error launching " + appId + " with " + arg)
 		}
 	} else {
 		fmt.Println("Calling refudeAppChooser ", arg, mimetypeId)

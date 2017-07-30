@@ -7,48 +7,50 @@
 package main
 
 import (
-	"github.com/surlykke/RefudeServices/lib/xdg"
-	"path/filepath"
 	"fmt"
-	"os"
+	"log"
 	"math"
+	"os"
+	"path/filepath"
 	"strconv"
-	"github.com/surlykke/RefudeServices/lib/utils"
+
 	"github.com/surlykke/RefudeServices/lib/ini"
+	"github.com/surlykke/RefudeServices/lib/utils"
+	"github.com/surlykke/RefudeServices/lib/xdg"
+	"strings"
 )
 
 type Themes struct {
-	themes          map[string]Theme
-	fallbackIcons   map[string][]Icon
+	themes        map[string]Theme
+	fallbackIcons map[string][]Icon
 }
 
 type Theme struct {
-	Id          string
-	Name        string
-	Comment     string
-    Context     string
-	Inherits    []string
-	Ancestors   []string
-	IconDirs    []IconDir
+	Id        string
+	Name      string
+	Comment   string
+	Context   string
+	Inherits  []string
+	Ancestors []string
+	IconDirs  []IconDir
 
 	// Maps an icon name to a list of all found icons with that name
-	Icons       map[string][]Icon
+	Icons map[string][]Icon
 }
 
 type IconDir struct {
-	Path      string
+	Path    string
 	MinSize uint32
 	MaxSize uint32
 	Context string
 }
 
-
 type Icon struct {
-	Name     string
-	Context  string
-	MinSize  uint32
-	MaxSize  uint32
-	Path     string
+	Name    string
+	Context string
+	MinSize uint32
+	MaxSize uint32
+	Path    string
 }
 
 var searchDirectories []string = getSearchDirectories()
@@ -56,24 +58,27 @@ var searchDirectories []string = getSearchDirectories()
 func ReadThemes() Themes {
 	res := Themes{make(map[string]Theme), make(map[string][]Icon)}
 
-	for _,searcDir := range searchDirectories {
-		indexThemeFilePaths, err := filepath.Glob(searcDir + "/" + "*"  + "/index.theme")
-		if err != nil { panic(err) }
+	for _, searcDir := range searchDirectories {
+		indexThemeFilePaths, err := filepath.Glob(searcDir + "/" + "*" + "/index.theme")
+		if err != nil {
+			panic(err)
+		}
 
 		for _, indexThemeFilePath := range indexThemeFilePaths {
 			themeId := filepath.Base(filepath.Dir(indexThemeFilePath))
-			if _,ok := res.themes[themeId]; !ok {
+			if _, ok := res.themes[themeId]; !ok {
 				if theme, err := readIndexTheme(themeId, indexThemeFilePath); err == nil {
 					res.themes[themeId] = theme
+				} else {
+					log.Println("Error reading index.theme: ", err)
 				}
+
 			}
 		}
 	}
 
 	for themeId, theme := range res.themes {
-		fmt.Println("parents for ", themeId, ": ", theme.Inherits)
 		ancestors := getAncestors(themeId, make([]string, 0), res.themes)
-		fmt.Println("ancestors for ", themeId, ": ", ancestors)
 		ancestors = append(ancestors, "hicolor")
 		theme.Ancestors = ancestors
 		res.themes[themeId] = theme
@@ -92,13 +97,12 @@ func ReadThemes() Themes {
 
 	}
 
-	for _, searchDir := range searchDirectories {
+	/*for _, searchDir := range searchDirectories {
 		dummyIconDir := IconDir{}
 		collectIcons(res.fallbackIcons, searchDir, dummyIconDir)
 
-	}
+	}*/
 
-	fmt.Println("Themes read")
 	for themeId, theme := range res.themes {
 		fmt.Println(themeId, ": ", theme.Ancestors)
 	}
@@ -106,8 +110,8 @@ func ReadThemes() Themes {
 	iconCount := 0
 	maxListLength := 0
 
-	for _,theme := range res.themes {
-		for _,iconList := range theme.Icons {
+	for _, theme := range res.themes {
+		for _, iconList := range theme.Icons {
 			iconCount++
 			if len(iconList) > maxListLength {
 				maxListLength = len(iconList)
@@ -120,61 +124,64 @@ func ReadThemes() Themes {
 	return res
 }
 
-
 func readIndexTheme(themeId string, indexThemeFilePath string) (Theme, error) {
-	iniFile,err:= ini.ReadIniFile(indexThemeFilePath)
+	fmt.Println("readIndexTheme, path:", indexThemeFilePath)
+	iniFile, err := ini.ReadIniFile(indexThemeFilePath)
 	if err != nil {
+		log.Println("Error reading theme:", err)
 		return Theme{}, err
 	}
 
-	if len(iniFile.Groups) < 1 || iniFile.Groups[0].Name != "Icon Theme" {
+	if len(iniFile) < 1 || iniFile[0].Name != "Icon Theme" {
 		return Theme{}, fmt.Errorf("Error reading %s , expected 'Icon Theme' at start", indexThemeFilePath)
 	}
 
-	themeGroup := iniFile.Groups[0]
+	themeGroup := iniFile[0]
 
 	theme := Theme{}
 	theme.Id = themeId
-	theme.Name = themeGroup.Value("Name")
-	theme.Comment = themeGroup.Value("Comment")
-	theme.Inherits = utils.Split(themeGroup.Value("Inherits"), ",")
+	theme.Name = themeGroup.Entries["Name"][""]
+	theme.Comment = themeGroup.Entries["Comment"][""]
+	theme.Inherits = utils.Split(themeGroup.Entries["Inherits"][""], ",")
 	theme.IconDirs = []IconDir{}
-	directories := utils.Split(themeGroup.Value("Directories"), ",")
+	directories := utils.Split(themeGroup.Entries["Directories"][""], ",")
+	for _, iniGroup := range iniFile[1:] {
 
-	for _,iniGroup := range iniFile.Groups[1:] {
-
-		if ! utils.Contains(directories, iniGroup.Name) {
+		if !utils.Contains(directories, iniGroup.Name) {
 			fmt.Fprintln(os.Stderr, iniGroup.Name, " not found in Directories")
 			continue
 		}
 
-		size, sizeGiven := readUint32(iniGroup.Value("Size"))
-		if !sizeGiven  {
+		size, sizeGiven := readUint32(iniGroup.Entries["Size"][""])
+		if !sizeGiven {
 			fmt.Fprintln(os.Stderr, "Skipping ", iniGroup.Name, " - no size given")
 			continue
 		}
 
-		minSize, minSizeGiven := readUint32(iniGroup.Value("MinSize"))
-		maxSize, maxSizeGiven := readUint32(iniGroup.Value("MaxSize"))
-		threshold := readUint32OrFallback(iniGroup.Value("Threshold"), 2)
-		sizeType := iniGroup.Value("Type")
-		if sizeType == "Fixed" {
+		minSize, minSizeGiven := readUint32(iniGroup.Entries["MinSize"][""])
+		maxSize, maxSizeGiven := readUint32(iniGroup.Entries["MaxSize"][""])
+		threshold := readUint32OrFallback(iniGroup.Entries["Threshold"][""], 2)
+		sizeType := iniGroup.Entries["Type"][""]
+		if strings.EqualFold(sizeType, "Fixed") {
 			minSize = size
 			maxSize = size
-		} else if sizeType == "Scalable" {
-			if !(minSizeGiven && maxSizeGiven) {
-				fmt.Fprintln(os.Stderr, "Error in ", theme.Name, ", ", iniGroup.Name, " - with Type 'Scalable' both MinSize and MaxSize must be given")
-				continue
+		} else if strings.EqualFold(sizeType, "Scalable") {
+			if !minSizeGiven {
+				minSize = size
 			}
-		} else if sizeType == "Threshold" {
+			if !maxSizeGiven {
+				maxSize = size
+			}
+		} else if strings.EqualFold(sizeType, "Threshold") {
 			minSize = size - threshold
 			maxSize = size + threshold
 		} else {
-			fmt.Fprintln(os.Stderr, "Error in ", theme.Name, ", ", iniGroup.Name, ", type must be given as 'Fixed', 'Scalable' or 'Threshold'")
+			fmt.Fprintln(os.Stderr, "Error in ", theme.Name, ", ", iniGroup.Name,
+				                    ", type must be given as 'Fixed', 'Scalable' or 'Threshold', was: ", sizeType)
 			continue
 		}
 
-		theme.IconDirs = append(theme.IconDirs, IconDir{iniGroup.Name, minSize, maxSize, iniGroup.Value("Context")})
+		theme.IconDirs = append(theme.IconDirs, IconDir{iniGroup.Name, minSize, maxSize, iniGroup.Entries["Context"][""]})
 	}
 
 	theme.Icons = make(map[string][]Icon)
@@ -188,7 +195,7 @@ func getAncestors(themeId string, visited []string, themeMap map[string]Theme) [
 		utils.AppendIfNotThere(visited, themeId)
 		if theme, ok := themeMap[themeId]; ok {
 			ancestors = append(ancestors, themeId)
-			for _,parentId := range theme.Inherits {
+			for _, parentId := range theme.Inherits {
 				ancestors = append(ancestors, getAncestors(parentId, visited, themeMap)...)
 			}
 		}
@@ -197,14 +204,15 @@ func getAncestors(themeId string, visited []string, themeMap map[string]Theme) [
 	return ancestors
 }
 
-
 func collectIcons(icons map[string][]Icon, iconDirPath string, iconDir IconDir) {
 	for _, ending := range []string{"png", "svg", "xpm"} {
 		iconFilePaths, err := filepath.Glob(iconDirPath + "/*." + ending)
-		if err != nil { panic(err) }
+		if err != nil {
+			panic(err)
+		}
 
 		for _, iconFilePath := range iconFilePaths {
-			iconName := filepath.Base(iconFilePath[0:len(iconFilePath)-4])
+			iconName := filepath.Base(iconFilePath[0 : len(iconFilePath)-4])
 			icon := Icon{iconName, iconDir.Context, iconDir.MinSize, iconDir.MaxSize, iconFilePath}
 			iconList, ok := icons[iconName]
 			if !ok {
@@ -215,14 +223,11 @@ func collectIcons(icons map[string][]Icon, iconDirPath string, iconDir IconDir) 
 	}
 }
 
-
-
-
-func (tc Themes) FindIcon(themeId string, size uint32, name string) (Icon, bool){
+func (tc Themes) FindIcon(themeId string, size uint32, name string) (Icon, bool) {
 	if theme, ok := tc.themes[themeId]; ok {
-		for _,ancestorId := range theme.Ancestors {
+		for _, ancestorId := range theme.Ancestors {
 			if icon, ok := FindIcon(tc.themes[ancestorId].Icons, size, name); ok {
-				return icon,true
+				return icon, true
 			}
 		}
 	}
@@ -234,13 +239,12 @@ func (tc Themes) FindIcon(themeId string, size uint32, name string) (Icon, bool)
 	return Icon{}, false
 }
 
-
 // Somewhat inspired by pseudocode example in
 //    https://specifications.freedesktop.org/icon-theme-spec/icon-theme-spec-latest.html
 // Returns
 //    Icon (zeroed if not found)
 //    bool indicating if icon was found
-func FindIcon(icons map[string][]Icon,  size uint32, iconname string) (Icon, bool ){
+func FindIcon(icons map[string][]Icon, size uint32, iconname string) (Icon, bool) {
 	shortestDistanceSoFar := uint32(math.MaxUint32)
 	iconCandidate := Icon{}
 
@@ -274,8 +278,8 @@ func FindIcon(icons map[string][]Icon,  size uint32, iconname string) (Icon, boo
 // exists, we prefer the one under $HOME/.local
 func getSearchDirectories() []string {
 	searchDirs := []string{xdg.Home + "/.icons", xdg.DataHome + "/icons"}
-	for _,datadir := range reverse(xdg.DataDirs) {
-		searchDirs = append(searchDirs, datadir + "/icons")
+	for _, datadir := range reverse(xdg.DataDirs) {
+		searchDirs = append(searchDirs, datadir+"/icons")
 	}
 	searchDirs = append(searchDirs, "/usr/share/pixmaps")
 	return searchDirs
@@ -284,11 +288,10 @@ func getSearchDirectories() []string {
 func reverse(strings []string) []string {
 	res := make([]string, len(strings))
 	for i := range strings {
-		res[len(strings) - 1 - i] = strings[i]
+		res[len(strings)-1-i] = strings[i]
 	}
 	return res
 }
-
 
 func readUint32(uintAsString string) (uint32, bool) {
 	res, err := strconv.ParseUint(uintAsString, 10, 32)
@@ -302,5 +305,3 @@ func readUint32OrFallback(uintAsString string, fallback uint32) uint32 {
 		return fallback
 	}
 }
-
-
