@@ -286,46 +286,41 @@ func readDesktopFile(path string) (*DesktopApplication, error) {
 	} else {
 		var da = makeDesktopApplication()
 		var actionNames = []string{}
-
 		group := iniFile[0]
-		if _type, ok := group.Entries["Type"]; ok {
-			da.Type = _type[""]
-		} else {
+
+		if da.Type = group.Entries["Type"]; da.Type == "" {
 			return nil, errors.New("Desktop file invalid, no 'Type' given")
 		}
-		da.Version = group.Entries["Version"][""]
-		if name, ok := group.Entries["Name"]; ok {
-			da.Name = name
-		} else {
+		da.Version = group.Entries["Version"]
+		if da.Name = group.LocalizedString("Name"); da.Name[""] == "" {
 			return nil, errors.New("Desktop file invalid, no 'Name' given")
 		}
-		da.Name = group.Entries["Name"]
-		da.GenericName = group.Entries["GenericName"]
-		da.NoDisplay = group.Entries["NoDisplay"][""] == "true"
-		da.Comment = group.Entries["Comment"]
-		icon := group.Entries["Icon"][""]
+		da.GenericName = group.LocalizedString("GenericName")
+		da.NoDisplay = group.Entries["NoDisplay"] == "true"
+		da.Comment = group.LocalizedString("Comment")
+		icon := group.Entries["Icon"]
 		if strings.HasPrefix(icon, "/") {
 			da.IconPath = icon
 			da.IconUrl = "../icons" + icon
 		} else {
 			da.IconName = icon
 		}
-		da.Hidden = group.Entries["Hidden"][""] == "true"
-		da.OnlyShowIn = utils.Split(group.Entries["OnlyShowIn"][""], ";")
-		da.NotShowIn = utils.Split(group.Entries["NotShowIn"][""], ";")
-		da.DbusActivatable = group.Entries["DBusActivatable"][""] == "true"
-		da.TryExec = group.Entries["TryExec"][""]
-		da.Exec = group.Entries["Exec"][""]
-		da.Path = group.Entries["Path"][""]
-		da.Terminal = group.Entries["Terminal"][""] == "true"
-		actionNames = utils.Split(group.Entries["Actions"][""], ";")
-		da.Mimetypes = utils.Split(group.Entries["MimeType"][""], ";")
-		da.Categories = utils.Split(group.Entries["Categories"][""], ";")
-		da.Implements = utils.Split(group.Entries["Implements"][""], ";")
+		da.Hidden = group.Entries["Hidden"] == "true"
+		da.OnlyShowIn = utils.Split(group.Entries["OnlyShowIn"], ";")
+		da.NotShowIn = utils.Split(group.Entries["NotShowIn"], ";")
+		da.DbusActivatable = group.Entries["DBusActivatable"] == "true"
+		da.TryExec = group.Entries["TryExec"]
+		da.Exec = group.Entries["Exec"]
+		da.Path = group.Entries["Path"]
+		da.Terminal = group.Entries["Terminal"] == "true"
+		actionNames = utils.Split(group.Entries["Actions"], ";")
+		da.Mimetypes = utils.Split(group.Entries["MimeType"], ";")
+		da.Categories = utils.Split(group.Entries["Categories"], ";")
+		da.Implements = utils.Split(group.Entries["Implements"], ";")
 		// FIXMEda.Keywords[tag] = utils.Split(group[""], ";")
-		da.StartupNotify = group.Entries["StartupNotify"][""] == "true"
-		da.StartupWmClass = group.Entries["StartupWMClass"][""]
-		da.Url = group.Entries["URL"][""]
+		da.StartupNotify = group.Entries["StartupNotify"] == "true"
+		da.StartupWmClass = group.Entries["StartupWMClass"]
+		da.Url = group.Entries["URL"]
 
 		for _, actionGroup := range iniFile[1:] {
 			if !strings.HasPrefix(actionGroup.Name, "Desktop Action ") {
@@ -335,19 +330,17 @@ func readDesktopFile(path string) (*DesktopApplication, error) {
 			} else {
 				fmt.Println("ActionGroup: ", actionGroup)
 				var action = makeAction()
-				if name,ok := actionGroup.Entries["Name"]; ok {
-					action.Name = name
-				} else {
+				if action.Name = actionGroup.LocalizedString("Name"); action.Name[""] == ""{
 					return nil, errors.New("Desktop file invalid, action " + actionGroup.Name + " has no default 'Name'")
 				}
-				icon = actionGroup.Entries["Icon"][""]
+				icon = actionGroup.Entries["Icon"]
 				if strings.HasPrefix(icon, "/") {
 					action.IconPath = icon
 					action.IconUrl = "../icons" + icon
 				} else {
 					action.IconName = icon
 				}
-				action.Exec = actionGroup.Entries["Exec"][""]
+				action.Exec = actionGroup.Entries["Exec"]
 				da.Actions[currentAction] = &action
 			}
 		}

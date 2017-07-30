@@ -14,6 +14,8 @@ import (
 	"os"
 	"regexp"
 
+	"strings"
+
 	"github.com/surlykke/RefudeServices/lib/utils"
 )
 
@@ -55,15 +57,22 @@ func (ls LocalizedStringlist) LocalOrDefault(locale string) []string {
 
 type Group struct {
 	Name    string
-	Entries map[string]LocalizedString
+	Entries map[string]string
 }
 
-func (g *Group) Local(key string, locale string) string {
-	if localizedString, ok := g.Entries[key]; ok {
-		return localizedString[locale]
-	} else {
-		return ""
+func (g *Group) LocalizedString(key string) LocalizedString {
+	var ls = make(LocalizedString)
+	if ls[""] = g.Entries[key]; ls[""] != "" {
+
+		var keyLen = len(key)
+		for k, v := range g.Entries {
+			var kLen = len(k)
+			if kLen > keyLen+2 && strings.HasPrefix(k, key) && k[keyLen+1] == '[' && k[kLen-1] == ']' {
+				ls[k[keyLen+1:kLen-1]] = v
+			}
+		}
 	}
+	return ls
 }
 
 type IniFile []*Group
@@ -80,7 +89,7 @@ func (inifile IniFile) FindGroup(groupName string) *Group {
 func ReadIniFile(path string) (IniFile, error) {
 	var commentLine = regexp.MustCompile(`^\s*(#.*)?$`)
 	var headerLine = regexp.MustCompile(`^\s*\[(.+?)\]\s*`)
-	var keyValueLine = regexp.MustCompile(`^\s*(.+?)(\[(.+)\])?=(.+)`)
+	var keyValueLine = regexp.MustCompile(`^\s*(.+?(\[(.+)\])?)=(.+)`)
 
 	file, err := os.Open(path)
 	if err != nil {
@@ -98,31 +107,16 @@ func ReadIniFile(path string) (IniFile, error) {
 			if currentGroup = iniFile.FindGroup(m[1]); currentGroup != nil {
 				log.Println("Warn: iniFile", path, " has duplicate group entry: ", m[1])
 			} else {
-				currentGroup = &Group{m[1], make(map[string]LocalizedString)}
+				currentGroup = &Group{m[1], make(map[string]string)}
 				iniFile = append(iniFile, currentGroup)
 			}
 		} else if m = keyValueLine.FindStringSubmatch(scanner.Text()); len(m) > 0 {
-			var key = m[1]
-			var locale = m[3]
-			var value = m[4]
 			if currentGroup == nil {
 				return nil, errors.New("Invalid iniFile," + path + ": file must start with a group heading")
 			}
-			if _, ok := currentGroup.Entries[key]; !ok {
-				currentGroup.Entries[key] = make(LocalizedString)
-			}
-			currentGroup.Entries[key][locale] = value
+			currentGroup.Entries[m[1]] = m[4]
 		} else {
 			fmt.Println(scanner.Text(), " - not recognized")
-		}
-	}
-
-
-	for _, group := range iniFile {
-		for key, localizedString := range group.Entries {
-			if _,ok := localizedString[""]; !ok {
-				return nil, errors.New("Group " + group.Name + ", entry " + key + " has no default value")
-			}
 		}
 	}
 
@@ -136,15 +130,8 @@ func WriteIniFile(path string, iniFile IniFile) error {
 		defer file.Close()
 		for _, group := range iniFile {
 			file.WriteString("[" + group.Name + "]\n")
-			for key, localizedString := range group.Entries {
-				file.WriteString(key + "=" + localizedString[""] + "\n")
-				for locale, value := range localizedString {
-					file.WriteString(key)
-					if locale != "" {
-						file.WriteString("[" + locale + "]")
-					}
-					file.WriteString(value + "\n")
-				}
+			for key, value := range group.Entries {
+				file.WriteString(key + "=" + value + "\n")
 			}
 		}
 		return nil

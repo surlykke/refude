@@ -140,11 +140,11 @@ func readIndexTheme(themeId string, indexThemeFilePath string) (Theme, error) {
 
 	theme := Theme{}
 	theme.Id = themeId
-	theme.Name = themeGroup.Entries["Name"][""]
-	theme.Comment = themeGroup.Entries["Comment"][""]
-	theme.Inherits = utils.Split(themeGroup.Entries["Inherits"][""], ",")
+	theme.Name = themeGroup.Entries["Name"]
+	theme.Comment = themeGroup.Entries["Comment"]
+	theme.Inherits = utils.Split(themeGroup.Entries["Inherits"], ",")
 	theme.IconDirs = []IconDir{}
-	directories := utils.Split(themeGroup.Entries["Directories"][""], ",")
+	directories := utils.Split(themeGroup.Entries["Directories"], ",")
 	for _, iniGroup := range iniFile[1:] {
 
 		if !utils.Contains(directories, iniGroup.Name) {
@@ -152,16 +152,16 @@ func readIndexTheme(themeId string, indexThemeFilePath string) (Theme, error) {
 			continue
 		}
 
-		size, sizeGiven := readUint32(iniGroup.Entries["Size"][""])
+		size, sizeGiven := readUint32(iniGroup.Entries["Size"])
 		if !sizeGiven {
 			fmt.Fprintln(os.Stderr, "Skipping ", iniGroup.Name, " - no size given")
 			continue
 		}
 
-		minSize, minSizeGiven := readUint32(iniGroup.Entries["MinSize"][""])
-		maxSize, maxSizeGiven := readUint32(iniGroup.Entries["MaxSize"][""])
-		threshold := readUint32OrFallback(iniGroup.Entries["Threshold"][""], 2)
-		sizeType := iniGroup.Entries["Type"][""]
+		minSize, minSizeGiven := readUint32(iniGroup.Entries["MinSize"])
+		maxSize, maxSizeGiven := readUint32(iniGroup.Entries["MaxSize"])
+		threshold := readUint32OrFallback(iniGroup.Entries["Threshold"], 2)
+		sizeType := iniGroup.Entries["Type"]
 		if strings.EqualFold(sizeType, "Fixed") {
 			minSize = size
 			maxSize = size
@@ -181,7 +181,7 @@ func readIndexTheme(themeId string, indexThemeFilePath string) (Theme, error) {
 			continue
 		}
 
-		theme.IconDirs = append(theme.IconDirs, IconDir{iniGroup.Name, minSize, maxSize, iniGroup.Entries["Context"][""]})
+		theme.IconDirs = append(theme.IconDirs, IconDir{iniGroup.Name, minSize, maxSize, iniGroup.Entries["Context"]})
 	}
 
 	theme.Icons = make(map[string][]Icon)

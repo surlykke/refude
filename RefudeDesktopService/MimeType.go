@@ -14,13 +14,14 @@ import (
 	"regexp"
 	"strings"
 
+	"os"
+
 	"github.com/pkg/errors"
+	"github.com/surlykke/RefudeServices/lib/ini"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/utils"
-	"golang.org/x/text/language"
-	"github.com/surlykke/RefudeServices/lib/ini"
 	"github.com/surlykke/RefudeServices/lib/xdg"
-	"os"
+	"golang.org/x/text/language"
 )
 
 const freedesktopOrgXml = "/usr/share/mime/packages/freedesktop.org.xml"
@@ -90,17 +91,22 @@ func (mt *Mimetype) POST(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("Setting default application: ", mimetypeId, " -> ", appId)
 		path := xdg.ConfigHome + "/mimeapps.list"
 
-		if iniFile, err := ini.ReadIniFile(path); err != nil && !os.IsNotExist(err){
+		if iniFile, err := ini.ReadIniFile(path); err != nil && !os.IsNotExist(err) {
 			w.WriteHeader(http.StatusInternalServerError)
 		} else {
 			var defaultGroup = iniFile.FindGroup("Default Applications")
 			if defaultGroup == nil {
-				defaultGroup = &ini.Group{"Default Applications", make(map[string]ini.LocalizedString)}
+				defaultGroup = &ini.Group{"Default Applications", make(map[string]string)}
 				iniFile = append(iniFile, defaultGroup)
 			}
-			var defaultApps = utils.Split(defaultGroup.Entries[mimetypeId][""], ";")
-			defaultApps =  utils.PushFront(appId, utils.Remove(defaultApps, appId))
-			defaultGroup.Entries[mimetypeId][""] = strings.Join(defaultApps, ";")
+			var defaultAppsS = defaultGroup.Entries[mimetypeId]
+			fmt.Println("defaultAppsS: ", defaultAppsS)
+			var defaultApps = utils.Split(defaultAppsS, ";")
+			fmt.Println("defaultApps: ", defaultApps)
+			defaultApps = utils.PushFront(appId, utils.Remove(defaultApps, appId))
+			defaultAppsS = strings.Join(defaultApps, ";")
+			fmt.Println(" - corrected to: ", defaultAppsS)
+			defaultGroup.Entries[mimetypeId] = defaultAppsS
 			if err = ini.WriteIniFile(path, iniFile); err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 			} else {
@@ -108,7 +114,6 @@ func (mt *Mimetype) POST(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-
 
 }
 
