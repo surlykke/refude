@@ -7,10 +7,8 @@
 package main
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os/exec"
@@ -23,6 +21,8 @@ import (
 	"github.com/surlykke/RefudeServices/lib/service"
 	"github.com/surlykke/RefudeServices/lib/utils"
 	"golang.org/x/text/language"
+	"os"
+	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
 type DesktopApplication struct {
@@ -235,10 +235,10 @@ func (da *DesktopApplication) POST(w http.ResponseWriter, r *http.Request) {
 		exec = da.Exec
 	}
 	fmt.Println("exec: ", exec)
-	args := strings.Join(r.URL.Query()["arg"], " ")
-	cmd := regexp.MustCompile("%[uUfF]").ReplaceAllString(exec, args)
-	fmt.Println("Running cmd: " + cmd)
-	if err := runCmd(cmd); err != nil {
+	var args = strings.Join(r.URL.Query()["arg"], " ")
+	var argvAsString = regexp.MustCompile("%[uUfF]").ReplaceAllString(exec, args)
+	fmt.Println("Running cmd: " + argvAsString)
+	if err := runCmd(da.Terminal, strings.Fields(argvAsString)); err != nil {
 		fmt.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 	} else {
@@ -250,34 +250,32 @@ func (da *DesktopApplication) POST(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func runCmd(app string) error {
-	cmd := exec.Command("sh", "-c", "("+app+">/dev/null 2>/dev/null &)")
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		return err
+func runCmd(runInTerminal bool, argv []string) error {
+	var cmd *exec.Cmd
+	if runInTerminal {
+		var terminal, ok = os.LookupEnv("TERMINAL")
+		if !ok {
+			return errors.New("Trying to run " + strings.Join(argv, " ") + " in terminal, but env variable TERMINAL not set")
+		}
+		argv = append([]string{terminal, "-e"}, argv...)
 	}
+	cmd = exec.Command(argv[0], argv[1:]...)
+
+	cmd.Dir = xdg.Home
+	cmd.Stdout = nil
+	cmd.Stderr = nil
 
 	if err := cmd.Start(); err != nil {
 		return err
 	}
 
-	ioutil.ReadAll(stderr)
-
-	if err := cmd.Wait(); err != nil {
+	/*if err := cmd.Wait(); err != nil {
 		return err
-	}
+	}*/
 
 	return nil
 }
 
-func advanceToNextLine(scanner *bufio.Scanner) bool {
-	for scanner.Scan() {
-		if !commentLine.MatchString(scanner.Text()) {
-			return true
-		}
-	}
-	return false
-}
 
 func readDesktopFile(path string) (*DesktopApplication, error) {
 	fmt.Println("Reading desktopFile: ", path)
