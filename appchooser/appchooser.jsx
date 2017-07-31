@@ -29,8 +29,7 @@ class AppChooser extends React.Component {
 			searchTerm: "",
 		}
 		this.apps = MakeCollection("desktop-service", "/applications", this.scheduleUpdate, (app, term) => {
-			return !app.NoDisplay &&
-			       app.Name.toUpperCase().includes(term) &&
+			return app.Name.toUpperCase().includes(term) &&
 				   (app.Exec.toUpperCase().includes("%F") || app.Exec.toUpperCase().includes("%U"))
 		})
 	}
