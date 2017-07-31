@@ -263,10 +263,5 @@ func CollectMimeTypes() map[string]*Mimetype {
 		res[mimeType.Id] = mimeType
 	}
 
-	fmt.Println("Collected locales: ")
-	for locale, _ := range allCollectedLocales {
-		fmt.Print(locale, " ")
-	}
-	fmt.Println()
 	return res
 }

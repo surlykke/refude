@@ -63,11 +63,10 @@ type Group struct {
 func (g *Group) LocalizedString(key string) LocalizedString {
 	var ls = make(LocalizedString)
 	if ls[""] = g.Entries[key]; ls[""] != "" {
-
 		var keyLen = len(key)
 		for k, v := range g.Entries {
 			var kLen = len(k)
-			if kLen > keyLen+2 && strings.HasPrefix(k, key) && k[keyLen+1] == '[' && k[kLen-1] == ']' {
+			if kLen > keyLen+2 && strings.HasPrefix(k, key) && k[keyLen] == '[' && k[kLen-1] == ']' {
 				ls[k[keyLen+1:kLen-1]] = v
 			}
 		}

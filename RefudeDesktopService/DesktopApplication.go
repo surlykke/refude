@@ -222,7 +222,6 @@ func getPreferredLocale(r *http.Request, matcher language.Matcher) string {
 func (da *DesktopApplication) POST(w http.ResponseWriter, r *http.Request) {
 
 	actionId := resource.GetSingleQueryParameter(r, "action", "")
-	fmt.Print("actionId = '", actionId, "'\n")
 	var exec string
 	if actionId != "" {
 		if action, ok := da.Actions[actionId]; !ok {
@@ -234,10 +233,8 @@ func (da *DesktopApplication) POST(w http.ResponseWriter, r *http.Request) {
 	} else {
 		exec = da.Exec
 	}
-	fmt.Println("exec: ", exec)
 	var args = strings.Join(r.URL.Query()["arg"], " ")
 	var argvAsString = regexp.MustCompile("%[uUfF]").ReplaceAllString(exec, args)
-	fmt.Println("Running cmd: " + argvAsString)
 	if err := runCmd(da.Terminal, strings.Fields(argvAsString)); err != nil {
 		fmt.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -276,7 +273,6 @@ func runCmd(runInTerminal bool, argv []string) error {
 
 
 func readDesktopFile(path string) (*DesktopApplication, error) {
-	fmt.Println("Reading desktopFile: ", path)
 	if iniFile, err := ini.ReadIniFile(path); err != nil {
 		return nil, err
 	} else if len(iniFile) == 0 || iniFile[0].Name != "Desktop Entry" {
@@ -293,6 +289,7 @@ func readDesktopFile(path string) (*DesktopApplication, error) {
 		if da.Name = group.LocalizedString("Name"); da.Name[""] == "" {
 			return nil, errors.New("Desktop file invalid, no 'Name' given")
 		}
+
 		da.GenericName = group.LocalizedString("GenericName")
 		da.NoDisplay = group.Entries["NoDisplay"] == "true"
 		da.Comment = group.LocalizedString("Comment")
@@ -326,7 +323,6 @@ func readDesktopFile(path string) (*DesktopApplication, error) {
 			} else if currentAction := actionGroup.Name[15:]; !utils.Contains(actionNames, currentAction) {
 				log.Print(path, ", undeclared action: ", currentAction, " - ignoring\n")
 			} else {
-				fmt.Println("ActionGroup: ", actionGroup)
 				var action = makeAction()
 				if action.Name = actionGroup.LocalizedString("Name"); action.Name[""] == ""{
 					return nil, errors.New("Desktop file invalid, action " + actionGroup.Name + " has no default 'Name'")
