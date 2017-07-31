@@ -32,8 +32,8 @@ class Container extends React.Component {
 		}
 
 		this.collectionHeadings = {
-			windows: "Switch to",
-			applications: "Launch",
+			windows: "Open windows",
+			applications: "Applications",
 			poweractions: "Leave",
 		}
 
@@ -48,17 +48,23 @@ class Container extends React.Component {
 	}
 
 	update = () => {
+		let addAll = (dst, src, group) => {
+			src.forEach(item => {
+				item.group = group
+				dst.push(item)
+			})
+		}
 		let items = []
 		let windows = []
 		if (this.onlyShow) {
-			items = this.collections[this.onlyShow].filtered
+			addAll(items, this.collections[this.onlyShow].filtered, this.collectionHeadings[this.onlyShow])
 		}
 		else {
-			windows.push(...this.collections["windows"].filtered)
-			items.push(...this.collections["windows"].filtered)
+			addAll(windows, this.collections["windows"].filtered)
+			addAll(items, this.collections["windows"].filtered, this.collectionHeadings["windows"])
 			if (this.state.searchTerm.trim() !== "") {
-				items.push(...this.collections["applications"].filtered)
-				items.push(...this.collections["poweractions"].filtered)
+				addAll(items, this.collections["applications"].filtered, this.collectionHeadings["applications"])
+				addAll(items, this.collections["poweractions"].filtered, this.collectionHeadings["poweractions"])
 			}
 		}
 
