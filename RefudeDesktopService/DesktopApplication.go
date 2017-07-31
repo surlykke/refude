@@ -269,9 +269,7 @@ func runCmd(runInTerminal bool, argv []string) error {
 		return err
 	}
 
-	/*if err := cmd.Wait(); err != nil {
-		return err
-	}*/
+	go cmd.Wait()
 
 	return nil
 }
