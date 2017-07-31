@@ -26,7 +26,8 @@ let MakeCollection = (service, pathPrefix, onUpdate, filter) => {
 			term = _term.toUpperCase().trim()
 			scheduleUpdate()
 		},
-		filtered: []
+		filtered: [],
+		all: []
 	}
 
 	let updateScheduled = false
@@ -43,9 +44,13 @@ let MakeCollection = (service, pathPrefix, onUpdate, filter) => {
 
 	let update = () => {
 		collection.filtered = []
+		collection.all = []
 		index.forEach(url => {
-			if (resourceMap[url] && filter(resourceMap[url], term)) {
+			if (filter && resourceMap[url] && filter(resourceMap[url], term)) {
 				collection.filtered.push(resourceMap[url])
+			}
+			if (resourceMap[url]) {
+				collection.all.push(resourceMap[url])
 			}
 		})
 		collection.filtered.sort((res1, res2) => (res2.RelevanceHint || 0) - (res1.RelevanceHint || 0))
