@@ -1,13 +1,12 @@
 package main
 
 import (
-	"bufio"
 	"log"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 
+	"github.com/surlykke/RefudeServices/lib/ini"
 	"github.com/surlykke/RefudeServices/lib/utils"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
@@ -62,18 +61,34 @@ func Collect() collection {
 	return c
 }
 
+func (c *collection) removeApp(app *DesktopApplication) {
+	delete(c.applications, app.Id)
+	for _,mimetypeId := range app.Mimetypes {
+		if mimetype,ok := c.mimetypes[mimetypeId]; ok {
+			mimetype.AssociatedApplications = utils.Remove(mimetype.AssociatedApplications, app.Id)
+		}
+	}
+}
+
 func (c *collection) collectApplications(appdir string) {
 	filepath.Walk(appdir, func(path string, info os.FileInfo, err error) error {
 		if !(info.IsDir() || !strings.HasSuffix(path, ".desktop")) {
 			app, err := readDesktopFile(path)
 			if err == nil {
 				app.Id = strings.Replace(path[len(appdir)+1:], "/", "-", -1)
-				if app.Hidden ||
+				if oldApp, ok := c.applications[app.Id]; ok {
+					c.removeApp(oldApp)
+				}
+				if !(app.Hidden ||
 					(len(app.OnlyShowIn) > 0 && !utils.ElementsInCommon(xdg.CurrentDesktop, app.OnlyShowIn)) ||
-					(len(app.NotShowIn) > 0 && utils.ElementsInCommon(xdg.CurrentDesktop, app.NotShowIn)) {
+					(len(app.NotShowIn) > 0 && utils.ElementsInCommon(xdg.CurrentDesktop, app.NotShowIn))) {
 					delete(c.applications, app.Id)
-				} else {
 					c.applications[app.Id] = app
+					for _, mimetypeId := range app.Mimetypes {
+						if mimetype := c.getOrAdd(mimetypeId); mimetype != nil {
+							mimetype.AssociatedApplications = utils.AppendIfNotThere(mimetype.AssociatedApplications, app.Id)
+						}
+					}
 				}
 			} else {
 				log.Println("Error processing ", path, ":\n\t", err)
@@ -86,64 +101,59 @@ func (c *collection) collectApplications(appdir string) {
 
 type mimeAppsListReadState int
 
-const (
-	AtStart mimeAppsListReadState = iota
-	InDefaultAppsGroup
-	InAddedAssociationsGroup
-	InRemovedAssociationsGroup
-	InUnknownGroup
-)
-
-var groupHeading = regexp.MustCompile(`^\s*\[(.*?)\]\s*$`)
-var keyValueLine = regexp.MustCompile(`^\s*(.+?)=(.+)`)
-var commentLine = regexp.MustCompile(`^\s*(#.*)?$`)
+func (c *collection) getOrAdd(mimetypeId string) *Mimetype {
+	if mimetype, ok := c.mimetypes[mimetypeId]; ok {
+		return mimetype
+	} else if mimetype, err := NewMimetype(mimetypeId); err == nil {
+		c.mimetypes[mimetypeId] = mimetype
+		return mimetype
+	} else {
+		log.Println(mimetypeId, "not legal")
+		return nil
+	}
+}
 
 func (c *collection) readMimeappsList(path string) {
-	file, err := os.Open(path)
-	if err != nil {
-		if !os.IsNotExist(err) {
-			log.Println("Error reading", path, ":", err)
+	if iniFile, err := ini.ReadIniFile(path); err == nil {
+		if addedAssociations := iniFile.FindGroup("Added Associations"); addedAssociations != nil {
+			for mimetypeId, appIds := range addedAssociations.Entries {
+				if mimetype := c.getOrAdd(mimetypeId); mimetype != nil {
+					for _, appId := range utils.Split(appIds, ";") {
+						if app, ok := c.applications[appId]; ok {
+							app.Mimetypes = utils.AppendIfNotThere(app.Mimetypes, mimetypeId)
+							mimetype.AssociatedApplications = utils.AppendIfNotThere(mimetype.AssociatedApplications, appId)
+						}
+					}
+				}
+
+			}
 		}
-		return
-	}
-	defer file.Close()
 
-	scanner := bufio.NewScanner(file)
-	var state = AtStart
-
-	for scanner.Scan() {
-		if m := groupHeading.FindStringSubmatch(scanner.Text()); len(m) > 0 {
-			switch m[1] {
-			case "Added Associations":
-				state = InAddedAssociationsGroup
-			case "Removed Associations":
-				state = InRemovedAssociationsGroup
-			case "Default Applications":
-				state = InDefaultAppsGroup
-			default:
-				state = InUnknownGroup
-			}
-		} else if m = keyValueLine.FindStringSubmatch(scanner.Text()); len(m) > 0 {
-			var mimetypeId = m[1]
-			var applicationIds = utils.Split(m[2], ";")
-			switch state {
-			case InAddedAssociationsGroup:
-				for _, appId := range applicationIds {
-					if app, ok := c.applications[appId]; ok {
-						utils.AppendIfNotThere(app.Mimetypes, mimetypeId)
+		if removedAssociations := iniFile.FindGroup("Removed Associations"); removedAssociations != nil {
+			for mimetypeId, appIds := range removedAssociations.Entries {
+				if mimetype := c.getOrAdd(mimetypeId); mimetype != nil {
+					for _, appId := range utils.Split(appIds, ";") {
+						if app, ok := c.applications[appId]; ok {
+							app.Mimetypes = utils.Remove(app.Mimetypes, mimetypeId)
+							mimetype.AssociatedApplications = utils.Remove(mimetype.AssociatedApplications, appId)
+						}
 					}
 				}
-			case InRemovedAssociationsGroup:
-				for _, appId := range applicationIds {
-					if app, ok := c.applications[appId]; ok {
-						utils.Remove(app.Mimetypes, mimetypeId)
-					}
-				}
-			case InDefaultAppsGroup:
-				c.defaultApps[mimetypeId] = append(applicationIds, c.defaultApps[mimetypeId]...)
+
 			}
-		} else if m = commentLine.FindStringSubmatch(scanner.Text()); len(m) == 0 {
-			log.Println("Skipping incomprehensible line: ", scanner.Text())
+		}
+
+		if defaultApplications := iniFile.FindGroup("Default Applications"); defaultApplications != nil {
+			for mimetypeId, appIds := range defaultApplications.Entries {
+				if mimetype := c.getOrAdd(mimetypeId); mimetype != nil {
+					var apps = utils.Split(appIds, ";")
+					list, ok := c.defaultApps[mimetypeId]
+					if !ok {
+						list = make([]string, 0)
+					}
+					c.defaultApps[mimetypeId] = append(apps, list...)
+				}
+			}
 		}
 	}
 }

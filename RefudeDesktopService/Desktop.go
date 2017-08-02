@@ -9,7 +9,6 @@ package main
 import (
 	"fmt"
 	"net/http"
-	"regexp"
 	"strings"
 
 	"github.com/surlykke/RefudeServices/lib/service"
@@ -93,13 +92,6 @@ func update() {
 
 }
 
-var mimetypePathPattern = func() *regexp.Regexp {
-	if pattern, err := regexp.Compile(`/mimetypes/[^/]+/[^/]+`); err != nil {
-		panic(err)
-	} else {
-		return pattern
-	}
-}()
 
 type MimetypePostPayload struct {
 	DefaultApplication string

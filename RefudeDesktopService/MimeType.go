@@ -72,7 +72,6 @@ func (mt *Mimetype) localize(locale string) *LocalizedMimetype {
 }
 
 func (mt *Mimetype) GET(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Incoming: ", r)
 	var locale = getPreferredLocale(r, mt.languages)
 	resource.JsonGET(mt.localize(locale), w)
 }
@@ -117,13 +116,7 @@ func (mt *Mimetype) POST(w http.ResponseWriter, r *http.Request) {
 
 }
 
-var mimetypePattern = func() *regexp.Regexp {
-	pattern, err := regexp.Compile(`^([^/]+)/([^/]+)$`)
-	if err != nil {
-		panic(err)
-	}
-	return pattern
-}()
+var mimetypePattern = regexp.MustCompile(`^([^/]+)/([^/]+)$`)
 
 func NewMimetype(id string) (*Mimetype, error) {
 
@@ -142,6 +135,7 @@ func NewMimetype(id string) (*Mimetype, error) {
 			GenericIcon:            "unknown",
 			AssociatedApplications: make([]string, 0),
 			DefaultApplication:     "",
+			languages:              language.NewMatcher(make([]language.Tag, 0)),
 		}
 
 		if strings.HasPrefix(id, "x-scheme-handler/") {
