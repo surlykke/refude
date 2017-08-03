@@ -21,14 +21,14 @@ class Container extends React.Component {
 		let match = (item, term) => item.Name.toUpperCase().includes(term)
 
 		this.collections = {
-			windows: MakeCollection("wm-service", "/windows", this.scheduleUpdate, (win, term) =>
+			windows: MakeCollection("wm-service", "/windows", this.update, (win, term) =>
 				!(win.States && win.States.includes("_NET_WM_STATE_ABOVE") || ["Refude Do", "refudeDo"].includes(win.Name)) &&
 				match(win, term)
 			),
-			applications: MakeCollection("desktop-service", "/applications", this.scheduleUpdate, (app, term) =>
+			applications: MakeCollection("desktop-service", "/applications", this.update, (app, term) =>
 				!app.NoDisplay && match(app, term)
 			),
-			poweractions: MakeCollection("power-service", "/actions", this.scheduleUpdate, (app, term) => match(app, term))
+			poweractions: MakeCollection("power-service", "/actions", this.update, (app, term) => match(app, term))
 		}
 
 		this.collectionHeadings = {
@@ -44,7 +44,7 @@ class Container extends React.Component {
 
 	componentDidMount = () => {
 		this.readArgs(NW.App.argv)
-		this.scheduleUpdate()
+		this.update()
 	}
 
 	update = () => {
@@ -57,6 +57,7 @@ class Container extends React.Component {
 		let items = []
 		let windows = []
 		if (this.onlyShow) {
+			console.log("this.onlyShow: ", this.onlyShow)
 			addAll(items, this.collections[this.onlyShow].filtered, this.collectionHeadings[this.onlyShow])
 		}
 		else {
@@ -70,23 +71,14 @@ class Container extends React.Component {
 
 		this.setState({items: items, windows: windows})
 		items.includes(this.state.selected) || this.setState({selected: items[0]})
-		this.updatePending = false
 	}
 
-	scheduleUpdate = () => {
-		if (!this.updatePending) {
-			this.updatePending = true
-			setTimeout( this.update, 100 )
-		}
-	}
-
-	onTermChange = (event) => {
-		console.log("onTermChange:", event)
-		this.collections["windows"].setterm(event.target.value)
-		this.collections["applications"].setterm(event.target.value)
-		this.collections["poweractions"].setterm(event.target.value)
-		this.setState({searchTerm: event.target.value})
-		this.scheduleUpdate()
+	onTermChange = (searchTerm) => {
+		this.collections["windows"].setterm(searchTerm)
+		this.collections["applications"].setterm(searchTerm)
+		this.collections["poweractions"].setterm(searchTerm)
+		this.setState({searchTerm: searchTerm})
+		this.update()
 	}
 
 	onKeyDown = (event) => {
@@ -128,18 +120,20 @@ class Container extends React.Component {
 	}
 
 	execute = (item) => {
+		console.log("execute")
 		this.select(item)
 		doHttp(item.url, "POST").then(response => {this.dismiss()})
 	}
 
 	dismiss = () => {
+		console.log("dismiss")
 		this.onlyShow = undefined
-		this.setState({searchTerm: ""})
-		this.scheduleUpdate()
+		this.onTermChange("")
 		nwHide()
 	}
 
 	readArgs = (args) => {
+		this.onlyShow = undefined
 		if (args.includes("refude::up")) {
 			this.move(false)
 		}
@@ -151,7 +145,7 @@ class Container extends React.Component {
 			if (onlyShowArg) {
 				this.onlyShow = onlyShowArg.slice("refude::onlyShow::".length)
 			}
-			this.scheduleUpdate()
+			this.update()
 		}
 	}
 
@@ -192,7 +186,7 @@ class Container extends React.Component {
 		return (
 			<div style={contentStyle} onKeyDown={this.onKeyDown} onKeyUp={this.onKeyUp}>
 				<div style={leftColumnStyle}>
-					<SearchBox style={searchBoxStyle} onChange={this.onTermChange}  searchTerm={this.state.searchTerm}/>
+					<SearchBox style={searchBoxStyle} onChange={evt => this.onTermChange(evt.target.value)}  searchTerm={this.state.searchTerm}/>
 					<ItemList style={itemListStyle} items={this.state.items}
 						      selected={this.state.selected} select={this.select} execute={this.execute}/>
 				</div>
