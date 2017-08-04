@@ -10,20 +10,6 @@ import {MakeCollection} from '../../common/resources'
 import {doHttp} from '../../common/utils'
 
 let NotifierItem = (props) => {
-	let style = {
-		display: "inline-block",
-		backgroundImage: 'url(' + props.item.IconUrl + ')',
-		backgroundPositionX: 'center',
-		backgroundPositionY: 'center',
-		backgroundRepeat: 'no-repeat',
-		backgroundSize: "contain",
-		padding: "0px",
-		margin: "0px",
-		marginRight: "4px",
-		fontSize: "1.3em",
-		height: "100%",
-		width: "20px"
-	}
 
 	let getXY = (event) => {
 		return  {
@@ -54,7 +40,7 @@ let NotifierItem = (props) => {
 		doHttp(url, "POST")
 	}
 
-	return (<div className="notiferItem" style={style}  onClick={onClick} onContextMenu={onRightClick}/>)
+	return (<img src={props.item.IconUrl} height="18px" width="18px" onClick={onClick} onContextMenu={onRightClick}/>)
 }
 
 
