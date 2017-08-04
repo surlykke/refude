@@ -41,7 +41,7 @@ type Item struct {
 }
 
 func (item *Item) GET(w http.ResponseWriter, r *http.Request) {
-	resource.JsonGET(item, w)
+	resource.JsonGET(item.props, w)
 }
 
 func (item *Item) POST(w http.ResponseWriter, r *http.Request) {
@@ -94,18 +94,18 @@ func (item Item) fetchProps(propNames ...string) {
 	}
 }
 
-func (item Item) copy() Item {
+func (item Item) copy() *Item {
 	props := make(map[string]interface{})
 	for propName, value := range item.props {
 		props[propName] = value // TODO: Maybe not necessary to copy all?
 	}
-	return Item{props, item.dbusObj}
+	return &Item{props, item.dbusObj}
 }
 
-func MakeItem(dbusObj dbus.BusObject) Item {
+func MakeItem(dbusObj dbus.BusObject) *Item {
 	item := Item{make(map[string]interface{}), dbusObj}
 	item.fetchProps(propNames...)
-	return item
+	return &item
 }
 
 
