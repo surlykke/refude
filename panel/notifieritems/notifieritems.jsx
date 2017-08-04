@@ -39,8 +39,10 @@ let NotifierItem = (props) => {
 		console.log("Posting: ", url)
 		doHttp(url, "POST")
 	}
-
-	return (<img src={props.item.IconUrl} height="18px" width="18px" onClick={onClick} onContextMenu={onRightClick}/>)
+	let style = {
+		paddingRight: "5px"
+	}
+	return (<img src={props.item.IconUrl} height="18px" width="18px" style={style} onClick={onClick} onContextMenu={onRightClick}/>)
 }
 
 
