@@ -9,6 +9,30 @@ import {render} from 'react-dom'
 import {MakeCollection} from '../../common/resources'
 import {doHttp} from '../../common/utils'
 
+const notificationStyle = {
+	position: "relative",
+	maxWidth: "200px",
+	padding: "6px",
+	margin: "0px",
+	backgroundColor: "lightgrey",
+}
+const notificationHeadingStyle = {
+	fontSize: "1.2em",
+	paddingBottom: "3px",
+}
+
+const notificationBodyStyle = {
+	width: "100%",
+}
+
+const crossStyle = {
+	position: "absolute",
+	top: "3px",
+	right: "2px",
+	width: "15px",
+	height: "15px",
+}
+
 let Notification = (props) => {
 
 	let dismiss = (event) => {
@@ -25,20 +49,12 @@ let Notification = (props) => {
 
 	let {item} = props
 
-	let crossStyle = {
-		position: "absolute",
-		top: "3px",
-		right: "2px",
-		width: "15px",
-		height: "15px",
-	}
-
 	// dangerouslySetInnterHtml should be safe here - we rely on
 	// RefudeNotificationsService to sanitize notification body
 	return (
-		<div className="notification" style={{position: "relative"}} onClick={notificationClicked}>
-			<div className="notificationHeading">{item.Subject}</div>
-			<div className="notificationBody" dangerouslySetInnerHTML={{__html: item.Body}} />
+		<div style={notificationStyle} onClick={notificationClicked}>
+			<div style={notificationHeadingStyle}>{item.Subject}</div>
+			<div style={notificationBodyStyle} dangerouslySetInnerHTML={{__html: item.Body}} />
 
 			{Object.keys(item.Actions).filter(k => k !== "default").map(k => {
 				let buttonClicked = (event) => {
@@ -83,9 +99,8 @@ class Notifications extends React.Component {
 	}
 
 	render = () =>
-		<div className="notifications">
-			{this.state.items.map(item =>
-				(<Notification key={item.Id} item={item} /> ))}
+		<div>
+			{this.state.items.map(item => (<Notification key={item.Id} item={item} /> ))}
 		</div>
 }
 

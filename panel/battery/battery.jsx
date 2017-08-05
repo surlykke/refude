@@ -1,6 +1,6 @@
 // Copyright (c) 2015, 2016, 2017 Christian Surlykke
 //
-// This file is part of the refude project. 
+// This file is part of the refude project.
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
 //
@@ -39,9 +39,8 @@ class Battery extends React.Component {
 		let style = this.state.status === 3 ? {fontWeight: "bold"} :
 		            this.state.status === 1 ? {color: "red"} :
 					{}
-		return <div className="panel-plugin battery" style={style}>
-					{this.state.charge}%
-        	   </div>
+		Object.assign(style, this.props.style)
+		return <div style={style}>{this.state.charge}%</div>
 	}
 }
 

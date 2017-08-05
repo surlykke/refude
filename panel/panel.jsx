@@ -1,6 +1,6 @@
 // Copyright (c) 2015, 2016, 2017 Christian Surlykke
 //
-// This file is part of the refude project. 
+// This file is part of the refude project.
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
 //
@@ -22,6 +22,23 @@ import {DragField} from './dragfield/dragfield'
 import {Notifications} from './notifications/notifications'
 
 const Window  = window.require('nw.gui').Window.get()
+const style = {
+	display: "inline-block",
+    margin: "0px",
+    padding: "2px",
+	width: "fit-content",
+    backgroundColor: "rgba(255,255,255,0.8)"
+}
+
+const pluginStyle = {
+	display: "inline-block",
+	height: "100%",
+	marginTop: "0px",
+	marginLeft: "0px",
+	marginBottom: "0px",
+	marginRight: "5px",
+	verticalAlign: "middle"
+}
 
 class Panel extends React.Component {
 
@@ -46,14 +63,14 @@ class Panel extends React.Component {
 	}
 
 	render = () =>
-		<div className="wrapper">
-	        <div className="content" id="content" ref={div => {this.content = div}}>
-				<Clock/>
-				<Battery onUpdated={this.adjustSize}/>
-				<NotifierItems onUpdated={this.adjustSize}/>
-				<HideButton/>
-				<DragField/>
-				<Notifications onUpdated={this.adjustSize}/>
+		<div style={{height: "100%", width: "500px"}}>
+	        <div style={style} id="content" ref={div => {this.content = div}}>
+				<Clock style={pluginStyle}/>
+				<Battery style={pluginStyle} onUpdated={this.adjustSize}/>
+				<NotifierItems style={pluginStyle} onUpdated={this.adjustSize}/>
+				<HideButton style={pluginStyle}/>
+				<DragField style={pluginStyle}/>
+				<Notifications style={pluginStyle} onUpdated={this.adjustSize}/>
 	        </div>
 		</div>
 	}

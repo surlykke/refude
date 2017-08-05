@@ -1,6 +1,6 @@
 // Copyright (c) 2015, 2016, 2017 Christian Surlykke
 //
-// This file is part of the refude project. 
+// This file is part of the refude project.
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
 //
@@ -13,10 +13,18 @@ class DragField extends React.Component {
 
 	constructor(props) {
 		super(props)
+		this.style = Object.assign({}, props.style)
+		Object.assign(this.style, {
+			WebkitAppRegion: "drag",
+			width: "16px",
+			height: "16px",
+			padding: "2px",
+			margin: "0px"
+		})
 	}
 
 	render = () =>
-		<div className="panel-plugin dragfield">
+		<div style={this.style}>
 			<svg viewBox="0 0 100 100" >
 				<g fillOpacity="1">
 					{circleCenters.map(c => (

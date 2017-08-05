@@ -1,6 +1,6 @@
 // Copyright (c) 2015, 2016, 2017 Christian Surlykke
 //
-// This file is part of the refude project. 
+// This file is part of the refude project.
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
 //
@@ -31,7 +31,7 @@ class Clock extends React.Component {
 	}
 
 	render = () =>
-		<div id="clock" className="panel-plugin clock">{this.state.time}</div>
+		<div id="clock" style={this.props.style}>{this.state.time}</div>
 }
 
 export {Clock}

@@ -39,10 +39,9 @@ let NotifierItem = (props) => {
 		console.log("Posting: ", url)
 		doHttp(url, "POST")
 	}
-	let style = {
-		paddingRight: "5px"
-	}
-	return (<img src={props.item.IconUrl} height="18px" width="18px" style={style} onClick={onClick} onContextMenu={onRightClick}/>)
+
+	return (<img src={props.item.IconUrl} height="18px" width="18px"
+	             style={{paddingRight: "5px"}} onClick={onClick} onContextMenu={onRightClick}/>)
 }
 
 
@@ -53,6 +52,8 @@ class NotifierItems extends React.Component {
 		this.onUpdated = props.onUpdated
 		console.log("constructor: this.state.items:", this.state.items)
 		this.items = MakeCollection("statusnotifier-service", "/items", this.update)
+		this.style = Object.assign({}, props.style)
+		this.style.margin = "0px"
 	}
 
 	componentDidUpdate() {
@@ -64,7 +65,7 @@ class NotifierItems extends React.Component {
 	}
 
 	render = () =>
-		<div className="panel-plugin notifier-items">
+		<div style={this.style}>
 			{this.state.items.map((item) => (<NotifierItem key={item.id} item={item} /> ))}
 		</div>
 }
