@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 thisdir=$(dirname $(realpath $0))
+cd $thisdir
+rm -rf ${thisdir}/dist/*
 
 [[ -n "$PREFIX" ]] || PREFIX=$HOME/.local
 REFUDEDIR=${PREFIX}/share/refude
