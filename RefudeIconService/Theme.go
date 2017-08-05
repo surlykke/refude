@@ -97,11 +97,11 @@ func ReadThemes() Themes {
 
 	}
 
-	/*for _, searchDir := range searchDirectories {
+	for _, searchDir := range searchDirectories {
 		dummyIconDir := IconDir{}
 		collectIcons(res.fallbackIcons, searchDir, dummyIconDir)
 
-	}*/
+	}
 
 	for themeId, theme := range res.themes {
 		fmt.Println(themeId, ": ", theme.Ancestors)
