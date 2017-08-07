@@ -41,8 +41,9 @@ let Item = props => {
 		})
 
 		if (item.States.includes("_NET_WM_STATE_HIDDEN")) {
-			Object.assign(item, {
+			Object.assign(iconStyle, {
 				marginLeft: "14px",
+				marginTop: "14px",
 				width: "18px",
 				height: "18px",
 			    opacity: "0.4"
