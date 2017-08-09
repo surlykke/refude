@@ -39,11 +39,21 @@ func GetNameOwner(serviceName string) (string, error) {
 	return call.Body[0].(string), call.Err
 }
 
+
+
+func serviceKey(sender dbus.Sender, objectPath dbus.ObjectPath) string {
+	return string(sender) + string(objectPath)
+}
+
+func restPath(sender dbus.Sender, objectPath dbus.ObjectPath) string {
+	return "/items/" + strings.Replace(serviceKey(sender, objectPath)[1:], "/", "-", -1)
+}
+
+/**
+ * serviceId Can be a name of service or a path of object
+ */
 func addItem(serviceName string, sender dbus.Sender) *dbus.Error {
-	// Problem: We cant handle more than one item pr sender. Not sure
-	// how to do that with the spec as it is
 	fmt.Println("serviceName: ", serviceName, ", sender: ", sender)
-	serviceOwner := string(sender)
 	var objectPath dbus.ObjectPath = ""
 	if regexp.MustCompile("^(/\\w+)+$").MatchString(serviceName) {
 		objectPath = dbus.ObjectPath(serviceName)
@@ -51,31 +61,48 @@ func addItem(serviceName string, sender dbus.Sender) *dbus.Error {
 		objectPath = dbus.ObjectPath("/StatusNotifierItem")
 	}
 
+	var channelKey = serviceKey(sender, objectPath)
+	var item = MakeItem(conn.Object(string(sender), objectPath))
+
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	if _,exists := channels[serviceOwner]; !exists {
-		channels[serviceOwner] = make(chan string)
-		go StatusNotifierItem(serviceOwner, objectPath, channels[serviceOwner])
+	if _,exists := channels[channelKey]; !exists {
+		channels[channelKey] = make(chan string)
+		go StatusNotifierItem(restPath(sender, objectPath), item, channels[channelKey])
 		watcherProperties.Set(WATCHER_INTERFACE, "RegisteredStatusItems", dbus.MakeVariant(getItems()))
-		conn.Emit(WATCHER_PATH, WATCHER_INTERFACE + ".StatusNotifierItemRegistered", serviceOwner)
+		conn.Emit(WATCHER_PATH, WATCHER_INTERFACE + ".StatusNotifierItemRegistered", string(sender))
 		return nil
 	} else {
 		return dbus.MakeFailedError(errors.New("Already registered"))
 	}
 }
 
-func removeItem(serviceName string) *dbus.Error {
+func removeItem(serviceName string, sender dbus.Sender) {
+	var objectPath dbus.ObjectPath
+	if strings.HasPrefix(serviceName, "/") {
+		objectPath = dbus.ObjectPath(serviceName)
+	} else {
+		objectPath = dbus.ObjectPath("/StatusNotifierItem")
+	}
+	var chKey = serviceKey(sender, objectPath)
+	fmt.Println("remove: ", chKey)
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	if channel, ok := channels[serviceName]; ok {
-		close(channel)
-		delete(channels, serviceName)
+	var somethingRemoved = false
+	for key, channel := range channels {
+		fmt.Println("Consider", key)
+		if strings.HasPrefix(key, chKey) {
+			fmt.Println("Close and delete")
+			close(channel)
+			delete(channels, key)
+			somethingRemoved = true
+		}
+	}
+
+	if somethingRemoved {
 		watcherProperties.Set(WATCHER_INTERFACE, "RegisteredStatusItems", dbus.MakeVariant(getItems()))
-		return nil
-	} else {
-		return dbus.MakeFailedError(errors.New("Unknown item"))
 	}
 }
 
@@ -153,9 +180,10 @@ func run() {
 			arg0 := signal.Body[0].(string)
 			arg1 := signal.Body[1].(string)
 			arg2 := signal.Body[2].(string)
+			fmt.Println("NameOwnerChanged, arg0, arg1, arg2:", arg0, arg1, arg2)
 			if len(arg1) > 0 && len(arg2) == 0 { // Someone had the name and now no-one does
 												 // We take that to mean that the app has exited
-				removeItem(arg0)
+				removeItem("/", dbus.Sender(arg0))
 			}
 		}
 	}

@@ -109,13 +109,8 @@ func MakeItem(dbusObj dbus.BusObject) *Item {
 }
 
 
-func StatusNotifierItem(serviceOwner string, objectPath dbus.ObjectPath, signals chan string) {
-
-	item := MakeItem(conn.Object(serviceOwner, objectPath))
-
-	path := "/items/" + serviceOwner[1:] // Omit leading colon
+func StatusNotifierItem(path string, item *Item, signals chan string) {
 	service.Map(path, item.copy())
-
 	defer service.Unmap(path)
 
 	for signal := range signals {
@@ -133,6 +128,7 @@ func StatusNotifierItem(serviceOwner string, objectPath dbus.ObjectPath, signals
 		}
 		service.Map( path, item.copy())
 	}
+	fmt.Println("StatusNotifierItem for", path, "exiting")
 }
 
 func collectPixMap(dbusValue [][]interface{}) argb.Icon {
