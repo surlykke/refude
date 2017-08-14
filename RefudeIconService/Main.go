@@ -8,10 +8,10 @@ package main
 
 import (
 	"github.com/surlykke/RefudeServices/lib/service"
+	"net/http"
 )
 
 func main() {
-	var iconService IconService
-	iconService.update()
-	service.ServeWith("org.refude.icon-service", iconService)
+	go run()
+	service.ServeWith("org.refude.icon-service", http.HandlerFunc(ServeHTTP))
 }

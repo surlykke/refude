@@ -33,14 +33,6 @@ var	mutex = sync.Mutex{}
 
 var watcherProperties *prop.Properties
 
-
-func GetNameOwner(serviceName string) (string, error) {
-	call := conn.BusObject().Call("GetNameOwner", dbus.Flags(0), serviceName)
-	return call.Body[0].(string), call.Err
-}
-
-
-
 func serviceKey(sender dbus.Sender, objectPath dbus.ObjectPath) string {
 	return string(sender) + string(objectPath)
 }
@@ -58,7 +50,7 @@ func addItem(serviceName string, sender dbus.Sender) *dbus.Error {
 	if regexp.MustCompile("^(/\\w+)+$").MatchString(serviceName) {
 		objectPath = dbus.ObjectPath(serviceName)
 	} else {
-		objectPath = dbus.ObjectPath("/StatusNotifierItem")
+		objectPath = dbus.ObjectPath(ITEM_PATH)
 	}
 
 	var channelKey = serviceKey(sender, objectPath)
@@ -83,7 +75,7 @@ func removeItem(serviceName string, sender dbus.Sender) {
 	if strings.HasPrefix(serviceName, "/") {
 		objectPath = dbus.ObjectPath(serviceName)
 	} else {
-		objectPath = dbus.ObjectPath("/StatusNotifierItem")
+		objectPath = dbus.ObjectPath(ITEM_PATH)
 	}
 	var chKey = serviceKey(sender, objectPath)
 	fmt.Println("remove: ", chKey)
@@ -117,9 +109,10 @@ func getItems() []string {
 
 func dispatchSignal(signal *dbus.Signal) {
 	shortName := signal.Name[len("org.kde.StatusNotifierItem."):]
+	fmt.Println("dispatching signal: ", shortName, "to", signal.Sender, ":", signal.Path)
 	mutex.Lock()
 	defer mutex.Unlock()
-	if channel, ok := channels[signal.Sender]; ok {
+	if channel, ok := channels[serviceKey(dbus.Sender(signal.Sender), signal.Path)]; ok {
 		channel <- shortName
 	}
 
