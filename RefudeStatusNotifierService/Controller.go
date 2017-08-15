@@ -78,15 +78,12 @@ func removeItem(serviceName string, sender dbus.Sender) {
 		objectPath = dbus.ObjectPath(ITEM_PATH)
 	}
 	var chKey = serviceKey(sender, objectPath)
-	fmt.Println("remove: ", chKey)
 	mutex.Lock()
 	defer mutex.Unlock()
 
 	var somethingRemoved = false
 	for key, channel := range channels {
-		fmt.Println("Consider", key)
 		if strings.HasPrefix(key, chKey) {
-			fmt.Println("Close and delete")
 			close(channel)
 			delete(channels, key)
 			somethingRemoved = true
@@ -109,7 +106,7 @@ func getItems() []string {
 
 func dispatchSignal(signal *dbus.Signal) {
 	shortName := signal.Name[len("org.kde.StatusNotifierItem."):]
-	fmt.Println("dispatching signal: ", shortName, "to", signal.Sender, ":", signal.Path)
+	fmt.Println("Dispatching signal:", shortName)
 	mutex.Lock()
 	defer mutex.Unlock()
 	if channel, ok := channels[serviceKey(dbus.Sender(signal.Sender), signal.Path)]; ok {
@@ -173,7 +170,6 @@ func run() {
 			arg0 := signal.Body[0].(string)
 			arg1 := signal.Body[1].(string)
 			arg2 := signal.Body[2].(string)
-			fmt.Println("NameOwnerChanged, arg0, arg1, arg2:", arg0, arg1, arg2)
 			if len(arg1) > 0 && len(arg2) == 0 { // Someone had the name and now no-one does
 												 // We take that to mean that the app has exited
 				removeItem("/", dbus.Sender(arg0))

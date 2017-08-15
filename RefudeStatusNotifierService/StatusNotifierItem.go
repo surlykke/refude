@@ -67,15 +67,15 @@ func (item *Item) POST(w http.ResponseWriter, r *http.Request) {
 func (item Item) fetchProps(propNames ...string) {
 	for _, propName := range propNames {
 		delete(item.props, propName)
-
-		fmt.Println("Fetch", propName)
+		fmt.Println("Fetching", propName)
 		call := item.dbusObj.Call(PROPERTIES_INTERFACE+".Get", dbus.Flags(0), ITEM_INTERFACE, propName)
 		if call.Err != nil {
-			log.Println(call.Err)
+			log.Println("Error getting property: ", call.Err)
 			continue
 		}
 
 		value := call.Body[0].(dbus.Variant).Value()
+		fmt.Println("Got", value)
 		if strings.HasSuffix(propName, "Pixmap") {
 			correctedPropName := propName[:len(propName)-6] + "Url"
 			dbusValue, ok := value.([][]interface{})
@@ -130,18 +130,18 @@ func copyIconDir(dir string) {
 
 	var destDir = xdg.RuntimeDir + "/org.refude.icon-service-session-icons/"
 	var filesCopied = 0
-	fmt.Println("Calling filepath.Walk", dir)
 	filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			log.Println("Error descending into", path)
+			return err
+		}
 		var relPath = path[len(dir):]
-		fmt.Println("walker hitting", path, ",", relPath)
 		if info.IsDir() {
-			fmt.Println("MkdirAll:", destDir+relPath)
 			if err := os.MkdirAll(destDir+relPath, os.ModePerm); err != nil {
 				return err
 			}
 		} else if _, err := os.Stat(destDir + relPath); err != nil {
 			if os.IsNotExist(err) {
-				fmt.Println("Copying", path, "->", destDir + relPath)
 				r, err := os.Open(path);
 				if err != nil {
 					log.Println("Error reading file:", err)
@@ -192,6 +192,8 @@ func StatusNotifierItem(path string, item *Item, signals chan string) {
 			item.fetchProps("OverlayIconName", "OverlayIconPixmap")
 		case "NewStatus":
 			item.fetchProps("Status")
+		case "NewIconThemePath":
+			item.fetchProps("IconThemePath")
 		}
 		service.Map(path, item.copy())
 	}
