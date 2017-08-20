@@ -28,7 +28,7 @@ const PROPERTIES_INTERFACE = "org.freedesktop.DBus.Properties"
 
 var	conn *dbus.Conn
 var dbusSignals = make(chan *dbus.Signal, 50)
-var	channels = make(map[string]chan string)
+var	channels = make(map[SenderAndPath]chan *dbus.Signal)
 var	mutex = sync.Mutex{}
 
 var watcherProperties *prop.Properties
@@ -41,27 +41,29 @@ func restPath(sender dbus.Sender, objectPath dbus.ObjectPath) string {
 	return "/items/" + strings.Replace(serviceKey(sender, objectPath)[1:], "/", "-", -1)
 }
 
+func makeSenderAndPath(serviceName string, sender dbus.Sender) SenderAndPath {
+	var sp = SenderAndPath{sender: string(sender)}
+	if regexp.MustCompile("^(/\\w+)+$").MatchString(serviceName) {
+		sp.objPath = dbus.ObjectPath(serviceName)
+	} else {
+		sp.objPath = dbus.ObjectPath(ITEM_PATH)
+	}
+	return sp
+}
+
 /**
  * serviceId Can be a name of service or a path of object
  */
 func addItem(serviceName string, sender dbus.Sender) *dbus.Error {
-	fmt.Println("serviceName: ", serviceName, ", sender: ", sender)
-	var objectPath dbus.ObjectPath = ""
-	if regexp.MustCompile("^(/\\w+)+$").MatchString(serviceName) {
-		objectPath = dbus.ObjectPath(serviceName)
-	} else {
-		objectPath = dbus.ObjectPath(ITEM_PATH)
-	}
-
-	var channelKey = serviceKey(sender, objectPath)
-	var item = MakeItem(conn.Object(string(sender), objectPath))
+	var sp = makeSenderAndPath(serviceName, sender)
 
 	mutex.Lock()
 	defer mutex.Unlock()
-
-	if _,exists := channels[channelKey]; !exists {
-		channels[channelKey] = make(chan string)
-		go StatusNotifierItem(restPath(sender, objectPath), item, channels[channelKey])
+	if _,exists := channels[sp]; !exists {
+		var item = MakeItem(sp)
+		channels[sp] = make(chan *dbus.Signal)
+		var path = "/items/" + sp.sender[1:] + strings.Replace(string(sp.objPath), "/", "-", -1)
+		go item.Run(path, channels[sp])
 		watcherProperties.Set(WATCHER_INTERFACE, "RegisteredStatusItems", dbus.MakeVariant(getItems()))
 		conn.Emit(WATCHER_PATH, WATCHER_INTERFACE + ".StatusNotifierItemRegistered", string(sender))
 		return nil
@@ -71,21 +73,29 @@ func addItem(serviceName string, sender dbus.Sender) *dbus.Error {
 }
 
 func removeItem(serviceName string, sender dbus.Sender) {
-	var objectPath dbus.ObjectPath
-	if strings.HasPrefix(serviceName, "/") {
-		objectPath = dbus.ObjectPath(serviceName)
-	} else {
-		objectPath = dbus.ObjectPath(ITEM_PATH)
+	var sp = makeSenderAndPath(serviceName, sender)
+
+	mutex.Lock()
+	defer mutex.Unlock()
+	if channel, ok := channels[sp]; ok {
+		close(channel)
+		delete(channels, sp)
+		watcherProperties.Set(WATCHER_INTERFACE, "RegisteredStatusItems", dbus.MakeVariant(getItems()))
 	}
-	var chKey = serviceKey(sender, objectPath)
+}
+
+func removeSender(sender dbus.Sender) {
+	fmt.Println("Remove sender: ", sender)
 	mutex.Lock()
 	defer mutex.Unlock()
 
 	var somethingRemoved = false
-	for key, channel := range channels {
-		if strings.HasPrefix(key, chKey) {
+	for sp, channel := range channels {
+		fmt.Println("Looking at:", sp)
+		if sp.sender == string(sender) {
+			fmt.Println("removing")
 			close(channel)
-			delete(channels, key)
+			delete(channels, sp)
 			somethingRemoved = true
 		}
 	}
@@ -95,22 +105,22 @@ func removeItem(serviceName string, sender dbus.Sender) {
 	}
 }
 
+
 // Caller holds mutex
 func getItems() []string {
 	res := make([]string, 0)
-	for serviceName,_ := range channels {
-		res = append(res, serviceName)
+	for sp,_ := range channels {
+		res = append(res, sp.sender + ":" + string(sp.objPath)) // FIXME
 	}
 	return res
 }
 
 func dispatchSignal(signal *dbus.Signal) {
-	shortName := signal.Name[len("org.kde.StatusNotifierItem."):]
-	fmt.Println("Dispatching signal:", shortName)
+	var sp = SenderAndPath{signal.Sender, signal.Path}
 	mutex.Lock()
 	defer mutex.Unlock()
-	if channel, ok := channels[serviceKey(dbus.Sender(signal.Sender), signal.Path)]; ok {
-		channel <- shortName
+	if channel, ok := channels[sp]; ok {
+		channel <- signal
 	}
 
 }
@@ -167,12 +177,13 @@ func run() {
 			dispatchSignal(signal)
 
 		} else if signal.Name == "org.freedesktop.DBus.NameOwnerChanged" && len(signal.Body) == 3 {
+			fmt.Println("NameOwnerChanged: ", signal.Body)
 			arg0 := signal.Body[0].(string)
 			arg1 := signal.Body[1].(string)
 			arg2 := signal.Body[2].(string)
 			if len(arg1) > 0 && len(arg2) == 0 { // Someone had the name and now no-one does
 												 // We take that to mean that the app has exited
-				removeItem("/", dbus.Sender(arg0))
+				removeSender(dbus.Sender(arg0))
 			}
 		}
 	}
