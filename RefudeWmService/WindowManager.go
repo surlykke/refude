@@ -18,7 +18,7 @@ import (
 	"github.com/BurntSushi/xgb/randr"
 	"github.com/BurntSushi/xgb"
 	"time"
-	"github.com/surlykke/RefudeServices/lib/argb"
+	"github.com/surlykke/RefudeServices/lib/icons"
 )
 
 
@@ -146,8 +146,8 @@ func getWindow(wId xproto.Window, stackingOrder int) *Window {
 	}
 
 	if iconArr, err := xprop.PropValNums(xprop.GetProperty(x, wId, "_NET_WM_ICON")); err == nil {
-		argbIcon := argb.ExtractARGBIcon(iconArr)
-		if iconUrl, err := argb.ServeAsPng(argbIcon); err == nil {
+		argbIcon := icons.ExtractARGBIcon(iconArr)
+		if iconUrl, err := icons.ServeAsPng(argbIcon); err == nil {
 			window.IconUrl = ".." + iconUrl
 		}
 	}

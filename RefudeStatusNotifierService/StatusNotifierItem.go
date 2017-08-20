@@ -10,17 +10,13 @@ import (
 	"fmt"
 	"github.com/surlykke/RefudeServices/lib/service"
 	"net/http"
-	"github.com/surlykke/RefudeServices/lib/argb"
+	"github.com/surlykke/RefudeServices/lib/icons"
 	"github.com/godbus/dbus"
 	"reflect"
 	"strings"
 	"log"
 	"strconv"
 	"github.com/surlykke/RefudeServices/lib/resource"
-	"path/filepath"
-	"os"
-	"github.com/surlykke/RefudeServices/lib/xdg"
-	"io"
 )
 
 var propNames = []string{
@@ -85,7 +81,7 @@ func (item Item) fetchProps(propNames ...string) {
 			}
 
 			icon := collectPixMap(dbusValue)
-			url, err := argb.ServeAsPng(icon)
+			url, err := icons.ServeAsPng(icon)
 			if err != nil {
 				log.Println("Unable to serve icon as png", err)
 				continue
@@ -96,7 +92,7 @@ func (item Item) fetchProps(propNames ...string) {
 				item.props["IconThemePath"] != nil &&
 				item.props["IconThemePath"] != "" &&
 				item.props[propName] != value {
-				copyIconDir(item.props["IconThemePath"].(string))
+				icons.CopyIconDir(item.props["IconThemePath"].(string))
 			}
 			item.props[propName] = value
 		}
@@ -116,64 +112,14 @@ func MakeItem(dbusObj dbus.BusObject) *Item {
 	item.fetchProps(propNames...)
 	if iconThemePathProp, ok := item.props["IconThemePath"]; ok {
 		if iconThemePath, ok := iconThemePathProp.(string); ok && iconThemePath != "" {
-			copyIconDir(iconThemePath)
+			icons.CopyIconDir(iconThemePath)
 		}
 	}
 	return &item
 }
 
 
-func copyIconDir(dir string) {
-	if !strings.HasSuffix(dir, "/") {
-		dir = dir + "/"
-	}
 
-	var destDir = xdg.RuntimeDir + "/org.refude.icon-service-session-icons/"
-	var filesCopied = 0
-	filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			log.Println("Error descending into", path)
-			return err
-		}
-		var relPath = path[len(dir):]
-		if info.IsDir() {
-			if err := os.MkdirAll(destDir+relPath, os.ModePerm); err != nil {
-				return err
-			}
-		} else if _, err := os.Stat(destDir + relPath); err != nil {
-			if os.IsNotExist(err) {
-				r, err := os.Open(path);
-				if err != nil {
-					log.Println("Error reading file:", err)
-					return err
-				}
-				defer r.Close()
-
-				w, err := os.Create(destDir + relPath);
-				if err != nil {
-					log.Println("Error creating file", err)
-					return err
-				}
-				defer w.Close()
-
-				if _, err := io.Copy(w, r); err != nil {
-					log.Println("Error copying file", err)
-					return err
-				}
-				filesCopied++
-			} else {
-				log.Println("Error stat'ing file", err)
-				return err
-			}
-		}
-		return nil
-	})
-	if filesCopied > 0 {
-		if _,err := os.Create(destDir + "/marker"); err != nil {
-			log.Println("Error updating marker:", err)
-		}
-	}
-}
 
 func StatusNotifierItem(path string, item *Item, signals chan string) {
 	service.Map(path, item.copy())
@@ -200,14 +146,14 @@ func StatusNotifierItem(path string, item *Item, signals chan string) {
 	fmt.Println("StatusNotifierItem for", path, "exiting")
 }
 
-func collectPixMap(dbusValue [][]interface{}) argb.Icon {
-	res := make(argb.Icon, 0)
+func collectPixMap(dbusValue [][]interface{}) icons.Icon {
+	res := make(icons.Icon, 0)
 	for _, arr := range (dbusValue) {
 		for len(arr) > 2 {
 			width := arr[0].(int32)
 			height := arr[1].(int32)
 			pixels := arr[2].([]byte)
-			res = append(res, argb.Img{Width: width, Height: height, Pixels: pixels})
+			res = append(res, icons.Img{Width: width, Height: height, Pixels: pixels})
 			arr = arr[3:]
 		}
 	}
