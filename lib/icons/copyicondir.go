@@ -1,12 +1,12 @@
 package icons
 
 import (
-	"os"
-	"log"
-	"io"
-	"strings"
 	"github.com/surlykke/RefudeServices/lib/xdg"
+	"io"
+	"log"
+	"os"
 	"path/filepath"
+	"strings"
 )
 
 func CopyIcons(iconName string, iconThemePath string) {
@@ -31,22 +31,23 @@ func CopyIcons(iconName string, iconThemePath string) {
 		}
 		if !info.IsDir() && (info.Name() == pngName || info.Name() == xpmName || info.Name() == svgName) {
 			relPath := path[len(iconThemePath):]
-			relDir := relPath[0:(len(pngName) + 1)]
-			destDir := sessionIconDir + relDir
-			destPath := sessionIconDir + relPath
-
-			if err := os.MkdirAll(destDir, os.ModePerm); err != nil {
-				return err
+			if len(relPath) > len(info.Name()) {
+				destDir := sessionIconDir + relPath[0:len(relPath)-len(info.Name())-1]
+				if err := os.MkdirAll(destDir, os.ModePerm); err != nil {
+					return err
+				}
 			}
 
-			r, err := os.Open(path);
+			destPath := sessionIconDir + relPath
+
+			r, err := os.Open(path)
 			if err != nil {
 				log.Println("Error reading file:", err)
 				return err
 			}
 			defer r.Close()
 
-			w, err := os.Create(destPath);
+			w, err := os.Create(destPath)
 			if err != nil {
 				log.Println("Error creating file", err)
 				return err
@@ -63,10 +64,8 @@ func CopyIcons(iconName string, iconThemePath string) {
 	})
 
 	if filesCopied > 0 {
-		if _,err := os.Create(sessionIconDir + "/marker"); err != nil {
+		if _, err := os.Create(sessionIconDir + "/marker"); err != nil {
 			log.Println("Error updating marker:", err)
 		}
 	}
 }
-
-
