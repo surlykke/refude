@@ -29,6 +29,17 @@ func Contains(sl []string, s string) bool {
 	return false
 }
 
+func Among(s string, values...string) bool {
+	for _,v := range values {
+		if s == v {
+			return true
+		}
+	}
+
+	return false
+}
+
+
 func ElementsInCommon(l1 []string, l2 []string) bool {
 	for _,s := range l1 {
 		if Contains(l2, s) {

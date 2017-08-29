@@ -25,6 +25,7 @@ const ITEM_PATH = "/StatusNotifierItem"
 const ITEM_INTERFACE = "org.kde.StatusNotifierItem"
 const INTROSPECT_INTERFACE = "org.freedesktop.DBus.Introspectable"
 const PROPERTIES_INTERFACE = "org.freedesktop.DBus.Properties"
+const MENU_INTERFACE = "com.canonical.dbusmenu"
 
 var	conn *dbus.Conn
 var dbusSignals = make(chan *dbus.Signal, 50)
