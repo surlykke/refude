@@ -18,6 +18,7 @@ import (
 	"reflect"
 	"errors"
 	"github.com/surlykke/RefudeServices/lib/utils"
+	time2 "time"
 )
 
 
@@ -37,10 +38,11 @@ type Item struct {
 	menu dbus.BusObject
 	dbusObj dbus.BusObject
 	path string
+	menuIds []string
 }
 
 type MenuItem struct {
-	Id int32
+	Id string
 	Type string
 	Label string
 	Enabled bool
@@ -61,18 +63,36 @@ func (item *Item) GET(w http.ResponseWriter, r *http.Request) {
 }
 
 func (item *Item) POST(w http.ResponseWriter, r *http.Request) {
-	method := resource.GetSingleQueryParameter(r, "method", "Activate")
-	x, errX := strconv.Atoi(resource.GetSingleQueryParameter(r, "x", "0"))
-	y, errY := strconv.Atoi(resource.GetSingleQueryParameter(r, "y", "0"))
-	if (method != "Activate" && method != "SecondaryActivate" && method != "ContextMenu") ||
-		errX != nil ||
-		errY != nil {
-		w.WriteHeader(http.StatusNotAcceptable)
-		return
-	}
+	fmt.Println("POST: ", r.URL)
+	action := resource.GetSingleQueryParameter(r, "action", "Activate")
+	id := resource.GetSingleQueryParameter(r, "id", "")
+	fmt.Println("method: ", action, ", known ids: ", item.menuIds)
+	if utils.Contains([]string{"Activate", "SecondaryActivate", "ContextMenu"}, action) {
+		x, _ := strconv.Atoi(resource.GetSingleQueryParameter(r, "x", "0"))
+		y, _ := strconv.Atoi(resource.GetSingleQueryParameter(r, "y", "0"))
+		fmt.Println("Calling: org.kde.StatusNotifierItem." + action)
+		if call := item.dbusObj.Call("org.kde.StatusNotifierItem." + action, dbus.Flags(0), x, y); call.Err != nil {
+			log.Println(call.Err)
+			w.WriteHeader(http.StatusInternalServerError)
+		} else {
+			w.WriteHeader(http.StatusAccepted)
+		}
 
-	item.dbusObj.Call("org.kde.StatusNotifierItem."+method, dbus.Flags(0), x, y)
-	w.WriteHeader(http.StatusAccepted)
+	} else if "click" == action && utils.Contains(item.menuIds, id){
+		idAsInt,_ := strconv.Atoi(id)
+		data := dbus.MakeVariant("")
+		time := uint32(time2.Now().Unix())
+		fmt.Println("Calling: com.canonical.dbusmenu.Event", dbus.Flags(0), idAsInt, "clicked", data, time)
+		call := item.menuObject.Call("com.canonical.dbusmenu.Event", dbus.Flags(0), idAsInt, "clicked", data, time)
+		if call.Err != nil {
+			log.Println(call.Err)
+			w.WriteHeader(http.StatusInternalServerError)
+		} else {
+			w.WriteHeader(http.StatusAccepted)
+		}
+	} else { // TODO Handle 'hover'
+		w.WriteHeader(http.StatusUnprocessableEntity)
+	}
 }
 
 func (item *Item) copy() *Item {
@@ -116,12 +136,14 @@ func (item *Item) getMenu() {
 		log.Println("Expected uint32 as first return argument, got:", reflect.TypeOf(call.Body[0]))
 	} else if interfaces, ok := call.Body[1].([]interface{}); !ok {
 		log.Println("Expected []interface{} as second return argument, got:", reflect.TypeOf(call.Body[1]))
-	} else if menu, err := parseMenu(interfaces); err != nil {
+	} else if menu, menuIds, err := parseMenu(interfaces); err != nil {
 		log.Println("Error retrieving menu", err)
 	} else if len(menu.SubMenus) > 0 {
 		item.Menu = menu.SubMenus
+		item.menuIds = utils.Remove(menuIds, menu.Id)
 	} else {
 		item.Menu = []MenuItem{menu}
+		item.menuIds = menuIds
 	}
 }
 
@@ -156,25 +178,28 @@ func getInt(variantMap map[string]dbus.Variant, key string, fallback int) int {
 	return fallback
 }
 
-func parseMenu(value []interface{}) (MenuItem, error) {
+func parseMenu(value []interface{}) (MenuItem, []string, error) {
 	fmt.Println("")
 	var menuItem = MenuItem{}
+	var id int32
 	var ok bool
 	var m map[string]dbus.Variant
 	var s []dbus.Variant
 
 	if len(value) < 3 {
-		return MenuItem{}, errors.New("Wrong length")
-	} else if menuItem.Id, ok = value[0].(int32); !ok {
-		return MenuItem{}, errors.New("Expected int32, got: " + reflect.TypeOf(value[0]).String())
+		return MenuItem{}, []string{}, errors.New("Wrong length")
+	} else if id, ok = value[0].(int32); !ok {
+		return MenuItem{}, []string{}, errors.New("Expected int32, got: " + reflect.TypeOf(value[0]).String())
 	} else if m,ok = value[1].(map[string]dbus.Variant); !ok {
-		return MenuItem{}, errors.New("Excpected dbus.Variant, got: " + reflect.TypeOf(value[1]).String())
+		return MenuItem{}, []string{}, errors.New("Excpected dbus.Variant, got: " + reflect.TypeOf(value[1]).String())
 	} else if s,ok = value[2].([]dbus.Variant); !ok {
-		return MenuItem{}, errors.New("expected []dbus.Variant, got: " + reflect.TypeOf(value[2]).String())
+		return MenuItem{}, []string{}, errors.New("expected []dbus.Variant, got: " + reflect.TypeOf(value[2]).String())
 	}
 
+	menuItem.Id = fmt.Sprintf("%d", id)
+
 	if menuItem.Type = getString(m, "type", "standard"); !utils.Among(menuItem.Type, "standard", "separator") {
-		return MenuItem{}, errors.New("Illegal menuitem type: " + menuItem.Type)
+		return MenuItem{}, []string{}, errors.New("Illegal menuitem type: " + menuItem.Type)
 	}
 	menuItem.Label = getString(m, "label", "")
 	menuItem.Enabled = getBoolean(m, "enabled", true)
@@ -183,18 +208,20 @@ func parseMenu(value []interface{}) (MenuItem, error) {
 		// FIXME: Look for pixmap
 	}
 	if menuItem.ToggleType = getString(m, "toggle-type", ""); !utils.Among(menuItem.ToggleType, "checkmark", "radio", "") {
-		return MenuItem{}, errors.New("Illegal toggle-type: " + menuItem.ToggleType)
+		return MenuItem{}, []string{}, errors.New("Illegal toggle-type: " + menuItem.ToggleType)
 	}
 
 	menuItem.TogleState = getInt(m, "toggle-state", -1)
+	var menuIds = []string{menuItem.Id}
 	if childrenDisplay := getString(m, "children-display", ""); childrenDisplay == "submenu" {
 		for _,variant := range s {
 			if interfaces, ok := variant.Value().([]interface{}); !ok {
-				return MenuItem{}, errors.New("Submenu item not of type []interface")
+				return MenuItem{}, []string{}, errors.New("Submenu item not of type []interface")
 			} else {
-				if submenuItem, err := parseMenu(interfaces); err != nil {
-					return MenuItem{}, err
+				if submenuItem, subIds, err := parseMenu(interfaces); err != nil {
+					return MenuItem{}, []string{}, err
 				} else {
+					menuIds = append(menuIds, subIds...)
 					menuItem.SubMenus = append(menuItem.SubMenus, submenuItem)
 				}
 			}
@@ -203,7 +230,7 @@ func parseMenu(value []interface{}) (MenuItem, error) {
 		log.Println("warning: ignoring unknown children-display type:", childrenDisplay)
 	}
 
-	return menuItem, nil
+	return menuItem, menuIds, nil
 }
 
 
