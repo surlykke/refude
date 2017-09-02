@@ -15,9 +15,14 @@ let NotifierItem = (props) => {
 		let buildMenu = (jsonMenu) => {
 			let menu = new nw.Menu()
 			jsonMenu.forEach(jsonMenuItem => {
+
 				let menuItem = new nw.MenuItem({
-					type: jsonMenuItem.Type === "separator" ? "separator" : "normal",
-					label: (jsonMenuItem.Label || "").replace( /_([^_])/g, "$1" )
+					type: jsonMenuItem.Type === "separator" ? "separator" :
+					      jsonMenuItem.ToggleType === "checkmark" ? "checkbox" :
+					      jsonMenuItem.ToggleType === "radio" ? "checkbox" :
+						  "normal",
+					label: (jsonMenuItem.Label || "").replace( /_([^_])/g, "$1" ),
+					checked: jsonMenuItem.ToggleState === 1
 				})
 				if (jsonMenuItem.SubMenus) {
 					menuItem.submenu = buildMenu(jsonMenuItem.SubMenus)
@@ -75,11 +80,8 @@ let NotifierItem = (props) => {
 
 	let call = (method, xy) => {
 		let url = props.item.url + `?method=${method}&x=${xy.x}&y=${xy.y}`
-		console.log("Posting: ", url)
 		doHttp(url, "POST")
 	}
-
-	console.log("item: ", props.item)
 
 	return (<img src={props.item.IconUrl} height="18px" width="18px"
 	             style={{paddingRight: "5px"}} onClick={onClick} onContextMenu={onRightClick}/>)
@@ -91,7 +93,6 @@ class NotifierItems extends React.Component {
 		super(props)
 		this.state = {items : []}
 		this.onUpdated = props.onUpdated
-		console.log("constructor: this.state.items:", this.state.items)
 		this.items = MakeCollection("statusnotifier-service", "/items", this.update)
 		this.style = Object.assign({}, props.style)
 		this.style.margin = "0px"
