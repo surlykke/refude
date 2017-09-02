@@ -11,6 +11,39 @@ import {doHttp} from '../../common/utils'
 
 let NotifierItem = (props) => {
 
+	let showMenu = (event) => {
+		let buildMenu = (jsonMenu) => {
+			let menu = new nw.Menu()
+			jsonMenu.forEach(jsonMenuItem => {
+				let menuItem = new nw.MenuItem({
+					type: jsonMenuItem.Type === "separator" ? "separator" : "normal",
+					label: (jsonMenuItem.Label || "").replace( /_([^_])/g, "$1" )
+				})
+				if (jsonMenuItem.SubMenus) {
+					menuItem.submenu = buildMenu(jsonMenuItem.SubMenus)
+				} else if (menuItem.type === "normal") {
+					menuItem.click = () => {
+						let url = props.item.url + `?action=click&id=${jsonMenuItem.Id}`
+						doHttp(url, "POST")
+					}
+				}
+				menu.append(menuItem)
+			})
+			return menu
+		}
+		let menu = buildMenu(props.item.Menu)
+
+		if (menu.items.length === 1 && menu.items[0].type === "normal" && !menu.items[0].submenu) {
+			// So the entire menu consists of one item. We don't bother showing it, just activete it directly.
+			menu.items[0].click()
+		} else {
+			menu.popup(event.clientX, event.clientY)
+		}
+	}
+
+
+
+
 	let getXY = (event) => {
 		return  {
 			x: Math.round(event.view.devicePixelRatio * event.screenX),
@@ -20,17 +53,23 @@ let NotifierItem = (props) => {
 
 	let onClick = (event) => {
 		event.persist()
-		console.log(event)
-		if (event.button === 0) {
+		if (props.item.Menu) {
+			showMenu(event)
+		} else if (event.button === 0) {
 			call("Activate", getXY(event))
 		} else if (event.button === 1){
 			call("SecondaryActivate", getXY(event))
 		}
+		event.preventDefault()
 	}
 
 	let onRightClick = (event) => {
 		event.persist()
-		call("ContextMenu", getXY(event))
+		if (props.item.Menu) {
+			showMenu(event)
+		} else {
+			call("ContextMenu", getXY(event))
+		}
 		event.preventDefault()
 	}
 
@@ -39,6 +78,8 @@ let NotifierItem = (props) => {
 		console.log("Posting: ", url)
 		doHttp(url, "POST")
 	}
+
+	console.log("item: ", props.item)
 
 	return (<img src={props.item.IconUrl} height="18px" width="18px"
 	             style={{paddingRight: "5px"}} onClick={onClick} onContextMenu={onRightClick}/>)
