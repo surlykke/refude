@@ -157,9 +157,9 @@ class Container extends React.Component {
 			position: "relative",
 			display: "flex",
 			boxSizing: "border-box",
-			width: "calc(100% - 16px)",
-			height: "calc(100% - 16px)",
-			margin: "8px",
+			width: "calc(100% - 1px)",
+			height: "calc(100% - 1px)",
+			padding: "4px",
 		}
 
 		let leftColumnStyle = {
@@ -168,6 +168,7 @@ class Container extends React.Component {
 			height: "100%",
 			display: "flex",
 			flexDirection: "column",
+			margin: "0px"
 		}
 
 		let searchBoxStyle = {
@@ -179,6 +180,7 @@ class Container extends React.Component {
 		}
 
 		let windowsStyle = {
+			margin: "0px",
 			marginLeft: "8px",
 			flex: "1",
 		}
