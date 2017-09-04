@@ -51,7 +51,6 @@ type MenuItem struct {
 	Shortcuts [][]string
 	ToggleType string
 	TogleState int
-	ChildrenDisplay string
 	SubMenus []MenuItem `json:",omitempty"`
 }
 
@@ -64,34 +63,32 @@ func (item *Item) GET(w http.ResponseWriter, r *http.Request) {
 
 func (item *Item) POST(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("POST: ", r.URL)
-	action := resource.GetSingleQueryParameter(r, "action", "Activate")
+	action := resource.GetSingleQueryParameter(r, "action", "left")
+	x, _ := strconv.Atoi(resource.GetSingleQueryParameter(r, "x", "0"))
+	y, _ := strconv.Atoi(resource.GetSingleQueryParameter(r, "y", "0"))
 	id := resource.GetSingleQueryParameter(r, "id", "")
-	fmt.Println("method: ", action, ", known ids: ", item.menuIds)
-	if utils.Contains([]string{"Activate", "SecondaryActivate", "ContextMenu"}, action) {
-		x, _ := strconv.Atoi(resource.GetSingleQueryParameter(r, "x", "0"))
-		y, _ := strconv.Atoi(resource.GetSingleQueryParameter(r, "y", "0"))
-		fmt.Println("Calling: org.kde.StatusNotifierItem." + action)
-		if call := item.dbusObj.Call("org.kde.StatusNotifierItem." + action, dbus.Flags(0), x, y); call.Err != nil {
-			log.Println(call.Err)
-			w.WriteHeader(http.StatusInternalServerError)
-		} else {
-			w.WriteHeader(http.StatusAccepted)
-		}
 
-	} else if "click" == action && utils.Contains(item.menuIds, id){
+	fmt.Println("action: ", action, ", known ids: ", item.menuIds)
+	var call *dbus.Call
+	if utils.Among(action, "left", "middle", "right") {
+		action2method := map[string]string{"left":"Activate", "middle":"SecondaryActivate", "right":"ContextMenu"}
+		fmt.Println("Calling: ", "org.kde.StatusNotifierItem." + action2method[action], dbus.Flags(0), x, y)
+		call = item.dbusObj.Call("org.kde.StatusNotifierItem." + action2method[action], dbus.Flags(0), x, y);
+	} else if action == "menu" && utils.Among(id, item.menuIds...) {
 		idAsInt,_ := strconv.Atoi(id)
 		data := dbus.MakeVariant("")
 		time := uint32(time2.Now().Unix())
-		fmt.Println("Calling: com.canonical.dbusmenu.Event", dbus.Flags(0), idAsInt, "clicked", data, time)
-		call := item.menuObject.Call("com.canonical.dbusmenu.Event", dbus.Flags(0), idAsInt, "clicked", data, time)
-		if call.Err != nil {
-			log.Println(call.Err)
-			w.WriteHeader(http.StatusInternalServerError)
-		} else {
-			w.WriteHeader(http.StatusAccepted)
-		}
-	} else { // TODO Handle 'hover'
+		fmt.Println("Calling: ", "com.canonical.dbusmenu.Event", dbus.Flags(0), idAsInt, "clicked", data, time)
+		call = item.menuObject.Call("com.canonical.dbusmenu.Event", dbus.Flags(0), idAsInt, "clicked", data, time)
+	} else {
 		w.WriteHeader(http.StatusUnprocessableEntity)
+		return
+	}
+	if call.Err != nil {
+		log.Println(call.Err)
+		w.WriteHeader(http.StatusInternalServerError)
+	} else {
+		w.WriteHeader(http.StatusAccepted)
 	}
 }
 
