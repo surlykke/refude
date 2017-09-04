@@ -12,7 +12,7 @@ import {doHttp} from '../../common/utils'
 let NotifierItem = (props) => {
 
 	let showMenu = (event) => {
-		let buildMenu = (jsonMenu) => {
+		((jsonMenu) => {
 			let menu = new nw.Menu()
 			jsonMenu.forEach(jsonMenuItem => {
 
@@ -26,28 +26,16 @@ let NotifierItem = (props) => {
 				})
 				if (jsonMenuItem.SubMenus) {
 					menuItem.submenu = buildMenu(jsonMenuItem.SubMenus)
-				} else if (menuItem.type === "normal") {
+				} else if (menuItem.type === "normal" || menuItem.type === "checkbox") {
 					menuItem.click = () => {
-						let url = props.item.url + `?action=click&id=${jsonMenuItem.Id}`
-						doHttp(url, "POST")
+						doHttp(`${props.item.url}?action=menu&id=${jsonMenuItem.Id}`, "POST")
 					}
 				}
 				menu.append(menuItem)
 			})
 			return menu
-		}
-		let menu = buildMenu(props.item.Menu)
-
-		if (menu.items.length === 1 && menu.items[0].type === "normal" && !menu.items[0].submenu) {
-			// So the entire menu consists of one item. We don't bother showing it, just activete it directly.
-			menu.items[0].click()
-		} else {
-			menu.popup(event.clientX, event.clientY)
-		}
+		})(props.item.Menu).popup(event.clientX, event.clientY)
 	}
-
-
-
 
 	let getXY = (event) => {
 		return  {
@@ -58,12 +46,11 @@ let NotifierItem = (props) => {
 
 	let onClick = (event) => {
 		event.persist()
-		if (props.item.Menu) {
-			showMenu(event)
-		} else if (event.button === 0) {
-			call("Activate", getXY(event))
+		let {x,y} = getXY(event)
+		if (event.button === 0) {
+			doHttp(`${props.item.url}?action=left&x=${x}&y=${y}`, "POST")
 		} else if (event.button === 1){
-			call("SecondaryActivate", getXY(event))
+			doHttp(`${props.item.url}?action=middle&x=${x}&y=${y}`, "POST")
 		}
 		event.preventDefault()
 	}
@@ -73,15 +60,11 @@ let NotifierItem = (props) => {
 		if (props.item.Menu) {
 			showMenu(event)
 		} else {
-			call("ContextMenu", getXY(event))
+			doHttp(`${props.item.url}?action=right&x=${x}&y=${y}`, "POST")
 		}
 		event.preventDefault()
 	}
 
-	let call = (method, xy) => {
-		let url = props.item.url + `?method=${method}&x=${xy.x}&y=${xy.y}`
-		doHttp(url, "POST")
-	}
 
 	return (<img src={props.item.IconUrl} height="18px" width="18px"
 	             style={{paddingRight: "5px"}} onClick={onClick} onContextMenu={onRightClick}/>)
