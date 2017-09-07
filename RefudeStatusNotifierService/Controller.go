@@ -10,11 +10,11 @@ import (
 	"github.com/godbus/dbus"
 	"errors"
 	"fmt"
-	"sync"
 	"github.com/godbus/dbus/introspect"
 	"strings"
 	"github.com/godbus/dbus/prop"
 	"regexp"
+	"github.com/surlykke/RefudeServices/lib/service"
 )
 
 const WATCHER_SERVICE = "org.kde.StatusNotifierWatcher"
@@ -28,105 +28,68 @@ const PROPERTIES_INTERFACE = "org.freedesktop.DBus.Properties"
 const MENU_INTERFACE = "com.canonical.dbusmenu"
 
 var	conn *dbus.Conn
-var dbusSignals = make(chan *dbus.Signal, 50)
-var	channels = make(map[SenderAndPath]chan *dbus.Signal)
-var	mutex = sync.Mutex{}
-
 var watcherProperties *prop.Properties
 
-func serviceKey(sender dbus.Sender, objectPath dbus.ObjectPath) string {
-	return string(sender) + string(objectPath)
-}
-
-func restPath(sender dbus.Sender, objectPath dbus.ObjectPath) string {
-	return "/items/" + strings.Replace(serviceKey(sender, objectPath)[1:], "/", "-", -1)
-}
-
-func makeSenderAndPath(serviceName string, sender dbus.Sender) SenderAndPath {
-	var sp = SenderAndPath{sender: string(sender)}
+func senderAndPath(serviceName string, sender dbus.Sender) (string, dbus.ObjectPath) {
 	if regexp.MustCompile("^(/\\w+)+$").MatchString(serviceName) {
-		sp.objPath = dbus.ObjectPath(serviceName)
+		return string(sender), dbus.ObjectPath(serviceName)
 	} else {
-		sp.objPath = dbus.ObjectPath(ITEM_PATH)
+		return string(sender), dbus.ObjectPath(ITEM_PATH)
 	}
-	return sp
 }
 
 /**
  * serviceId Can be a name of service or a path of object
  */
 func addItem(serviceName string, sender dbus.Sender) *dbus.Error {
-	var sp = makeSenderAndPath(serviceName, sender)
-
-	mutex.Lock()
-	defer mutex.Unlock()
-	if _,exists := channels[sp]; !exists {
-		var item = MakeItem(sp)
-		channels[sp] = make(chan *dbus.Signal)
-		var path = "/items/" + sp.sender[1:] + strings.Replace(string(sp.objPath), "/", "-", -1)
-		go item.Run(path, channels[sp])
-		watcherProperties.Set(WATCHER_INTERFACE, "RegisteredStatusItems", dbus.MakeVariant(getItems()))
-		conn.Emit(WATCHER_PATH, WATCHER_INTERFACE + ".StatusNotifierItemRegistered", string(sender))
-		return nil
-	} else {
-		return dbus.MakeFailedError(errors.New("Already registered"))
-	}
+	var event = Event{eventType: ItemCreated}
+	event.sender, event.path = senderAndPath(serviceName, sender)
+	events <- event
+	return nil
 }
 
 func removeItem(serviceName string, sender dbus.Sender) {
-	var sp = makeSenderAndPath(serviceName, sender)
-
-	mutex.Lock()
-	defer mutex.Unlock()
-	if channel, ok := channels[sp]; ok {
-		close(channel)
-		delete(channels, sp)
-		watcherProperties.Set(WATCHER_INTERFACE, "RegisteredStatusItems", dbus.MakeVariant(getItems()))
-	}
+	var event = Event{eventType: ItemRemoved}
+	event.sender, event.path = senderAndPath(serviceName, sender)
+	events <- event
 }
 
-func removeSender(sender dbus.Sender) {
-	fmt.Println("Remove sender: ", sender)
-	mutex.Lock()
-	defer mutex.Unlock()
 
-	var somethingRemoved = false
-	for sp, channel := range channels {
-		fmt.Println("Looking at:", sp)
-		if sp.sender == string(sender) {
-			fmt.Println("removing")
-			close(channel)
-			delete(channels, sp)
-			somethingRemoved = true
+
+
+func monitorSignals() {
+	var dbusSignals = make(chan *dbus.Signal, 50)
+	conn.Signal(dbusSignals)
+
+	itemSignalsRule := "type='signal', interface='org.kde.StatusNotifierItem'"
+	conn.BusObject().Call("org.freedesktop.DBus.AddMatch", 0, itemSignalsRule)
+
+	nameOwnerChangedRule := "type='signal', interface='org.freedesktop.DBus'"
+	conn.BusObject().Call("org.freedesktop.DBus.AddMatch", 0, nameOwnerChangedRule)
+
+	fmt.Println("Waiting for signals")
+	for signal := range dbusSignals {
+		if strings.HasPrefix(signal.Name, "org.kde.StatusNotifierItem.New") {
+			events <- Event{eventType: ItemUpdated, sender: signal.Sender, path: signal.Path}
+		} else if signal.Name == "org.freedesktop.DBus.NameOwnerChanged" && len(signal.Body) == 3 {
+			fmt.Printf("NameOwnerChanged: '%s', '%s', '%s'\n", signal.Body[0], signal.Body[1], signal.Body[2])
+			sender := signal.Body[0].(string)
+			oldOwner := signal.Body[1].(string)
+			newOwner := signal.Body[2].(string)
+			if len(oldOwner) > 0 && len(newOwner) == 0 { // Someone had the name and now no-one does
+												 // We take that to mean that the app has exited
+				events <- Event{eventType:SenderTerminated, sender: sender}
+			}
 		}
 	}
-
-	if somethingRemoved {
-		watcherProperties.Set(WATCHER_INTERFACE, "RegisteredStatusItems", dbus.MakeVariant(getItems()))
-	}
 }
 
+//
 
-// Caller holds mutex
-func getItems() []string {
-	res := make([]string, 0)
-	for sp,_ := range channels {
-		res = append(res, sp.sender + ":" + string(sp.objPath)) // FIXME
-	}
-	return res
-}
 
-func dispatchSignal(signal *dbus.Signal) {
-	var sp = SenderAndPath{signal.Sender, signal.Path}
-	mutex.Lock()
-	defer mutex.Unlock()
-	if channel, ok := channels[sp]; ok {
-		channel <- signal
-	}
+// ----------------------------------------------------------------------------------------------------
 
-}
-
-func run() {
+func getOnTheBus() {
 	var err error
 
 	// Get on the bus
@@ -145,12 +108,19 @@ func run() {
 
 	// Put StatusNotifierWatcher object up
 	conn.ExportMethodTable(
-		map[string]interface{}{ "RegisterStatusNotifierItem": addItem, "UnregisterStatusNotifierItem": removeItem},
+		map[string]interface{}{
+			"RegisterStatusNotifierItem": addItem,
+			"UnregisterStatusNotifierItem": removeItem,
+		},
 		WATCHER_PATH,
 		WATCHER_INTERFACE,
 	)
+
+	// Add Introspectable interface
 	conn.Export(introspect.Introspectable(INTROSPECT_XML), WATCHER_PATH, INTROSPECT_INTERFACE)
-    watcherProperties = prop.New(
+
+	// Add properties interface
+	watcherProperties = prop.New(
 		conn,
 		WATCHER_PATH,
 		map[string]map[string]*prop.Prop{
@@ -161,33 +131,101 @@ func run() {
 			},
 		},
 	)
+}
 
 
-	// Consume signals
-	conn.Signal(dbusSignals)
+var items = []*Item{}
 
-	itemSignalsRule := "type='signal', interface='org.kde.StatusNotifierItem'"
-	conn.BusObject().Call("org.freedesktop.DBus.AddMatch", 0, itemSignalsRule)
+type EventType int
 
-	nameOwnerChangedRule := "type='signal', interface='org.freedesktop.DBus'"
-	conn.BusObject().Call("org.freedesktop.DBus.AddMatch", 0, nameOwnerChangedRule)
+const (
+	ItemCreated EventType = iota
+	ItemRemoved
+	SenderTerminated
+	ItemUpdated
+	MenuUpdated
+)
 
-	fmt.Println("Waiting for signals")
-	for signal := range dbusSignals {
-		if strings.HasPrefix(signal.Name, "org.kde.StatusNotifierItem.") {
-			dispatchSignal(signal)
+type Event struct {
+	eventType EventType
+	sender string
+	path   dbus.ObjectPath // Menupath if eventType is MenuUpdated, ItemPath otherwise
+}
 
-		} else if signal.Name == "org.freedesktop.DBus.NameOwnerChanged" && len(signal.Body) == 3 {
-			fmt.Println("NameOwnerChanged: ", signal.Body)
-			arg0 := signal.Body[0].(string)
-			arg1 := signal.Body[1].(string)
-			arg2 := signal.Body[2].(string)
-			if len(arg1) > 0 && len(arg2) == 0 { // Someone had the name and now no-one does
-												 // We take that to mean that the app has exited
-				removeSender(dbus.Sender(arg0))
+var events = make(chan Event)
+
+func findByItemPath(sender string, itemPath dbus.ObjectPath) int {
+	for i,item := range items {
+		if sender == item.sender && itemPath == item.itemPath {
+			return i
+		}
+	}
+	return -1
+}
+
+func findByMenuPath(sender string, menuPath dbus.ObjectPath) int {
+	for i,item := range items {
+		if sender == item.sender && menuPath == item.menuPath {
+			return i
+		}
+	}
+	return -1
+}
+
+func updateWatcherProperties() {
+	ids := make([]string,0, len(items))
+	for _,item := range items {
+		ids = append(ids, item.sender + ":" + string(item.itemPath))
+	}
+	watcherProperties.Set(WATCHER_INTERFACE, "RegisteredStatusItems", dbus.MakeVariant(ids))
+}
+
+func Controller() {
+	getOnTheBus()
+	go monitorSignals()
+
+	for event := range events {
+		switch event.eventType {
+		case ItemCreated:
+			if findByItemPath(event.sender, event.path) == -1 {
+				item := &Item{sender: event.sender, itemPath: event.path}
+				item.fetchProps()
+				if item.menuPath != "" {
+					item.fetchMenu()
+				}
+				items = append(items, item)
+				service.Map(item.restPath(), item.copy())
+				updateWatcherProperties()
+			}
+		case ItemRemoved:
+			if index := findByItemPath(event.sender, event.path); index > -1 {
+				service.Unmap(items[index].restPath())
+				items = append(items[0:index], items[index + 1:len(items)]...)
+				updateWatcherProperties()
+			}
+		case SenderTerminated:
+			tmp := []*Item{}
+			for _,item := range items {
+				if event.sender == item.sender {
+					service.Unmap(item.restPath())
+				} else {
+					tmp = append(tmp, item)
+				}
+			}
+			if len(tmp) != len(items) {
+				items = tmp
+				updateWatcherProperties()
+			}
+		case ItemUpdated:
+			if index := findByItemPath(event.sender, event.path); index > -1 {
+				items[index].fetchProps()
+				service.Map(items[index].restPath(), items[index].copy())
+			}
+		case MenuUpdated:
+			if index := findByMenuPath(event.sender, event.path); index > -1 {
+				items[index].fetchMenu()
+				service.Map(items[index].restPath(), items[index].copy())
 			}
 		}
 	}
 }
-
-
