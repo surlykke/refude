@@ -43,16 +43,16 @@ type Item struct {
 }
 
 type MenuItem struct {
-	Id string
-	Type string
-	Label string
-	Enabled bool
-	Visible bool
-	IconName string
-	Shortcuts [][]string
-	ToggleType string
-	TogleState int32
-	SubMenus []MenuItem `json:",omitempty"`
+	Id          string
+	Type        string
+	Label       string
+	Enabled     bool
+	Visible     bool
+	IconName    string
+	Shortcuts   [][]string `json:",omitempty"`
+	ToggleType  string `json:",omitempty"`
+	ToggleState int32
+	SubMenus    []MenuItem `json:",omitempty"`
 }
 
 
@@ -218,7 +218,7 @@ func parseMenu(value []interface{}) (MenuItem, []string, error) {
 		return MenuItem{}, []string{}, errors.New("Illegal toggle-type: " + menuItem.ToggleType)
 	}
 
-	menuItem.TogleState = getInt32Or(m, "toggle-state", -1)
+	menuItem.ToggleState = getInt32Or(m, "toggle-state", -1)
 	var menuIds = []string{menuItem.Id}
 	if childrenDisplay := getStringOr(m, "children-display", ""); childrenDisplay == "submenu" {
 		for _,variant := range s {

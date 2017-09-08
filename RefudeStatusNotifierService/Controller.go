@@ -15,6 +15,7 @@ import (
 	"github.com/godbus/dbus/prop"
 	"regexp"
 	"github.com/surlykke/RefudeServices/lib/service"
+	"time"
 )
 
 const WATCHER_SERVICE = "org.kde.StatusNotifierWatcher"
@@ -42,50 +43,38 @@ func senderAndPath(serviceName string, sender dbus.Sender) (string, dbus.ObjectP
  * serviceId Can be a name of service or a path of object
  */
 func addItem(serviceName string, sender dbus.Sender) *dbus.Error {
+	fmt.Println("addItem:", serviceName, ",", sender)
 	var event = Event{eventType: ItemCreated}
 	event.sender, event.path = senderAndPath(serviceName, sender)
 	events <- event
 	return nil
 }
 
-func removeItem(serviceName string, sender dbus.Sender) {
-	var event = Event{eventType: ItemRemoved}
-	event.sender, event.path = senderAndPath(serviceName, sender)
-	events <- event
-}
-
-
-
-
 func monitorSignals() {
 	var dbusSignals = make(chan *dbus.Signal, 50)
 	conn.Signal(dbusSignals)
+	addMatch := "org.freedesktop.DBus.AddMatch"
+	conn.BusObject().Call(addMatch, 0, "type='signal', interface='org.kde.StatusNotifierItem'")
+	conn.BusObject().Call(addMatch, 0, "type='signal', interface='com.canonical.dbusmenu'")
 
-	itemSignalsRule := "type='signal', interface='org.kde.StatusNotifierItem'"
-	conn.BusObject().Call("org.freedesktop.DBus.AddMatch", 0, itemSignalsRule)
-
-	nameOwnerChangedRule := "type='signal', interface='org.freedesktop.DBus'"
-	conn.BusObject().Call("org.freedesktop.DBus.AddMatch", 0, nameOwnerChangedRule)
-
-	fmt.Println("Waiting for signals")
 	for signal := range dbusSignals {
 		if strings.HasPrefix(signal.Name, "org.kde.StatusNotifierItem.New") {
 			events <- Event{eventType: ItemUpdated, sender: signal.Sender, path: signal.Path}
-		} else if signal.Name == "org.freedesktop.DBus.NameOwnerChanged" && len(signal.Body) == 3 {
-			fmt.Printf("NameOwnerChanged: '%s', '%s', '%s'\n", signal.Body[0], signal.Body[1], signal.Body[2])
-			sender := signal.Body[0].(string)
-			oldOwner := signal.Body[1].(string)
-			newOwner := signal.Body[2].(string)
-			if len(oldOwner) > 0 && len(newOwner) == 0 { // Someone had the name and now no-one does
-												 // We take that to mean that the app has exited
-				events <- Event{eventType:SenderTerminated, sender: sender}
-			}
+		} else if signal.Name == "com.canonical.dbusmenu.LayoutChanged" {
+			events <- Event{eventType: MenuUpdated, sender: signal.Sender, path: signal.Path}
 		}
 	}
 }
 
-//
-
+func monitorItem(sender string, itemPath dbus.ObjectPath) {
+	fmt.Println("itemWatcher: ", sender, itemPath)
+	obj := conn.Object(sender, itemPath)
+	get := PROPERTIES_INTERFACE + ".Get"
+	for obj.Call(get , dbus.Flags(0), ITEM_INTERFACE, "Status").Err == nil {
+		time.Sleep(time.Second)
+	}
+	events <- Event{eventType: ItemRemoved, sender: sender, path: itemPath}
+}
 
 // ----------------------------------------------------------------------------------------------------
 
@@ -110,7 +99,7 @@ func getOnTheBus() {
 	conn.ExportMethodTable(
 		map[string]interface{}{
 			"RegisterStatusNotifierItem": addItem,
-			"UnregisterStatusNotifierItem": removeItem,
+			"UnregisterStatusNotifierItem": func(string, dbus.Sender){}, // We dont care, see monitorItem
 		},
 		WATCHER_PATH,
 		WATCHER_INTERFACE,
@@ -141,7 +130,6 @@ type EventType int
 const (
 	ItemCreated EventType = iota
 	ItemRemoved
-	SenderTerminated
 	ItemUpdated
 	MenuUpdated
 )
@@ -180,6 +168,8 @@ func updateWatcherProperties() {
 	watcherProperties.Set(WATCHER_INTERFACE, "RegisteredStatusItems", dbus.MakeVariant(ids))
 }
 
+
+
 func Controller() {
 	getOnTheBus()
 	go monitorSignals()
@@ -196,24 +186,12 @@ func Controller() {
 				items = append(items, item)
 				service.Map(item.restPath(), item.copy())
 				updateWatcherProperties()
+				go monitorItem(event.sender, event.path)
 			}
 		case ItemRemoved:
 			if index := findByItemPath(event.sender, event.path); index > -1 {
 				service.Unmap(items[index].restPath())
 				items = append(items[0:index], items[index + 1:len(items)]...)
-				updateWatcherProperties()
-			}
-		case SenderTerminated:
-			tmp := []*Item{}
-			for _,item := range items {
-				if event.sender == item.sender {
-					service.Unmap(item.restPath())
-				} else {
-					tmp = append(tmp, item)
-				}
-			}
-			if len(tmp) != len(items) {
-				items = tmp
 				updateWatcherProperties()
 			}
 		case ItemUpdated:
