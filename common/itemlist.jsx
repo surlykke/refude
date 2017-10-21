@@ -1,6 +1,6 @@
 // Copyright (c) 2015, 2016, 2017 Christian Surlykke
 //
-// This file is part of the refude project. 
+// This file is part of the refude project.
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
 //
@@ -15,8 +15,8 @@ class ItemList extends React.Component {
 	}
 
 	componentDidUpdate() {
-		if (this.props.selected) {
-			let selectedDiv = document.getElementById(this.props.selected.url)
+		if (this.props.selectedUrl) {
+			let selectedDiv = document.getElementById(this.props.selectedUrl)
 			if (selectedDiv) {
 				let listDiv = document.getElementById("itemListDiv")
 				let {top: listTop, bottom: listBottom} = listDiv.getBoundingClientRect()
@@ -28,7 +28,7 @@ class ItemList extends React.Component {
 	}
 
 	render = () => {
-		let {items, selected, select, execute} = this.props
+		let {items, selectedUrl, select, execute} = this.props
 		let style = {
 			overflow: "auto",
 		}
@@ -49,7 +49,7 @@ class ItemList extends React.Component {
 				content.push(<div style={headingStyle}>{item.group}</div>)
 				prevGroup = item.group
 			}
-			content.push(<Item key={item.url} item={item} selected={item === selected} select={select} execute={execute}/>)
+			content.push(<Item key={item.url} item={item} selected={item.url === selectedUrl} select={select} execute={execute}/>)
 		})
 		return (
 			<div id="itemListDiv" style={style}>

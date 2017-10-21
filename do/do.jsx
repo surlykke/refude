@@ -70,7 +70,11 @@ class Container extends React.Component {
 		}
 
 		this.setState({items: items, windows: windows})
-		items.includes(this.state.selected) || this.setState({selected: items[0]})
+		if (items.length > 0) {
+			if (! items.find(item => item.url === this.state.selectedUrl)) {
+				this.setState({selectedUrl: items[0].url})
+			}
+		}
 	}
 
 	onTermChange = (searchTerm) => {
@@ -87,8 +91,8 @@ class Container extends React.Component {
 		else if (key === "Tab" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.move(true)
 		else if (key === "ArrowUp" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.move(false)
 		else if (key === "ArrowDown" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.move(true)
-		else if (key === "Enter" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.execute(this.state.selected)
-		else if (key === " " && !ctrlKey && !shiftKey && !altKey && !metaKey) this.execute(this.state.selected)
+		else if (key === "Enter" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.execute(this.state.selectedUrl)
+		else if (key === " " && !ctrlKey && !shiftKey && !altKey && !metaKey) this.execute(this.state.selectedUrl)
 		else if (key === "Escape" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.dismiss()
 		else if (key === "Alt" && !ctrlKey && !shiftKey && altKey && !metaKey) this.collected = 0
 		else if ("0" <= key && key <= "9" && !ctrlKey && !shiftKey && altKey && !metaKey && this.collected !== undefined) {
@@ -101,11 +105,11 @@ class Container extends React.Component {
 	}
 
 	move = (down) => {
-		let index = this.state.items.indexOf(this.state.selected)
+		let index = this.state.items.findIndex(item => item.url === this.state.selectedUrl)
 		if (index > -1) {
 			index = (index + this.state.items.length + (down ? 1 : -1)) % this.state.items.length
+			this.setState({selectedUrl: this.state.items[index].url})
 		}
-		this.setState({selected: this.state.items[index]})
 	}
 
 	onKeyUp = (event) => {
@@ -115,14 +119,13 @@ class Container extends React.Component {
 		}
 	}
 
-	select = (item) => {
-		this.setState({selected: item})
+	select = (url) => {
+		this.setState({selectedUrl: url})
 	}
 
-	execute = (item) => {
-		console.log("execute")
-		this.select(item)
-		doHttp(item.url, "POST").then(response => {this.dismiss()})
+	execute = (url) => {
+		this.select(url)
+		doHttp(url, "POST").then(response => {this.dismiss()})
 	}
 
 	dismiss = () => {
@@ -190,7 +193,7 @@ class Container extends React.Component {
 				<div style={leftColumnStyle}>
 					<SearchBox style={searchBoxStyle} onChange={evt => this.onTermChange(evt.target.value)}  searchTerm={this.state.searchTerm}/>
 					<ItemList style={itemListStyle} items={this.state.items}
-						      selected={this.state.selected} select={this.select} execute={this.execute}/>
+						      selectedUrl={this.state.selectedUrl} select={this.select} execute={this.execute}/>
 				</div>
 				<Windows style={windowsStyle} windows={this.state.windows} selected={this.state.selected}/>
 			</div>

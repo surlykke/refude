@@ -1,6 +1,6 @@
 // Copyright (c) 2015, 2016, 2017 Christian Surlykke
 //
-// This file is part of the refude project. 
+// This file is part of the refude project.
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
 //
@@ -66,7 +66,7 @@ let Item = props => {
 	Object.assign(commentStyle, nameStyle)
 
 	return (
-		<div id={props.item.url} style={style} onClick={() => {select(item)}} onDoubleClick={() => {execute(item)}}>
+		<div id={props.item.url} style={style} onClick={() => {select(item.url)}} onDoubleClick={() => {execute(item.url)}}>
 			<img width="24px" height="24px" style={iconStyle} src={item.IconUrl} />
 		    <div style={nameStyle}>{item.Name}</div>
 		    <div style={commentStyle}>{item.Comment}</div>
