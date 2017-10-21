@@ -78,7 +78,9 @@ class AppChooser extends React.Component {
 		})
 		apps.sort((app1, app2) => app1.order !== app2.order ? app1.order - app2.order : app1.Name.localeCompare(app2.Name))
 
-		if (!this.userHasMadeSelection || !this.state.selected || !apps.includes(this.state.selected)) {
+		if (!this.userHasMadeSelection ||
+				!this.state.selected ||
+				!apps.find(app => app === this.state.selected)) {
 			this.setState({selected: apps[0]})
 		}
 
@@ -86,14 +88,17 @@ class AppChooser extends React.Component {
 		this.updatePending = false
 	}
 
-	select = (app) => {
+	select = (url) => {
 		this.userHasMadeSelection = true
-		this.setState({selected: app})
+		this.setState({selected: this.state.apps.find(app => app.url === url)})
 	}
 
-	run = (app) => {
-		this.select(app)
-		let launchUrl = app.url + "?arg=" + appArgument
+	run = (url) => {
+		this.select(url)
+		let app = this.state.apps.find(app => app.url === url)
+		if (!app) return
+
+		let launchUrl = url + "?arg=" + appArgument
 		if (this.state.useAsDefault)  {
 			let postUrl = "http://localhost:7938/desktop-service/mimetypes/" + mimetypeId + "?defaultApp=" + app.Id
 			doHttp(postUrl, "POST").then(resp => {
@@ -114,8 +119,8 @@ class AppChooser extends React.Component {
 		else if (key === "Tab" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.move(true)
 		else if (key === "ArrowUp" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.move(false)
 		else if (key === "ArrowDown" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.move(true)
-		else if (key === "Enter" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.run(this.state.selected)
-		else if (key === " " && !ctrlKey && !shiftKey && !altKey && !metaKey) this.run(this.state.selected)
+		else if (key === "Enter" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.run(this.state.selected.url)
+		else if (key === " " && !ctrlKey && !shiftKey && !altKey && !metaKey) this.run(this.state.selected.url)
 		else if (key === "Escape" && !ctrlKey && !shiftKey && !altKey && !metaKey) gui.App.quit()
 		else return;
 		event.stopPropagation()
@@ -126,8 +131,8 @@ class AppChooser extends React.Component {
 		let index = apps.indexOf(selected)
 		if (index > -1) {
 			index = (index + apps.length + (down ? 1 : -1)) % apps.length
+			this.select(apps[index].url)
 		}
-		this.select(apps[index])
 	}
 
 	onTermChange = (event) => {
@@ -180,12 +185,14 @@ class AppChooser extends React.Component {
 			Comment: comment
 		}
 
+		let selectedUrl = selected ? selected.url : undefined
+
 		return (
 			<div style={styles.content} onKeyDown={this.onKeyDown}>
 				<div style={styles.heading}>Select an application to open:</div>
 				<Item item={item} style={styles.item}/>
 				<SearchBox style={styles.searchBox} onChange={this.onTermChange} searchTerm={this.state.searchTerm}/>
-				<ItemList style={styles.list} items={apps} selected={selected} select={this.select} execute={this.run}/>
+				<ItemList style={styles.list} items={apps} selectedUrl={selectedUrl} select={this.select} execute={this.run}/>
 				<div style={{height: "8px"}}/>
 				{	this.state.selected &&
 					<div style={styles.useAsDefault}>
