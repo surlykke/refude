@@ -114,7 +114,7 @@ class Container extends React.Component {
 
 	onKeyUp = (event) => {
 		if ("Alt" === event.key && this.collected !== undefined) {
-			if (this.state.windows[this.collected - 1]) this.execute(this.state.windows[this.collected - 1])
+			if (this.state.windows[this.collected - 1]) this.execute(this.state.windows[this.collected - 1].url)
 			this.collected = undefined
 		}
 	}
@@ -195,7 +195,7 @@ class Container extends React.Component {
 					<ItemList style={itemListStyle} items={this.state.items}
 						      selectedUrl={this.state.selectedUrl} select={this.select} execute={this.execute}/>
 				</div>
-				<Windows style={windowsStyle} windows={this.state.windows} selected={this.state.selected}/>
+				<Windows style={windowsStyle} windows={this.state.windows} selectedUrl={this.state.selectedUrl}/>
 			</div>
 		)
 	}
