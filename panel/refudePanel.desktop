@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Name=Refude Panel
+Name[da]=Refude Panel
+Comment=A panel for the Refude desktop
+Comment[da]=Et panel for Refude skrivebordet
+Exec=refudePanel
+Icon=
+Terminal=false
+Type=Application

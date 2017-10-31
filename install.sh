@@ -5,7 +5,6 @@ rm -rf ${thisdir}/dist/*
 
 [[ -n "$PREFIX" ]] || PREFIX=$HOME/.local
 REFUDEDIR=${PREFIX}/share/refude
-BINDIR=${PREFIX}/bin
 mkdir -p ${REFUDEDIR}
 
 reactapps="panel/refudePanel do/refudeDo appchooser/refudeAppChooser"
@@ -15,6 +14,9 @@ for app in $reactapps; do
 	cd $appdir
 	gulp || exit 1
 	cp -R $thisdir/dist/`dirname $app` ${PREFIX}/share/refude
-	ln -sf ${PREFIX}/share/refude/$app $BINDIR
+	ln -sf ${PREFIX}/share/refude/$app ${PREFIX}/bin
+    for desktopfile in ${PREFIX}/share/refude/`dirname $app`/*.desktop; do
+        ln -sf $desktopfile ${PREFIX}/share/applications
+    done
 done
 
