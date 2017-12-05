@@ -74,6 +74,8 @@ class Container extends React.Component {
 			if (! items.find(item => item.url === this.state.selectedUrl)) {
 				this.setState({selectedUrl: items[0].url})
 			}
+		} else {
+			this.setState({selectedUrl: undefined})
 		}
 	}
 
@@ -124,8 +126,10 @@ class Container extends React.Component {
 	}
 
 	execute = (url) => {
-		this.select(url)
-		doHttp(url, "POST").then(response => {this.dismiss()})
+		if (url) {
+			this.select(url)
+			doHttp(url, "POST").then(response => {this.dismiss()})
+		}
 	}
 
 	dismiss = () => {
