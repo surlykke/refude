@@ -12,7 +12,7 @@ let fillOpacity = (win, selectedUrl) => win.url === selectedUrl ? "0.1" : "0.05"
 
 let Windows = props =>
 	<div id="disp" style={props.style || {}}>
-		<svg viewBox="0 0 3520 1080" >
+		<svg viewBox="0 0 3840 1080" >
 		{props.windows.map((win, index) => (
 			<g key={win.url} z={zIndex(win, index, props.selectedUrl)} fontFamily="Verdana" fillOpacity={fillOpacity(win, props.selectedUrl)}>
 			    <rect x={win.X} y={win.Y} width={win.W} height={win.H} stroke="black" />
