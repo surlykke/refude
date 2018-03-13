@@ -83,6 +83,7 @@ type Device struct {
 	IsRechargeable   bool
 	Capacity         float64
 	Technology       string
+	DisplayDevice    bool
 }
 
 func (d *Device) GET(w http.ResponseWriter, r *http.Request) {
