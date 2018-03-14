@@ -12,35 +12,41 @@
  * Please refer to the LICENSE file for a copy of the license.
  */
 import React from 'react'
-import {MakeResource} from '../../common/resources'
+import {MakeCollection} from '../../common/resources'
 
 class Battery extends React.Component {
 
 	constructor(props) {
 		super(props)
 		this.onUpdated = props.onUpdated
-		this.state = {}
+		this.state = {data: []}
 	}
 
 	componentDidMount = () => {
-		this.battery = MakeResource("power-service", "/devices/DisplayDevice", this.update)
+		this.devices = MakeCollection("power-service", "/devices", this.update, dev => dev.Type === 'Battery' && !dev.DisplayDevice)
 	}
 
 	update = () => {
-		// status: 1: warning, 2: discharging, 3: charging/fully charged
-		let status = ["Charging", "Fully charged"].includes(this.battery.State) ? 3 :
-		             this.battery.Percentage >= 20 ? 2 :
-					 1
-		this.setState({charge: this.battery.Percentage === undefined ?  "? " : Math.floor(this.battery.Percentage + 0.5), status: status})
-		this.onUpdated()
+		console.log("devices: ", this.devices);
+		console.log("devices.filtered: ", this.devices.filtered)
+		this.setState({data: this.devices.filtered.map(b => {
+			let charging = ["Charging", "Fully charged"].includes(b.State) 
+			return {
+				style: { 
+					fontColor: (charging || b.Percentage >= 20 ? 'black' : 'red'),
+					fontWeight: charging ? 'bold' : 'normal',
+					marginRight: '0.4em'
+				},
+				percentage: Math.floor(b.Percentage + 0.5),
+				path: b.NativePath
+			}
+		})})
+		console.log("this.state.data:", this.state.data)
 	}
 
+
 	render = () => {
-		let style = this.state.status === 3 ? {fontWeight: "bold"} :
-		            this.state.status === 1 ? {color: "red"} :
-					{}
-		Object.assign(style, this.props.style)
-		return <div style={style}>{this.state.charge}%</div>
+		return <div style={this.props.style}>{this.state.data.map(d => (<span style={d.style} key={d.path}>{d.percentage}%</span>))}</div>
 	}
 }
 
