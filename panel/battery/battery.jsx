@@ -33,7 +33,7 @@ class Battery extends React.Component {
 			let charging = ["Charging", "Fully charged"].includes(b.State) 
 			return {
 				style: { 
-					fontColor: (charging || b.Percentage >= 20 ? 'black' : 'red'),
+					color: (charging || b.Percentage >= 20 ? 'black' : 'red'),
 					fontWeight: charging ? 'bold' : 'normal',
 					marginRight: '0.4em'
 				},
