@@ -29,7 +29,7 @@ class Battery extends React.Component {
 	update = () => {
 		console.log("devices: ", this.devices);
 		console.log("devices.filtered: ", this.devices.filtered)
-		this.setState({data: this.devices.filtered.map(b => {
+		this.setState({data: this.devices.filtered.sort((d1,d2) => d1.NativePath.localeCompare(d2.NativePath)).map(b => {
 			let charging = ["Charging", "Fully charged"].includes(b.State) 
 			return {
 				style: { 
