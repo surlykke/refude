@@ -9,6 +9,7 @@ package resource
 import (
 	"encoding/json"
 	"net/http"
+	"net/url"
 )
 
 type ETagHandler interface {
@@ -72,5 +73,14 @@ func GetSingleQueryParameter(r *http.Request, parameterName string, fallbackValu
 		return fallbackValue
 	} else {
 		return r.URL.Query()[parameterName][0]
+	}
+}
+
+func GetNotEmpty(query url.Values, key string, fallBack []string) []string {
+	res, ok := query[key]
+	if !ok || len(res) == 0 {
+		return fallBack
+	} else {
+		return res
 	}
 }

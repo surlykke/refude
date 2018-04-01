@@ -20,16 +20,12 @@ import (
 	"log"
 	"reflect"
 	"net/url"
-	"strconv"
 )
 
 
 var	resources  = make(map[string]interface{})
 var mutex      sync.Mutex
 
-type FilterMethod func(resource interface{}, query url.Values) bool
-
-var filterMethod FilterMethod
 
 type PingResource struct {
 }
@@ -40,25 +36,24 @@ func (pr* PingResource) GET(w http.ResponseWriter, r *http.Request) {
 
 type SearchResource struct {}
 
+/**
+ * Implementations of this must _not_ write to resources, nor to the values of resources
+ */
+type SearchFunction func(resources map[string]interface{}, query url.Values) ([]interface{}, int)
+var searchFunction SearchFunction
+
 func (sr* SearchResource) GET(w http.ResponseWriter, r *http.Request) {
-	if limit, err := strconv.Atoi(resource.GetSingleQueryParameter(r, "limit", "30")); err != nil || limit > 1000 {
-		w.WriteHeader(http.StatusUnprocessableEntity)
-	} else {
-		var res = make([]interface{}, 0, limit)
-		if (filterMethod != nil) {
-			var values= r.URL.Query()
-
-			for _, resource := range resources {
-				if filterMethod(resource, values) {
-					res = append(res, resource)
-				}
-				if (len(res) >= limit) {
-					break
-				}
-			}
+	if (searchFunction != nil) {
+		mutex.Lock()
+		defer mutex.Unlock();
+		res, status := searchFunction(resources, r.URL.Query())
+		if (res != nil) {
+			resource.JsonGET(res, w)
+		} else {
+			w.WriteHeader(status)
 		}
-
-		resource.JsonGET(res, w)
+	} else {
+		w.WriteHeader(http.StatusNotFound)
 	}
 }
 
@@ -256,7 +251,7 @@ func ServeWith(socketName string, handler http.Handler) {
 	}
 }
 
-func SetFilter(filter FilterMethod) {
-	filterMethod = filter
+func SetSearchFunction(sf SearchFunction) {
+	searchFunction = sf
 }
 

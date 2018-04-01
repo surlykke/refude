@@ -16,14 +16,16 @@ import (
 	"strings"
 	"strconv"
 	"net/url"
+	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib/utils"
+	"net/http"
 )
 
 const NOTIFICATIONS_SERVICE = "org.freedesktop.Notifications"
 const NOTIFICATIONS_PATH = "/org/freedesktop/Notifications"
 const NOTIFICATIONS_INTERFACE = NOTIFICATIONS_SERVICE
 const INTROSPECT_INTERFACE = "org.freedesktop.DBus.Introspectable"
-const INTROSPECT_XML =
-`<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
+const INTROSPECT_XML = `<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
         "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
 <node>
     <interface name="org.freedesktop.DBus.Properties">
@@ -93,14 +95,13 @@ const INTROSPECT_XML =
     </interface>
 </node>`
 
-
-var	conn *dbus.Conn
+var conn *dbus.Conn
 var ids = make(chan uint32, 0)
 
 const (
-	Expired uint32 = 1
-	Dismissed = 2
-	Closed = 3
+	Expired   uint32 = 1
+	Dismissed        = 2
+	Closed           = 3
 )
 
 func generate(out chan uint32) {
@@ -110,7 +111,7 @@ func generate(out chan uint32) {
 }
 
 func closeNotificationAfter(path string, eTag string, milliseconds int32) {
-	time.Sleep(time.Duration(milliseconds)*time.Millisecond)
+	time.Sleep(time.Duration(milliseconds) * time.Millisecond)
 	service.UnMapIfMatch(path, eTag)
 }
 
@@ -122,41 +123,40 @@ func GetCapabilities() ([]string, *dbus.Error) {
 		"body-markup",
 		"icon-static",
 	},
-	nil
+		nil
 }
 
 func Notify(app_name string,
-	        replaces_id uint32,
-			app_icon string,
-			summary string,
-			body string,
-			actions []string,
-			hints map[string]dbus.Variant,
-			expire_timeout int32) (uint32, *dbus.Error) {
+	replaces_id uint32,
+	app_icon string,
+	summary string,
+	body string,
+	actions []string,
+	hints map[string]dbus.Variant,
+	expire_timeout int32) (uint32, *dbus.Error) {
 	fmt.Println("Notify:", app_name, replaces_id, app_icon, summary, body, actions, hints, expire_timeout)
 	id := replaces_id
 	if id == 0 {
-		id = <- ids
+		id = <-ids
 	}
 
 	path := fmt.Sprintf("/notifications/%d", id)
 
 	notification := Notification{
-		Id : id,
-		Sender: app_name,
+		Id:      id,
+		Sender:  app_name,
 		Subject: sanitize(summary, []string{}, []string{}),
-		Body: sanitize(body, allowedTags, allowedEscapes),
+		Body:    sanitize(body, allowedTags, allowedEscapes),
 		Actions: map[string]string{},
-		eTag : fmt.Sprintf("%d", id),
-		Self : "notifications-service:" + path,
+		eTag:    fmt.Sprintf("%d", id),
+		Self:    "notifications-service:" + path,
 	}
 
-	for i := 0; i + 1 < len(actions); i = i + 2 {
-		notification.Actions[actions[i]] = actions[i + 1]
+	for i := 0; i+1 < len(actions); i = i + 2 {
+		notification.Actions[actions[i]] = actions[i+1]
 	}
 
-
-	service.Map( path, &notification)
+	service.Map(path, &notification)
 
 	if expire_timeout == 0 {
 		expire_timeout = 2000
@@ -191,25 +191,22 @@ func idFromPath(path string) uint32 {
 	idS := path[len("/notifications/"):]
 	if id, err := strconv.ParseUint(idS, 10, 32); err != nil {
 		panic("Invalid id: " + idS)
-	} else  {
+	} else {
 		return uint32(id)
 	}
 }
 
 func notificationClosed(id uint32, reason uint32) {
-	conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE + ".NotificationClosed", id, reason)
+	conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", id, reason)
 }
 
 func GetServerInformation() (string, string, string, string, *dbus.Error) {
 	return "Refude", "Refude", "0.1-alpha", "1.2", nil
 }
 
+var allowedEscapes = []string{"&amp;", "&#38;", "&#x26;", "&lt;", "&#60;", "&#x3C;", "&#x3c;", "&gt;", "&#62;", "&#x3E;", "&#x3e;", "&apos;", "&quot;"}
 
-var allowedEscapes =
-	[]string{ "&amp;", "&#38;", "&#x26;", "&lt;", "&#60;", "&#x3C;", "&#x3c;", "&gt;", "&#62;", "&#x3E;", "&#x3e;", "&apos;", "&quot;"}
-
-var allowedTags =
-	[]string{"<b>", "</b>", "<i>", "</i>", "<u>", "</u>"}
+var allowedTags = []string{"<b>", "</b>", "<i>", "</i>", "<u>", "</u>"}
 
 func sanitize(text string, allowedTags []string, allowedEscapes []string) string {
 	sanitized := ""
@@ -239,9 +236,8 @@ func helper(src *string, dest *string, allowedPrefixes []string, endMarker strin
 	if endMarkerPos < 0 {
 		endMarkerPos = len(*src) - 1
 	}
-	*src = (*src)[endMarkerPos + 1:]
+	*src = (*src)[endMarkerPos+1:]
 }
-
 
 func Setup() {
 	var err error
@@ -256,15 +252,14 @@ func Setup() {
 		panic(errors.New(NOTIFICATIONS_SERVICE + " taken"))
 	}
 
-
 	go generate(ids)
 
 	// Put StatusNotifierWatcher object up
 	conn.ExportMethodTable(
 		map[string]interface{}{
-			"GetCapabilities": GetCapabilities,
-			"Notify": Notify,
-			"CloseNotification": CloseNotification,
+			"GetCapabilities":      GetCapabilities,
+			"Notify":               Notify,
+			"CloseNotification":    CloseNotification,
 			"GetServerInformation": GetServerInformation,
 		},
 		NOTIFICATIONS_PATH,
@@ -273,12 +268,29 @@ func Setup() {
 	conn.Export(introspect.Introspectable(INTROSPECT_XML), NOTIFICATIONS_PATH, INTROSPECT_INTERFACE)
 }
 
+var searchFunction service.SearchFunction = func(resources map[string]interface{}, query url.Values) ([]interface{}, int) {
+	var result = make([]interface{}, 0, 10)
+	var terms = utils.Map(resource.GetNotEmpty(query, "q", []string{""}), strings.ToUpper)
+	for _, res := range resources {
+		if n, ok := res.(*Notification); ok {
+			for _, term := range terms {
+				if strings.Contains(strings.ToUpper(n.Subject), term) || strings.Contains(strings.ToUpper(n.Body), term) {
+					result = append(result, res)
+				}
+			}
+		}
+	}
+
+	return result, http.StatusOK
+
+}
+
 func filterMethod(resource interface{}, query url.Values) bool {
 	if n, ok := resource.(*Notification); ok {
 		if searchTerms, ok := query["q"]; ok {
-			for _,searchTerm := range searchTerms {
+			for _, searchTerm := range searchTerms {
 				if strings.Contains(strings.ToUpper(n.Subject), strings.ToUpper(searchTerm)) ||
-				   strings.Contains(strings.ToUpper(n.Body), strings.ToUpper(searchTerm)) {
+					strings.Contains(strings.ToUpper(n.Body), strings.ToUpper(searchTerm)) {
 					return true
 				}
 			}

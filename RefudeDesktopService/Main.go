@@ -13,6 +13,6 @@ import (
 
 func main() {
 	go Run()
-	service.SetFilter(Filter)
+	service.SetSearchFunction(searchFunction)
 	service.ServeWith("org.refude.desktop-service", http.HandlerFunc(RequestInterceptor))
 }

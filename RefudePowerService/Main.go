@@ -13,6 +13,6 @@ import (
 func main() {
 	pm := 	&PowerManager{}
 	go pm.Run()
-	service.SetFilter(Filter)
+	service.SetSearchFunction(searchFunction)
 	service.Serve("org.refude.power-service")
 }

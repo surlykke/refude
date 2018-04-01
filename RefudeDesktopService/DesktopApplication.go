@@ -215,16 +215,20 @@ func transformLanguageTag(tag string) string {
 }
 
 
-func Filter(resource interface{}, queryParams url.Values) bool {
-	if da, ok := resource.(*DesktopApplication); ok {
-		if searchTerms, ok := queryParams["q"]; ok {
-			for _,searchTerm := range searchTerms {
-				if strings.Contains(strings.ToUpper(da.Name), strings.ToUpper(searchTerm)) ||
-				   strings.Contains(strings.ToUpper(da.Comment), strings.ToUpper(searchTerm)) {
-					return true
+var searchFunction service.SearchFunction = func(resources map[string]interface{}, query url.Values) ([]interface{}, int) {
+	var result = make([]interface{}, 0, 30)
+	var terms = utils.Map(resource.GetNotEmpty(query, "q", []string{""}), strings.ToUpper)
+
+	for _, res := range resources {
+		if da, isDesktopApp := res.(*DesktopApplication); isDesktopApp {
+			for _, term := range terms {
+				if strings.Contains(strings.ToUpper(da.Name), term) || strings.Contains(strings.ToUpper(da.Comment), term) {
+					result = append(result, res)
 				}
 			}
 		}
 	}
-	return false
+
+	return result, http.StatusOK
 }
+

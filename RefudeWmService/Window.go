@@ -14,13 +14,14 @@ import (
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"net/url"
 	"strings"
+	"github.com/surlykke/RefudeServices/lib/service"
+	"github.com/surlykke/RefudeServices/lib/utils"
 )
-
 
 type Window struct {
 	x             *xgbutil.XUtil
 	Id            xproto.Window
-	X,Y,H,W       int
+	X, Y, H, W    int
 	Name          string
 	IconUrl       string
 	States        []string
@@ -39,7 +40,7 @@ func (win *Window) GET(w http.ResponseWriter, r *http.Request) {
 }
 
 func (win *Window) POST(w http.ResponseWriter, r *http.Request) {
-	if actionv,ok := r.URL.Query()["action"]; ok && len(actionv) > 0 && actionv[0] != "_default" {
+	if actionv, ok := r.URL.Query()["action"]; ok && len(actionv) > 0 && actionv[0] != "_default" {
 		w.WriteHeader(http.StatusNotAcceptable)
 	} else {
 		ewmh.ActiveWindowReq(win.x, xproto.Window(win.Id))
@@ -47,16 +48,23 @@ func (win *Window) POST(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func Filter(resource interface{}, queryParams url.Values) bool {
-	if w, ok := resource.(*Window); ok {
-		if searchTerms, ok := queryParams["q"]; ok {
-			for _,searchTerm := range searchTerms {
-				if strings.Contains(strings.ToUpper(w.Name), strings.ToUpper(searchTerm)) {
-					return true
+var searchFunction service.SearchFunction = func(resources map[string]interface{}, query url.Values) ([]interface{}, int) {
+	var result = make([]interface{}, 0, 20)
+	var terms = utils.Map(resource.GetNotEmpty(query, "q", []string{""}), strings.ToUpper)
+	for _, res := range resources {
+		if w, ok := res.(*Window); ok {
+			for _, term := range terms {
+				if strings.Contains(strings.ToUpper(w.Name), term) {
+					result = append(result, res);
 				}
 			}
 		}
 	}
-	return false
+
+	return result, http.StatusOK
 }
 
+func Filter(resource interface{}, queryParams url.Values) bool {
+
+	return false
+}
