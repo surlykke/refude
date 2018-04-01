@@ -15,8 +15,8 @@ class ItemList extends React.Component {
 	}
 
 	componentDidUpdate() {
-		if (this.props.selectedUrl) {
-			let selectedDiv = document.getElementById(this.props.selectedUrl)
+		if (this.props.selectedId) {
+			let selectedDiv = document.getElementById(this.props.selectedId)
 			if (selectedDiv) {
 				let listDiv = document.getElementById("itemListDiv")
 				let {top: listTop, bottom: listBottom} = listDiv.getBoundingClientRect()
@@ -28,7 +28,7 @@ class ItemList extends React.Component {
 	}
 
 	render = () => {
-		let {items, selectedUrl, select, execute} = this.props
+		let {items, selectedSelf, select, execute} = this.props
 		let style = {
 			overflow: "auto",
 		}
@@ -49,7 +49,7 @@ class ItemList extends React.Component {
 				content.push(<div style={headingStyle}>{item.group}</div>)
 				prevGroup = item.group
 			}
-			content.push(<Item key={item.url} item={item} selected={item.url === selectedUrl} select={select} execute={execute}/>)
+			content.push(<Item key={item.Self} item={item} selected={item.Self === selectedSelf} select={select} execute={execute}/>)
 		})
 		return (
 			<div id="itemListDiv" style={style}>

@@ -6,8 +6,7 @@
 //
 import React from 'react'
 import {render} from 'react-dom'
-import {MakeCollection} from '../../common/resources'
-import {doHttp} from '../../common/utils'
+import {adjustIconUrl, doGet, doPost} from '../../common/utils'
 
 let NotifierItem = (props) => {
 
@@ -28,7 +27,7 @@ let NotifierItem = (props) => {
 					menuItem.submenu = buildMenu(jsonMenuItem.SubMenus)
 				} else if (menuItem.type === "normal" || menuItem.type === "checkbox") {
 					menuItem.click = () => {
-						doHttp(`${props.item.url}?action=menu&id=${jsonMenuItem.Id}`, "POST")
+						doPost(...props.item.Self.split(":"), {action: "menu", id: jsonMenuItem.Id});
 					}
 				}
 				menu.append(menuItem)
@@ -48,9 +47,9 @@ let NotifierItem = (props) => {
 		event.persist()
 		let {x,y} = getXY(event)
 		if (event.button === 0) {
-			doHttp(`${props.item.url}?action=left&x=${x}&y=${y}`, "POST")
+            doPost(...props.item.Self.split(":"), {action: "left", x: x, y: y});
 		} else if (event.button === 1){
-			doHttp(`${props.item.url}?action=middle&x=${x}&y=${y}`, "POST")
+            doPost(...props.item.Self.split(":"), {action: "middle", x: x, y: y});
 		}
 		event.preventDefault()
 	}
@@ -60,7 +59,7 @@ let NotifierItem = (props) => {
 		if (props.item.Menu) {
 			showMenu(event)
 		} else {
-			doHttp(`${props.item.url}?action=right&x=${x}&y=${y}`, "POST")
+            doPost(...props.item.Self.split(":"), {action: "right", x: x, y: y});
 		}
 		event.preventDefault()
 	}
@@ -76,22 +75,29 @@ class NotifierItems extends React.Component {
 		super(props)
 		this.state = {items : []}
 		this.onUpdated = props.onUpdated
-		this.items = MakeCollection("statusnotifier-service", "/items", this.update)
 		this.style = Object.assign({}, props.style)
 		this.style.margin = "0px"
 	}
 
-	componentDidUpdate() {
-		this.onUpdated()
-	}
+	componentDidMount = () => {
+        let itemCompare = (i1, i2) => i1.Self.localeCompare(i2.Self); // Just to keep them from flipping around
+		let update = () => {
+            doGet("statusnotifier-service", "/search").then(items => {
+                items.forEach(item => adjustIconUrl(item));
+                this.setState({items: items.sort(itemCompare)});
+                setTimeout(update, 1000);
+            });
+        };
+		update();
+	};
 
-	update = () => {
-		this.setState({items: this.items.all})
-	}
+	componentDidUpdate = () => {
+		this.onUpdated();
+	};
 
 	render = () =>
 		<div style={this.style}>
-			{this.state.items.map((item) => (<NotifierItem key={item.id} item={item} /> ))}
+			{this.state.items.map((item) => (<NotifierItem key={item.Self} item={item} /> ))}
 		</div>
 }
 

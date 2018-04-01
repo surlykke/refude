@@ -7,14 +7,14 @@
 import React from 'react';
 import ReactDom from 'react-dom'
 
-let zIndex = (win, index, selectedUrl) => win.url === selectedUrl ? 1 : -index
-let fillOpacity = (win, selectedUrl) => win.url === selectedUrl ? "0.1" : "0.05"
+let zIndex = (win, index, selectedSelf) => win.Self === selectedSelf ? 1 : -index
+let fillOpacity = (win, selectedSelf) => win.Self === selectedSelf ? "0.1" : "0.05"
 
 let Windows = props =>
 	<div id="disp" style={props.style || {}}>
 		<svg viewBox="0 0 3840 1080" >
 		{props.windows.map((win, index) => (
-			<g key={win.url} z={zIndex(win, index, props.selectedUrl)} fontFamily="Verdana" fillOpacity={fillOpacity(win, props.selectedUrl)}>
+			<g key={win.url} z={zIndex(win, index, props.selectedSelf)} fontFamily="Verdana" fillOpacity={fillOpacity(win, props.selectedSelf)}>
 			    <rect x={win.X} y={win.Y} width={win.W} height={win.H} stroke="black" />
 				<rect x={win.X} y={win.Y} width={win.W} height="40" fill="lightblue" fillOpacity="1"/>
 				<img xlinkHref={win.IconUrl} x={win.X} y={win.Y} width="40" height="40"/>

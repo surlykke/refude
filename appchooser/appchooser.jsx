@@ -6,8 +6,7 @@
 //
 import React from 'react';
 import {render} from 'react-dom';
-import {doHttp, iconServiceUrl} from '../common/utils'
-import {MakeCollection} from '../common/resources'
+import {doGet, doPost, adjustIconUrl, iconServiceUrl} from '../common/utils'
 import {ItemList} from "../common/itemlist"
 import {Item} from "../common/item"
 import {SearchBox} from "../common/searchbox"
@@ -28,121 +27,122 @@ class AppChooser extends React.Component {
 			apps: [],
 			searchTerm: "",
 		}
-		this.apps = MakeCollection("desktop-service", "/applications", this.scheduleUpdate, (app, term) => {
-			return app.Name.toUpperCase().includes(term) &&
-				   (app.Exec.toUpperCase().includes("%F") || app.Exec.toUpperCase().includes("%U"))
-		})
 	}
 
 	componentDidMount() {
-		this.fetch(mimetypeId)
+        // Get mimetypes, starting with the given recursing through SubClassOf relation
+        // Once all is gotten, fetch apps and order according to what mimetypes they support
+	    let helper = (pos) => {
+            if (pos >= this.mimetypeIds.length) {
+                this.update(this.state.searchTerm)
+            } else {
+                let id = this.mimetypeIds[pos];
+                doGet("desktop-service", "/mimetypes/" + id).then(
+                   mimetype => {
+                       mimetype.IconUrl = iconServiceUrl([mimetype.IconName, mimetype.GenericIcon]);
+                       this.mimetypes[id] = mimetype;
+                       console.log("Consider mimetype:", mimetype);
+                       mimetype.SubClassOf.filter(subId => this.mimetypeIds.indexOf(subId) < 0).forEach(this.mimetypeIds.push);
+				       if (id === mimetypeId) {
+                           this.setState({iconUrl: mimetype.IconUrl, comment: mimetype.Comment});
+				       }
+				       helper(pos + 1);
+                   }
+               )
+            }
+        };
+	    this.mimetypeIds.push(mimetypeId);
+	    helper(0);
 	}
 
-	fetch = (id) => {
-		let url = "http://localhost:7938/desktop-service/mimetypes/" + id
-		doHttp(url).then(mimetype => {
-			if (! this.mimetypeIds.includes(id)) {
-				this.mimetypeIds.push(id)
-				mimetype.url = url
-				mimetype.IconUrl = iconServiceUrl([mimetype.IconName, mimetype.GenericIcon])
-				this.mimetypes[id] = mimetype
-				mimetype.SubClassOf.forEach(subId => { this.fetch(subId)})
-				if (id === mimetypeId) {
-					this.setState({iconUrl: mimetype.IconUrl, comment: mimetype.Comment})
-				}
-				this.update()
-			}
-		})
-	}
+    update = (searchTerm)	=> {
+	    let query = "q=" + (searchTerm || "") + "&limit=200";
+	    console.log("Searching:", query);
+	    doGet("desktop-service", "/search", {q: searchTerm, limit: 200}).then( apps => {
+	        apps = apps.filter(app => app.Exec.toUpperCase().includes("%F") || app.Exec.toUpperCase().includes("%U"))
+	        apps.forEach(app => {
+	            adjustIconUrl(app);
+	            app.__order = this.mimetypeIds.length;
+                app.group = "Other applications"
+                for (let i = 0; i < this.mimetypeIds.length; i++) {
+                    if (app.Mimetypes.includes(this.mimetypeIds[i])) {
+                        app.__order = i;
+                        app.group = "Applications that handle: '" + this.mimetypes[mimetypeId].Comment + "'";
+                        break;
+                    }
+                }
+            });
 
-	// We get a lot of events from this.apps, so we collect to, at most, one update pr 20 ms
-	scheduleUpdate = () => {
-		if (! this.updatePending) {
-			this.updatePending = true
-			setTimeout(this.update, 20)
-		}
-	}
+            apps.sort((app1, app2) => app1.__order - app2.__order);
+            console.log("Setting apps:", apps);
+            let selected = this.state.selected
+            if (apps.length > 0) {
+                if (! apps.find(item => item.Self === selected)) {
+                    selected = apps[0].Self;
+                }
+            } else {
+                selected = undefined;
+            }
+            console.log("selected:", selected);
+            this.setState({selected: selected});
+            this.setState({apps: apps});
+	    });
+    };
 
-	update = () => {
-		let apps = []
-		apps.push(...this.apps.filtered)
-		apps.forEach(app => {
-			let mimetypeId = this.mimetypeIds.find(id => app.Mimetypes.includes(id))
-			if (mimetypeId) {
-				app.group = "Applications that handle: '" + this.mimetypes[mimetypeId].Comment + "'"
-				app.order = this.mimetypeIds.indexOf(mimetypeId)
-			} else {
-				app.group = "Other applications"
-				app.order = this.mimetypeIds.length
-			}
-		})
-		apps.sort((app1, app2) => app1.order !== app2.order ? app1.order - app2.order : app1.Name.localeCompare(app2.Name))
-
-		if (!this.userHasMadeSelection ||
-				!this.state.selected ||
-				!apps.find(app => app === this.state.selected)) {
-			this.setState({selected: apps[0]})
-		}
-
-		this.setState({apps: apps})
-		this.updatePending = false
-	}
-
-	select = (url) => {
+	select = (self) => {
+		console.log("I select, self:", self);
 		this.userHasMadeSelection = true
-		this.setState({selected: this.state.apps.find(app => app.url === url)})
-	}
+		this.setState({selected: self})
+	};
 
-	run = (url) => {
-		this.select(url)
-		let app = this.state.apps.find(app => app.url === url)
+	run = (self) => {
+		this.select(self)
+		let app = this.state.apps.find(app => app.Self === self)
 		if (!app) return
-
-		let launchUrl = url + "?arg=" + appArgument
-		if (this.state.useAsDefault)  {
-			let postUrl = "http://localhost:7938/desktop-service/mimetypes/" + mimetypeId + "?defaultApp=" + app.Id
-			doHttp(postUrl, "POST").then(resp => {
-				doHttp(launchUrl, "POST").then(resp => {
-					gui.App.quit()
-				})
-			})
-		} else {
-			doHttp(launchUrl, "POST").then(resp => {
-				gui.App.quit()
-			})
-		}
-	}
+        if (this.state.useAsDefault) {
+		    let mimetype = this.mimetypes[mimetypeId];
+		    doPost(...this.mimetypes[mimetypeId].Self.split(":"), {defaultApp: app.Id});
+        }
+        doPost(...app.Self.split(":"), {arg: appArgument}).then(resp => {
+            gui.App.quit();
+        });
+	};
 
 	onKeyDown = (event) => {
+		console.log("onKeyDown, event:", event);
 		let {key, ctrlKey, shiftKey, altKey, metaKey} = event
 		if      (key === "Tab" && !ctrlKey &&  shiftKey && !altKey && !metaKey) this.move(false)
 		else if (key === "Tab" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.move(true)
 		else if (key === "ArrowUp" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.move(false)
 		else if (key === "ArrowDown" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.move(true)
-		else if (key === "Enter" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.run(this.state.selected.url)
-		else if (key === " " && !ctrlKey && !shiftKey && !altKey && !metaKey) this.run(this.state.selected.url)
+		else if (key === "Enter" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.run(this.state.selected)
+		else if (key === " " && !ctrlKey && !shiftKey && !altKey && !metaKey) this.run(this.state.selected)
 		else if (key === "Escape" && !ctrlKey && !shiftKey && !altKey && !metaKey) gui.App.quit()
 		else return;
-		event.stopPropagation()
-	}
+		//event.stopPropagation()
+	};
 
 	move = (down) => {
-		let {apps, selected} = this.state
-		let index = apps.indexOf(selected)
+		let {apps, selected} = this.state;
+		console.log("move, selected:", selected, ", apps:", apps);
+		let index = apps.findIndex(app => app.Self === selected);
+        console.log("index:", index);
+
 		if (index > -1) {
-			index = (index + apps.length + (down ? 1 : -1)) % apps.length
-			this.select(apps[index].url)
+			index = (index + apps.length + (down ? 1 : -1)) % apps.length;
+			console.log(" - now:", index, ", selecting:", apps[index])
+			this.select(apps[index].Self)
 		}
 	}
 
 	onTermChange = (event) => {
-		this.apps.setterm(event.target.value)
-		this.setState({searchTerm: event.target.value})
+		this.setState({searchTerm: event.target.value});
+        this.update(event.target.value);
 	}
 
 	render = () => {
 		let {iconUrl, comment, apps, selected, confirm} = this.state
-
+		console.log("Render: selected:", selected);
 		let styles = {
 			content: {
 				position: "relative",
@@ -185,14 +185,12 @@ class AppChooser extends React.Component {
 			Comment: comment
 		}
 
-		let selectedUrl = selected ? selected.url : undefined
-
 		return (
 			<div style={styles.content} onKeyDown={this.onKeyDown}>
 				<div style={styles.heading}>Select an application to open:</div>
 				<Item item={item} style={styles.item}/>
 				<SearchBox style={styles.searchBox} onChange={this.onTermChange} searchTerm={this.state.searchTerm}/>
-				<ItemList style={styles.list} items={apps} selectedUrl={selectedUrl} select={this.select} execute={this.run}/>
+				<ItemList style={styles.list} items={apps} selectedSelf={selected} select={this.select} execute={this.run}/>
 				<div style={{height: "8px"}}/>
 				{	this.state.selected &&
 					<div style={styles.useAsDefault}>

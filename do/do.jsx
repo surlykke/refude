@@ -6,8 +6,7 @@
 //
 import React from 'react'
 import {render} from 'react-dom'
-import {NW, devtools, nwHide, nwSetup, doHttp} from '../common/utils'
-import {MakeCollection} from "../common/resources"
+import {NW, devtools, nwHide, nwSetup, doGet, doPost, adjustIconUrl} from '../common/utils'
 import {ItemList} from "../common/itemlist"
 import {SearchBox} from "../common/searchbox"
 import {Windows} from "./windows.jsx"
@@ -15,77 +14,81 @@ import {Windows} from "./windows.jsx"
 class Container extends React.Component {
 
 	constructor(props) {
-		super(props)
-		this.state = { items: [], windows: [], searchTerm: "" }
-
-		let match = (item, term) => item.Name.toUpperCase().includes(term)
-
-		this.collections = {
-			windows: MakeCollection("wm-service", "/windows", this.update, (win, term) =>
-				!(win.States && win.States.includes("_NET_WM_STATE_ABOVE") || ["Refude Do", "refudeDo"].includes(win.Name)) &&
-				match(win, term)
-			),
-			applications: MakeCollection("desktop-service", "/applications", this.update, (app, term) =>
-				!app.NoDisplay && match(app, term)
-			),
-			poweractions: MakeCollection("power-service", "/actions", this.update, (app, term) => match(app, term))
-		}
-
-		this.collectionHeadings = {
-			windows: "Open windows",
-			applications: "Applications",
-			poweractions: "Leave",
-		}
+		super(props);
+		this.state = { items: [], windows: [], searchTerm: "" };
+        this.resources = {
+		    "wm-service": [],
+            "desktop-service": [],
+            "power-service": []
+        };
 
 		nwSetup((argv) => {
 			this.readArgs(argv);
 		})
 	}
 
-	componentDidMount = () => {
-		this.readArgs(NW.App.argv)
-		this.update()
-	}
+	fetchResources = (searchTerm) => {
+		console.log("Fetching for", searchTerm);
+	    let query = {q: searchTerm || ""};
+	    this.resources["wm-service"] = [];
+	    this.resources["desktop-services"] = [];
+	    this.resources["power-service"] = [];
 
-	update = () => {
-		let addAll = (dst, src, group) => {
+	    let showWin = w => !(w.States && w.States.includes("_NET_WM_STATE_ABOVE") || ["Refude Do", "refudeDo"].includes(w.Name));
+
+	    doGet("wm-service", "/search", query).then(resources => {
+	        this.resources["wm-service"] = resources.filter(showWin);
+	        this.resources["wm-service"].forEach(adjustIconUrl)
+	        this.updateItems();
+	    });
+
+        if (searchTerm) {
+            doGet("desktop-service", "/search", query).then(resources => {
+                this.resources["desktop-service"] = resources;
+                this.resources["desktop-service"].forEach(adjustIconUrl)
+                this.updateItems();
+            });
+            doGet("power-service", "/search", query).then(resources => {
+                this.resources["power-service"] = resources;
+                this.resources["power-service"].forEach(adjustIconUrl)
+                this.updateItems();
+            });
+        }
+	};
+
+	updateItems = () => {
+        let addAll = (dst, src, group) => {
 			src.forEach(item => {
 				item.group = group
 				dst.push(item)
 			})
 		}
-		let items = []
-		let windows = []
-		if (this.onlyShow) {
-			console.log("this.onlyShow: ", this.onlyShow)
-			addAll(items, this.collections[this.onlyShow].filtered, this.collectionHeadings[this.onlyShow])
-		}
-		else {
-			addAll(windows, this.collections["windows"].filtered)
-			addAll(items, this.collections["windows"].filtered, this.collectionHeadings["windows"])
-			if (this.state.searchTerm.trim() !== "") {
-				addAll(items, this.collections["applications"].filtered, this.collectionHeadings["applications"])
-				addAll(items, this.collections["poweractions"].filtered, this.collectionHeadings["poweractions"])
-			}
-		}
+		console.log("Into updateItems, resources:", this.resources);
+	    let items = [];
+	    addAll(items, this.resources["wm-service"], "Open windows");
+        addAll(items, this.resources["desktop-service"], "Applications");
+        addAll(items, this.resources["power-service"], "Leave");
 
-		this.setState({items: items, windows: windows})
-		if (items.length > 0) {
-			if (! items.find(item => item.url === this.state.selectedUrl)) {
-				this.setState({selectedUrl: items[0].url})
-			}
-		} else {
-			this.setState({selectedUrl: undefined})
-		}
-	}
+        if (items.length > 0) {
+            if (! items.find(item => item.Self === this.state.selected)) {
+                this.setState({selected: items[0].Self})
+            }
+        } else {
+            this.setState({selected: undefined})
+        }
+
+        this.setState({items: items, windows: this.resources["wm-service"]})
+    }
+
+	componentDidMount = () => {
+		this.readArgs(NW.App.argv)
+//		this.fetchResources()
+	};
 
 	onTermChange = (searchTerm) => {
-		this.collections["windows"].setterm(searchTerm)
-		this.collections["applications"].setterm(searchTerm)
-		this.collections["poweractions"].setterm(searchTerm)
 		this.setState({searchTerm: searchTerm})
-		this.update()
-	}
+		this.fetchResources(searchTerm);
+	};
 
 	onKeyDown = (event) => {
 		let {key, ctrlKey, shiftKey, altKey, metaKey} = event
@@ -93,8 +96,8 @@ class Container extends React.Component {
 		else if (key === "Tab" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.move(true)
 		else if (key === "ArrowUp" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.move(false)
 		else if (key === "ArrowDown" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.move(true)
-		else if (key === "Enter" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.execute(this.state.selectedUrl)
-		else if (key === " " && !ctrlKey && !shiftKey && !altKey && !metaKey) this.execute(this.state.selectedUrl)
+		else if (key === "Enter" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.execute(this.state.selected)
+		else if (key === " " && !ctrlKey && !shiftKey && !altKey && !metaKey) this.execute(this.state.selected)
 		else if (key === "Escape" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.dismiss()
 		else if (key === "Alt" && !ctrlKey && !shiftKey && altKey && !metaKey) this.collected = 0
 		else if ("0" <= key && key <= "9" && !ctrlKey && !shiftKey && altKey && !metaKey && this.collected !== undefined) {
@@ -103,32 +106,33 @@ class Container extends React.Component {
 		else {
 			return
 		}
-		event.stopPropagation
+
+		event.stopPropagation();
 	}
 
 	move = (down) => {
-		let index = this.state.items.findIndex(item => item.url === this.state.selectedUrl)
+		let index = this.state.items.findIndex(item => item.Self === this.state.selected)
 		if (index > -1) {
 			index = (index + this.state.items.length + (down ? 1 : -1)) % this.state.items.length
-			this.setState({selectedUrl: this.state.items[index].url})
+			this.setState({selected: this.state.items[index].Self})
 		}
 	}
 
 	onKeyUp = (event) => {
 		if ("Alt" === event.key && this.collected !== undefined) {
-			if (this.state.windows[this.collected - 1]) this.execute(this.state.windows[this.collected - 1].url)
+			if (this.state.windows[this.collected - 1]) this.execute(this.state.windows[this.collected - 1].Self)
 			this.collected = undefined
 		}
 	}
 
-	select = (url) => {
-		this.setState({selectedUrl: url})
+	select = (self) => {
+		this.setState({selected: self})
 	}
 
-	execute = (url) => {
-		if (url) {
-			this.select(url)
-			doHttp(url, "POST").then(response => {this.dismiss()})
+	execute = (self) => {
+		if (self) {
+			this.select(self)
+			doPost(...self.split(":")).then(response => {this.dismiss()})
 		}
 	}
 
@@ -152,7 +156,7 @@ class Container extends React.Component {
 			if (onlyShowArg) {
 				this.onlyShow = onlyShowArg.slice("refude::onlyShow::".length)
 			}
-			this.update()
+			this.fetchResources();
 		}
 	}
 
@@ -196,10 +200,9 @@ class Container extends React.Component {
 			<div style={contentStyle} onKeyDown={this.onKeyDown} onKeyUp={this.onKeyUp}>
 				<div style={leftColumnStyle}>
 					<SearchBox style={searchBoxStyle} onChange={evt => this.onTermChange(evt.target.value)}  searchTerm={this.state.searchTerm}/>
-					<ItemList style={itemListStyle} items={this.state.items}
-						      selectedUrl={this.state.selectedUrl} select={this.select} execute={this.execute}/>
+					<ItemList style={itemListStyle} items={this.state.items} selectedSelf={this.state.selected} select={this.select} execute={this.execute}/>
 				</div>
-				<Windows style={windowsStyle} windows={this.state.windows} selectedUrl={this.state.selectedUrl}/>
+				<Windows style={windowsStyle} windows={this.state.windows} selectedSelf={this.state.selected}/>
 			</div>
 		)
 	}

@@ -66,7 +66,7 @@ let Item = props => {
 	Object.assign(commentStyle, nameStyle)
 
 	return (
-		<div id={props.item.url} style={style} onClick={() => {select(item.url)}} onDoubleClick={() => {execute(item.url)}}>
+		<div id={props.item.Self} style={style} onClick={() => {select(item.Self)}} onDoubleClick={() => {execute(item.Self)}}>
 			<img width="24px" height="24px" style={iconStyle} src={item.IconUrl} />
 		    <div style={nameStyle}>{item.Name}</div>
 		    <div style={commentStyle}>{item.Comment}</div>

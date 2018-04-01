@@ -27,6 +27,9 @@ let combinedUrls = (absoluteUrl, relativeUrls) => {
 	return relativeUrls.map(relativeUrl => combinedUrl(absoluteUrl, relativeUrl))
 }
 
+let combinedPath = (p1, p2) =>  {
+    return new URL(p2, "http:/" + p1).toString().substring(6);
+};
 
 let iconServiceUrl = (iconNames, size) => {
 	if (! Array.isArray(iconNames)) iconNames = [iconNames]
@@ -74,25 +77,83 @@ let doHttp = (url, method, payload) => {
 	})
 
 }
+let doHttp2 = (service, path, method, payload) => {
+	return new Promise((resolve, reject) => {
+		let req = http.request({host: "localhost", port: 7938, path: "/" + service + path, method: method || "GET"}, resp => {
+			let data = '';
+			resp.setEncoding('utf8');
+			resp.on('data', chunk => { data += chunk });
+			resp.on('end', () => {
+				if (resp.statusCode > 299) {
+					reject(new Error(`Request Failed.\n` + `Status Code: ${resp.statusCode}`));
+				}
+				else {
+					try {
+						resolve(data === '' ? null : JSON.parse(data))
+					}
+					catch (e) {
+						reject(e)
+					}
+				}
+			})
+		});
+		req.on('error', e => reject(e));
+		if (payload) {
+			req.write(JSON.stringify(payload));
+		}
+		req.end();
+	})
+};
+
+let doPost = (service, path, params) => {
+	path = path + queryString(params);
+	return doHttp2(service, path, "POST");
+};
+
+let doGet = (service, path, params) => {
+	path = path + queryString(params);
+    return doHttp2(service, path);
+}
+
+let doDelete = (service, path, params) => {
+    path = path + queryString(params);
+    return doHttp2(service, path);
+}
+
+let adjustIconUrl = (res) => {
+    res.IconUrl = res.IconUrl ? new URL(res.IconUrl,"http://localhost:7938/" + res.Self.replace(":", "")).toString() :
+                  res.IconName ? iconServiceUrl(res.IconName) :
+                  undefined;
+};
+
+
+
+let queryString = (params) => {
+	if (params && Object.keys(params).length > 0) {
+        return "?" + Object.keys(params).map(k => k + "=" + params[k]).join("&");
+    } else {
+	    return "";
+    }
+};
 
 // -------------------- NW stuff ---------------------
-let NW = window.require('nw.gui')
-let WIN = NW.Window.get()
+let NW = window.require('nw.gui');
+let WIN = NW.Window.get();
 
 let nwHide = () => {
-		WIN.hide()
-}
+    WIN.hide();
+};
 
 let devtools = () => {
-	WIN.showDevTools()
-}
+	WIN.showDevTools();
+};
 
 let nwSetup = (onOpen) => {
 	NW.App.on("open", (args) => {
-		console.log("onOpen, args: ", NW.App.argv)
+		console.log("onOpen, args: ", NW.App.argv);
 		WIN.show();
-		onOpen && onOpen(args.split(/\s+/))
+		onOpen && onOpen(args.split(/\s+/));
 	})
-}
+};
 
-export {nwHide, devtools, NW, nwSetup, combinedUrl, combinedUrls, iconServiceUrl, doHttp}
+export {nwHide, devtools, NW, nwSetup, combinedUrl, combinedUrls, combinedPath, iconServiceUrl, doHttp, doHttp2, doPost, doGet, adjustIconUrl}

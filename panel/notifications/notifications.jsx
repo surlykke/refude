@@ -6,8 +6,7 @@
 //
 import React from 'react'
 import {render} from 'react-dom'
-import {MakeCollection} from '../../common/resources'
-import {doHttp} from '../../common/utils'
+import {adjustIconUrl, doGet, doPost, doDelete} from '../../common/utils'
 
 const notificationStyle = {
 	position: "relative",
@@ -37,13 +36,13 @@ let Notification = (props) => {
 
 	let dismiss = (event) => {
 		console.log(event)
-		doHttp(props.item.url, "DELETE")
+		doDeltete(...props.item.Self.split(':'));
 		event.stopPropagation()
 	}
 
 	let notificationClicked = (event) => {
-		console.log("notification clicked")
-		doHttp(props.item.url + "?action=default", "POST")
+		console.log("notification clicked");
+		doPost(props.item.Self, {action: "default"});
 		event.stopPropagation()
 	}
 
@@ -59,7 +58,7 @@ let Notification = (props) => {
 			{Object.keys(item.Actions).filter(k => k !== "default").map(k => {
 				let buttonClicked = (event) => {
 					console.log("button", k, "clicked")
-					doHttp(props.item.url + "?action=" + k, "POST")
+					doPost(props.item.Self, {action: k}, "POST")
 					event.stopPropagation()
 				}
 
@@ -86,16 +85,21 @@ class Notifications extends React.Component {
 		this.state = {items : []}
 		this.onUpdated = props.onUpdated
 		console.log("constructor: this.state.items:", this.state.items)
-		this.notifications = MakeCollection("notifications-service", "/notifications", this.update)
 	}
 
-	componentDidUpdate() {
+	componentDidMount = () => {
+        let update = () => {
+            doGet("notifications-service", "/search").then(notifications => {
+                notifications.forEach(res => adjustIconUrl(res));
+                this.setState({items: notifications});
+                setTimeout(update, 1000);
+            });
+	    };
+		update();
+    }
+
+	componentDidUpdate = () => {
 		this.onUpdated()
-	}
-
-	update = () => {
-		console.log("update, collection: ", this.notifications)
-		this.setState({items: this.notifications.all})
 	}
 
 	render = () =>

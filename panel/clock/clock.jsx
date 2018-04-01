@@ -21,13 +21,13 @@ class Clock extends React.Component {
 	}
 
 	componentDidMount = () => {
-    	let runClock = () => {
+    	let update = () => {
 			let now = new Date()
 	        this.setState({time: now.toLocaleTimeString()});
 			// Update just after next turn of second..
-			setTimeout(runClock, 1000 - now.getMilliseconds() + 1);
+            setTimeout(update, 1000 - now.getMilliseconds() + 1);
 	    };
-		runClock()
+		update()
 	}
 
 	render = () =>

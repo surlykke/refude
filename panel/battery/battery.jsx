@@ -12,42 +12,48 @@
  * Please refer to the LICENSE file for a copy of the license.
  */
 import React from 'react'
-import {MakeCollection} from '../../common/resources'
+import {adjustIconUrl, doGet} from '../../common/utils'
 
 class Battery extends React.Component {
 
-	constructor(props) {
-		super(props)
-		this.onUpdated = props.onUpdated
-		this.state = {data: []}
-	}
+    constructor(props) {
+        super(props)
+        this.onUpdated = props.onUpdated
+        this.state = {data: []}
+    }
 
-	componentDidMount = () => {
-		this.devices = MakeCollection("power-service", "/devices", this.update, dev => dev.Type === 'Battery' && !dev.DisplayDevice)
-	}
+    componentDidMount = () => {
+        let compare = (b1, b2) => b1.NativePath.localeCompare(b2.NativePath);
+        let update = () => {
+            doGet("power-service", "/search", {type: "battery"}).then(batteries => {
+                let data = batteries.sort(compare).map(b => {
+                    let charging = ["Charging", "Fully charged"].includes(b.State)
+                    return {
+                        style: {
+                            color: (charging || b.Percentage >= 20 ? 'black' : 'red'),
+                            fontWeight: charging ? 'bold' : 'normal',
+                            marginRight: '0.4em'
+                        },
+                        percentage: Math.floor(b.Percentage + 0.5),
+                        path: b.NativePath
+                    }
+                });
+                this.setState({data: data});
+                setTimeout(update, 1000);
+            });
+        };
 
-	update = () => {
-		console.log("devices: ", this.devices);
-		console.log("devices.filtered: ", this.devices.filtered)
-		this.setState({data: this.devices.filtered.sort((d1,d2) => d1.NativePath.localeCompare(d2.NativePath)).map(b => {
-			let charging = ["Charging", "Fully charged"].includes(b.State) 
-			return {
-				style: { 
-					color: (charging || b.Percentage >= 20 ? 'black' : 'red'),
-					fontWeight: charging ? 'bold' : 'normal',
-					marginRight: '0.4em'
-				},
-				percentage: Math.floor(b.Percentage + 0.5),
-				path: b.NativePath
-			}
-		})})
-		console.log("this.state.data:", this.state.data)
-	}
+        update();
+    };
 
+    componentDidUpdate
 
-	render = () => {
-		return <div style={this.props.style}>{this.state.data.map(d => (<span style={d.style} key={d.path}>{d.percentage}%</span>))}</div>
-	}
+    render = () => {
+            return <div style={this.props.style}>{this.state.data.map(d => (
+                <span style={d.style} key={d.path}>{d.percentage}%</span>))}</div>
+        }
+    }
+
+    export {
+    Battery
 }
-
-export {Battery}
