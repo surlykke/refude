@@ -11,6 +11,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/service"
 	"strings"
 	"fmt"
+	"net/url"
 )
 
 const UPowService = "org.freedesktop.UPower"
@@ -131,4 +132,33 @@ func (pm *PowerManager) Run() {
 	}
 }
 
+func Filter(resource interface{}, queryParams url.Values) bool {
+	var terms, termGiven = queryParams["q"];
+	if !termGiven || len(terms) == 0 {
+		terms = []string{""}
+	}
+	var types, typeGiven = queryParams["type"]
+	if !typeGiven || len(types) == 0 {
+		types = []string{"action"}
+	}
 
+	for _,resourceType:= range types {
+		switch resourceType {
+		case "action":
+			if pa, ok := resource.(*PowerAction); ok && pa.Can {
+				for _,term := range terms {
+					if strings.Contains(strings.ToUpper(pa.Name), strings.ToUpper(term)) ||
+						strings.Contains(strings.ToUpper(pa.Comment), strings.ToUpper(term)) {
+						return true
+					}
+				}
+			}
+		case "device":
+			if _, ok := resource.(*Device); ok {
+				return true;
+			}
+		}
+	}
+
+	return false
+}

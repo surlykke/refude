@@ -11,8 +11,6 @@ import (
 	"github.com/godbus/dbus"
 	"fmt"
 	"github.com/surlykke/RefudeServices/lib/resource"
-	"net/url"
-	"strings"
 )
 
 
@@ -42,16 +40,4 @@ func (pa *PowerAction) POST(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusAccepted)
 }
 
-func Filter(resource interface{}, queryParams url.Values) bool {
-	if pa, ok := resource.(*PowerAction); ok && pa.Can {
-		if searchTerms, ok := queryParams["q"]; ok {
-			for _,searchTerm := range searchTerms {
-				if strings.Contains(strings.ToUpper(pa.Name), strings.ToUpper(searchTerm)) ||
-					strings.Contains(strings.ToUpper(pa.Comment), strings.ToUpper(searchTerm)) {
-					return true
-				}
-			}
-		}
-	}
-	return false
-}
+
