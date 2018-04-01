@@ -25,8 +25,8 @@ class Battery extends React.Component {
     componentDidMount = () => {
         let compare = (b1, b2) => b1.NativePath.localeCompare(b2.NativePath);
         let update = () => {
-            doGet("power-service", "/search", {type: "battery"}).then(batteries => {
-                let data = batteries.sort(compare).map(b => {
+            doGet("power-service", "/search", {type: "device"}).then(batteries => {
+                let data = batteries.filter(b => b.Type === 'Battery' && !b.DisplayDevice).sort(compare).map(b => {
                     let charging = ["Charging", "Fully charged"].includes(b.State)
                     return {
                         style: {
@@ -46,7 +46,9 @@ class Battery extends React.Component {
         update();
     };
 
-    componentDidUpdate
+    componentDidUpdate() {
+        props.onUpdated();
+    }
 
     render = () => {
             return <div style={this.props.style}>{this.state.data.map(d => (
