@@ -23,40 +23,11 @@ import (
 	"golang.org/x/text/language"
 	"os"
 	"github.com/surlykke/RefudeServices/lib/xdg"
+	"net/url"
 )
 
-type DesktopApplication struct {
-	Type            string
-	Version         string
-	Name            ini.LocalizedString
-	GenericName     ini.LocalizedString
-	NoDisplay       bool
-	Comment         ini.LocalizedString
-	IconName        string
-	IconPath        string
-	IconUrl         string
-	Hidden          bool
-	OnlyShowIn      []string
-	NotShowIn       []string
-	DbusActivatable bool
-	TryExec         string
-	Exec            string
-	Path            string
-	Terminal        bool
-	Mimetypes       []string
-	Categories      []string
-	Implements      []string
-	Keywords        ini.LocalizedStringlist
-	StartupNotify   bool
-	StartupWmClass  string
-	Url             string
-	Actions         map[string]*Action
-	Id              string
-	RelevanceHint   int64
-	languages       language.Matcher
-}
 
-type LocalizedDesktopApplication struct {
+type DesktopApplication struct {
 	Type            string
 	Version         string `json:",omitempty"`
 	Name            string
@@ -81,73 +52,19 @@ type LocalizedDesktopApplication struct {
 	StartupNotify   bool
 	StartupWmClass  string `json:",omitempty"`
 	Url             string `json:",omitempty"`
-	Actions         map[string]*LocalizedAction
+	Actions         map[string]*Action
 	Id              string
 	RelevanceHint   int64
-}
-
-func (da *DesktopApplication) localize(locale string) *LocalizedDesktopApplication {
-	var lda = LocalizedDesktopApplication{
-		Type:            da.Type,
-		Version:         da.Version,
-		Name:            da.Name.LocalOrDefault(locale),
-		GenericName:     da.GenericName.LocalOrDefault(locale),
-		NoDisplay:       da.NoDisplay,
-		Comment:         da.Comment.LocalOrDefault(locale),
-		IconName:        da.IconName,
-		IconPath:        da.IconPath,
-		IconUrl:         da.IconUrl,
-		Hidden:          da.Hidden,
-		OnlyShowIn:      da.OnlyShowIn,
-		NotShowIn:       da.NotShowIn,
-		DbusActivatable: da.DbusActivatable,
-		TryExec:         da.TryExec,
-		Exec:            da.Exec,
-		Path:            da.Path,
-		Terminal:        da.Terminal,
-		Mimetypes:       da.Mimetypes,
-		Categories:      da.Categories,
-		Implements:      da.Implements,
-		Keywords:        da.Keywords.LocalOrDefault(locale),
-		StartupNotify:   da.StartupNotify,
-		StartupWmClass:  da.StartupWmClass,
-		Url:             da.Url,
-		Actions:         make(map[string]*LocalizedAction),
-		Id:              da.Id,
-		RelevanceHint:   da.RelevanceHint,
-	}
-
-	for id, action := range da.Actions {
-		lda.Actions[id] = action.localize(locale)
-	}
-
-	return &lda
+	languages       language.Matcher
+	Self            string
 }
 
 type Action struct {
-	Name     ini.LocalizedString
-	Exec     string
-	IconName string
-	IconPath string
-	IconUrl  string
-}
-
-type LocalizedAction struct {
 	Name     string
 	Exec     string
 	IconName string
 	IconPath string
 	IconUrl  string
-}
-
-func (a *Action) localize(language string) *LocalizedAction {
-	return &LocalizedAction{
-		Name:     a.Name.LocalOrDefault(language),
-		Exec:     a.Exec,
-		IconName: a.IconName,
-		IconPath: a.IconPath,
-		IconUrl:  a.IconUrl,
-	}
 }
 
 type IconPath string
@@ -156,71 +73,11 @@ func (ip IconPath) GET(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, string(ip))
 }
 
-func makeDesktopApplication() DesktopApplication {
-	var da = DesktopApplication{
-		Name:        make(ini.LocalizedString),
-		GenericName: make(ini.LocalizedString),
-		Comment:     make(ini.LocalizedString),
-		OnlyShowIn:  []string{},
-		NotShowIn:   []string{},
-		Mimetypes:   []string{},
-		Categories:  []string{},
-		Implements:  []string{},
-		Keywords:    make(ini.LocalizedStringlist),
-		Actions:     make(map[string]*Action),
-		languages:   nil,
-	}
-	return da
-}
-
-func (da *DesktopApplication) Copy() *DesktopApplication {
-	cp := *da
-	cp.Name = cp.Name.Copy()
-	cp.GenericName = cp.GenericName.Copy()
-	cp.Comment = cp.Comment.Copy()
-	cp.OnlyShowIn = utils.Copy(cp.OnlyShowIn)
-	cp.NotShowIn = utils.Copy(cp.NotShowIn)
-	cp.Mimetypes = utils.Copy(cp.Mimetypes)
-	cp.Categories = utils.Copy(cp.Categories)
-	cp.Implements = utils.Copy(cp.Implements)
-	cp.Keywords = cp.Keywords.Copy()
-	cp.Actions = make(map[string]*Action)
-	for id, action := range da.Actions {
-		cp.Actions[id] = action.Copy()
-	}
-
-	return &cp
-}
-
-func makeAction() Action {
-	return Action{Name: make(ini.LocalizedString)}
-}
-
-func (a *Action) Copy() *Action {
-	copy := *a
-	copy.Name = copy.Name.Copy()
-	return &copy
-}
-
 func (da *DesktopApplication) GET(w http.ResponseWriter, r *http.Request) {
-	locale := getPreferredLocale(r, da.languages)
-	resource.JsonGET(da.localize(locale), w)
-}
-
-func getPreferredLocale(r *http.Request, matcher language.Matcher) string {
-	if acceptLanguage := r.Header.Get("Accept-Language"); acceptLanguage != "" {
-		if tags, _, err := language.ParseAcceptLanguage(acceptLanguage); err == nil {
-			tag, _, confidence := matcher.Match(tags...)
-			if confidence > language.Low {
-				return tag.String()
-			}
-		}
-	}
-	return ""
+	resource.JsonGET(da, w)
 }
 
 func (da *DesktopApplication) POST(w http.ResponseWriter, r *http.Request) {
-
 	actionId := resource.GetSingleQueryParameter(r, "action", "")
 	var exec string
 	if actionId != "" {
@@ -240,7 +97,7 @@ func (da *DesktopApplication) POST(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	} else {
 		w.WriteHeader(http.StatusAccepted)
-		updatedApp := da.Copy()
+		updatedApp := da
 		updatedApp.RelevanceHint = time.Now().UnixNano() / 1000000
 		service.Map(r.URL.Path, updatedApp)
 	}
@@ -278,7 +135,8 @@ func readDesktopFile(path string) (*DesktopApplication, error) {
 	} else if len(iniFile) == 0 || iniFile[0].Name != "Desktop Entry" {
 		return nil, errors.New("File must start with '[Desktop Entry]'")
 	} else {
-		var da = makeDesktopApplication()
+		var da DesktopApplication
+		da.Actions = make(map[string]*Action)
 		var actionNames = []string{}
 		group := iniFile[0]
 
@@ -286,13 +144,13 @@ func readDesktopFile(path string) (*DesktopApplication, error) {
 			return nil, errors.New("Desktop file invalid, no 'Type' given")
 		}
 		da.Version = group.Entries["Version"]
-		if da.Name = group.LocalizedString("Name"); da.Name[""] == "" {
+		if da.Name = group.Entries["Name"]; da.Name == "" {
 			return nil, errors.New("Desktop file invalid, no 'Name' given")
 		}
 
-		da.GenericName = group.LocalizedString("GenericName")
+		da.GenericName = group.Entries["GenericName"]
 		da.NoDisplay = group.Entries["NoDisplay"] == "true"
-		da.Comment = group.LocalizedString("Comment")
+		da.Comment = group.Entries["Comment"]
 		icon := group.Entries["Icon"]
 		if strings.HasPrefix(icon, "/") {
 			da.IconPath = icon
@@ -323,8 +181,8 @@ func readDesktopFile(path string) (*DesktopApplication, error) {
 			} else if currentAction := actionGroup.Name[15:]; !utils.Contains(actionNames, currentAction) {
 				log.Print(path, ", undeclared action: ", currentAction, " - ignoring\n")
 			} else {
-				var action = makeAction()
-				if action.Name = actionGroup.LocalizedString("Name"); action.Name[""] == ""{
+				var action Action
+				if action.Name = actionGroup.Entries["Name"]; action.Name == ""{
 					return nil, errors.New("Desktop file invalid, action " + actionGroup.Name + " has no default 'Name'")
 				}
 				icon = actionGroup.Entries["Icon"]
@@ -348,36 +206,25 @@ func readDesktopFile(path string) (*DesktopApplication, error) {
 			}
 		}
 
-		var collectedLanguages = make(map[string]bool)
-		for locale, _ := range da.Name {
-			collectedLanguages[locale] = true
-		}
-		for locale, _ := range da.GenericName {
-			collectedLanguages[locale] = true
-		}
-		for locale, _ := range da.Comment {
-			collectedLanguages[locale] = true
-		}
-		for locale, _ := range da.Keywords {
-			collectedLanguages[locale] = true
-		}
-
-		for _, action := range da.Actions {
-			for locale, _ := range action.Name {
-				collectedLanguages[locale] = true
-			}
-		}
-
-		var tags = make([]language.Tag, len(collectedLanguages))
-		for locale, _ := range collectedLanguages {
-			tags = append(tags, language.Make(locale))
-		}
-		da.languages = language.NewMatcher(tags)
-
 		return &da, nil
 	}
 }
 
 func transformLanguageTag(tag string) string {
 	return strings.Replace(strings.Replace(tag, "_", "-", -1), "@", "-", -1)
+}
+
+
+func Filter(resource interface{}, queryParams url.Values) bool {
+	if da, ok := resource.(*DesktopApplication); ok {
+		if searchTerms, ok := queryParams["q"]; ok {
+			for _,searchTerm := range searchTerms {
+				if strings.Contains(strings.ToUpper(da.Name), strings.ToUpper(searchTerm)) ||
+				   strings.Contains(strings.ToUpper(da.Comment), strings.ToUpper(searchTerm)) {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }

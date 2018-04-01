@@ -15,6 +15,7 @@ import (
 	"time"
 	"strings"
 	"strconv"
+	"net/url"
 )
 
 const NOTIFICATIONS_SERVICE = "org.freedesktop.Notifications"
@@ -147,6 +148,7 @@ func Notify(app_name string,
 		Body: sanitize(body, allowedTags, allowedEscapes),
 		Actions: map[string]string{},
 		eTag : fmt.Sprintf("%d", id),
+		Self : "notifications-service:" + path,
 	}
 
 	for i := 0; i + 1 < len(actions); i = i + 2 {
@@ -157,7 +159,7 @@ func Notify(app_name string,
 	service.Map( path, &notification)
 
 	if expire_timeout == 0 {
-		expire_timeout = 10000
+		expire_timeout = 2000
 	}
 
 	if expire_timeout > 0 {
@@ -241,12 +243,6 @@ func helper(src *string, dest *string, allowedPrefixes []string, endMarker strin
 }
 
 
-// Returns length of matched prefix, if found, -1 otherwise
-func prefixeByOneOf(text string, prefixes []string) int {
-
-	return -1
-}
-
 func Setup() {
 	var err error
 
@@ -277,4 +273,16 @@ func Setup() {
 	conn.Export(introspect.Introspectable(INTROSPECT_XML), NOTIFICATIONS_PATH, INTROSPECT_INTERFACE)
 }
 
-
+func filterMethod(resource interface{}, query url.Values) bool {
+	if n, ok := resource.(*Notification); ok {
+		if searchTerms, ok := query["q"]; ok {
+			for _,searchTerm := range searchTerms {
+				if strings.Contains(strings.ToUpper(n.Subject), strings.ToUpper(searchTerm)) ||
+				   strings.Contains(strings.ToUpper(n.Body), strings.ToUpper(searchTerm)) {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}

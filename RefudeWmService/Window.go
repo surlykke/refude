@@ -12,6 +12,8 @@ import (
 	"github.com/BurntSushi/xgbutil/ewmh"
 	"github.com/BurntSushi/xgbutil"
 	"github.com/surlykke/RefudeServices/lib/resource"
+	"net/url"
+	"strings"
 )
 
 
@@ -24,6 +26,7 @@ type Window struct {
 	States        []string
 	Actions       map[string]Action
 	RelevanceHint int
+	Self          string
 }
 
 type Action struct {
@@ -42,5 +45,18 @@ func (win *Window) POST(w http.ResponseWriter, r *http.Request) {
 		ewmh.ActiveWindowReq(win.x, xproto.Window(win.Id))
 		w.WriteHeader(http.StatusAccepted)
 	}
+}
+
+func Filter(resource interface{}, queryParams url.Values) bool {
+	if w, ok := resource.(*Window); ok {
+		if searchTerms, ok := queryParams["q"]; ok {
+			for _,searchTerm := range searchTerms {
+				if strings.Contains(strings.ToUpper(w.Name), strings.ToUpper(searchTerm)) {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
 

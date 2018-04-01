@@ -40,6 +40,7 @@ type Item struct {
 	iconThemePath string
 	path string
 	menuIds []string
+	Self string
 }
 
 type MenuItem struct {

@@ -19,6 +19,7 @@ type Notification struct {
 	Actions       map[string]string
 	RelevanceHint int
 	eTag          string
+	Self          string
 }
 
 func (n *Notification) GET(w http.ResponseWriter, r *http.Request) {

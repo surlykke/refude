@@ -10,6 +10,8 @@ import (
 	"os"
 
 	"github.com/surlykke/RefudeServices/lib/utils"
+	"strings"
+	"fmt"
 )
 
 var Home string
@@ -20,6 +22,7 @@ var DataHome string
 var DataDirs []string
 var RuntimeDir string
 var CurrentDesktop []string
+var Locale string
 
 func init() {
 	Home = os.Getenv("HOME")
@@ -31,6 +34,11 @@ func init() {
 	DataDirs = utils.Remove(DataDirs, DataHome)
 	RuntimeDir = notEmptyOr(os.Getenv("XDG_RUNTIME_DIR"), "/tmp")
 	CurrentDesktop = utils.Split(notEmptyOr(os.Getenv("XDG_CURRENT_DESKTOP"), ""), ":")
+	Locale = notEmptyOr(os.Getenv("LANG"), "") // TODO Look at other env variables too
+	if index := strings.Index(Locale, "."); index > -1 { // Strip away encoding part (ie. '.UTF-8')
+		Locale = Locale[0:index]
+	}
+	fmt.Println("Locale: ", Locale)
 }
 
 func notEmptyOr(primary string, secondary string) string {

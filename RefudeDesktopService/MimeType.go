@@ -28,21 +28,6 @@ const freedesktopOrgXml = "/usr/share/mime/packages/freedesktop.org.xml"
 
 type Mimetype struct {
 	Id                     string
-	Comment                ini.LocalizedString
-	Acronym                ini.LocalizedString
-	ExpandedAcronym        ini.LocalizedString
-	Aliases                []string
-	Globs                  []string
-	SubClassOf             []string
-	IconName               string
-	GenericIcon            string
-	AssociatedApplications []string
-	DefaultApplication     string
-	languages              language.Matcher
-}
-
-type LocalizedMimetype struct {
-	Id                     string
 	Comment                string
 	Acronym                string `json:",omitempty"`
 	ExpandedAcronym        string `json:",omitempty"`
@@ -53,27 +38,11 @@ type LocalizedMimetype struct {
 	GenericIcon            string
 	AssociatedApplications []string
 	DefaultApplication     string `json:",omitempty"`
-}
-
-func (mt *Mimetype) localize(locale string) *LocalizedMimetype {
-	return &LocalizedMimetype{
-		Id:                     mt.Id,
-		Comment:                mt.Comment.LocalOrDefault(locale),
-		Acronym:                mt.Acronym.LocalOrDefault(locale),
-		ExpandedAcronym:        mt.ExpandedAcronym.LocalOrDefault(locale),
-		Aliases:                mt.Aliases,
-		Globs:                  mt.Globs,
-		SubClassOf:             mt.SubClassOf,
-		IconName:               mt.IconName,
-		GenericIcon:            mt.GenericIcon,
-		AssociatedApplications: mt.AssociatedApplications,
-		DefaultApplication:     mt.DefaultApplication,
-	}
+	Self                   string
 }
 
 func (mt *Mimetype) GET(w http.ResponseWriter, r *http.Request) {
-	var locale = getPreferredLocale(r, mt.languages)
-	resource.JsonGET(mt.localize(locale), w)
+	resource.JsonGET(mt, w)
 }
 
 func (mt *Mimetype) POST(w http.ResponseWriter, r *http.Request) {
@@ -124,24 +93,19 @@ func NewMimetype(id string) (*Mimetype, error) {
 		return nil, errors.New("Incomprehensible mimetype: " + id)
 	} else {
 		mt := &Mimetype{
-			Id:                     id,
-			Comment:                make(ini.LocalizedString),
-			Acronym:                make(ini.LocalizedString),
-			ExpandedAcronym:        make(ini.LocalizedString),
-			Aliases:                make([]string, 0),
-			Globs:                  make([]string, 0),
-			SubClassOf:             make([]string, 0),
-			IconName:               "unknown",
-			GenericIcon:            "unknown",
-			AssociatedApplications: make([]string, 0),
-			DefaultApplication:     "",
-			languages:              language.NewMatcher(make([]language.Tag, 0)),
+			Id:          id,
+			Aliases:     []string{},
+			Globs:       []string{},
+			SubClassOf:  []string{},
+			IconName:    "unknown",
+			GenericIcon: "unknown",
+			Self:        "desktop-service:/mimetypes/" + id,
 		}
 
 		if strings.HasPrefix(id, "x-scheme-handler/") {
-			mt.Comment[""] = id[len("x-scheme-handler/"):] + " url"
+			mt.Comment = id[len("x-scheme-handler/"):] + " url"
 		} else {
-			mt.Comment[""] = id
+			mt.Comment = id
 		}
 
 		return mt, nil
@@ -149,7 +113,6 @@ func NewMimetype(id string) (*Mimetype, error) {
 }
 
 func CollectMimeTypes() map[string]*Mimetype {
-	var allCollectedLocales = make(map[string]bool)
 	xmlCollector := struct {
 		XMLName   xml.Name `xml:"mime-info"`
 		MimeTypes []struct {
@@ -203,24 +166,21 @@ func CollectMimeTypes() map[string]*Mimetype {
 		}
 
 		for _, tmpComment := range tmp.Comment {
-			locale := transformLanguageTag(tmpComment.Lang)
-			mimeType.Comment[locale] = tmpComment.Text
-			collectedLocales[locale] = true
-			allCollectedLocales[locale] = true
+			if ini.LocaleMatch(tmpComment.Lang) || (tmpComment.Lang == "" && mimeType.Comment == "") {
+				mimeType.Comment = tmpComment.Text
+			}
 		}
 
 		for _, tmpAcronym := range tmp.Acronym {
-			locale := transformLanguageTag(tmpAcronym.Lang)
-			mimeType.Acronym[locale] = tmpAcronym.Text
-			collectedLocales[locale] = true
-			allCollectedLocales[locale] = true
+			if ini.LocaleMatch(tmpAcronym.Lang) || (tmpAcronym.Lang == "" && mimeType.Acronym == "") {
+				mimeType.Acronym = tmpAcronym.Text
+			}
 		}
 
 		for _, tmpExpandedAcronym := range tmp.ExpandedAcronym {
-			locale := transformLanguageTag(tmpExpandedAcronym.Lang)
-			mimeType.ExpandedAcronym[locale] = tmpExpandedAcronym.Text
-			collectedLocales[locale] = true
-			allCollectedLocales[locale] = true
+			if (ini.LocaleMatch(tmpExpandedAcronym.Lang) || tmpExpandedAcronym.Lang == "" && mimeType.Acronym == "") {
+				mimeType.ExpandedAcronym = tmpExpandedAcronym.Text
+			}
 		}
 
 		if tmp.Icon.Name != "" {
@@ -252,7 +212,6 @@ func CollectMimeTypes() map[string]*Mimetype {
 		for locale, _ := range collectedLocales {
 			tags = append(tags, language.Make(locale))
 		}
-		mimeType.languages = language.NewMatcher(tags)
 
 		res[mimeType.Id] = mimeType
 	}

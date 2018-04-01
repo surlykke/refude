@@ -16,6 +16,7 @@ import (
 	"regexp"
 	"github.com/surlykke/RefudeServices/lib/service"
 	"time"
+	"net/url"
 )
 
 const WATCHER_SERVICE = "org.kde.StatusNotifierWatcher"
@@ -183,6 +184,7 @@ func Controller() {
 				if item.menuPath != "" {
 					item.fetchMenu()
 				}
+				item.Self = "statusnotifier-service:" + item.restPath();
 				items = append(items, item)
 				service.Map(item.restPath(), item.copy())
 				updateWatcherProperties()
@@ -207,3 +209,22 @@ func Controller() {
 		}
 	}
 }
+
+var filterMethod service.FilterMethod = func(resource interface{}, query url.Values) bool {
+	var searchTerms, ok = query["q"]
+	if !ok {
+		searchTerms = []string{""}
+	}
+
+	if item, ok2 := resource.(*Item); ok2 {
+		for _, searchTerm := range searchTerms {
+			fmt.Print("comparing '", searchTerm, "' to '", item.Title, "'")
+			if strings.Contains(strings.ToUpper(item.Title), strings.ToUpper(searchTerm)) {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+

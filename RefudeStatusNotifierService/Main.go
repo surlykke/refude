@@ -16,5 +16,6 @@ func main() {
 	fmt.Println("Createing empty /items/")
 	service.MkDir("/items")
 	go Controller()
+	service.SetFilter(filterMethod)
 	service.Serve("org.refude.statusnotifier-service")
 }

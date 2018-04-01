@@ -116,7 +116,7 @@ func updateWindows() {
 		} else {
 			windows[wId] = getWindow(xproto.Window(wId), i)
 		}
-
+		windows[wId].Self =fmt.Sprintf("wm-service:/windows/%d", wId)
 		service.Map(fmt.Sprintf("/windows/%d", wId), windows[wId])
 	}
 }

@@ -19,11 +19,17 @@ import (
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"log"
 	"reflect"
+	"net/url"
+	"strconv"
 )
 
 
 var	resources  = make(map[string]interface{})
 var mutex      sync.Mutex
+
+type FilterMethod func(resource interface{}, query url.Values) bool
+
+var filterMethod FilterMethod
 
 type PingResource struct {
 }
@@ -32,10 +38,34 @@ func (pr* PingResource) GET(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+type SearchResource struct {}
+
+func (sr* SearchResource) GET(w http.ResponseWriter, r *http.Request) {
+	if limit, err := strconv.Atoi(resource.GetSingleQueryParameter(r, "limit", "30")); err != nil || limit > 1000 {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+	} else {
+		var res = make([]interface{}, 0, limit)
+		if (filterMethod != nil) {
+			var values= r.URL.Query()
+
+			for _, resource := range resources {
+				if filterMethod(resource, values) {
+					res = append(res, resource)
+				}
+				if (len(res) >= limit) {
+					break
+				}
+			}
+		}
+
+		resource.JsonGET(res, w)
+	}
+}
+
 func init() {
 	Map("/ping", &PingResource{})
-
 	Map("/notify", &NotifyResource{})
+	Map("/search", &SearchResource{})
 }
 
 func panicIfPathNotOk(path string) {
@@ -226,5 +256,7 @@ func ServeWith(socketName string, handler http.Handler) {
 	}
 }
 
-
+func SetFilter(filter FilterMethod) {
+	filterMethod = filter
+}
 

@@ -117,10 +117,8 @@ func (pm *PowerManager) Run() {
 	}
 
 	for _,action := range(actions) {
-		if action.Can {
-			service.Map( "/actions/" + action.Id, action)
-		}
-		service.Map("/allactions/" + action.Id, action)
+		action.Self = "power-service:/actions/" + action.Id
+		service.Map("/actions/" + action.Id, action)
 	}
 
 	for signal := range signals {

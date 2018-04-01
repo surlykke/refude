@@ -11,6 +11,8 @@ import (
 	"github.com/godbus/dbus"
 	"fmt"
 	"github.com/surlykke/RefudeServices/lib/resource"
+	"net/url"
+	"strings"
 )
 
 
@@ -22,11 +24,12 @@ type PowerAction struct {
 	IconName      string
 	Can           bool
 	RelevanceHint int
+	Self          string
 }
 
 func NewPowerAction(Id string, Name string, Comment string, IconName string) *PowerAction {
 	can := "yes" == dbusConn.Object(login1Service, login1Path).Call(managerInterface + ".Can" + Id, dbus.Flags(0)).Body[0].(string)
-	return &PowerAction{Id, Name, Comment, IconName, can, 0}
+	return &PowerAction{Id, Name, Comment, IconName, can, 0, ""}
 }
 
 func (pa *PowerAction) GET(w http.ResponseWriter, r *http.Request) {
@@ -39,4 +42,16 @@ func (pa *PowerAction) POST(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusAccepted)
 }
 
-
+func Filter(resource interface{}, queryParams url.Values) bool {
+	if pa, ok := resource.(*PowerAction); ok && pa.Can {
+		if searchTerms, ok := queryParams["q"]; ok {
+			for _,searchTerm := range searchTerms {
+				if strings.Contains(strings.ToUpper(pa.Name), strings.ToUpper(searchTerm)) ||
+					strings.Contains(strings.ToUpper(pa.Comment), strings.ToUpper(searchTerm)) {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}

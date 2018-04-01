@@ -76,6 +76,7 @@ func (c *collection) collectApplications(appdir string) {
 			app, err := readDesktopFile(path)
 			if err == nil {
 				app.Id = strings.Replace(path[len(appdir)+1:], "/", "-", -1)
+				app.Self = "desktop-service:/applications/" + app.Id
 				if oldApp, ok := c.applications[app.Id]; ok {
 					c.removeApp(oldApp)
 				}
