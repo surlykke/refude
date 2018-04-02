@@ -29,7 +29,7 @@ class Container extends React.Component {
 
 	fetchResources = (term) => {
 		console.log("Fetching for", term);
-	    let query = {q: term || ""};
+	    term = term || ""
 	    this.resources["wm-service"] = [];
 	    this.resources["desktop-service"] = [];
 	    this.resources["power-service"] = [];
@@ -43,11 +43,11 @@ class Container extends React.Component {
 
         if (term && term.length > 0) {
         	console.log("term: '" + term + "'")
-            doGet("desktop-service", "/search", query).then(resources => {
+            doGet("desktop-service", "/search", {q: term}).then(resources => {
                 this.resources["desktop-service"] = resources;
                 this.updateItems();
             });
-            doGet("power-service", "/search", query).then(resources => {
+            doGet("power-service", "/search", {q: term, type: "action"}).then(resources => {
                 this.resources["power-service"] = resources;
                 this.updateItems();
             });
