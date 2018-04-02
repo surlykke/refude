@@ -15,10 +15,6 @@ import (
 	"time"
 	"strings"
 	"strconv"
-	"net/url"
-	"github.com/surlykke/RefudeServices/lib/resource"
-	"github.com/surlykke/RefudeServices/lib/utils"
-	"net/http"
 )
 
 const NOTIFICATIONS_SERVICE = "org.freedesktop.Notifications"
@@ -268,33 +264,11 @@ func Setup() {
 	conn.Export(introspect.Introspectable(INTROSPECT_XML), NOTIFICATIONS_PATH, INTROSPECT_INTERFACE)
 }
 
-var searchFunction service.SearchFunction = func(resources map[string]interface{}, query url.Values) ([]interface{}, int) {
-	var result = make([]interface{}, 0, 10)
-	var terms = utils.Map(resource.GetNotEmpty(query, "q", []string{""}), strings.ToUpper)
-	for _, res := range resources {
-		if n, ok := res.(*Notification); ok {
-			for _, term := range terms {
-				if strings.Contains(strings.ToUpper(n.Subject), term) || strings.Contains(strings.ToUpper(n.Body), term) {
-					result = append(result, res)
-				}
-			}
-		}
+var matchFunction service.MatchFunction = func(key string, value string, resource interface{}) bool {
+	if n, ok := resource.(*Notification); ok && key == "y" {
+		return strings.Contains(strings.ToUpper(n.Subject), value) || strings.Contains(strings.ToUpper(n.Body), value)
+	} else {
+		return false
 	}
-
-	return result, http.StatusOK
-
 }
 
-func filterMethod(resource interface{}, query url.Values) bool {
-	if n, ok := resource.(*Notification); ok {
-		if searchTerms, ok := query["q"]; ok {
-			for _, searchTerm := range searchTerms {
-				if strings.Contains(strings.ToUpper(n.Subject), strings.ToUpper(searchTerm)) ||
-					strings.Contains(strings.ToUpper(n.Body), strings.ToUpper(searchTerm)) {
-					return true
-				}
-			}
-		}
-	}
-	return false
-}

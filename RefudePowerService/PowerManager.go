@@ -11,10 +11,6 @@ import (
 	"github.com/surlykke/RefudeServices/lib/service"
 	"strings"
 	"fmt"
-	"net/url"
-	"github.com/surlykke/RefudeServices/lib/utils"
-	"github.com/surlykke/RefudeServices/lib/resource"
-	"net/http"
 )
 
 const UPowService = "org.freedesktop.UPower"
@@ -135,32 +131,24 @@ func (pm *PowerManager) Run() {
 	}
 }
 
-
-var searchFunction service.SearchFunction = func(resources map[string]interface{}, queryParams url.Values) ([]interface{}, int) {
-	var result = make([]interface{}, 0, 10)
-	var terms = utils.Map(resource.GetNotEmpty(queryParams, "q", []string{""}), strings.ToUpper)
-	var types = resource.GetNotEmpty(queryParams, "type", []string{"action"})
-	for _,res := range resources {
-		for _, t := range types {
-			switch t {
-			case "action":
-				if pa, ok := res.(*PowerAction); ok && pa.Can {
-					for _, term := range terms {
-						if strings.Contains(strings.ToUpper(pa.Name), strings.ToUpper(term)) ||
-							strings.Contains(strings.ToUpper(pa.Comment), strings.ToUpper(term)) {
-							result = append(result, res)
-							break
-						}
-					}
-				}
-			case "device":
-				if _, ok := res.(*Device); ok {
-					result = append(result, res)
-				}
-			}
+var matchFunction service.MatchFunction = func(key string, value string, resource interface{}) bool {
+	if key == "q" {
+		if _, isDevice := resource.(*Device); isDevice {
+			return true
+		} else if action, isAction := resource.(*PowerAction); isAction {
+			return strings.Contains(strings.ToUpper(action.Name), strings.ToUpper(value)) ||
+				strings.Contains(strings.ToUpper(action.Comment), strings.ToUpper(value))
+		}
+	} else if key == "type" {
+		if value == "ACTION" {
+			_,ok := resource.(*PowerAction)
+			return ok
+		} else if value == "DEVICE" {
+			_,ok := resource.(*Device)
+			return ok
 		}
 	}
 
-	return result, http.StatusOK
+	return false
 }
 

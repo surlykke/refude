@@ -23,7 +23,6 @@ import (
 	"golang.org/x/text/language"
 	"os"
 	"github.com/surlykke/RefudeServices/lib/xdg"
-	"net/url"
 )
 
 
@@ -214,22 +213,13 @@ func transformLanguageTag(tag string) string {
 	return strings.Replace(strings.Replace(tag, "_", "-", -1), "@", "-", -1)
 }
 
-
-var searchFunction service.SearchFunction = func(resources map[string]interface{}, query url.Values) ([]interface{}, int) {
-	var result = make([]interface{}, 0, 30)
-	var terms = utils.Map(resource.GetNotEmpty(query, "q", []string{""}), strings.ToUpper)
-
-	for _, res := range resources {
-		if da, isDesktopApp := res.(*DesktopApplication); isDesktopApp {
-			for _, term := range terms {
-				if strings.Contains(strings.ToUpper(da.Name), term) || strings.Contains(strings.ToUpper(da.Comment), term) {
-					result = append(result, res)
-					break
-				}
-			}
+var matchFunction service.MatchFunction = func(key string, value string, res interface{}) bool {
+	if da, isDesktopApp := res.(*DesktopApplication); isDesktopApp {
+		if "q" == key {
+			return strings.Contains(strings.ToUpper(da.Name), value) || strings.Contains(strings.ToUpper(da.Comment), value)
 		}
 	}
-
-	return result, http.StatusOK
+	return false
 }
+
 

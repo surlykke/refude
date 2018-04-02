@@ -12,6 +12,6 @@ import (
 
 func main() {
 	go WmRun()
-	service.SetSearchFunction(searchFunction)
+	service.SetMatchFunction(matchFunction)
 	service.Serve("org.refude.wm-service")
 }

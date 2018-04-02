@@ -19,7 +19,6 @@ import (
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"log"
 	"reflect"
-	"net/url"
 )
 
 
@@ -36,26 +35,53 @@ func (pr* PingResource) GET(w http.ResponseWriter, r *http.Request) {
 
 type SearchResource struct {}
 
-/**
- * Implementations of this must _not_ write to resources, nor to the values of resources
- */
-type SearchFunction func(resources map[string]interface{}, query url.Values) ([]interface{}, int)
-var searchFunction SearchFunction
+type MatchFunction func(key string, value string, resource interface{}) bool
+var matchFunction MatchFunction;
 
 func (sr* SearchResource) GET(w http.ResponseWriter, r *http.Request) {
-	if (searchFunction != nil) {
-		mutex.Lock()
-		defer mutex.Unlock();
-		res, status := searchFunction(resources, r.URL.Query())
-		if (res != nil) {
-			resource.JsonGET(res, w)
-		} else {
-			w.WriteHeader(status)
+	if (matchFunction != nil) {
+		var normalizedQuery = make(map[string][]string, len(r.URL.Query()))
+		for key, values := range r.URL.Query() {
+			var normalizedKey = strings.ToLower(key);
+			for _,value := range values {
+				var normalizedValue = strings.ToUpper(value)
+				var normalizedValues = normalizedQuery[normalizedKey]
+				normalizedValues = append(normalizedValues, normalizedValue)
+				normalizedQuery[normalizedKey] = normalizedValues
+			}
 		}
+
+		var result = make([]interface{}, 0, 30)
+
+		mutex.Lock();
+		defer mutex.Unlock();
+		for _, res := range resources {
+			// AND on keys, OR on values: For each key we must find a match	for one of its values
+			var allKeysMatch = true
+			for normalizedKey, normalizedValues := range normalizedQuery {
+				var thisKeyMatch = false;
+				for _,normalizedValue := range normalizedValues {
+					if matchFunction(normalizedKey, normalizedValue, res) {
+						thisKeyMatch = true;
+						break
+					}
+				}
+				if !thisKeyMatch {
+					allKeysMatch = false;
+					break
+				}
+			}
+			if allKeysMatch {
+				result = append(result, res)
+			}
+		}
+
+		resource.JsonGET(result, w)
 	} else {
 		w.WriteHeader(http.StatusNotFound)
 	}
 }
+
 
 func init() {
 	Map("/ping", &PingResource{})
@@ -251,7 +277,7 @@ func ServeWith(socketName string, handler http.Handler) {
 	}
 }
 
-func SetSearchFunction(sf SearchFunction) {
-	searchFunction = sf
+func SetMatchFunction(mf MatchFunction) {
+	matchFunction = mf
 }
 

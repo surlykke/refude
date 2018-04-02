@@ -12,10 +12,8 @@ import (
 	"github.com/BurntSushi/xgbutil/ewmh"
 	"github.com/BurntSushi/xgbutil"
 	"github.com/surlykke/RefudeServices/lib/resource"
-	"net/url"
 	"strings"
 	"github.com/surlykke/RefudeServices/lib/service"
-	"github.com/surlykke/RefudeServices/lib/utils"
 )
 
 type Window struct {
@@ -48,24 +46,12 @@ func (win *Window) POST(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-var searchFunction service.SearchFunction = func(resources map[string]interface{}, query url.Values) ([]interface{}, int) {
-	var result = make([]interface{}, 0, 20)
-	var terms = utils.Map(resource.GetNotEmpty(query, "q", []string{""}), strings.ToUpper)
-	for _, res := range resources {
-		if w, ok := res.(*Window); ok {
-			for _, term := range terms {
-				if strings.Contains(strings.ToUpper(w.Name), term) {
-					result = append(result, res);
-					break
-				}
-			}
+var matchFunction service.MatchFunction = func(key string, value string, resource interface{}) bool {
+	if w,ok := resource.(*Window); ok {
+		if key == "q" {
+			return strings.Contains(strings.ToUpper(w.Name), value)
 		}
 	}
-
-	return result, http.StatusOK
-}
-
-func Filter(resource interface{}, queryParams url.Values) bool {
-
 	return false
 }
+
