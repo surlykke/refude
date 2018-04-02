@@ -27,21 +27,22 @@ class Container extends React.Component {
 		})
 	}
 
-	fetchResources = (searchTerm) => {
-		console.log("Fetching for", searchTerm);
-	    let query = {q: searchTerm || ""};
+	fetchResources = (term) => {
+		console.log("Fetching for", term);
+	    let query = {q: term || ""};
 	    this.resources["wm-service"] = [];
-	    this.resources["desktop-services"] = [];
+	    this.resources["desktop-service"] = [];
 	    this.resources["power-service"] = [];
 
 	    let showWin = w => !(w.States && w.States.includes("_NET_WM_STATE_ABOVE") || ["Refude Do", "refudeDo"].includes(w.Name));
 
-	    doGet("wm-service", "/search", {q: searchTerm}).then(resources => {
+	    doGet("wm-service", "/search", {q: term}).then(resources => {
 	        this.resources["wm-service"] = resources.filter(showWin);
 	        this.updateItems();
 	    }, error => console.log(error));
 
-        if (searchTerm) {
+        if (term && term.length > 0) {
+        	console.log("term: '" + term + "'")
             doGet("desktop-service", "/search", query).then(resources => {
                 this.resources["desktop-service"] = resources;
                 this.updateItems();

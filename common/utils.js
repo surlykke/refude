@@ -58,19 +58,15 @@ let doGet = (service, path, params, changedSince) => {
                 } else if (!/^application\/json/.test(resp.headers["content-type"])) {
                     reject(new Error(`Unexpected content-type: ${res.headers["content-type"]}`))
                 } else {
-                    console.log("response read, data: ", data);
                     let json = data === '' ? null : JSON.parse(data);
-                    console.log("Got json..")
                     if (typeof json === 'object') {
                         if (Array.isArray(json)) { // A list of resources, then
-                            console.log("..array");
                             json.forEach(res => adjustIconUrl(res));
                         } else { // A single resource
-                            console.log("...object");
                             adjustIconUrl(json);
-                        }                console.log("post end...")
-                    };
-                    console.log("resolving on", json);
+                        }
+                        ;
+                    }
                     resolve(json);
                 }
             });
@@ -89,7 +85,6 @@ let doGet = (service, path, params, changedSince) => {
  */
 let doPost = (resource, params) => {
     return new Promise((resolve, reject) => {
-        console.log("http.request with ", opts(resource, "POST", params));
         let req = http.request(opts(resource, "POST", params), resp => {
             let data = '';
             resp.setEncoding('utf8');
