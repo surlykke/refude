@@ -38,87 +38,90 @@ let iconServiceUrl = (iconNames, size) => {
 		   "&size=" + (size || 32);
 }
 
-const tcpPattern = /http:\/\/(\w*)(:(\d+))?(\/.*)/
-
-let doHttp = (url, method, payload) => {
-	let m = tcpPattern.exec(url)
-
-	let opts = {
-		host: m[1],
-		port: m[3] || 80,
-		path: m[4],
-		method: method || "GET"
-	}
-
-	return new Promise((resolve, reject) => {
-		let req = http.request(opts, resp => {
-			let data = ''
-			resp.setEncoding('utf8')
-			resp.on('data', chunk => { data += chunk })
-			resp.on('end', () => {
-				if (resp.statusCode > 299) {
-					reject(new Error(`Request Failed.\n` + `Status Code: ${resp.statusCode}`));
-				}
-				else {
-					try {
-						resolve(data === '' ? null : JSON.parse(data))
-					}
-					catch (e) {
-						reject(e)
-					}
-				}
-			})
-		})
-		req.on('error', e => reject(e))
-		if (payload) {
-			req.write(JSON.stringify(payload))
-		}
-		req.end()
-	})
-
-}
-let doHttp2 = (service, path, method, payload) => {
-	return new Promise((resolve, reject) => {
-		let req = http.request({host: "localhost", port: 7938, path: "/" + service + path, method: method || "GET"}, resp => {
-			let data = '';
-			resp.setEncoding('utf8');
-			resp.on('data', chunk => { data += chunk });
-			resp.on('end', () => {
-				if (resp.statusCode > 299) {
-					reject(new Error(`Request Failed.\n` + `Status Code: ${resp.statusCode}`));
-				}
-				else {
-					try {
-						resolve(data === '' ? null : JSON.parse(data))
-					}
-					catch (e) {
-						reject(e)
-					}
-				}
-			})
-		});
-		req.on('error', e => reject(e));
-		if (payload) {
-			req.write(JSON.stringify(payload));
-		}
-		req.end();
-	})
+/**
+ * We assume the responsebody to be json
+ * @param service
+ * @param path
+ * @param params
+ * @param changedSince
+ * @returns {Promise<any>}
+ */
+let doGet = (service, path, params, changedSince) => {
+    return new Promise((resolve, reject) => {
+        let req = http.get(url(service, path, params), resp => {
+            let data = '';
+            resp.setEncoding('utf8');
+            resp.on('data', chunk => data += chunk);
+            resp.on('end', () => {
+                if (resp.statusCode >= 300) {
+                    reject(new Error(`Request Failed.\n` + `Status Code: ${resp.statusCode}`));
+                } else if (!/^application\/json/.test(resp.headers["content-type"])) {
+                    reject(new Error(`Unexpected content-type: ${res.headers["content-type"]}`))
+                } else {
+                    console.log("response read, data: ", data);
+                    let json = data === '' ? null : JSON.parse(data);
+                    console.log("Got json..")
+                    if (typeof json === 'object') {
+                        if (Array.isArray(json)) { // A list of resources, then
+                            console.log("..array");
+                            json.forEach(res => adjustIconUrl(res));
+                        } else { // A single resource
+                            console.log("...object");
+                            adjustIconUrl(json);
+                        }                console.log("post end...")
+                    };
+                    console.log("resolving on", json);
+                    resolve(json);
+                }
+            });
+        });
+        req.on('error', e => reject(e));
+        req.end();
+    });
 };
 
-let doPost = (service, path, params) => {
-	path = path + queryString(params);
-	return doHttp2(service, path, "POST");
+/**
+ * We assume no response body
+ * @param service
+ * @param path
+ * @param params
+ * @returns {Promise<any>}
+ */
+let doPost = (resource, params) => {
+    return new Promise((resolve, reject) => {
+        console.log("http.request with ", opts(resource, "POST", params));
+        let req = http.request(opts(resource, "POST", params), resp => {
+            let data = '';
+            resp.setEncoding('utf8');
+            resp.on('data', chunk => { data += chunk });
+            resp.on('end', () => {
+                if (resp.statusCode >= 300) {
+                    reject(new Error(`Request Failed.\n` + `Status Code: ${resp.statusCode}`));
+                } else {
+                    resolve(resp);
+                }
+            });
+        });
+        req.on('error', e => reject(e));
+        req.end();
+    });
 };
 
-let doGet = (service, path, params) => {
-	path = path + queryString(params);
-    return doHttp2(service, path);
-}
-
-let doDelete = (service, path, params) => {
-    path = path + queryString(params);
-    return doHttp2(service, path);
-}
+let doDelete = (resource) => {
+    return new Promise((resolve, reject) => {
+        let req = http.request(opts(resource, "DELETE"), resp => {
+            resp.on('end', () => {
+                if (resp.statusCode >= 300) {
+                    reject(new Error(`Request Failed.\n` + `Status Code: ${resp.statusCode}`));
+                } else {
+                    resolve(resp)
+                }
+            });
+        });
+        req.on('error', e => reject(e));
+        req.end();
+    });
+};
 
 let adjustIconUrl = (res) => {
     res.IconUrl = res.IconUrl ? new URL(res.IconUrl,"http://localhost:7938/" + res.Self.replace(":", "")).toString() :
@@ -126,7 +129,11 @@ let adjustIconUrl = (res) => {
                   undefined;
 };
 
+let url = (service, path, params, method) => `http://localhost:7938/${service}${path}${queryString(params)}`;
 
+let opts = (res, method, params) => {
+    return {host: 'localhost', port: 7938, path: "/" + res.Self.replace(':', '') + queryString(params), method: method}
+};
 
 let queryString = (params) => {
 	if (params && Object.keys(params).length > 0) {
@@ -156,4 +163,4 @@ let nwSetup = (onOpen) => {
 	})
 };
 
-export {nwHide, devtools, NW, nwSetup, combinedUrl, combinedUrls, combinedPath, iconServiceUrl, doHttp, doHttp2, doPost, doGet, adjustIconUrl}
+export {nwHide, devtools, NW, nwSetup, iconServiceUrl, doGet, doPost, doDelete}

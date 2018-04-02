@@ -6,7 +6,7 @@
 //
 import React from 'react'
 import {render} from 'react-dom'
-import {adjustIconUrl, doGet, doPost} from '../../common/utils'
+import {doGet, doPost} from '../../common/utils'
 
 let NotifierItem = (props) => {
 
@@ -83,10 +83,8 @@ class NotifierItems extends React.Component {
         let itemCompare = (i1, i2) => i1.Self.localeCompare(i2.Self); // Just to keep them from flipping around
 		let update = () => {
             doGet("statusnotifier-service", "/search").then(items => {
-                items.forEach(item => adjustIconUrl(item));
                 this.setState({items: items.sort(itemCompare)});
-                setTimeout(update, 1000);
-            });
+            }).catch().then(setTimeout(update, 1000));
         };
 		update();
 	};

@@ -6,7 +6,7 @@
 //
 import React from 'react'
 import {render} from 'react-dom'
-import {NW, devtools, nwHide, nwSetup, doGet, doPost, adjustIconUrl} from '../common/utils'
+import {NW, devtools, nwHide, nwSetup, doGet, doPost} from '../common/utils'
 import {ItemList} from "../common/itemlist"
 import {SearchBox} from "../common/searchbox"
 import {Windows} from "./windows.jsx"
@@ -36,21 +36,18 @@ class Container extends React.Component {
 
 	    let showWin = w => !(w.States && w.States.includes("_NET_WM_STATE_ABOVE") || ["Refude Do", "refudeDo"].includes(w.Name));
 
-	    doGet("wm-service", "/search", query).then(resources => {
+	    doGet("wm-service", "/search", {q: searchTerm}).then(resources => {
 	        this.resources["wm-service"] = resources.filter(showWin);
-	        this.resources["wm-service"].forEach(adjustIconUrl)
 	        this.updateItems();
-	    });
+	    }, error => console.log(error));
 
         if (searchTerm) {
             doGet("desktop-service", "/search", query).then(resources => {
                 this.resources["desktop-service"] = resources;
-                this.resources["desktop-service"].forEach(adjustIconUrl)
                 this.updateItems();
             });
             doGet("power-service", "/search", query).then(resources => {
                 this.resources["power-service"] = resources;
-                this.resources["power-service"].forEach(adjustIconUrl)
                 this.updateItems();
             });
         }
@@ -82,7 +79,7 @@ class Container extends React.Component {
 
 	componentDidMount = () => {
 		this.readArgs(NW.App.argv)
-//		this.fetchResources()
+		this.fetchResources("")
 	};
 
 	onTermChange = (searchTerm) => {
@@ -131,8 +128,9 @@ class Container extends React.Component {
 
 	execute = (self) => {
 		if (self) {
+			let item = this.state.items.find(i => self === i.Self)
 			this.select(self)
-			doPost(...self.split(":")).then(response => {this.dismiss()})
+			doPost(item).then(response => {this.dismiss()})
 		}
 	}
 
@@ -156,7 +154,7 @@ class Container extends React.Component {
 			if (onlyShowArg) {
 				this.onlyShow = onlyShowArg.slice("refude::onlyShow::".length)
 			}
-			this.fetchResources();
+			this.fetchResources("");
 		}
 	}
 

@@ -6,7 +6,7 @@
 //
 import React from 'react'
 import {render} from 'react-dom'
-import {adjustIconUrl, doGet, doPost, doDelete} from '../../common/utils'
+import {doGet, doPost, doDelete} from '../../common/utils'
 
 const notificationStyle = {
 	position: "relative",
@@ -36,7 +36,7 @@ let Notification = (props) => {
 
 	let dismiss = (event) => {
 		console.log(event)
-		doDeltete(...props.item.Self.split(':'));
+		doDelete(props.item);
 		event.stopPropagation()
 	}
 
@@ -58,7 +58,7 @@ let Notification = (props) => {
 			{Object.keys(item.Actions).filter(k => k !== "default").map(k => {
 				let buttonClicked = (event) => {
 					console.log("button", k, "clicked")
-					doPost(props.item.Self, {action: k}, "POST")
+					doPost(props.item, {action: k}, "POST")
 					event.stopPropagation()
 				}
 
@@ -90,10 +90,8 @@ class Notifications extends React.Component {
 	componentDidMount = () => {
         let update = () => {
             doGet("notifications-service", "/search").then(notifications => {
-                notifications.forEach(res => adjustIconUrl(res));
                 this.setState({items: notifications});
-                setTimeout(update, 1000);
-            });
+            }).catch().then(setTimeout(update, 1000));
 	    };
 		update();
     }

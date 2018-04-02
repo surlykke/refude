@@ -6,7 +6,7 @@
 //
 import React from 'react';
 import {render} from 'react-dom';
-import {doGet, doPost, adjustIconUrl, iconServiceUrl} from '../common/utils'
+import {doGet, doPost, iconServiceUrl} from '../common/utils'
 import {ItemList} from "../common/itemlist"
 import {Item} from "../common/item"
 import {SearchBox} from "../common/searchbox"
@@ -56,12 +56,10 @@ class AppChooser extends React.Component {
 	}
 
     update = (searchTerm)	=> {
-	    let query = "q=" + (searchTerm || "") + "&limit=200";
 	    console.log("Searching:", query);
-	    doGet("desktop-service", "/search", {q: searchTerm, limit: 200}).then( apps => {
+	    doGet("desktop-service", "/search", {q: searchTerm}).then( apps => {
 	        apps = apps.filter(app => app.Exec.toUpperCase().includes("%F") || app.Exec.toUpperCase().includes("%U"))
 	        apps.forEach(app => {
-	            adjustIconUrl(app);
 	            app.__order = this.mimetypeIds.length;
                 app.group = "Other applications"
                 for (let i = 0; i < this.mimetypeIds.length; i++) {
@@ -101,9 +99,9 @@ class AppChooser extends React.Component {
 		if (!app) return
         if (this.state.useAsDefault) {
 		    let mimetype = this.mimetypes[mimetypeId];
-		    doPost(...this.mimetypes[mimetypeId].Self.split(":"), {defaultApp: app.Id});
+		    doPost(this.mimetypes[mimetypeId], {defaultApp: app.Id});
         }
-        doPost(...app.Self.split(":"), {arg: appArgument}).then(resp => {
+        doPost(app, {arg: appArgument}).then(resp => {
             gui.App.quit();
         });
 	};
