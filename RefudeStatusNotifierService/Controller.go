@@ -220,12 +220,13 @@ var searchFunction service.SearchFunction = func(resources map[string]interface{
 		if item, ok2 := res.(*Item); ok2 {
 			for _, term := range terms {
 				if strings.Contains(strings.ToUpper(item.Title), term) {
-					result = append(result, )
+					result = append(result, res)
+					break
 				}
 			}
 		}
 	}
-
+	fmt.Println("returning", result)
 	return result, http.StatusOK
 }
 

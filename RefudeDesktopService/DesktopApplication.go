@@ -224,6 +224,7 @@ var searchFunction service.SearchFunction = func(resources map[string]interface{
 			for _, term := range terms {
 				if strings.Contains(strings.ToUpper(da.Name), term) || strings.Contains(strings.ToUpper(da.Comment), term) {
 					result = append(result, res)
+					break
 				}
 			}
 		}

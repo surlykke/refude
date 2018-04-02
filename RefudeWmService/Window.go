@@ -56,6 +56,7 @@ var searchFunction service.SearchFunction = func(resources map[string]interface{
 			for _, term := range terms {
 				if strings.Contains(strings.ToUpper(w.Name), term) {
 					result = append(result, res);
+					break
 				}
 			}
 		}
