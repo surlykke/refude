@@ -56,8 +56,7 @@ class AppChooser extends React.Component {
 	}
 
     update = (searchTerm)	=> {
-	    console.log("Searching:", query);
-	    doGet("desktop-service", "/search", {q: searchTerm}).then( apps => {
+	    doGet("desktop-service", "/search", {Name: "~" + searchTerm}).then( apps => {
 	        apps = apps.filter(app => app.Exec.toUpperCase().includes("%F") || app.Exec.toUpperCase().includes("%U"))
 	        apps.forEach(app => {
 	            app.__order = this.mimetypeIds.length;
