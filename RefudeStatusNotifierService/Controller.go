@@ -178,7 +178,7 @@ func Controller() {
 		switch event.eventType {
 		case ItemCreated:
 			if findByItemPath(event.sender, event.path) == -1 {
-				item := &Item{sender: event.sender, itemPath: event.path}
+				item := &Item{sender: event.sender, itemPath: event.path, ResourceType: "StatusNotifierItem"}
 				item.fetchProps()
 				if item.menuPath != "" {
 					item.fetchMenu()

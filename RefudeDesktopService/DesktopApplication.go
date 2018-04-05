@@ -56,6 +56,7 @@ type DesktopApplication struct {
 	RelevanceHint   int64
 	languages       language.Matcher
 	Self            string
+	ResourceType    string
 }
 
 type Action struct {
@@ -134,7 +135,7 @@ func readDesktopFile(path string) (*DesktopApplication, error) {
 	} else if len(iniFile) == 0 || iniFile[0].Name != "Desktop Entry" {
 		return nil, errors.New("File must start with '[Desktop Entry]'")
 	} else {
-		var da DesktopApplication
+		var da = DesktopApplication{ResourceType: "DesktopApplication"}
 		da.Actions = make(map[string]*Action)
 		var actionNames = []string{}
 		group := iniFile[0]

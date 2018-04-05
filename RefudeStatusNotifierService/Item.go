@@ -41,6 +41,7 @@ type Item struct {
 	path string
 	menuIds []string
 	Self string
+	ResourceType string
 }
 
 type MenuItem struct {

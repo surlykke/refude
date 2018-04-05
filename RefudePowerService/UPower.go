@@ -84,6 +84,8 @@ type Device struct {
 	Capacity         float64
 	Technology       string
 	DisplayDevice    bool
+	Self             string
+	ResourceType	 string
 }
 
 func (d *Device) GET(w http.ResponseWriter, r *http.Request) {

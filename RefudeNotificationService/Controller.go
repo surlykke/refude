@@ -146,6 +146,7 @@ func Notify(app_name string,
 		Actions: map[string]string{},
 		eTag:    fmt.Sprintf("%d", id),
 		Self:    "notifications-service:" + path,
+		ResourceType: "Notification",
 	}
 
 	for i := 0; i+1 < len(actions); i = i + 2 {

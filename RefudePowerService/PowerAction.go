@@ -23,11 +23,12 @@ type PowerAction struct {
 	Can           bool
 	RelevanceHint int
 	Self          string
+	ResourceType  string
 }
 
 func NewPowerAction(Id string, Name string, Comment string, IconName string) *PowerAction {
 	can := "yes" == dbusConn.Object(login1Service, login1Path).Call(managerInterface + ".Can" + Id, dbus.Flags(0)).Body[0].(string)
-	return &PowerAction{Id, Name, Comment, IconName, can, 0, ""}
+	return &PowerAction{Id, Name, Comment, IconName, can, 0, "", "Action"}
 }
 
 func (pa *PowerAction) GET(w http.ResponseWriter, r *http.Request) {

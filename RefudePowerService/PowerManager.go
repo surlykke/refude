@@ -57,7 +57,7 @@ func watchUPower(changes chan map[string]dbus.Variant) {
 // PowerManager#Run redirects PropertiesChanged to this through the changes channel
 func watchDevice(dbusPath dbus.ObjectPath, changes chan map[string]dbus.Variant) {
 	path := "/devices/" + resourcePath(dbusPath)
-	device := Device{DisplayDevice: "/devices/DisplayDevice" == path}
+	device := Device{DisplayDevice: "/devices/DisplayDevice" == path, Self: "power-service:" + path, ResourceType: "Device"}
 	device.ReadDBusProps(getProps(dbusConn, dbusPath, UPowerDeviceInterface))
 	// Important to use copy here. Service owns what it gets
 	copy := device
@@ -118,6 +118,7 @@ func (pm *PowerManager) Run() {
 
 	for _,action := range(actions) {
 		action.Self = "power-service:/actions/" + action.Id
+		action.ResourceType = "Action"
 		service.Map("/actions/" + action.Id, action)
 	}
 

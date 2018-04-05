@@ -39,6 +39,7 @@ type Mimetype struct {
 	AssociatedApplications []string
 	DefaultApplication     string `json:",omitempty"`
 	Self                   string
+	ResourceType           string
 }
 
 func (mt *Mimetype) GET(w http.ResponseWriter, r *http.Request) {
@@ -100,6 +101,7 @@ func NewMimetype(id string) (*Mimetype, error) {
 			IconName:    "unknown",
 			GenericIcon: "unknown",
 			Self:        "desktop-service:/mimetypes/" + id,
+			ResourceType: "MimeType",
 		}
 
 		if strings.HasPrefix(id, "x-scheme-handler/") {

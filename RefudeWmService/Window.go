@@ -26,6 +26,7 @@ type Window struct {
 	Actions       map[string]Action
 	RelevanceHint int
 	Self          string
+	ResourceType  string
 }
 
 type Action struct {

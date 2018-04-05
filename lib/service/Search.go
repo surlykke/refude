@@ -51,12 +51,7 @@ func matchOneCombination(res interface{}, keys []string, upcaseValues []string) 
 		fieldValue, ok := extractUpcaseFieldValue(res, key)
 		if ok {
 			for _, value := range upcaseValues {
-				var not = value[0:1] == "!"
-				if not {
-					value = value[1:]
-				}
-
-				if value[0:1] == "~" && (not != strings.Contains(fieldValue, value[1:])) {
+				if value[0:1] == "~" && strings.Contains(fieldValue, value[1:]) {
 					return true
 				} else if value == fieldValue {
 					return true

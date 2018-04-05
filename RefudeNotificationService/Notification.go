@@ -20,6 +20,7 @@ type Notification struct {
 	RelevanceHint int
 	eTag          string
 	Self          string
+	ResourceType  string
 }
 
 func (n *Notification) GET(w http.ResponseWriter, r *http.Request) {
