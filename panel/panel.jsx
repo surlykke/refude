@@ -70,8 +70,8 @@ class Panel extends React.Component {
 				<NotifierItems style={pluginStyle} onUpdated={this.adjustSize}/>
 				<HideButton style={pluginStyle}/>
 				<DragField style={pluginStyle}/>
-				<Notifications style={pluginStyle} onUpdated={this.adjustSize}/>
-	        </div>
+                <Notifications style={pluginStyle} onUpdated={this.adjustSize}/>
+            </div>
 		</div>
 	}
 
@@ -79,3 +79,5 @@ render(
 	<Panel/>,
 	document.getElementById('root')
 );
+
+

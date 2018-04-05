@@ -11,7 +11,7 @@ import {doGet, doPost} from '../../common/utils'
 let NotifierItem = (props) => {
 
 	let showMenu = (event) => {
-		((jsonMenu) => {
+		let buildMenu = (jsonMenu) => {
 			let menu = new nw.Menu()
 			jsonMenu.forEach(jsonMenuItem => {
 
@@ -27,13 +27,15 @@ let NotifierItem = (props) => {
 					menuItem.submenu = buildMenu(jsonMenuItem.SubMenus)
 				} else if (menuItem.type === "normal" || menuItem.type === "checkbox") {
 					menuItem.click = () => {
-						doPost(...props.item.Self.split(":"), {action: "menu", id: jsonMenuItem.Id});
+						doPost(props.item, {action: "menu", id: jsonMenuItem.Id});
 					}
 				}
 				menu.append(menuItem)
 			})
 			return menu
-		})(props.item.Menu).popup(event.clientX, event.clientY)
+		};
+
+		buildMenu(props.item.Menu).popup(event.clientX, event.clientY)
 	}
 
 	let getXY = (event) => {
@@ -47,9 +49,9 @@ let NotifierItem = (props) => {
 		event.persist()
 		let {x,y} = getXY(event)
 		if (event.button === 0) {
-            doPost(...props.item.Self.split(":"), {action: "left", x: x, y: y});
+            doPost(props.item, {action: "left", x: x, y: y});
 		} else if (event.button === 1){
-            doPost(...props.item.Self.split(":"), {action: "middle", x: x, y: y});
+            doPost(props.item, {action: "middle", x: x, y: y});
 		}
 		event.preventDefault()
 	}
@@ -82,7 +84,7 @@ class NotifierItems extends React.Component {
 	componentDidMount = () => {
         let itemCompare = (i1, i2) => i1.Self.localeCompare(i2.Self); // Just to keep them from flipping around
 		let update = () => {
-            doGet("statusnotifier-service", "/search").then(items => {
+            doGet("statusnotifier-service", "/search", {ResourceType: "StatusNotifierItem"}).then(items => {
                 this.setState({items: items.sort(itemCompare)});
             }).catch().then(setTimeout(update, 1000));
         };

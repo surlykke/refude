@@ -14,38 +14,41 @@
 import React from 'react'
 import {doGet} from '../../common/utils'
 
+const errorData = {
+    style: {
+        color: 'red',
+        fontWeight: 'normal',
+        marginRight: '0.4em'
+    },
+    percentage: '?'
+}
+
 class Battery extends React.Component {
 
     constructor(props) {
         super(props)
         this.onUpdated = props.onUpdated
-        this.state = {data: []}
+        this.state = {data: errorData}
     }
 
     componentDidMount = () => {
-        let compare = (b1, b2) => b1.NativePath.localeCompare(b2.NativePath);
-        let isBattery = b => b.Type === 'Battery' && !b.DisplayDevice
-        let battery2data = b => {
-            let charging = ["Charging", "Fully charged"].includes(b.State)
-            return {
-                style: {
-                    color: (charging || b.Percentage >= 20 ? 'black' : 'red'),
-                    fontWeight: charging ? 'bold' : 'normal',
-                    marginRight: '0.4em'
-                },
-                percentage: Math.floor(b.Percentage + 0.5),
-                path: b.NativePath
-            }
-        };
-
         let update = () => {
-            let p = doGet("power-service", "/search", {type: "device"});
-            console.log("p:", p);
-            p.then(batteries => {
-                this.setState({data: batteries.filter(isBattery).sort(compare).map(battery2data)});
-            }).catch().then(setTimeout(update, 1000));
-        };
+            let p = doGet("power-service", "/devices/DisplayDevice").then(battery => {
+                console.log("Got battery:", battery);
 
+                let charging = ["Charging", "Fully charged"].includes(battery.State)
+                this.setState({
+                    data: {
+                        style: {
+                            color: (charging || battery.Percentage >= 20 ? 'black' : 'red'),
+                            fontWeight: charging ? 'bold' : 'normal',
+                            marginRight: '0.4em'
+                        },
+                        percentage: Math.floor(battery.Percentage + 0.5),
+                    }
+                });
+            }).catch(err => {console.log("err:", err); this.setState({data: errorData})}).then(setTimeout(update, 1000));
+        };
         update();
     };
 
@@ -54,11 +57,11 @@ class Battery extends React.Component {
     }
 
     render = () => {
-            return <div style={this.props.style}>{this.state.data.map(d => (
-                <span style={d.style} key={d.path}>{d.percentage}%</span>))}</div>
-        }
+        let d = this.state.data;
+        return <div style={this.props.style}><span style={d.style} key={d.path}>{d.percentage}%</span></div>
     }
+}
 
-    export {
+export {
     Battery
 }
