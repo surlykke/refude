@@ -34,20 +34,17 @@ class Container extends React.Component {
 	    this.resources["desktop-service"] = [];
 	    this.resources["power-service"] = [];
 
-	    let showWin = w => !(w.States && w.States.includes("_NET_WM_STATE_ABOVE") || ["Refude Do", "refudeDo"].includes(w.Name));
-
-	    doGet("wm-service", "/search", {Name: "~" + term}).then(resources => {
-	        this.resources["wm-service"] = resources.filter(showWin);
+	    doGet("wm-service", "/search", {q:`Name ~i '${term}' and ResourceType = 'Window' and ! States has '_NET_WM_STATE_ABOVE' and ! Name = 'Refude Do' and ! Name = 'refudeDo'`}).then(resources => {
+	        this.resources["wm-service"] = resources;
 	        this.updateItems();
 	    }, error => console.log(error));
 
         if (term && term.length > 0) {
-        	console.log("term: '" + term + "'")
-            doGet("desktop-service", "/search", {Name: "~" + term}).then(resources => {
+            doGet("desktop-service", "/search", {q: `Name ~i '${term}' and ResourceType='DesktopApplication'`}).then(resources => {
                 this.resources["desktop-service"] = resources;
                 this.updateItems();
             });
-            doGet("power-service", "/search", {Name: "~" + term, ResourceType: "Action"}).then(resources => {
+            doGet("power-service", "/search", {q: `Name ~i '${term}' and ResourceType='Action'`}).then(resources => {
                 this.resources["power-service"] = resources;
                 this.updateItems();
             });
