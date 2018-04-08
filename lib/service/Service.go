@@ -25,7 +25,6 @@ import (
 var	resources  = make(map[string]interface{})
 var mutex      sync.Mutex
 
-
 type PingResource struct {
 }
 
@@ -40,7 +39,13 @@ var matchFunction MatchFunction;
 
 
 func (sr* SearchResource) GET(w http.ResponseWriter, r *http.Request) {
-	resource.JsonGET(Search(r.URL.Query()), w)
+	if result, err := Search(r.URL.Query()); err == nil {
+		fmt.Println("Returning", len(result), "resources")
+		resource.JsonGET(result, w)
+	} else {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		w.Write([]byte(err.Error()))
+	}
 }
 
 func init() {

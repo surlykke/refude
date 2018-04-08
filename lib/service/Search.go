@@ -4,6 +4,8 @@ import (
 	"net/url"
 	"strings"
 	"reflect"
+	"fmt"
+	"errors"
 )
 
 type matcher func(res interface{}) bool
@@ -15,25 +17,26 @@ type NormalizedParameter struct{
 
 type NormalizedQuery map[string]NormalizedParameter
 
-func Search(query url.Values) []interface{} {
-	normalizedQuery := make(NormalizedQuery)
-	for parameterName, parameterValues := range query {
-		upcasedValues :=  make([]string, 0, len(parameterValues))
-		for _, parameterValue := range parameterValues {
-			upcasedValues = append(upcasedValues, strings.ToUpper(parameterValue))
-		}
-
-		normalizedQuery[parameterName] = NormalizedParameter{strings.Split(parameterName, ","), upcasedValues}
+func Search(query url.Values) ([]interface{}, error) {
+	fmt.Println("Search, q:", query["q"])
+	if len(query["q"]) == 0 {
+		return []interface{}{}, errors.New("No query given")
 	}
 
-	var result = make([]interface{}, 0, 100)
-	for _, res := range resources {
-		if matchAllConditions(res, normalizedQuery)  {
-			result = append(result, res)
+	if m, err:= parseQuery(query["q"][0]); err == nil {
+		var result = make([]interface{}, 0, 100)
+		for _, res := range resources {
+			if m(res) {
+				result = append(result, res)
+			}
 		}
+
+		return result, nil
+	} else {
+		return []interface{}{}, err
 	}
 
-	return result
+
 }
 
 func matchAllConditions(res interface{}, normalizedQuery NormalizedQuery) bool {
