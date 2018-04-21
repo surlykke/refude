@@ -23,7 +23,7 @@ func Search(query url.Values) ([]interface{}, error) {
 		return []interface{}{}, errors.New("No query given")
 	}
 
-	if m, err:= parseQuery(query["q"][0]); err == nil {
+	if m, err:= Parse(query["q"][0]); err == nil {
 		var result = make([]interface{}, 0, 100)
 		for _, res := range resources {
 			if m(res) {

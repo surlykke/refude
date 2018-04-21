@@ -11,3 +11,4 @@ func (d directory) GET(w http.ResponseWriter, r *http.Request) {
 	resource.JsonGET(d, w)
 }
 
+
