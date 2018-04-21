@@ -84,7 +84,7 @@ class NotifierItems extends React.Component {
 	componentDidMount = () => {
         let itemCompare = (i1, i2) => i1.Self.localeCompare(i2.Self); // Just to keep them from flipping around
 		let update = () => {
-            doGet("statusnotifier-service", "/search", {q: "ResourceType = 'StatusNotifierItem'"}).then(items => {
+            doGet("statusnotifier-service", "/search", {q: "$.ResourceType = 'StatusNotifierItem'"}).then(items => {
                 this.setState({items: items.sort(itemCompare)});
             }).catch().then(setTimeout(update, 1000));
         };
