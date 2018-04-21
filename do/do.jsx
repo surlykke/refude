@@ -34,17 +34,22 @@ class Container extends React.Component {
 	    this.resources["desktop-service"] = [];
 	    this.resources["power-service"] = [];
 
-	    doGet("wm-service", "/search", {q:`Name ~i '${term}' and ResourceType = 'Window' and ! States has '_NET_WM_STATE_ABOVE' and ! Name = 'Refude Do' and ! Name = 'refudeDo'`}).then(resources => {
+	   	let windowQuery = `$.Name ~i '${term}' and $.ResourceType = 'Window' and not $.States[*] = '_NET_WM_STATE_ABOVE' ` +
+	   	                  `and $.Name <> 'Refude Do' and $.Name <> 'refudeDo'`
+
+	    doGet("wm-service", "/search", {q: windowQuery}).then(resources => {
 	        this.resources["wm-service"] = resources;
 	        this.updateItems();
 	    }, error => console.log(error));
 
         if (term && term.length > 0) {
-            doGet("desktop-service", "/search", {q: `Name ~i '${term}' and ResourceType='DesktopApplication'`}).then(resources => {
+        	let appQuery = `$.Name ~i '${term}' and $.ResourceType = 'DesktopApplication' and not $.NoDisplay = true`;
+            doGet("desktop-service", "/search", {q: appQuery}).then(resources => {
                 this.resources["desktop-service"] = resources;
                 this.updateItems();
             });
-            doGet("power-service", "/search", {q: `Name ~i '${term}' and ResourceType='Action'`}).then(resources => {
+        	let powerQuery = `$.Name ~i '${term}' and $.ResourceType = 'Action'`;
+            doGet("power-service", "/search", {q: powerQuery}).then(resources => {
                 this.resources["power-service"] = resources;
                 this.updateItems();
             });
@@ -141,18 +146,12 @@ class Container extends React.Component {
 
 	readArgs = (args) => {
 		this.onlyShow = undefined
-		if (args.includes("refude::up")) {
+        this.fetchResources("");
+		if (args.includes("up")) {
 			this.move(false)
 		}
-		else if (args.includes("refude::down")) {
+		else  {
 			this.move(true)
-		}
-		else {
-			let onlyShowArg = args.find(arg => arg.startsWith("refude::onlyShow::"))
-			if (onlyShowArg) {
-				this.onlyShow = onlyShowArg.slice("refude::onlyShow::".length)
-			}
-			this.fetchResources("");
 		}
 	}
 

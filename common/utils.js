@@ -61,11 +61,11 @@ let doGet = (service, path, params, changedSince) => {
                     let json = data === '' ? null : JSON.parse(data);
                     if (typeof json === 'object') {
                         if (Array.isArray(json)) { // A list of resources, then
+                            json.sort((e1, e2) => (e2.RelevanceHint || 0) - (e1.RelevanceHint || 0))
                             json.forEach(res => adjustIconUrl(res));
                         } else { // A single resource
                             adjustIconUrl(json);
                         }
-                        ;
                     }
                     resolve(json);
                 }
