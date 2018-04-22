@@ -89,7 +89,7 @@ class Notifications extends React.Component {
 
     componentDidMount = () => {
         let update = () => {
-            doGet("notifications-service", "/search", {q: "$.ResourceType = 'Notification'"}).then(notifications => {
+            doGet("notifications-service", "/notifications", {q: "r.Subject ~i  ''"}).then(notifications => {
                 this.setState({items: notifications});
             }).catch().then(setTimeout(update, 1000));
         };

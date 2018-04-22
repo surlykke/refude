@@ -48,7 +48,9 @@ let iconServiceUrl = (iconNames, size) => {
  */
 let doGet = (service, path, params, changedSince) => {
     return new Promise((resolve, reject) => {
-        let req = http.get(url(service, path, params), resp => {
+        let queryUrl = url(service, path, params)
+        console.log("Querying:", queryUrl)
+        let req = http.get(queryUrl , resp => {
             let data = '';
             resp.setEncoding('utf8');
             resp.on('data', chunk => data += chunk);
@@ -132,7 +134,7 @@ let opts = (res, method, params) => {
 
 let queryString = (params) => {
 	if (params && Object.keys(params).length > 0) {
-        return "?" + Object.keys(params).map(k => k + "=" + params[k]).join("&");
+        return "?" + Object.keys(params).map(k => k + "=" + encodeURIComponent(params[k])).join("&");
     } else {
 	    return "";
     }

@@ -34,22 +34,22 @@ class Container extends React.Component {
 	    this.resources["desktop-service"] = [];
 	    this.resources["power-service"] = [];
 
-	   	let windowQuery = `$.Name ~i '${term}' and $.ResourceType = 'Window' and not $.States[*] = '_NET_WM_STATE_ABOVE' ` +
-	   	                  `and $.Name <> 'Refude Do' and $.Name <> 'refudeDo'`
+	   	let windowQuery = `r.Name ~i '${term}' and not r.States[%] eq '_NET_WM_STATE_ABOVE' and r.Name neq 'Refude Do' and r.Name neq 'refudeDo'`
 
-	    doGet("wm-service", "/search", {q: windowQuery}).then(resources => {
+		console.log("Querying: ", windowQuery)
+	    doGet("wm-service", "/windows", {q: windowQuery}).then(resources => {
 	        this.resources["wm-service"] = resources;
 	        this.updateItems();
 	    }, error => console.log(error));
 
         if (term && term.length > 0) {
-        	let appQuery = `$.Name ~i '${term}' and $.ResourceType = 'DesktopApplication' and not $.NoDisplay = true`;
-            doGet("desktop-service", "/search", {q: appQuery}).then(resources => {
+        	let appQuery = `r.Name ~i '${term}' and r.ResourceType eq 'DesktopApplication' and not r.NoDisplay eq true`;
+            doGet("desktop-service", "/applications", {q: appQuery}).then(resources => {
                 this.resources["desktop-service"] = resources;
                 this.updateItems();
             });
-        	let powerQuery = `$.Name ~i '${term}' and $.ResourceType = 'Action'`;
-            doGet("power-service", "/search", {q: powerQuery}).then(resources => {
+        	let powerQuery = `r.Name ~i '${term}' and r.ResourceType eq 'Action'`;
+            doGet("power-service", "/actions", {q: powerQuery}).then(resources => {
                 this.resources["power-service"] = resources;
                 this.updateItems();
             });
