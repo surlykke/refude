@@ -61,9 +61,6 @@ func (d Dir) UnMap(sp StandardizedPath) {
 	} else {
 		if subdir, ok := d[first].(Dir); ok {
 			subdir.UnMap(remain)
-			if len(subdir) == 0 {
-				delete(d, first)
-			}
 		}
 	}
 }
