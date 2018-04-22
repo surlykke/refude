@@ -13,5 +13,6 @@ import (
 func main() {
 	// Initially, put an empty list of notifications up, signalling we don't have any yet
 	Setup()
+	service.MkDir("/notifications")
 	service.Serve("org.refude.notifications-service")
 }

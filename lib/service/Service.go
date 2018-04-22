@@ -35,20 +35,25 @@ func init() {
 	Map("/ping", &PingResource{})
 }
 
+func MkDir(path string) {
+	root.MkDir(Standardize(path))
+}
+
+
 func Map(path string, res interface{}) {
 	mutex.Lock()
 	defer mutex.Unlock()
-	root.Map(MakeStandardizedPath(path), res)
+	root.Map(Standardize(path), res)
 }
 
 func Unmap(path string) {
 	mutex.Lock()
 	defer mutex.Unlock()
-	root.UnMap(MakeStandardizedPath(path))
+	root.UnMap(Standardize(path))
 }
 
 func UnMapIfMatch(path string, eTag string) bool {
-	sp := MakeStandardizedPath(path)
+	sp := Standardize(path)
 	mutex.Lock()
 	defer mutex.Unlock()
 	if res,ok := root.Find(sp); ok {
@@ -64,7 +69,7 @@ func UnMapIfMatch(path string, eTag string) bool {
 
 
 func Get(path string) (interface{}, bool) {
-	sp := MakeStandardizedPath(path)
+	sp := Standardize(path)
 	mutex.Lock()
 	defer mutex.Unlock()
 	res, ok := root.Find(sp)
@@ -78,7 +83,7 @@ func Has(path string) bool {
 
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	sp := MakeStandardizedPath(r.URL.Path)
+	sp := Standardize(r.URL.Path)
 	var res interface{}
 
 	if sp == "" {

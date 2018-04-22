@@ -12,6 +12,7 @@ import (
 
 func main() {
 	// Initially, put an empty list of items up, signalling we don't have any yet
+	service.MkDir("/items")
 	go Controller()
 	service.Serve("org.refude.statusnotifier-service")
 }

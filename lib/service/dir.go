@@ -16,7 +16,7 @@ import (
  */
 type StandardizedPath string
 
-func MakeStandardizedPath(p string) StandardizedPath {
+func Standardize(p string) StandardizedPath {
 	var cleanPath = path.Clean(p)
 	if len(cleanPath) > 0 && cleanPath[0] == '/' {
 		return StandardizedPath(cleanPath[1:])
@@ -62,6 +62,29 @@ func (d Dir) UnMap(sp StandardizedPath) {
 		if subdir, ok := d[first].(Dir); ok {
 			subdir.UnMap(remain)
 		}
+	}
+}
+
+func (d Dir) MkDir(sp StandardizedPath) {
+	if first, remain := separate(sp); remain == "" {
+		if _,ok := d[first]; ok {
+			panic("There's a non-directory here")
+		}
+
+		if _,ok := d[first + "/"]; !ok {
+			d[first + "/"] = make(Dir)
+		}
+	} else {
+		if _,ok := d[first[:len(first) - 1]]; ok {
+			panic("There's a non-directory here")
+		}
+
+		subdir, ok := d[first].(Dir)
+		if !ok {
+			subdir = make(Dir)
+			d[first] = subdir
+		}
+		subdir.MkDir(remain)
 	}
 }
 
