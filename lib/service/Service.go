@@ -79,7 +79,15 @@ func Has(path string) bool {
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	sp := MakeStandardizedPath(r.URL.Path)
-	if res, ok := root.Find(sp); ok {
+	var res interface{}
+
+	if sp == "" {
+		res = root
+	} else {
+		res, _ = root.Find(sp)
+	}
+
+	if (res != nil) {
 		resource.ServeHTTP(res, w, r)
 	} else {
 		w.WriteHeader(http.StatusNotFound)
