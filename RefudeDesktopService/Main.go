@@ -13,6 +13,5 @@ import (
 
 func main() {
 	go Run()
-	service.SetMatchFunction(matchFunction)
 	service.ServeWith("org.refude.desktop-service", http.HandlerFunc(RequestInterceptor))
 }

@@ -214,13 +214,4 @@ func transformLanguageTag(tag string) string {
 	return strings.Replace(strings.Replace(tag, "_", "-", -1), "@", "-", -1)
 }
 
-var matchFunction service.MatchFunction = func(key string, value string, res interface{}) bool {
-	if da, isDesktopApp := res.(*DesktopApplication); isDesktopApp {
-		if "q" == key {
-			return strings.Contains(strings.ToUpper(da.Name), value) || strings.Contains(strings.ToUpper(da.Comment), value)
-		}
-	}
-	return false
-}
-
 

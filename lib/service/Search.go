@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"fmt"
 	"errors"
+	"github.com/surlykke/RefudeServices/lib/query"
 )
 
 type matcher func(res interface{}) bool
@@ -17,13 +18,13 @@ type NormalizedParameter struct{
 
 type NormalizedQuery map[string]NormalizedParameter
 
-func Search(query url.Values) ([]interface{}, error) {
-	fmt.Println("Search, q:", query["q"])
-	if len(query["q"]) == 0 {
+func Search(q url.Values) ([]interface{}, error) {
+	fmt.Println("Search, q:", q["q"])
+	if len(q["q"]) == 0 {
 		return []interface{}{}, errors.New("No query given")
 	}
 
-	if m, err:= Parse(query["q"][0]); err == nil {
+	if m, err:= query.Parse(q["q"][0]); err == nil {
 		var result = make([]interface{}, 0, 100)
 		for _, res := range resources {
 			if m(res) {

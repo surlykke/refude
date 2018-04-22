@@ -1,4 +1,4 @@
-package service
+package query
 
 import (
 	"encoding/json"
@@ -24,7 +24,7 @@ const (
 )
 
 // Ordered so that no string is a prefix of a later
-var relationOperators = []string{"~i", "~", "<>i", "<>", "=i", "=", "<=", "<", ">=", ">"}
+var relationOperators = []string{"~i", "~", "neqi", "neq", "eqi", "eq", "lte", "lt", "gte", "gt"}
 
 func (tk TokenKind) String() string {
 	switch tk {
@@ -147,23 +147,21 @@ func (l *Lexer) next() {
 			l.Current = Token{Kind: Boolean, BoolVal: true}
 		case "false":
 			l.Current = Token{Kind: Boolean, BoolVal: false}
+		case "neqi", "neq", "eqi", "eq", "lte", "lt", "gte", "gt":
+			l.Current = Token{Kind: Relation}
 		default:
 			l.Current = Token{Kind: Identifier}
 		}
 	} else {
-		var relOpStr = ""
-		for _, s := range relationOperators {
-			if strings.HasPrefix(l.s[l.pos:], s) {
-				relOpStr = s
-				break
-			}
-		}
-		if relOpStr != "" {
-			l.pos += len(relOpStr)
+		if strings.HasPrefix(l.s[l.pos:], "~i") {
 			l.Current = Token{Kind:Relation}
-		} else {
+			l.pos += 2
+		} else if l.s[l.pos] == '~' {
+			l.Current = Token{Kind:Relation}
 			l.pos++
+		} else {
 			l.Current = Token{Kind:SpecialChar}
+			l.pos++
 		}
 	}
 	l.Current.Text = l.currentText()

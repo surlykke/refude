@@ -1,4 +1,4 @@
-package service
+package query
 
 import (
 	"strings"
@@ -23,7 +23,7 @@ import (
  * FACTOR    -> '!' FACTOR | '(' EXPR ')' | RELATION
  * RELATION  -> PATHSPEC OP value
  * PATHSPEC  ->
- * REL_OP    -> '=', '<', '<=', '>' '>='
+ * REL_OP    ->
  *
  */
 
@@ -157,26 +157,26 @@ func readFactor(ts *Lexer) Matcher {
 }
 
 var stringCheckers = map[string]func(lhs, rhs string) bool{
-	"=":   func(lhs, rhs string) bool { return lhs == rhs },
-	"=i":  func(lhs, rhs string) bool { return strings.ToUpper(lhs) == strings.ToUpper(rhs) },
-	"<>":  func(lhs, rhs string) bool { return lhs != rhs },
-	"<>i": func(lhs, rhs string) bool { return strings.ToUpper(lhs) != strings.ToUpper(rhs) },
+	"eq":   func(lhs, rhs string) bool { return lhs == rhs },
+	"eqi":  func(lhs, rhs string) bool { return strings.ToUpper(lhs) == strings.ToUpper(rhs) },
+	"neq":  func(lhs, rhs string) bool { return lhs != rhs },
+	"neqi": func(lhs, rhs string) bool { return strings.ToUpper(lhs) != strings.ToUpper(rhs) },
 	"~":   func(lhs, rhs string) bool { return strings.Contains(lhs, rhs) },
 	"~i":  func(lhs, rhs string) bool { return strings.Contains(strings.ToUpper(lhs), strings.ToUpper(rhs)) },
 }
 
 var numberCheckers = map[string]func(lhs, rhs int) bool{
-	"=":  func(lhs, rhs int) bool { return lhs == rhs },
-	"<>": func(lhs, rhs int) bool { return lhs != rhs },
-	"<":  func(lhs, rhs int) bool { return lhs < rhs },
-	"<=": func(lhs, rhs int) bool { return lhs <= rhs },
-	">":  func(lhs, rhs int) bool { return lhs > rhs },
-	">=": func(lhs, rhs int) bool { return lhs >= rhs },
+	"eq":  func(lhs, rhs int) bool { return lhs == rhs },
+	"neq": func(lhs, rhs int) bool { return lhs != rhs },
+	"lt":  func(lhs, rhs int) bool { return lhs < rhs },
+	"lte": func(lhs, rhs int) bool { return lhs <= rhs },
+	"gt":  func(lhs, rhs int) bool { return lhs > rhs },
+	"gte": func(lhs, rhs int) bool { return lhs >= rhs },
 }
 
 var boolCheckers = map[string]func(lhs, rhs bool) bool{
-	"=":  func(lhs, rhs bool) bool { return lhs == rhs },
-	"<>": func(lhs, rhs bool) bool { return lhs != rhs },
+	"eq":  func(lhs, rhs bool) bool { return lhs == rhs },
+	"neq": func(lhs, rhs bool) bool { return lhs != rhs },
 }
 
 func readRelation(ts *Lexer) Matcher {
@@ -221,7 +221,7 @@ func readRelation(ts *Lexer) Matcher {
 
 func readPathSpec(ts *Lexer) []pathElement {
 	var pe = make([]pathElement, 0)
-	ts.Current.assertRaw("$");
+	ts.Current.assertRaw("r");
 	ts.next();
 	for {
 		if ts.Current.Text == "." {
@@ -251,7 +251,7 @@ func readPathSpec(ts *Lexer) []pathElement {
 					ts.next()
 				}
 				pe = append(pe, pathElement{kind: indexes, indexes: numVals})
-			} else if ts.Current.Text == "*" {
+			} else if ts.Current.Text == "%" {
 				pe = append(pe, pathElement{kind: wildcard})
 				ts.next()
 			} else {

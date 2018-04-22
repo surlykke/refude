@@ -9,10 +9,7 @@ package service
 import (
 	"net/http"
 	"sync"
-	"strings"
 	"log"
-	"github.com/surlykke/RefudeServices/lib/utils"
-	"reflect"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"context"
 	"net"
@@ -24,6 +21,7 @@ import (
 
 var	resources  = make(map[string]interface{})
 var mutex      sync.Mutex
+var root       = make(Dir)
 
 type PingResource struct {
 }
@@ -32,127 +30,31 @@ func (pr* PingResource) GET(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-type SearchResource struct {}
-
-type MatchFunction func(key string, value string, resource interface{}) bool
-var matchFunction MatchFunction;
-
-
-func (sr* SearchResource) GET(w http.ResponseWriter, r *http.Request) {
-	if result, err := Search(r.URL.Query()); err == nil {
-		fmt.Println("Returning", len(result), "resources")
-		resource.JsonGET(result, w)
-	} else {
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		w.Write([]byte(err.Error()))
-	}
-}
 
 func init() {
 	Map("/ping", &PingResource{})
-	Map("/notify", &NotifyResource{})
-	Map("/search", &SearchResource{})
-}
-
-func panicIfPathNotOk(path string) {
-	if !checkPath(path) {
-		panic("Illegal path " + path + ". A path must begin with- and not end in '/'")
-	}
-}
-
-func checkPath(path string) bool {
-	return 	strings.HasPrefix(path, "/") && !strings.HasSuffix(path, "/")
-}
-
-func split(path string) (string, string) {
-	dirPathLen := strings.LastIndex(path[0:len(path) - 1], "/") + 1
-	return path[0:dirPathLen], path[dirPathLen:]
-}
-
-// "", "applications"
-
-func addEntryToDir(dirPath string, entry string) {
-	pathWithoutSlash := dirPath[0:len(dirPath) - 1]
-	var dir directory
-	if res, ok := resources[dirPath]; !ok {
-		if _,ok := resources[pathWithoutSlash]; ok {
-			log.Fatal("Not a directory", dirPath)
-		}
-		if dirPath != "/" {
-			addEntryToDir(split(dirPath))
-		}
-		dir = directory{entry}
-		ResourceAdded(dirPath)
-	} else {
-		dir = directory(append(utils.Copy(res.(directory)), entry))
-		ResourceUpdated(dirPath)
-	}
-
-	resources[dirPath] = dir
-}
-
-func mapEntry(path string, res interface{}) {
-	if _,ok := resources[path + "/"]; ok {
-		log.Fatal("There's a directory there: ", path)
-	} else if oldRes, ok := resources[path]; ok {
-		if !reflect.DeepEqual(oldRes, res) {
-			ResourceUpdated(path)
-			resources[path] = res
-		}
-	} else {
-		addEntryToDir(split(path))
-		ResourceAdded(path)
-		resources[path] = res
-	}
-}
-
-func unmapEntry(path string) bool {
-	if res,ok := resources[path]; ok {
-		dirPath, entry := split(path)
-		if _,ok := res.(directory); ok {
-			log.Fatal("Unmapping directory path", path)
-		}
-		delete(resources, path)
-		ResourceRemoved(path)
-		dir := directory(utils.Remove(resources[dirPath].(directory), entry))
-		resources[dirPath] = dir
-		ResourceUpdated(dirPath)
-		return true
-	} else {
-		return false
-	}
-}
-
-
-func MkDir(path string) {
-	panicIfPathNotOk(path)
-	mutex.Lock()
-	defer mutex.Unlock()
-	mapEntry(path + "/", directory{})
 }
 
 func Map(path string, res interface{}) {
-	panicIfPathNotOk(path)
 	mutex.Lock()
 	defer mutex.Unlock()
-	mapEntry(path, res)
+	root.Map(MakeStandardizedPath(path), res)
 }
 
-func Unmap(path string) bool {
-	panicIfPathNotOk(path)
+func Unmap(path string) {
 	mutex.Lock()
 	defer mutex.Unlock()
-	return unmapEntry(path)
+	root.UnMap(MakeStandardizedPath(path))
 }
 
 func UnMapIfMatch(path string, eTag string) bool {
-	panicIfPathNotOk(path)
+	sp := MakeStandardizedPath(path)
 	mutex.Lock()
 	defer mutex.Unlock()
-	if res,ok := resources[path]; ok {
+	if res,ok := root.Find(sp); ok {
 		if etagHandler, ok := res.(resource.ETagHandler); ok {
 			if etagHandler.ETag() == eTag {
-				unmapEntry(path)
+				root.UnMap(sp)
 				return true
 			}
 		}
@@ -160,30 +62,24 @@ func UnMapIfMatch(path string, eTag string) bool {
 	return false;
 }
 
-func Has(path string) bool {
-	panicIfPathNotOk(path)
-	mutex.Lock()
-	defer mutex.Unlock()
-	_, has := resources[path]
-	return has
-}
 
 func Get(path string) (interface{}, bool) {
-	panicIfPathNotOk(path)
-	return get(path)
-}
-
-func get(path string) (interface{}, bool) {
+	sp := MakeStandardizedPath(path)
 	mutex.Lock()
 	defer mutex.Unlock()
-	i, ok := resources[path]
-	return i,ok
+	res, ok := root.Find(sp)
+	return res,ok
 }
 
+func Has(path string) bool {
+	_, ok := Get(path);
+	return ok
+}
+
+
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if res,ok := get(r.URL.Path); ok {
-		resource.ServeHTTP(res, w, r)
-	} else if res, ok = get(r.URL.Path + "/"); ok {
+	sp := MakeStandardizedPath(r.URL.Path)
+	if res, ok := root.Find(sp); ok {
 		resource.ServeHTTP(res, w, r)
 	} else {
 		w.WriteHeader(http.StatusNotFound)
@@ -240,9 +136,5 @@ func ServeWith(socketName string, handler http.Handler) {
 	if listener, ok := makeListener(socketName); ok {
 		http.Serve(listener, handler)
 	}
-}
-
-func SetMatchFunction(mf MatchFunction) {
-	matchFunction = mf
 }
 

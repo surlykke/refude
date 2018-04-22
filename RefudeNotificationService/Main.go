@@ -16,6 +16,5 @@ func main() {
 	fmt.Println("Createing empty /notifications/")
 	service.MkDir("/notifications")
 	Setup()
-	service.SetMatchFunction(matchFunction)
 	service.Serve("org.refude.notifications-service")
 }
