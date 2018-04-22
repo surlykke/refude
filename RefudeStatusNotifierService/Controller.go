@@ -209,10 +209,3 @@ func Controller() {
 	}
 }
 
-var matchFunction service.MatchFunction = func(key string, value string, resource interface{}) bool {
-	if item, ok := resource.(*Item); ok && key == "q" {
-		return strings.Contains(strings.ToUpper(item.Title), value)
-	} else {
-		return false
-	}
-}

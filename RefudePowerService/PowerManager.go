@@ -132,24 +132,4 @@ func (pm *PowerManager) Run() {
 	}
 }
 
-var matchFunction service.MatchFunction = func(key string, value string, resource interface{}) bool {
-	if key == "q" {
-		if _, isDevice := resource.(*Device); isDevice {
-			return true
-		} else if action, isAction := resource.(*PowerAction); isAction {
-			return strings.Contains(strings.ToUpper(action.Name), strings.ToUpper(value)) ||
-				strings.Contains(strings.ToUpper(action.Comment), strings.ToUpper(value))
-		}
-	} else if key == "type" {
-		if value == "ACTION" {
-			_,ok := resource.(*PowerAction)
-			return ok
-		} else if value == "DEVICE" {
-			_,ok := resource.(*Device)
-			return ok
-		}
-	}
-
-	return false
-}
 

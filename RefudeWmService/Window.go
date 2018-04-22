@@ -12,8 +12,6 @@ import (
 	"github.com/BurntSushi/xgbutil/ewmh"
 	"github.com/BurntSushi/xgbutil"
 	"github.com/surlykke/RefudeServices/lib/resource"
-	"strings"
-	"github.com/surlykke/RefudeServices/lib/service"
 )
 
 type Window struct {
@@ -45,14 +43,5 @@ func (win *Window) POST(w http.ResponseWriter, r *http.Request) {
 		ewmh.ActiveWindowReq(win.x, xproto.Window(win.Id))
 		w.WriteHeader(http.StatusAccepted)
 	}
-}
-
-var matchFunction service.MatchFunction = func(key string, value string, resource interface{}) bool {
-	if w,ok := resource.(*Window); ok {
-		if key == "q" {
-			return strings.Contains(strings.ToUpper(w.Name), value)
-		}
-	}
-	return false
 }
 

@@ -174,13 +174,9 @@ func CloseNotification(id uint32) *dbus.Error {
 
 func close(path string, eTag string, reason uint32) {
 	if reason == Expired {
-		if service.UnMapIfMatch(path, eTag) {
-			notificationClosed(idFromPath(path), reason)
-		}
+		service.UnMapIfMatch(path, eTag)
 	} else {
-		if service.Unmap(path) {
-			notificationClosed(idFromPath(path), reason)
-		}
+		service.Unmap(path)
 	}
 }
 
@@ -263,13 +259,5 @@ func Setup() {
 		NOTIFICATIONS_INTERFACE,
 	)
 	conn.Export(introspect.Introspectable(INTROSPECT_XML), NOTIFICATIONS_PATH, INTROSPECT_INTERFACE)
-}
-
-var matchFunction service.MatchFunction = func(key string, value string, resource interface{}) bool {
-	if n, ok := resource.(*Notification); ok && key == "y" {
-		return strings.Contains(strings.ToUpper(n.Subject), value) || strings.Contains(strings.ToUpper(n.Body), value)
-	} else {
-		return false
-	}
 }
 
