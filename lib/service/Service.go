@@ -21,7 +21,7 @@ import (
 
 var	resources  = make(map[string]interface{})
 var mutex      sync.Mutex
-var root       = make(Dir)
+var root       = MakeEmptyDir()
 
 type PingResource struct {
 }
