@@ -30,6 +30,21 @@ func TestStringRelations(t *testing.T) {
 	testHelper(&res, "r.Name ~i 'ireFox'", true, t)
 }
 
+func TestIdentifierRelations(t *testing.T) {
+	var res = struct{Name string}{"Firefox"}
+	testHelper(&res, "r.Name eq Firefox", true, t)
+	testHelper(&res, "r.Name eq firefox", false, t)
+	testHelper(&res, "r.Name eqi firefox", true, t)
+	testHelper(&res, "r.Name neq Firefox", false, t)
+	testHelper(&res, "r.Name neq irefox", true, t)
+	testHelper(&res, "r.Name neqi firefox", false, t)
+	testHelper(&res, "r.Name neqi irefox", true, t)
+	testHelper(&res, "r.Name ~ irefox", true, t)
+	testHelper(&res, "r.Name ~ ireFox", false, t)
+	testHelper(&res, "r.Name ~i ireFox", true, t)
+}
+
+
 func TestBoolRelations(t *testing.T) {
 	var res = struct{IsSo bool}{true}
 	testHelper(&res, "r.IsSo eq true", true, t)

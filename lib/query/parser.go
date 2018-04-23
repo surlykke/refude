@@ -186,11 +186,17 @@ func readRelation(ts *Lexer) Matcher {
 	var operator = ts.Current
 	ts.next()
 
-	ts.Current.assertKind(String, Integer, Boolean)
+	ts.Current.assertKind(Identifier, String, Integer, Boolean)
 	var value = ts.Current
 	ts.next()
 
-	if value.Kind == String {
+	if value.Kind == Identifier {
+		if checker, ok := stringCheckers[operator.Text]; ok {
+			return buildStringMatcher(pathSpec, value.Text, checker)
+		} else {
+			panic(ParseError("Operator '" + operator.Text + "' not applicable to string"))
+		}
+	} else if value.Kind == String {
 		if checker, ok := stringCheckers[operator.Text]; ok {
 			return buildStringMatcher(pathSpec, value.StrVal, checker)
 		} else {
