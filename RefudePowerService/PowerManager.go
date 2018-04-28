@@ -11,6 +11,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/service"
 	"strings"
 	"fmt"
+	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
 const UPowService = "org.freedesktop.UPower"
@@ -39,7 +40,7 @@ type PowerManager struct {
 
 // Keeps an eye on UPower. PowerManager#Run redirects PropertiesChanged to this through the changes channel
 func watchUPower(changes chan map[string]dbus.Variant) {
-	uPower := UPower{}
+	uPower := UPower{ByteResource: resource.MakeByteResource(UPowerMediaType)}
 	uPower.ReadDBusProps(getProps(dbusConn, UPowPath, UPowerInterface))
 
     // Important that we use a copy - see below
@@ -57,9 +58,8 @@ func watchUPower(changes chan map[string]dbus.Variant) {
 // PowerManager#Run redirects PropertiesChanged to this through the changes channel
 func watchDevice(dbusPath dbus.ObjectPath, changes chan map[string]dbus.Variant) {
 	path := "/devices/" + resourcePath(dbusPath)
-	device := Device{DisplayDevice: "/devices/DisplayDevice" == path, Self: "power-service:" + path, ResourceType: "Device"}
+	device := Device{ByteResource: resource.MakeByteResource(DeviceMediaType), DisplayDevice: "/devices/DisplayDevice" == path, Self: "power-service:" + path}
 	device.ReadDBusProps(getProps(dbusConn, dbusPath, UPowerDeviceInterface))
-	// Important to use copy here. Service owns what it gets
 	copy := device
 	service.Map( path, &copy)
 
@@ -118,7 +118,6 @@ func (pm *PowerManager) Run() {
 
 	for _,action := range(actions) {
 		action.Self = "power-service:/actions/" + action.Id
-		action.ResourceType = "Action"
 		service.Map("/actions/" + action.Id, action)
 	}
 

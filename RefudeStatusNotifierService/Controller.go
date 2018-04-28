@@ -16,6 +16,7 @@ import (
 	"regexp"
 	"github.com/surlykke/RefudeServices/lib/service"
 	"time"
+	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
 const WATCHER_SERVICE = "org.kde.StatusNotifierWatcher"
@@ -178,14 +179,14 @@ func Controller() {
 		switch event.eventType {
 		case ItemCreated:
 			if findByItemPath(event.sender, event.path) == -1 {
-				item := &Item{sender: event.sender, itemPath: event.path, ResourceType: "StatusNotifierItem"}
+				item := &Item{ByteResource: resource.MakeByteResource(ItemMediaType), sender: event.sender, itemPath: event.path}
 				item.fetchProps()
 				if item.menuPath != "" {
 					item.fetchMenu()
 				}
 				item.Self = "statusnotifier-service:" + item.restPath();
 				items = append(items, item)
-				service.Map(item.restPath(), item.copy())
+				service.Map(item.restPath(), item.mappableCopy())
 				updateWatcherProperties()
 				go monitorItem(event.sender, event.path)
 			}
@@ -198,12 +199,12 @@ func Controller() {
 		case ItemUpdated:
 			if index := findByItemPath(event.sender, event.path); index > -1 {
 				items[index].fetchProps()
-				service.Map(items[index].restPath(), items[index].copy())
+				service.Map(items[index].restPath(), items[index].mappableCopy())
 			}
 		case MenuUpdated:
 			if index := findByMenuPath(event.sender, event.path); index > -1 {
 				items[index].fetchMenu()
-				service.Map(items[index].restPath(), items[index].copy())
+				service.Map(items[index].restPath(), items[index].mappableCopy())
 			}
 		}
 	}

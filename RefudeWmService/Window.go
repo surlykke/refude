@@ -8,13 +8,16 @@ package main
 
 import (
 	"github.com/BurntSushi/xgb/xproto"
-	"net/http"
-	"github.com/BurntSushi/xgbutil/ewmh"
 	"github.com/BurntSushi/xgbutil"
 	"github.com/surlykke/RefudeServices/lib/resource"
+	"net/http"
+	"github.com/BurntSushi/xgbutil/ewmh"
 )
 
+const WindowMediaType resource.MediaType = "application/vnd.org.refude.wmwindow+json"
+
 type Window struct {
+	resource.ByteResource
 	x             *xgbutil.XUtil
 	Id            xproto.Window
 	X, Y, H, W    int
@@ -24,7 +27,6 @@ type Window struct {
 	Actions       map[string]Action
 	RelevanceHint int
 	Self          string
-	ResourceType  string
 }
 
 type Action struct {
@@ -32,8 +34,10 @@ type Action struct {
 	Comment string
 }
 
-func (win *Window) GET(w http.ResponseWriter, r *http.Request) {
-	resource.JsonGET(win, w)
+func (win *Window) Update() resource.Resource {
+	updatedWin := *win
+	updatedWin.SetBytes(resource.ToJSon(win))
+	return &updatedWin
 }
 
 func (win *Window) POST(w http.ResponseWriter, r *http.Request) {

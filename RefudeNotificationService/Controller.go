@@ -15,6 +15,7 @@ import (
 	"time"
 	"strings"
 	"strconv"
+	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
 const NOTIFICATIONS_SERVICE = "org.freedesktop.Notifications"
@@ -139,6 +140,7 @@ func Notify(app_name string,
 	path := fmt.Sprintf("/notifications/%d", id)
 
 	notification := Notification{
+		ByteResource: resource.MakeByteResource(NotificationMediaType),
 		Id:      id,
 		Sender:  app_name,
 		Subject: sanitize(summary, []string{}, []string{}),
@@ -146,13 +148,13 @@ func Notify(app_name string,
 		Actions: map[string]string{},
 		eTag:    fmt.Sprintf("%d", id),
 		Self:    "notifications-service:" + path,
-		ResourceType: "Notification",
 	}
 
 	for i := 0; i+1 < len(actions); i = i + 2 {
 		notification.Actions[actions[i]] = actions[i+1]
 	}
 
+	notification.SetBytes(resource.ToJSon(notification))
 	service.Map(path, &notification)
 
 	if expire_timeout == 0 {

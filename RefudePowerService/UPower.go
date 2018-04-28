@@ -18,7 +18,10 @@ type UPowerObject interface {
 	Copy() UPowerObject
 }
 
+const UPowerMediaType resource.MediaType = "application/vnd.org.refude.upower+json"
+
 type UPower struct {
+	resource.ByteResource
 	DaemonVersion string
 	CanSuspend    bool
 	CanHibernate  bool
@@ -28,13 +31,10 @@ type UPower struct {
 	LidIsPresent  bool
 }
 
-func (up *UPower) GET(w http.ResponseWriter, r *http.Request) {
-	resource.JsonGET(up, w)
-}
-
-
-type PropertyObject interface {
-	ReadDBusProps(m map[string]dbus.Variant)
+func (up *UPower) Update() resource.Resource {
+	var newUp = *up
+	newUp.SetBytes(resource.ToJSon(up))
+	return &newUp
 }
 
 func (up *UPower) ReadDBusProps(m map[string]dbus.Variant) {
@@ -58,7 +58,11 @@ func (up *UPower) ReadDBusProps(m map[string]dbus.Variant) {
 	}
 }
 
+const DeviceMediaType resource.MediaType = "application/vnd.org.refude.upowerdevice+json"
+
+
 type Device struct {
+	resource.ByteResource
 	NativePath       string
 	Vendor           string
 	Model            string
@@ -85,11 +89,12 @@ type Device struct {
 	Technology       string
 	DisplayDevice    bool
 	Self             string
-	ResourceType	 string
 }
 
-func (d *Device) GET(w http.ResponseWriter, r *http.Request) {
-	resource.JsonGET(d, w)
+func (d *Device) Update() resource.Resource {
+	var copy = *d
+	copy.SetBytes(resource.ToJSon(copy))
+	return &copy
 }
 
 func (d *Device) ReadDBusProps(m map[string]dbus.Variant) {

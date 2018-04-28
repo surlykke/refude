@@ -9,13 +9,14 @@ package main
 import (
 	"net/http"
 	"github.com/godbus/dbus"
-	"fmt"
 	"github.com/surlykke/RefudeServices/lib/resource"
+	"fmt"
 )
 
-
+const PowerActionMediaType resource.MediaType = "application/vnd.org.refude.poweraction+json"
 
 type PowerAction struct {
+	resource.ByteResource
 	Id            string
 	Name          string
 	Comment       string
@@ -23,16 +24,11 @@ type PowerAction struct {
 	Can           bool
 	RelevanceHint int
 	Self          string
-	ResourceType  string
 }
 
 func NewPowerAction(Id string, Name string, Comment string, IconName string) *PowerAction {
 	can := "yes" == dbusConn.Object(login1Service, login1Path).Call(managerInterface + ".Can" + Id, dbus.Flags(0)).Body[0].(string)
-	return &PowerAction{Id, Name, Comment, IconName, can, 0, "", "Action"}
-}
-
-func (pa *PowerAction) GET(w http.ResponseWriter, r *http.Request) {
-	resource.JsonGET(pa, w)
+	return &PowerAction{resource.MakeByteResource(PowerActionMediaType), Id, Name, Comment, IconName, can, 0, ""}
 }
 
 func (pa *PowerAction) POST(w http.ResponseWriter, r *http.Request) {
@@ -40,5 +36,3 @@ func (pa *PowerAction) POST(w http.ResponseWriter, r *http.Request) {
 	dbusConn.Object(login1Service, login1Path).Call(managerInterface + "." + pa.Id, dbus.Flags(0), false)
 	w.WriteHeader(http.StatusAccepted)
 }
-
-

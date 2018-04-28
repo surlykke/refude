@@ -19,11 +19,12 @@ import (
 	"github.com/BurntSushi/xgb"
 	"time"
 	"github.com/surlykke/RefudeServices/lib/icons"
+	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
 
 var windows = make(map[xproto.Window]*Window)
-var display = Display{Screens: make([]Rect, 0)}
+var display = Display{ByteResource: resource.MakeByteResource(DisplayMediaType), Screens: make([]Rect, 0)}
 var iconHashes = make(map[uint64]bool)
 var x  *xgbutil.XUtil
 
@@ -117,13 +118,12 @@ func updateWindows() {
 			windows[wId] = getWindow(xproto.Window(wId), i)
 		}
 		windows[wId].Self =fmt.Sprintf("wm-service:/windows/%d", wId)
-		windows[wId].ResourceType = "Window"
 		service.Map(fmt.Sprintf("/windows/%d", wId), windows[wId])
 	}
 }
 
 func getWindow(wId xproto.Window, stackingOrder int) *Window {
-	window := Window{}
+	window := Window{ByteResource: resource.MakeByteResource(WindowMediaType)}
 	window.x = x
 	window.Id = wId
 	name, err := ewmh.WmNameGet(x, wId)
@@ -163,7 +163,7 @@ func getWindow(wId xproto.Window, stackingOrder int) *Window {
 }
 
 func updateWindow(window *Window, stackOrder int) *Window {
-	newWindow := Window{}
+	newWindow := Window{ByteResource: resource.MakeByteResource(WindowMediaType)}
 	newWindow.x = x
 	newWindow.Id = window.Id
 	name, err := ewmh.WmNameGet(x, newWindow.Id)

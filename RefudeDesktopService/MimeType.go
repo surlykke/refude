@@ -14,19 +14,21 @@ import (
 	"regexp"
 	"strings"
 
-	"os"
-
 	"github.com/pkg/errors"
 	"github.com/surlykke/RefudeServices/lib/ini"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/utils"
-	"github.com/surlykke/RefudeServices/lib/xdg"
 	"golang.org/x/text/language"
+	"github.com/surlykke/RefudeServices/lib/xdg"
+	"os"
 )
 
 const freedesktopOrgXml = "/usr/share/mime/packages/freedesktop.org.xml"
 
+const MimeTypeMediaType resource.MediaType = "application/vnd.org.refude.mimetype+json"
+
 type Mimetype struct {
+	resource.ByteResource
 	Id                     string
 	Comment                string
 	Acronym                string `json:",omitempty"`
@@ -39,11 +41,6 @@ type Mimetype struct {
 	AssociatedApplications []string
 	DefaultApplication     string `json:",omitempty"`
 	Self                   string
-	ResourceType           string
-}
-
-func (mt *Mimetype) GET(w http.ResponseWriter, r *http.Request) {
-	resource.JsonGET(mt, w)
 }
 
 func (mt *Mimetype) POST(w http.ResponseWriter, r *http.Request) {
@@ -83,7 +80,6 @@ func (mt *Mimetype) POST(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-
 }
 
 var mimetypePattern = regexp.MustCompile(`^([^/]+)/([^/]+)$`)
@@ -94,14 +90,14 @@ func NewMimetype(id string) (*Mimetype, error) {
 		return nil, errors.New("Incomprehensible mimetype: " + id)
 	} else {
 		mt := &Mimetype{
-			Id:          id,
-			Aliases:     []string{},
-			Globs:       []string{},
-			SubClassOf:  []string{},
-			IconName:    "unknown",
-			GenericIcon: "unknown",
-			Self:        "desktop-service:/mimetypes/" + id,
-			ResourceType: "MimeType",
+			ByteResource: resource.MakeByteResource(MimeTypeMediaType),
+			Id:           id,
+			Aliases:      []string{},
+			Globs:        []string{},
+			SubClassOf:   []string{},
+			IconName:     "unknown",
+			GenericIcon:  "unknown",
+			Self:         "desktop-service:/mimetypes/" + id,
 		}
 
 		if strings.HasPrefix(id, "x-scheme-handler/") {
@@ -116,9 +112,9 @@ func NewMimetype(id string) (*Mimetype, error) {
 
 func CollectMimeTypes() map[string]*Mimetype {
 	xmlCollector := struct {
-		XMLName   xml.Name `xml:"mime-info"`
+		XMLName xml.Name `xml:"mime-info"`
 		MimeTypes []struct {
-			Type    string `xml:"type,attr"`
+			Type string `xml:"type,attr"`
 			Comment []struct {
 				Lang string `xml:"lang,attr"`
 				Text string `xml:",chardata"`
@@ -215,7 +211,7 @@ func CollectMimeTypes() map[string]*Mimetype {
 			tags = append(tags, language.Make(locale))
 		}
 
-		res[mimeType.Id] = mimeType
+	    res[mimeType.Id] = mimeType
 	}
 
 	return res

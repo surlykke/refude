@@ -7,9 +7,10 @@
 package main
 
 import (
-	"net/http"
 	"github.com/surlykke/RefudeServices/lib/resource"
 )
+
+const DisplayMediaType resource.MediaType = "application/vnd.org.refude.wmdisplay"
 
 type Rect struct {
 	X,Y int16
@@ -17,10 +18,9 @@ type Rect struct {
 }
 
 type Display struct {
+	resource.ByteResource
 	W,H uint16
 	Screens []Rect
 }
 
-func (d *Display) GET(w http.ResponseWriter, r *http.Request) {
-	resource.JsonGET(d, w)
-}
+

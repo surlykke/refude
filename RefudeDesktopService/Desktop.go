@@ -14,6 +14,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/service"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 	"golang.org/x/sys/unix"
+	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
 var fileChange = make(chan string)
@@ -57,44 +58,39 @@ var mimetypeIds = make([]string, 0)
 func update() {
 	c := Collect()
 
+	var all = make(map[string]resource.Resource)
+	for s, da := range c.applications {
+		if da.IconUrl != "" {
+			iconPath := &IconPath{path:da.IconPath}
+			urlPath := string("/icons" + iconPath.path)
+			all[urlPath] = iconPath
+		}
+		for actionId, action := range da.Actions {
+			if actionId != "_default" && action.IconUrl != "" {
+				iconPath := &IconPath{path: action.IconPath}
+				urlPath := string("/icons" + iconPath.path)
+				all[urlPath] = iconPath
+			}
+		}
+
+		da.SetBytes(resource.ToJSon(da))
+		all["/applications/" + s] = da
+	}
+	for s,mt := range c.mimetypes {
+		mt.SetBytes(resource.ToJSon(mt))
+		all["/mimetypes/" + s] = mt
+	}
+
+	service.RemoveAll("/applications/")
+	service.RemoveAll("/mimetypes/")
+	service.MapAll(all)
+
 	for _, appId := range applicationIds {
 		if _, ok := c.applications[appId]; !ok {
 			service.Unmap("/applications/" + appId)
 		}
 	}
 
-	for appId, newDesktopApplication := range c.applications {
-		newDesktopApplication.RelevanceHint = lastLaunched[newDesktopApplication.Id]
-		service.Map("/applications/"+appId, newDesktopApplication)
-		if newDesktopApplication.IconUrl != "" {
-			iconPath := IconPath(newDesktopApplication.IconPath)
-			urlPath := string("/icons" + iconPath)
-			service.Map(urlPath, iconPath)
-		}
-		for actionId, action := range newDesktopApplication.Actions {
-			if actionId != "_default" && action.IconUrl != "" {
-				iconPath := IconPath(action.IconPath)
-				urlPath := string("/icons" + iconPath)
-				service.Map(urlPath, iconPath)
-			}
-		}
-	}
-
-	for _, mimetypeId := range mimetypeIds {
-		if _, ok := c.mimetypes[mimetypeId]; !ok {
-			service.Unmap("/mimetypes/" + mimetypeId)
-		}
-	}
-
-	for mimetypeId, mimeType := range c.mimetypes {
-		service.Map("/mimetypes/"+mimetypeId, mimeType)
-	}
-
-}
-
-
-type MimetypePostPayload struct {
-	DefaultApplication string
 }
 
 func RequestInterceptor(w http.ResponseWriter, r *http.Request) {
@@ -104,7 +100,6 @@ func RequestInterceptor(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		} else {
-			fmt.Println("Mapping ", mimetype)
 			service.Map(r.URL.Path, mimetype)
 		}
 	}

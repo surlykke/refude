@@ -25,8 +25,10 @@ import (
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
+const DesktopApplicationMediaType resource.MediaType = "application/vnd.org.refude.desktopapplication+json"
 
 type DesktopApplication struct {
+	resource.ByteResource
 	Type            string
 	Version         string `json:",omitempty"`
 	Name            string
@@ -56,7 +58,6 @@ type DesktopApplication struct {
 	RelevanceHint   int64
 	languages       language.Matcher
 	Self            string
-	ResourceType    string
 }
 
 type Action struct {
@@ -67,15 +68,28 @@ type Action struct {
 	IconUrl  string
 }
 
-type IconPath string
+type IconPath struct {
+	resource.DefaultResource
+	path string
+}
 
 func (ip IconPath) GET(w http.ResponseWriter, r *http.Request) {
-	http.ServeFile(w, r, string(ip))
+	http.ServeFile(w, r, ip.path)
 }
 
-func (da *DesktopApplication) GET(w http.ResponseWriter, r *http.Request) {
-	resource.JsonGET(da, w)
+func (ip IconPath) ETag() string {
+	return ""
 }
+
+
+func (ip IconPath) Update() resource.Resource {
+	return nil
+}
+
+func (ip IconPath) MediaType() resource.MediaType {
+	return resource.MediaType("image/png")
+}
+
 
 func (da *DesktopApplication) POST(w http.ResponseWriter, r *http.Request) {
 	actionId := resource.GetSingleQueryParameter(r, "action", "")
@@ -90,8 +104,8 @@ func (da *DesktopApplication) POST(w http.ResponseWriter, r *http.Request) {
 	} else {
 		exec = da.Exec
 	}
-	var args = strings.Join(r.URL.Query()["arg"], " ")
-	var argvAsString = regexp.MustCompile("%[uUfF]").ReplaceAllString(exec, args)
+	var args= strings.Join(r.URL.Query()["arg"], " ")
+	var argvAsString= regexp.MustCompile("%[uUfF]").ReplaceAllString(exec, args)
 	if err := runCmd(da.Terminal, strings.Fields(argvAsString)); err != nil {
 		fmt.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -101,7 +115,6 @@ func (da *DesktopApplication) POST(w http.ResponseWriter, r *http.Request) {
 		updatedApp.RelevanceHint = time.Now().UnixNano() / 1000000
 		service.Map(r.URL.Path, updatedApp)
 	}
-
 }
 
 func runCmd(runInTerminal bool, argv []string) error {
@@ -128,14 +141,13 @@ func runCmd(runInTerminal bool, argv []string) error {
 	return nil
 }
 
-
 func readDesktopFile(path string) (*DesktopApplication, error) {
 	if iniFile, err := ini.ReadIniFile(path); err != nil {
 		return nil, err
 	} else if len(iniFile) == 0 || iniFile[0].Name != "Desktop Entry" {
 		return nil, errors.New("File must start with '[Desktop Entry]'")
 	} else {
-		var da = DesktopApplication{ResourceType: "DesktopApplication"}
+		var da = DesktopApplication{ByteResource: resource.MakeByteResource(DesktopApplicationMediaType)}
 		da.Actions = make(map[string]*Action)
 		var actionNames = []string{}
 		group := iniFile[0]
@@ -182,7 +194,7 @@ func readDesktopFile(path string) (*DesktopApplication, error) {
 				log.Print(path, ", undeclared action: ", currentAction, " - ignoring\n")
 			} else {
 				var action Action
-				if action.Name = actionGroup.Entries["Name"]; action.Name == ""{
+				if action.Name = actionGroup.Entries["Name"]; action.Name == "" {
 					return nil, errors.New("Desktop file invalid, action " + actionGroup.Name + " has no default 'Name'")
 				}
 				icon = actionGroup.Entries["Icon"]
@@ -196,7 +208,6 @@ func readDesktopFile(path string) (*DesktopApplication, error) {
 				da.Actions[currentAction] = &action
 			}
 		}
-
 
 		for _, action := range da.Actions {
 			if action.IconName == "" && action.IconPath == "" {
@@ -213,5 +224,3 @@ func readDesktopFile(path string) (*DesktopApplication, error) {
 func transformLanguageTag(tag string) string {
 	return strings.Replace(strings.Replace(tag, "_", "-", -1), "@", "-", -1)
 }
-
-

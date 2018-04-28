@@ -11,7 +11,10 @@ import (
 	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
+const NotificationMediaType resource.MediaType = "application/vnd.org.refude.desktopnotification+json"
+
 type Notification struct {
+	resource.ByteResource
 	Id            uint32
 	Sender        string
 	Subject       string
@@ -20,23 +23,15 @@ type Notification struct {
 	RelevanceHint int
 	eTag          string
 	Self          string
-	ResourceType  string
-}
-
-func (n *Notification) GET(w http.ResponseWriter, r *http.Request) {
-	resource.JsonGET(n, w)
 }
 
 func (n *Notification) POST(w http.ResponseWriter, r *http.Request) {
 	action := resource.GetSingleQueryParameter(r, "action", "default")
-	conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE + ".ActionInvoked", n.Id, action)
+	conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".ActionInvoked", n.Id, action)
 	w.WriteHeader(http.StatusAccepted)
-}
-
-func (n *Notification) ETag() string {
-	return n.eTag
 }
 
 func (n *Notification) DELETE(w http.ResponseWriter, r *http.Request) {
 	close(r.URL.Path, "", Dismissed)
 }
+
