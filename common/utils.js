@@ -55,10 +55,12 @@ let doGet = (service, path, params, changedSince) => {
             resp.setEncoding('utf8');
             resp.on('data', chunk => data += chunk);
             resp.on('end', () => {
+                console.log("Got content:", resp.headers["content-type"]);
+                console.log("data: ", data)
                 if (resp.statusCode >= 300) {
                     reject(new Error(`Request Failed.\n` + `Status Code: ${resp.statusCode}`));
-                } else if (!/^application\/json/.test(resp.headers["content-type"])) {
-                    reject(new Error(`Unexpected content-type: ${res.headers["content-type"]}`))
+                } else if (!/^application\/(.*\+)?json/.test(resp.headers["content-type"])) {
+                    reject(new Error(`Unexpected content-type: ${resp.headers["content-type"]}`))
                 } else {
                     let json = data === '' ? null : JSON.parse(data);
                     if (typeof json === 'object') {

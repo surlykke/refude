@@ -29,27 +29,36 @@ class Container extends React.Component {
 
 	fetchResources = (term) => {
 		console.log("Fetching for", term);
-	    term = term || ""
+	    term = term || "";
 	    this.resources["wm-service"] = [];
 	    this.resources["desktop-service"] = [];
 	    this.resources["power-service"] = [];
 
-	   	let windowQuery = `r.Name ~i '${term}' and not r.States[%] eq '_NET_WM_STATE_ABOVE' and r.Name neq 'Refude Do' and r.Name neq 'refudeDo'`
-
-		console.log("Querying: ", windowQuery)
-	    doGet("wm-service", "/windows", {q: windowQuery}).then(resources => {
+		let winQuery = {
+//			type: "application/vnd.org.refude.wmwindow+json",
+			q: `r.Name ~i '${term}' and not r.States[%] eq '_NET_WM_STATE_ABOVE' and r.Name neq 'Refude Do' and r.Name neq 'refudeDo'`
+		};
+		console.log("winQuery:", winQuery)
+	    doGet("wm-service", "/search", winQuery).then(resources => {
 	        this.resources["wm-service"] = resources;
 	        this.updateItems();
 	    }, error => console.log(error));
 
         if (term && term.length > 0) {
-        	let appQuery = `r.Name ~i '${term}' and r.ResourceType eq 'DesktopApplication' and not r.NoDisplay eq true`;
-            doGet("desktop-service", "/applications", {q: appQuery}).then(resources => {
+        	let appQuery = {
+                type: "application/vnd.org.refude.desktopapplication+json",
+                q: `r.Name ~i '${term}' and not r.NoDisplay eq true`
+            };
+            doGet("desktop-service", "/search", appQuery).then(resources => {
                 this.resources["desktop-service"] = resources;
                 this.updateItems();
             });
-        	let powerQuery = `r.Name ~i '${term}' and r.ResourceType eq 'Action'`;
-            doGet("power-service", "/actions", {q: powerQuery}).then(resources => {
+
+			let powerQuery  = {
+				type: 'application/vnd.org.refude.poweraction+json',
+				q: `r.Name ~i '${term}'`
+			}
+            doGet("power-service", "/search", {q: powerQuery}).then(resources => {
                 this.resources["power-service"] = resources;
                 this.updateItems();
             });
