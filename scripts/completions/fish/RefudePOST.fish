@@ -1,5 +1,5 @@
 function services
-	ls $XDG_RUNTIME_DIR/org.refude.* | sed -E 's/.*org\.refude\.//' 
+	ls $XDG_RUNTIME_DIR/org.refude.*service | sed -E 's/.*org\.refude\.//'
 end
 
 function paths

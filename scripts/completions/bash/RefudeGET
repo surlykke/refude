@@ -7,7 +7,7 @@ _RefudeGET()
 	prev="${COMP_WORDS[COMP_CWORD-1]}"
 
 	if [[ "1" == "$COMP_CWORD" ]]; then 
-		words="desktop-service icon-service power-service wm-service"	
+		words=`ls $XDG_RUNTIME_DIR/org.refude.*service |  sed -e 's/.*org.refude.//g'`
 	elif [[ "2" == "$COMP_CWORD" ]]; then
         words=`RefudeGET $prev /links | grep -Po '"[^"]*"\s*:' | sed -e 's/"\(.*\)"\s*:/\/\1/g'`
 	fi
