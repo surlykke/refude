@@ -62,7 +62,7 @@ var rc = make(map[standardizedPath]resource.Resource)
 
 func init() {
 	rc["/links"] = makeLinks(nil)
-	rc["/search"] = &Search{}
+	put("/search", &Search{})
 }
 
 // TODO: Note about threadsafety
