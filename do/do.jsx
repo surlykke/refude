@@ -58,7 +58,7 @@ class Container extends React.Component {
 				type: 'application/vnd.org.refude.poweraction+json',
 				q: `r.Name ~i '${term}'`
 			}
-            doGet("power-service", "/search", {q: powerQuery}).then(resources => {
+            doGet("power-service", "/search", powerQuery).then(resources => {
                 this.resources["power-service"] = resources;
                 this.updateItems();
             });
