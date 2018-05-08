@@ -41,7 +41,7 @@ func Run() {
 	}
 
 	for _, powerAction := range GetPowerActions() {
-		service.Map("/actions/" + powerAction.Id, resource.MakeJsonResource(&powerAction, PowerActionMediaType))
+		service.Map("/actions/"+powerAction.Id, resource.MakeJsonResource(powerAction, PowerActionMediaType))
 	}
 
 	var devices = make(map[dbus.ObjectPath]*Device)
@@ -100,7 +100,7 @@ func getProps(path dbus.ObjectPath, dbusInterface string) map[string]dbus.Varian
 	return call.Body[0].(map[string]dbus.Variant)
 }
 
-var possiblePowerActions = []PowerAction {
+var possiblePowerActions = []*PowerAction{
 	{"PowerOff", "Shutdown", "Power off the machine", "system-shutdown"},
 	{"Reboot", "Reboot", "Reboot the machine", "system-reboot"},
 	{"Suspend", "Suspend", "Suspend the machine", "system-suspend"},
@@ -108,16 +108,15 @@ var possiblePowerActions = []PowerAction {
 	{"HybridSleep", "HybridSleep", "Put the machine into hybrid sleep", "system-suspend-hibernate"},
 }
 
-func GetPowerActions() []PowerAction {
-	var result = make([]PowerAction, 0, len(possiblePowerActions))
-	for _,powerAction := range possiblePowerActions {
+func GetPowerActions() []*PowerAction {
+	var result = make([]*PowerAction, 0, len(possiblePowerActions))
+	for _, powerAction := range possiblePowerActions {
 		if "yes" == dbusConn.Object(login1Service, login1Path).Call(managerInterface+".Can"+powerAction.Id, dbus.Flags(0)).Body[0].(string) {
 			result = append(result, powerAction)
 		}
 	}
 	return result
 }
-
 
 func updateDevice(d *Device, m map[string]dbus.Variant) {
 	for key, variant := range m {
@@ -173,5 +172,3 @@ func updateDevice(d *Device, m map[string]dbus.Variant) {
 		}
 	}
 }
-
-

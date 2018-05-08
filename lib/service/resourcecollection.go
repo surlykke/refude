@@ -151,7 +151,6 @@ func Has(path string) bool {
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	sp := standardize(r.URL.Path)
-	fmt.Println("Request:", r.URL)
 	if sp == "/search" {
 		if r.Method == "GET" {
 			Search(w, r)

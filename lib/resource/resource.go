@@ -80,12 +80,7 @@ func (jr *JsonResource) Mt() mediatype.MediaType {
 }
 
 func (jr *JsonResource) Match(m query.Matcher) bool {
-	fmt.Println("Calling matcher on", jr.res)
-	var res = m(jr.res)
-	if res {
-		fmt.Println("--------> hit")
-	}
-	return res
+	return m(jr.res)
 }
 
 func MakeJsonResource(res interface{}, mediaType mediatype.MediaType) *JsonResource {
