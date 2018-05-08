@@ -9,15 +9,14 @@ package main
 import (
 	"github.com/BurntSushi/xgb/xproto"
 	"github.com/BurntSushi/xgbutil"
-	"github.com/surlykke/RefudeServices/lib/resource"
 	"net/http"
 	"github.com/BurntSushi/xgbutil/ewmh"
+	"github.com/surlykke/RefudeServices/lib/mediatype"
 )
 
-const WindowMediaType resource.MediaType = "application/vnd.org.refude.wmwindow+json"
+const WindowMediaType mediatype.MediaType = "application/vnd.org.refude.wmwindow+json"
 
 type Window struct {
-	resource.ByteResource
 	x             *xgbutil.XUtil
 	Id            xproto.Window
 	X, Y, H, W    int
@@ -32,12 +31,6 @@ type Window struct {
 type Action struct {
 	Name    string
 	Comment string
-}
-
-func (win *Window) Update() resource.Resource {
-	updatedWin := *win
-	updatedWin.SetBytes(resource.ToJSon(win))
-	return &updatedWin
 }
 
 func (win *Window) POST(w http.ResponseWriter, r *http.Request) {

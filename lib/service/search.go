@@ -3,50 +3,57 @@ package service
 import (
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"net/http"
-	"fmt"
 	"github.com/surlykke/RefudeServices/lib/query"
+	"github.com/surlykke/RefudeServices/lib/requestutils"
+	"github.com/surlykke/RefudeServices/lib/mediatype"
 )
 
-type Search struct{
-	resource.DefaultResource
-}
-
-func (s *Search) GET(w http.ResponseWriter, r *http.Request) {
-	var flatParams, err = resource.GetSingleParams(r, "type", "q")
-	if err != nil {
-		fmt.Println("Error in search.GET: ", err)
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		return
-	}
-
-	var mediaType = resource.MediaType(flatParams["type"])
-	var matcher query.Matcher
-	if q := flatParams["q"]; q == "" {
-		matcher = func(res interface{}) bool { return true }
-	} else {
-		if matcher, err = query.Parse(q); err != nil {
-			fmt.Println("Query error: ", err)
-			w.WriteHeader(http.StatusUnprocessableEntity)
+func Search(w http.ResponseWriter, r *http.Request) {
+	if flatParams, ok := requestutils.GetSingleParams(w, r, "type", "q"); ok {
+		mediaType := mediatype.MediaType(flatParams["type"])
+		if mediaType == "" {
+			mediaType = "application/json"
 		}
+		var result = collectByType(mediaType)
+		if q, ok := flatParams["q"]; ok {
+			if matcher, ok2 := requestutils.GetMatcher(w, q); ok2 {
+				result = filter(result, matcher)
+			} else {
+				return
+			}
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(mediatype.ToJSon(result))
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(resource.ToJSon(collectResources(mediaType, matcher)))
+
 }
 
-func collectResources(mediaType resource.MediaType, matcher query.Matcher) []resource.Resource {
+func collectByType(mediaType mediatype.MediaType) []resource.Resource {
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	var result = make([]resource.Resource, 0, len(rc))
+	var result = make([]resource.Resource, len(rc))
+	var found = 0
 	for _,res := range rc {
-		if (mediaType == "" || mediaType == res.MediaType()) && matcher(res) {
-			result = append(result, res)
+		if mediatype.MediaTypeMatch(mediaType, res.Mt()) {
+			result[found] = res
+			found = found + 1
 		}
 	}
 
-	return result
+	return result[:found]
 }
 
-func (s *Search) MediaType() resource.MediaType {
-	return resource.MediaType("application/json")
+// Messes up it's argument, don't use it afterwards
+func filter(resources []resource.Resource, matcher query.Matcher) []resource.Resource {
+	var pos = 0
+	for _, res := range resources {
+		if res.Match(matcher) {
+			resources[pos] = res
+			pos = pos + 1
+		}
+	}
+
+	return resources[:pos]
 }
+

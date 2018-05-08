@@ -16,6 +16,10 @@ import (
 	"regexp"
 	"github.com/surlykke/RefudeServices/lib/service"
 	"time"
+	"github.com/surlykke/RefudeServices/lib/utils"
+	"github.com/surlykke/RefudeServices/lib/icons"
+	"log"
+	"reflect"
 	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
@@ -25,8 +29,6 @@ const WATCHER_INTERFACE = WATCHER_SERVICE
 const HOST_SERVICE = "org.kde.StatusNotifierHost"
 const ITEM_PATH = "/StatusNotifierItem"
 const ITEM_INTERFACE = "org.kde.StatusNotifierItem"
-const INTROSPECT_INTERFACE = "org.freedesktop.DBus.Introspectable"
-const PROPERTIES_INTERFACE = "org.freedesktop.DBus.Properties"
 const MENU_INTERFACE = "com.canonical.dbusmenu"
 
 var	conn *dbus.Conn
@@ -67,11 +69,13 @@ func monitorSignals() {
 	}
 }
 
+// We cannot reliably detect items disappearing by signals, it seems, so we do brute force polling
 func monitorItem(sender string, itemPath dbus.ObjectPath) {
 	fmt.Println("itemWatcher: ", sender, itemPath)
-	obj := conn.Object(sender, itemPath)
-	get := PROPERTIES_INTERFACE + ".Get"
-	for obj.Call(get , dbus.Flags(0), ITEM_INTERFACE, "Status").Err == nil {
+	for {
+		if _, ok := utils.GetSingleProp(conn, sender, itemPath, ITEM_INTERFACE, "Status"); !ok {
+			break
+		}
 		time.Sleep(time.Second)
 	}
 	events <- Event{eventType: ItemRemoved, sender: sender, path: itemPath}
@@ -107,7 +111,7 @@ func getOnTheBus() {
 	)
 
 	// Add Introspectable interface
-	conn.Export(introspect.Introspectable(INTROSPECT_XML), WATCHER_PATH, INTROSPECT_INTERFACE)
+	conn.Export(introspect.Introspectable(INTROSPECT_XML), WATCHER_PATH, utils.INTROSPECT_INTERFACE)
 
 	// Add properties interface
 	watcherProperties = prop.New(
@@ -179,14 +183,14 @@ func Controller() {
 		switch event.eventType {
 		case ItemCreated:
 			if findByItemPath(event.sender, event.path) == -1 {
-				item := &Item{ByteResource: resource.MakeByteResource(ItemMediaType), sender: event.sender, itemPath: event.path}
-				item.fetchProps()
+				item := &Item{sender: event.sender, itemPath: event.path}
+				updateItem(item)
 				if item.menuPath != "" {
-					item.fetchMenu()
+					fetchMenu(item)
 				}
 				item.Self = "statusnotifier-service:" + item.restPath();
 				items = append(items, item)
-				service.Map(item.restPath(), item.mappableCopy())
+				service.Map(item.restPath(), resource.MakeJsonResource(item, ItemMediaType))
 				updateWatcherProperties()
 				go monitorItem(event.sender, event.path)
 			}
@@ -198,15 +202,193 @@ func Controller() {
 			}
 		case ItemUpdated:
 			if index := findByItemPath(event.sender, event.path); index > -1 {
-				items[index].fetchProps()
-				service.Map(items[index].restPath(), items[index].mappableCopy())
+				var copy = *items[index]
+				updateItem(&copy)
+				items[index] = &copy
+				service.Map(items[index].restPath(), resource.MakeJsonResource(items[index], ItemMediaType))
 			}
 		case MenuUpdated:
 			if index := findByMenuPath(event.sender, event.path); index > -1 {
-				items[index].fetchMenu()
-				service.Map(items[index].restPath(), items[index].mappableCopy())
+				var copy = *items[index]
+				fetchMenu(&copy)
+				items[index] = &copy
+				service.Map(items[index].restPath(), resource.MakeJsonResource(*items[index], ItemMediaType))
 			}
 		}
 	}
+}
+
+func updateItem(item *Item) {
+	props := utils.GetAllProps(conn, item.sender, item.itemPath, ITEM_INTERFACE)
+
+	item.Id = getStringOr(props, "ID", "")
+	item.Category = getStringOr(props, "Category", "")
+	item.Status = getStringOr(props, "Status", "")
+	item.IconName = getStringOr(props, "IconName", "")
+	item.IconAccessibleDesc = getStringOr(props, "IconAccessibleDesc", "")
+	item.AttentionIconName = getStringOr(props, "AttentionIconName", "")
+	item.AttentionAccessibleDesc = getStringOr(props, "AttentionAccessibleDesc", "")
+	item.Title = getStringOr(props, "Title", "")
+	item.menuPath = getDbusPath(props, "Menu")
+	item.iconThemePath = getStringOr(props, "IconThemePath", "")
+
+	if item.IconName == "" {
+		item.IconName = collectPixMap(props, "IconPixmap")
+	} else if item.iconThemePath != "" {
+		icons.CopyIcons(item.IconName, item.iconThemePath)
+	}
+	if item.AttentionIconName == "" {
+		item.AttentionIconName = collectPixMap(props, "AttentionIconPixmap")
+	} else if item.iconThemePath != "" {
+		icons.CopyIcons(item.AttentionIconName, item.iconThemePath)
+	}
+}
+
+func fetchMenu(item *Item) {
+	item.Menu, item.menuIds = []MenuItem{}, []string{}
+	obj := conn.Object(item.sender, item.menuPath)
+	if call := obj.Call(MENU_INTERFACE+".GetLayout", dbus.Flags(0), 0, -1, []string{}); call.Err != nil {
+		log.Println(call.Err)
+	} else if len(call.Body) < 2 {
+		log.Println("Retrieved", len(call.Body), "arguments, expected 2")
+	} else if _, ok := call.Body[0].(uint32); !ok {
+		log.Println("Expected uint32 as first return argument, got:", reflect.TypeOf(call.Body[0]))
+	} else if interfaces, ok := call.Body[1].([]interface{}); !ok {
+		log.Println("Expected []interface{} as second return argument, got:", reflect.TypeOf(call.Body[1]))
+	} else if menu, menuIds, err := parseMenu(interfaces); err != nil {
+		log.Println("Error retrieving menu", err)
+	} else if len(menu.SubMenus) > 0 {
+		item.Menu, item.menuIds = menu.SubMenus, utils.Remove(menuIds, menu.Id)
+	} else {
+		item.Menu, item.menuIds = []MenuItem{menu}, menuIds
+	}
+}
+
+
+func getStringOr(m map[string]dbus.Variant, key string, fallback string) string {
+	if variant, ok := m[key]; ok {
+		if res, ok := variant.Value().(string); !ok {
+			log.Println("Looking for string at", key, "got:", reflect.TypeOf(variant.Value()))
+		} else {
+			return res
+		}
+	}
+
+	return fallback
+}
+
+func getBoolOr(m map[string]dbus.Variant, key string, fallback bool) bool {
+	if variant, ok := m[key]; ok {
+		if res, ok := variant.Value().(bool); !ok {
+			log.Println("Looking for boolean at", key, "got:", reflect.TypeOf(variant.Value()))
+		} else {
+			return res
+		}
+	}
+
+	return fallback
+}
+
+func getInt32Or(m map[string]dbus.Variant, key string, fallback int32) int32 {
+	if variant, ok := m[key]; ok {
+		if res, ok := variant.Value().(int32); !ok {
+			log.Println("Looking for int at", key, "got:", reflect.TypeOf(variant.Value()))
+		} else {
+			return res
+		}
+	}
+	return fallback
+}
+
+func getDbusPath(m map[string]dbus.Variant, key string) dbus.ObjectPath {
+	if variant, ok := m[key]; ok {
+		if res, ok := variant.Value().(dbus.ObjectPath); !ok {
+			log.Println("Looking for ObjectPath at", key, "got:", reflect.TypeOf(variant.Value()))
+		} else {
+			return res
+		}
+	}
+	return ""
+}
+
+func parseMenu(value []interface{}) (MenuItem, []string, error) {
+	var menuItem = MenuItem{}
+	var id int32
+	var ok bool
+	var m map[string]dbus.Variant
+	var s []dbus.Variant
+
+	if len(value) < 3 {
+		return MenuItem{}, []string{}, errors.New("Wrong length")
+	} else if id, ok = value[0].(int32); !ok {
+		return MenuItem{}, []string{}, errors.New("Expected int32, got: " + reflect.TypeOf(value[0]).String())
+	} else if m, ok = value[1].(map[string]dbus.Variant); !ok {
+		return MenuItem{}, []string{}, errors.New("Excpected dbus.Variant, got: " + reflect.TypeOf(value[1]).String())
+	} else if s, ok = value[2].([]dbus.Variant); !ok {
+		return MenuItem{}, []string{}, errors.New("expected []dbus.Variant, got: " + reflect.TypeOf(value[2]).String())
+	}
+
+	menuItem.Id = fmt.Sprintf("%d", id)
+
+	if menuItem.Type = getStringOr(m, "type", "standard");
+		!utils.Among(menuItem.Type, "standard", "separator") {
+		return MenuItem{}, []string{}, errors.New("Illegal menuitem type: " + menuItem.Type)
+	}
+	menuItem.Label = getStringOr(m, "label", "")
+	menuItem.Enabled = getBoolOr(m, "enabled", true)
+	menuItem.Visible = getBoolOr(m, "visible", true)
+	if menuItem.IconName = getStringOr(m, "icon-name", ""); menuItem.IconName == "" {
+		// FIXME: Look for pixmap
+	}
+	if menuItem.ToggleType = getStringOr(m, "toggle-type", ""); !utils.Among(menuItem.ToggleType, "checkmark", "radio", "") {
+		return MenuItem{}, []string{}, errors.New("Illegal toggle-type: " + menuItem.ToggleType)
+	}
+
+	menuItem.ToggleState = getInt32Or(m, "toggle-state", -1)
+	var menuIds = []string{menuItem.Id}
+	if childrenDisplay := getStringOr(m, "children-display", ""); childrenDisplay == "submenu" {
+		for _, variant := range s {
+			if interfaces, ok := variant.Value().([]interface{}); !ok {
+				return MenuItem{}, []string{}, errors.New("Submenu item not of type []interface")
+			} else {
+				if submenuItem, subIds, err := parseMenu(interfaces); err != nil {
+					return MenuItem{}, []string{}, err
+				} else {
+					menuIds = append(menuIds, subIds...)
+					menuItem.SubMenus = append(menuItem.SubMenus, submenuItem)
+				}
+			}
+		}
+	} else if childrenDisplay != "" {
+		log.Println("warning: ignoring unknown children-display type:", childrenDisplay)
+	}
+
+	return menuItem, menuIds, nil
+}
+
+
+func (item *Item) restPath() string {
+	return "/items/" + strings.Replace(item.sender[1:]+string(item.itemPath), "/", "-", -1)
+}
+
+func collectPixMap(m map[string]dbus.Variant, key string) string {
+	if variant, ok := m[key]; ok {
+		if arrs, ok := variant.Value().([][]interface{}); !ok {
+			log.Println("Looking for [][]interface{} at"+key+", got:", reflect.TypeOf(variant.Value()))
+		} else {
+			res := make(icons.Icon, 0)
+			for _, arr := range (arrs) {
+				for len(arr) > 2 {
+					width := arr[0].(int32)
+					height := arr[1].(int32)
+					pixels := arr[2].([]byte)
+					res = append(res, icons.Img{Width: width, Height: height, Pixels: pixels})
+					arr = arr[3:]
+				}
+			}
+			return icons.SaveAsPngToSessionIconDir(res)
+		}
+	}
+	return ""
 }
 

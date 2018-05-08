@@ -7,31 +7,20 @@
 package main
 
 import (
-	"net/http"
-	"github.com/surlykke/RefudeServices/lib/resource"
+	"time"
+	"github.com/surlykke/RefudeServices/lib/mediatype"
 )
 
-const NotificationMediaType resource.MediaType = "application/vnd.org.refude.desktopnotification+json"
+const NotificationMediaType mediatype.MediaType = "application/vnd.org.refude.desktopnotification+json"
 
 type Notification struct {
-	resource.ByteResource
 	Id            uint32
 	Sender        string
 	Subject       string
 	Body          string
 	Actions       map[string]string
 	RelevanceHint int
-	eTag          string
+	Expires       *time.Time `json:",omitempty"`
 	Self          string
-}
-
-func (n *Notification) POST(w http.ResponseWriter, r *http.Request) {
-	action := resource.GetSingleQueryParameter(r, "action", "default")
-	conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".ActionInvoked", n.Id, action)
-	w.WriteHeader(http.StatusAccepted)
-}
-
-func (n *Notification) DELETE(w http.ResponseWriter, r *http.Request) {
-	close(r.URL.Path, "", Dismissed)
 }
 

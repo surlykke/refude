@@ -1,78 +1,72 @@
 package service
 
 import (
-	"github.com/surlykke/RefudeServices/lib/resource"
 	"net/http"
 	"fmt"
+	"sync"
+	"github.com/surlykke/RefudeServices/lib/mediatype"
+	"github.com/surlykke/RefudeServices/lib/requestutils"
+	"github.com/surlykke/RefudeServices/lib/query"
 )
 
+const LinksMediaType mediatype.MediaType = "application/vnd.org.refude.Links+json"
 
-const LinksMediaType resource.MediaType = "application/vnd.org.refude.links+json"
-
-type linkEntry struct {
-	path      string
-	mediaType resource.MediaType
+type Links struct {
+	entries   map[string]mediatype.MediaType
+	linksLock sync.Mutex
 }
 
-type links struct {
-	resource.ByteResource
-	Entries []linkEntry
+func MakeLinks() *Links {
+	return &Links{entries: make(map[string]mediatype.MediaType)}
 }
 
-func makeLinks(entries []linkEntry) *links {
-	return &links{ByteResource: resource.MakeByteResource(LinksMediaType), Entries: entries}
+func (l *Links) Mt() mediatype.MediaType {
+	return LinksMediaType
 }
 
-func (l *links) addEntry(path string, mediaType resource.MediaType) *links {
-	for _, entry := range l.Entries {
-		if path == entry.path {
-			return l
+func (l *Links) Match(m query.Matcher) bool {
+	return false
+}
+
+func (l *Links) addLinkEntry(path standardizedPath, mediaType mediatype.MediaType) {
+	l.linksLock.Lock()
+	defer l.linksLock.Unlock()
+	l.entries[string(path[1:])] = mediaType
+}
+
+func (l *Links) removeLinkEntry(path standardizedPath) {
+	l.linksLock.Lock()
+	defer l.linksLock.Unlock()
+	delete(l.entries, string(path)[1:])
+}
+
+// ----------------------------------------------------------------------------
+
+func (l *Links) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("Into Links#Serve")
+	if r.Method == "GET" {
+		if flattenedParameterMap, ok := requestutils.GetSingleParams(w, r, "type"); ok {
+			var mediaType= mediatype.MediaType(flattenedParameterMap["type"])
+			w.Header().Set("Content-Type", string(LinksMediaType))
+			w.Write(l.getByteRepresentation(mediaType))
 		}
-	}
-
-	var newEntries = make([]linkEntry, len(l.Entries) + 1, len(l.Entries) + 1)
-	copy(newEntries, l.Entries)
-	newEntries[len(newEntries) - 1] = linkEntry{path, mediaType}
-	return makeLinks(newEntries)
-}
-
-func (l *links) removeEntry(path string) *links {
-	for i := 0; i < len(l.Entries); i++ {
-		if l.Entries[i].path == path {
-			var newEntries= make([]linkEntry, len(l.Entries)-1, len(l.Entries)-1)
-			copy(newEntries, l.Entries[0:i])
-			copy(newEntries[i:], l.Entries[i+1:])
-			return makeLinks(newEntries)
-		}
-	}
-	return l
-}
-
-func (l *links) Update() resource.Resource {
-	var m = make(map[string]resource.MediaType)
-	for _, entry := range l.Entries {
-		m[entry.path] = entry.mediaType
-	}
-	var copy = makeLinks(l.Entries)
-	copy.SetBytes(resource.ToJSon(m))
-	return copy
-}
-
-func (l *links) GET(w http.ResponseWriter, r *http.Request) {
-	if len(r.URL.Query()) == 0 {
-		l.ByteResource.GET(w, r)
-	} else if flatParams, err := resource.GetSingleParams(r, "type"); err != nil {
-		fmt.Println("Error links.GET: ", err)
-		w.WriteHeader(http.StatusUnprocessableEntity)
 	} else {
-		var mediaType = resource.MediaType(flatParams["type"])
-		var filteredEntries = make(map[string]resource.MediaType, len(l.Entries))
-		for _, entry := range l.Entries {
-			if mediaType == "" || mediaType == entry.mediaType {
-				filteredEntries[entry.path] = entry.mediaType
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	}
+}
+
+func (l *Links) getByteRepresentation(mediaType mediatype.MediaType) []byte {
+	l.linksLock.Lock()
+	defer l.linksLock.Unlock()
+	if mediaType == "" {
+		return mediatype.ToJSon(l.entries)
+	} else {
+		var matching = make(map[string]mediatype.MediaType, len(l.entries))
+		for path, mt := range l.entries {
+			if mediatype.MediaTypeMatch(mediaType, mt) {
+				matching[path] = mt
 			}
 		}
-		w.Write(resource.ToJSon(filteredEntries))
+		return mediatype.ToJSon(matching)
 	}
 }
-

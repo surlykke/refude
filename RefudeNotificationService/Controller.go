@@ -11,11 +11,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/godbus/dbus/introspect"
-	"github.com/surlykke/RefudeServices/lib/service"
 	"time"
 	"strings"
-	"strconv"
-	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
 const NOTIFICATIONS_SERVICE = "org.freedesktop.Notifications"
@@ -92,8 +89,6 @@ const INTROSPECT_XML = `<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object 
     </interface>
 </node>`
 
-var conn *dbus.Conn
-var ids = make(chan uint32, 0)
 
 const (
 	Expired   uint32 = 1
@@ -101,15 +96,20 @@ const (
 	Closed           = 3
 )
 
+type removal struct {
+	id     uint32
+	reason uint32
+}
+
+
+var conn *dbus.Conn
+var ids = make(chan uint32, 0)
+
+
 func generate(out chan uint32) {
 	for id := uint32(1); ; id++ {
 		out <- id
 	}
-}
-
-func closeNotificationAfter(path string, eTag string, milliseconds int32) {
-	time.Sleep(time.Duration(milliseconds) * time.Millisecond)
-	service.UnMapIfMatch(path, eTag)
 }
 
 func GetCapabilities() ([]string, *dbus.Error) {
@@ -123,73 +123,59 @@ func GetCapabilities() ([]string, *dbus.Error) {
 		nil
 }
 
-func Notify(app_name string,
-	replaces_id uint32,
-	app_icon string,
-	summary string,
-	body string,
-	actions []string,
-	hints map[string]dbus.Variant,
-	expire_timeout int32) (uint32, *dbus.Error) {
-	fmt.Println("Notify:", app_name, replaces_id, app_icon, summary, body, actions, hints, expire_timeout)
-	id := replaces_id
-	if id == 0 {
-		id = <-ids
-	}
+func makeNotifyFunction(notifications chan *Notification) interface{} {
+	return func(app_name string,
+		replaces_id uint32,
+		app_icon string,
+		summary string,
+		body string,
+		actions []string,
+		hints map[string]dbus.Variant,
+		expire_timeout int32) (uint32, *dbus.Error) {
 
-	path := fmt.Sprintf("/notifications/%d", id)
+		fmt.Println("Notify:", app_name, replaces_id, app_icon, summary, body, actions, hints, expire_timeout)
 
-	notification := Notification{
-		ByteResource: resource.MakeByteResource(NotificationMediaType),
-		Id:      id,
-		Sender:  app_name,
-		Subject: sanitize(summary, []string{}, []string{}),
-		Body:    sanitize(body, allowedTags, allowedEscapes),
-		Actions: map[string]string{},
-		eTag:    fmt.Sprintf("%d", id),
-		Self:    "notifications-service:" + path,
-	}
+		var id uint32
+		if replaces_id != 0 {
+			id = replaces_id
+		} else {
+			id = <-ids
+		}
 
-	for i := 0; i+1 < len(actions); i = i + 2 {
-		notification.Actions[actions[i]] = actions[i+1]
-	}
 
-	notification.SetBytes(resource.ToJSon(notification))
-	service.Map(path, &notification)
+		notification := &Notification{
+			Id:      id,
+			Sender:  app_name,
+			Subject: sanitize(summary, []string{}, []string{}),
+			Body:    sanitize(body, allowedTags, allowedEscapes),
+			Actions: map[string]string{},
+		}
 
-	if expire_timeout == 0 {
-		expire_timeout = 2000
-	}
+		if expire_timeout == 0  {
+			expire_timeout = 2000
+		}
 
-	if expire_timeout > 0 {
-		go closeNotificationAfter(path, notification.eTag, expire_timeout)
-	}
+		if expire_timeout > 0 {
+			var expires = time.Now().Add(time.Duration(1000000*int64(expire_timeout)))
+			notification.Expires = &expires
+		}
 
-	return id, nil
-}
+		for i := 0; i+1 < len(actions); i = i + 2 {
+			notification.Actions[actions[i]] = actions[i+1]
+		}
 
-func CloseNotification(id uint32) *dbus.Error {
-	path := fmt.Sprintf("/notifications/%d", id)
-	service.Unmap(path)
-	return nil
-}
-
-func close(path string, eTag string, reason uint32) {
-	if reason == Expired {
-		service.UnMapIfMatch(path, eTag)
-	} else {
-		service.Unmap(path)
+		notifications <- notification
+		return id, nil
 	}
 }
 
-func idFromPath(path string) uint32 {
-	idS := path[len("/notifications/"):]
-	if id, err := strconv.ParseUint(idS, 10, 32); err != nil {
-		panic("Invalid id: " + idS)
-	} else {
-		return uint32(id)
+func makeCloseFuntion(removals chan removal) interface{} {
+	return func(id uint32) *dbus.Error {
+		removals <- removal{id, Closed}
+		return nil
 	}
 }
+
 
 func notificationClosed(id uint32, reason uint32) {
 	conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", id, reason)
@@ -234,7 +220,7 @@ func helper(src *string, dest *string, allowedPrefixes []string, endMarker strin
 	*src = (*src)[endMarkerPos+1:]
 }
 
-func Setup() {
+func DoDBus(notifications chan *Notification, removals chan removal) {
 	var err error
 
 	// Get on the bus
@@ -253,8 +239,8 @@ func Setup() {
 	conn.ExportMethodTable(
 		map[string]interface{}{
 			"GetCapabilities":      GetCapabilities,
-			"Notify":               Notify,
-			"CloseNotification":    CloseNotification,
+			"Notify":               makeNotifyFunction(notifications),
+			"CloseNotification":    makeCloseFuntion(removals),
 			"GetServerInformation": GetServerInformation,
 		},
 		NOTIFICATIONS_PATH,
@@ -262,4 +248,3 @@ func Setup() {
 	)
 	conn.Export(introspect.Introspectable(INTROSPECT_XML), NOTIFICATIONS_PATH, INTROSPECT_INTERFACE)
 }
-

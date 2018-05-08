@@ -10,25 +10,21 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io/ioutil"
-	"net/http"
 	"regexp"
 	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/surlykke/RefudeServices/lib/ini"
-	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/utils"
 	"golang.org/x/text/language"
-	"github.com/surlykke/RefudeServices/lib/xdg"
-	"os"
+	"github.com/surlykke/RefudeServices/lib/mediatype"
 )
 
 const freedesktopOrgXml = "/usr/share/mime/packages/freedesktop.org.xml"
 
-const MimeTypeMediaType resource.MediaType = "application/vnd.org.refude.mimetype+json"
+const MimetypeMediaType mediatype.MediaType = "application/vnd.org.refude.mimetype+json"
 
 type Mimetype struct {
-	resource.ByteResource
 	Id                     string
 	Comment                string
 	Acronym                string `json:",omitempty"`
@@ -43,45 +39,6 @@ type Mimetype struct {
 	Self                   string
 }
 
-func (mt *Mimetype) POST(w http.ResponseWriter, r *http.Request) {
-	defaultAppId := r.URL.Query()["defaultApp"]
-	if len(defaultAppId) != 1 {
-		return
-	}
-
-	mimetypeId := mt.Id
-	appId := resource.GetSingleQueryParameter(r, "defaultApp", "")
-	if appId == "" {
-		w.WriteHeader(http.StatusUnprocessableEntity)
-	} else {
-		fmt.Println("Setting default application: ", mimetypeId, " -> ", appId)
-		path := xdg.ConfigHome + "/mimeapps.list"
-
-		if iniFile, err := ini.ReadIniFile(path); err != nil && !os.IsNotExist(err) {
-			w.WriteHeader(http.StatusInternalServerError)
-		} else {
-			var defaultGroup = iniFile.FindGroup("Default Applications")
-			if defaultGroup == nil {
-				defaultGroup = &ini.Group{"Default Applications", make(map[string]string)}
-				iniFile = append(iniFile, defaultGroup)
-			}
-			var defaultAppsS = defaultGroup.Entries[mimetypeId]
-			fmt.Println("defaultAppsS: ", defaultAppsS)
-			var defaultApps = utils.Split(defaultAppsS, ";")
-			fmt.Println("defaultApps: ", defaultApps)
-			defaultApps = utils.PushFront(appId, utils.Remove(defaultApps, appId))
-			defaultAppsS = strings.Join(defaultApps, ";")
-			fmt.Println(" - corrected to: ", defaultAppsS)
-			defaultGroup.Entries[mimetypeId] = defaultAppsS
-			if err = ini.WriteIniFile(path, iniFile); err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-			} else {
-				w.WriteHeader(http.StatusNoContent)
-			}
-		}
-	}
-}
-
 var mimetypePattern = regexp.MustCompile(`^([^/]+)/([^/]+)$`)
 
 func NewMimetype(id string) (*Mimetype, error) {
@@ -90,7 +47,6 @@ func NewMimetype(id string) (*Mimetype, error) {
 		return nil, errors.New("Incomprehensible mimetype: " + id)
 	} else {
 		mt := &Mimetype{
-			ByteResource: resource.MakeByteResource(MimeTypeMediaType),
 			Id:           id,
 			Aliases:      []string{},
 			Globs:        []string{},

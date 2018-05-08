@@ -56,52 +56,50 @@ func separate(sp standardizedPath) (standardizedPath, string) {
 	}
 }
 
-
 var mutex sync.Mutex
 var rc = make(map[standardizedPath]resource.Resource)
 
+var links = MakeLinks()
+
+var reservedPaths = map[standardizedPath]bool{
+	"/links":  true,
+	"/search": true,
+}
+
 func init() {
-	rc["/links"] = makeLinks(nil)
-	put("/search", &Search{})
+	rc["/links"] = links
 }
 
 // TODO: Note about threadsafety
 
 func put(sp standardizedPath, res resource.Resource) {
-	if sp == "/links" {
-		panic("Attempt to map on \"/links\"")
+	if reservedPaths[sp] {
+		panic("Attempt to map to reserved path: " + sp)
 	}
-
 	rc[sp] = res
-	var l = rc["/links"].(*links)
-	rc["/links"] = l.addEntry(string(sp[1:]), res.MediaType())
+	links.addLinkEntry(sp, res.Mt())
 }
 
-func unput (sp standardizedPath) {
-	if sp == "/links" {
-		panic("Attempt to unmap \"/links\"")
+func unput(sp standardizedPath) (resource.Resource, bool){
+	if reservedPaths[sp] {
+		panic("Attempt to unmap reserved path: " + sp)
 	}
 
-	delete(rc, sp)
-	var l = rc["/links"].(*links)
-	rc["/links"] = l.removeEntry(string(sp[1:]))
+	if res, ok := rc[sp]; ok {
+		delete(rc, sp)
+		links.removeLinkEntry(sp)
+		return res, true
+	} else {
+		return nil, false
+	}
 }
 
 func findForServing(path standardizedPath) (resource.Resource, bool) {
 	mutex.Lock()
 	defer mutex.Unlock()
-	var res resource.Resource
-	var ok bool
-	if res, ok = rc[path]; ok {
-		if res2 := res.Update(); res2 != nil {
-			rc[path] = res2
-			res = res2
-		}
-		return res, true
-	}
-	return nil, false
+	var res, ok = rc[path];
+	return res, ok
 }
-
 
 // ------------------------------------ Public ----------------------------------------------------
 
@@ -133,24 +131,11 @@ func Map(path string, res resource.Resource) {
 	put(sp, res)
 }
 
-func Unmap(path string) {
+func Unmap(path string) (resource.Resource, bool ){
 	sp := standardize(path)
 	mutex.Lock()
 	defer mutex.Unlock()
-	unput(sp)
-}
-
-func UnMapIfMatch(path string, eTag string) bool {
-	sp := standardize(path)
-	mutex.Lock()
-	defer mutex.Unlock()
-	if res, ok := rc[sp]; ok {
-		if res.ETag() == eTag {
-			unput(sp)
-			return true
-		}
-	}
-	return false;
+	return unput(sp)
 }
 
 func Has(path string) bool {
@@ -166,15 +151,18 @@ func Has(path string) bool {
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	sp := standardize(r.URL.Path)
-	if res, ok := findForServing(sp); ok {
-		switch r.Method {
-		case "GET": res.GET(w, r)
-		case "POST": res.POST(w, r)
-		case "PATCH": res.PATCH(w, r)
-		case "DELETE": res.DELETE(w, r)
-		default: w.WriteHeader(http.StatusMethodNotAllowed)
+	fmt.Println("Request:", r.URL)
+	if sp == "/search" {
+		if r.Method == "GET" {
+			Search(w, r)
+		} else {
+			w.WriteHeader(http.StatusMethodNotAllowed)
 		}
-	} else {
+	} else if res, ok := findForServing(sp); !ok {
 		w.WriteHeader(http.StatusNotFound)
+	} else {
+		res.ServeHTTP(w, r)
 	}
 }
+
+

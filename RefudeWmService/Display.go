@@ -7,10 +7,10 @@
 package main
 
 import (
-	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib/mediatype"
 )
 
-const DisplayMediaType resource.MediaType = "application/vnd.org.refude.wmdisplay"
+const DisplayMediaType mediatype.MediaType = "application/vnd.org.refude.wmdisplay"
 
 type Rect struct {
 	X,Y int16
@@ -18,7 +18,6 @@ type Rect struct {
 }
 
 type Display struct {
-	resource.ByteResource
 	W,H uint16
 	Screens []Rect
 }

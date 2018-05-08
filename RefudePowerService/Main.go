@@ -11,7 +11,6 @@ import (
 )
 
 func main() {
-	pm := 	&PowerManager{}
-	go pm.Run()
+	go Run()
 	service.Serve("org.refude.power-service")
 }

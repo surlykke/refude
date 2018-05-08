@@ -9,12 +9,10 @@ import (
 	"github.com/surlykke/RefudeServices/lib/ini"
 	"github.com/surlykke/RefudeServices/lib/utils"
 	"github.com/surlykke/RefudeServices/lib/xdg"
+	"errors"
+	"golang.org/x/sys/unix"
+	"fmt"
 )
-
-type association struct {
-	mimetype    string
-	application string
-}
 
 type collection struct {
 	mimetypes    map[string]*Mimetype           // Maps from mimetypeid to mimetype
@@ -22,7 +20,39 @@ type collection struct {
 	defaultApps  map[string][]string            // Maps from mimetypeid to list of app ids
 }
 
-func Collect() collection {
+func CollectAndWatch(collected chan collection) {
+	fd, err := unix.InotifyInit()
+	defer unix.Close(fd)
+
+	if err != nil {
+		panic(err)
+	}
+	for _, dataDir := range append(xdg.DataDirs, xdg.DataHome) {
+		appDir := dataDir + "/applications"
+		fmt.Println("Watching: " + appDir)
+		if _, err := unix.InotifyAddWatch(fd, appDir, unix.IN_CREATE|unix.IN_MODIFY|unix.IN_DELETE); err != nil {
+			panic(err)
+		}
+	}
+
+	if _, err := unix.InotifyAddWatch(fd, xdg.ConfigHome+"/mimeapps.list", unix.IN_CLOSE_WRITE); err != nil {
+		panic(err)
+	}
+
+	Collect(collected)
+	dummy := make([]byte, 100)
+	for {
+		if _, err := unix.Read(fd, dummy); err != nil {
+			panic(err)
+		}
+		fmt.Println("Something happened...")
+		Collect(collected)
+	}
+}
+
+
+
+func Collect(collected chan collection) {
 	var c collection
 	c.mimetypes = CollectMimeTypes()
 	c.applications = make(map[string]*DesktopApplication)
@@ -57,8 +87,8 @@ func Collect() collection {
 			}
 		}
 	}
-
-	return c
+	fmt.Println("Sending", len(c.mimetypes), len(c.applications))
+	collected <- c
 }
 
 func (c *collection) removeApp(app *DesktopApplication) {
@@ -99,8 +129,6 @@ func (c *collection) collectApplications(appdir string) {
 	})
 
 }
-
-type mimeAppsListReadState int
 
 func (c *collection) getOrAdd(mimetypeId string) *Mimetype {
 	if mimetype, ok := c.mimetypes[mimetypeId]; ok {
@@ -158,3 +186,85 @@ func (c *collection) readMimeappsList(path string) {
 		}
 	}
 }
+
+
+func readDesktopFile(path string) (*DesktopApplication, error) {
+	if iniFile, err := ini.ReadIniFile(path); err != nil {
+		return nil, err
+	} else if len(iniFile) == 0 || iniFile[0].Name != "Desktop Entry" {
+		return nil, errors.New("File must start with '[Desktop Entry]'")
+	} else {
+		var da = DesktopApplication{}
+		da.Actions = make(map[string]*Action)
+		var actionNames = []string{}
+		group := iniFile[0]
+
+		if da.Type = group.Entries["Type"]; da.Type == "" {
+			return nil, errors.New("Desktop file invalid, no 'Type' given")
+		}
+		da.Version = group.Entries["Version"]
+		if da.Name = group.Entries["Name"]; da.Name == "" {
+			return nil, errors.New("Desktop file invalid, no 'Name' given")
+		}
+
+		da.GenericName = group.Entries["GenericName"]
+		da.NoDisplay = group.Entries["NoDisplay"] == "true"
+		da.Comment = group.Entries["Comment"]
+		icon := group.Entries["Icon"]
+		if strings.HasPrefix(icon, "/") {
+			da.IconPath = icon
+			da.IconUrl = "../icons" + icon
+		} else {
+			da.IconName = icon
+		}
+		da.Hidden = group.Entries["Hidden"] == "true"
+		da.OnlyShowIn = utils.Split(group.Entries["OnlyShowIn"], ";")
+		da.NotShowIn = utils.Split(group.Entries["NotShowIn"], ";")
+		da.DbusActivatable = group.Entries["DBusActivatable"] == "true"
+		da.TryExec = group.Entries["TryExec"]
+		da.Exec = group.Entries["Exec"]
+		da.Path = group.Entries["Path"]
+		da.Terminal = group.Entries["Terminal"] == "true"
+		actionNames = utils.Split(group.Entries["Actions"], ";")
+		da.Mimetypes = utils.Split(group.Entries["MimeType"], ";")
+		da.Categories = utils.Split(group.Entries["Categories"], ";")
+		da.Implements = utils.Split(group.Entries["Implements"], ";")
+		// FIXMEda.Keywords[tag] = utils.Split(group[""], ";")
+		da.StartupNotify = group.Entries["StartupNotify"] == "true"
+		da.StartupWmClass = group.Entries["StartupWMClass"]
+		da.Url = group.Entries["URL"]
+
+		for _, actionGroup := range iniFile[1:] {
+			if !strings.HasPrefix(actionGroup.Name, "Desktop Action ") {
+				log.Print(path, ", ", "Unknown group type: ", actionGroup.Name, " - ignoring\n")
+			} else if currentAction := actionGroup.Name[15:]; !utils.Contains(actionNames, currentAction) {
+				log.Print(path, ", undeclared action: ", currentAction, " - ignoring\n")
+			} else {
+				var action Action
+				if action.Name = actionGroup.Entries["Name"]; action.Name == "" {
+					return nil, errors.New("Desktop file invalid, action " + actionGroup.Name + " has no default 'Name'")
+				}
+				icon = actionGroup.Entries["Icon"]
+				if strings.HasPrefix(icon, "/") {
+					action.IconPath = icon
+					action.IconUrl = "../icons" + icon
+				} else {
+					action.IconName = icon
+				}
+				action.Exec = actionGroup.Entries["Exec"]
+				da.Actions[currentAction] = &action
+			}
+		}
+
+		for _, action := range da.Actions {
+			if action.IconName == "" && action.IconPath == "" {
+				action.IconName = da.IconName
+				action.IconPath = da.IconPath
+				action.IconUrl = da.IconUrl
+			}
+		}
+
+		return &da, nil
+	}
+}
+

@@ -68,6 +68,7 @@ func (em ErrorMsg) Error() string {
 		   "position: " + strconv.Itoa(em.position)
 }
 
+
 func Parse(query string) (m Matcher, err error) {
 	err = nil
 	var l = MakeLexer(query)
@@ -313,11 +314,9 @@ func extractFieldValues(pathSpec []pathElement, res interface{}) []interface{} {
 
 func fieldCollector(pathSpec []pathElement, node interface{}, leafs *[]interface{}) {
 	v := reflect.ValueOf(node)
-
 	for v.Kind() == reflect.Ptr {
 		v = reflect.Indirect(v)
 	}
-
 	if len(pathSpec) == 0 {
 		(*leafs) = append(*leafs, v.Interface())
 	} else {

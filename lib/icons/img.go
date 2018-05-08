@@ -19,8 +19,9 @@ import (
 	"github.com/surlykke/RefudeServices/lib/xdg"
 	"os"
 	"log"
-	"github.com/surlykke/RefudeServices/lib/resource"
 	"strconv"
+	"github.com/surlykke/RefudeServices/lib/mediatype"
+	"github.com/surlykke/RefudeServices/lib/query"
 )
 
 type PNGImg struct {
@@ -29,11 +30,11 @@ type PNGImg struct {
 }
 
 type PNGIcon struct {
-	resource.DefaultResource
 	images   []PNGImg
 }
 
-func (icon* PNGIcon) GET(w http.ResponseWriter, r *http.Request) {
+func (icon* PNGIcon) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
 		var data []byte = nil
 
 		size := 32
@@ -52,12 +53,20 @@ func (icon* PNGIcon) GET(w http.ResponseWriter, r *http.Request) {
 
 		w.Header().Set("Content-Type", "image/png")
 		w.Write(data)
+	} else {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	}
 }
 
 
-func (icon* PNGIcon) MediaType() resource.MediaType{
+func (icon* PNGIcon) Mt() mediatype.MediaType {
 	return "image/png"
 }
+
+func (icon *PNGIcon) Match(m query.Matcher) bool {
+	return false
+}
+
 
 type Img struct {
 	Width  int32

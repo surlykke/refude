@@ -8,10 +8,9 @@ package main
 
 import (
 	"github.com/surlykke/RefudeServices/lib/service"
-	"net/http"
 )
 
 func main() {
 	go Run()
-	service.ServeWith("org.refude.desktop-service", http.HandlerFunc(RequestInterceptor))
+	service.Serve("org.refude.desktop-service")
 }

@@ -8,134 +8,88 @@ package resource
 
 import (
 	"net/http"
-	"encoding/json"
+	"fmt"
 	"crypto/sha1"
-	"errors"
+	"github.com/surlykke/RefudeServices/lib/mediatype"
+	"github.com/surlykke/RefudeServices/lib/query"
 )
 
-type MediaType string
+
+type GetHandler interface {
+	GET(w http.ResponseWriter, r *http.Request)
+}
+
+type PostHandler interface {
+	POST(w http.ResponseWriter, r *http.Request)
+}
+
+type PatchHandler interface {
+	PATCH(w http.ResponseWriter, r *http.Request)
+}
+
+type DeleteHandler interface {
+	DELETE(w http.ResponseWriter, r *http.Request)
+}
 
 type Resource interface {
-	GET(w http.ResponseWriter, r *http.Request)
-	PATCH(w http.ResponseWriter, r *http.Request)
-	POST(w http.ResponseWriter, r *http.Request)
-	DELETE(w http.ResponseWriter, r *http.Request)
-	MediaType() MediaType
-	ETag() string
-	Update() Resource
+	ServeHTTP(w http.ResponseWriter, r *http.Request)
+	Mt()   mediatype.MediaType
+	Match(m query.Matcher) bool
 }
 
-type DefaultResource struct{}
-
-func (d *DefaultResource) GET(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusMethodNotAllowed)
-}
-
-func (d *DefaultResource) PATCH(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusMethodNotAllowed)
-}
-
-func (d *DefaultResource) POST(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusMethodNotAllowed)
-}
-
-func (d *DefaultResource) DELETE(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusMethodNotAllowed)
-}
-
-func (d *DefaultResource) MediaType() MediaType {
-	panic("Method MediaType() not defined")
-}
-
-func (d *DefaultResource) ETag() string {
-	return ""
-}
-
-func (d *DefaultResource) Update() Resource {
-	return nil
-}
-
-type ByteResource struct {
-	DefaultResource
-	mediaType MediaType
+type JsonResource struct {
+	res       interface{}
+	data 	  []byte
+	mediaType mediatype.MediaType
 	etag      string
-	bytes     []byte
 }
 
-func MakeByteResource(mediaType MediaType) ByteResource {
-	return ByteResource{mediaType: mediaType}
-}
-
-func (j *ByteResource) SetBytes(bytes []byte) {
-	j.bytes = bytes
-	hash := sha1.New()
-	hash.Write(bytes)
-	j.etag = string(hash.Sum(nil))
-}
-
-func (j *ByteResource) GetBytes() []byte {
-	return j.bytes
-}
-
-
-func (j *ByteResource) GET(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", string(j.mediaType))
-	w.Write(j.bytes)
-}
-
-func (j *ByteResource) MediaType() MediaType {
-	if j.mediaType == "" {
-		panic("No mediatype")
-	}
-
-	return j.mediaType
-}
-
-
-func ToJSon(res interface{}) []byte {
-	if bytes, err := json.Marshal(res); err != nil {
-		panic("Could not json-marshal")
-	} else {
-		return bytes
-	}
-}
-
-func GetSingleQueryParameter(r *http.Request, parameterName string, fallbackValue string) string {
-	if len(r.URL.Query()[parameterName]) == 0 {
-		return fallbackValue
-	} else {
-		return r.URL.Query()[parameterName][0]
-	}
-}
-/**
- * Errors if r.URL.Query contains parameters not in params
- * Errors if any of paramNames has more than one value
- * Returns value from query if there, "" if not
- */
-func GetSingleParams(r *http.Request, paramNames...string) (map[string]string, error) {
-	for queryParam, _ := range r.URL.Query() {
-		var ok = false
-		for _,paramName := range paramNames {
-			if queryParam == paramName {
-				ok = true
-				break
-			}
+func (jr *JsonResource) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case "GET":
+		w.Header().Set("Content-Type", string(jr.mediaType))
+		w.Header().Set("ETag", jr.etag)
+		w.Write(jr.data)
+	case "POST":
+		fmt.Println("JsonResource doing POST")
+		if postHandler, ok := jr.res.(PostHandler); ok {
+			fmt.Println("Found handler")
+			postHandler.POST(w, r)
+			return
 		}
-
-		if !ok {
-			return nil, errors.New("Unexpected query parameter:" + queryParam)
+	case "PATCH":
+		if patchHandler, ok := jr.res.(PatchHandler); ok {
+			patchHandler.PATCH(w, r)
+			return
+		}
+	case "DELETE":
+		if deleteHandler, ok := jr.res.(DeleteHandler); ok {
+			deleteHandler.DELETE(w, r)
+			return
 		}
 	}
-	var result = make(map[string]string)
+	w.WriteHeader(http.StatusMethodNotAllowed)
+}
 
-	for _,paramName := range paramNames {
-		if len(r.URL.Query()[paramName]) > 1 {
-			return nil, errors.New("Multible values for " + paramName)
-		} else if len(r.URL.Query()[paramName]) == 1 {
-			result[paramName] = r.URL.Query()[paramName][0]
-		}
+func (jr *JsonResource) MarshalJSON() ([]byte, error) {
+	return jr.data, nil
+}
 
+func (jr *JsonResource) Mt() mediatype.MediaType {
+	return jr.mediaType
+}
+
+func (jr *JsonResource) Match(m query.Matcher) bool {
+	fmt.Println("Calling matcher on", jr.res)
+	var res = m(jr.res)
+	if res {
+		fmt.Println("--------> hit")
 	}
+	return res
+}
 
-	return result, nil
+func MakeJsonResource(res interface{}, mediaType mediatype.MediaType) *JsonResource {
+	var data = mediatype.ToJSon(res)
+	var etag = fmt.Sprintf("\"%x\"", sha1.Sum(data))
+	return &JsonResource{res, data, mediaType, etag}
 }

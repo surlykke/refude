@@ -11,6 +11,6 @@ import (
 )
 
 func main() {
-	Setup()
+	go Run()
 	service.Serve("org.refude.notifications-service")
 }
