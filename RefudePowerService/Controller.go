@@ -57,7 +57,6 @@ func Run() {
 
 	for signal := range signals {
 		if signal.Name == "org.freedesktop.DBus.Properties.PropertiesChanged" {
-			fmt.Println("Incoming: ", signal)
 			props, ok := signal.Body[1].(map[string]dbus.Variant)
 			if !ok {
 				return
@@ -101,11 +100,11 @@ func getProps(path dbus.ObjectPath, dbusInterface string) map[string]dbus.Varian
 }
 
 var possiblePowerActions = []*PowerAction{
-	{"PowerOff", "Shutdown", "Power off the machine", "system-shutdown"},
-	{"Reboot", "Reboot", "Reboot the machine", "system-reboot"},
-	{"Suspend", "Suspend", "Suspend the machine", "system-suspend"},
-	{"Hibernate", "Hibernate", "Put the machine into hibernation", "system-suspend-hibernate"},
-	{"HybridSleep", "HybridSleep", "Put the machine into hybrid sleep", "system-suspend-hibernate"},
+	{"PowerOff", "Shutdown", "Power off the machine", "system-shutdown", "power-service:/actions/PowerOff"},
+	{"Reboot", "Reboot", "Reboot the machine", "system-reboot", "power-service:/actions/Reboot"},
+	{"Suspend", "Suspend", "Suspend the machine", "system-suspend", "power-service:/actions/Suspend"},
+	{"Hibernate", "Hibernate", "Put the machine into hibernation", "system-suspend-hibernate", "power-service:/actions/Hibernate"},
+	{"HybridSleep", "HybridSleep", "Put the machine into hybrid sleep", "system-suspend-hibernate", "power-service:/actions/HybridSleep"},
 }
 
 func GetPowerActions() []*PowerAction {

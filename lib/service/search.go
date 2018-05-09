@@ -44,16 +44,16 @@ func collectByType(mediaType mediatype.MediaType) []resource.Resource {
 	return result[:found]
 }
 
-// Messes up it's argument, don't use it afterwards
 func filter(resources []resource.Resource, matcher query.Matcher) []resource.Resource {
+	var result 	= make([]resource.Resource, len(resources), len(resources))
 	var pos = 0
 	for _, res := range resources {
 		if res.Match(matcher) {
-			resources[pos] = res
+			result[pos] = res
 			pos = pos + 1
 		}
 	}
 
-	return resources[:pos]
+	return result[:pos]
 }
 

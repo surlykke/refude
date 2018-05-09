@@ -50,6 +50,7 @@ func (jr *JsonResource) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", string(jr.mediaType))
 		w.Header().Set("ETag", jr.etag)
 		w.Write(jr.data)
+		return
 	case "POST":
 		fmt.Println("JsonResource doing POST")
 		if postHandler, ok := jr.res.(PostHandler); ok {

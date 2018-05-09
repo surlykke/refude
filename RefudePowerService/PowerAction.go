@@ -20,6 +20,7 @@ type PowerAction struct {
 	Name          string
 	Comment       string
 	IconName      string
+	Self          string
 }
 
 func (pa *PowerAction) POST(w http.ResponseWriter, r *http.Request) {
