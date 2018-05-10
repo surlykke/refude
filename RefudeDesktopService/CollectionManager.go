@@ -17,6 +17,7 @@ import (
 	"encoding/json"
 	"github.com/surlykke/RefudeServices/lib/requestutils"
 	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib/action"
 )
 
 
@@ -39,6 +40,7 @@ func Run() {
 		case update := <-collected:
 			fmt.Println("recieving...")
 			service.RemoveAll("/applications")
+			service.RemoveAll("/actions")
 			for _, app := range update.applications {
 				if x, ok := lastLaunched[app.Id]; ok {
 					app.RelevanceHint = x
@@ -47,10 +49,21 @@ func Run() {
 				if app.IconUrl != "" {
 					service.Map(string("/icons"+app.IconPath), IconPath{path: app.IconPath})
 				}
-				for actionId, action := range app.Actions {
-					if actionId != "_default" && action.IconUrl != "" {
-						service.Map(string("/icons"+action.IconPath), IconPath{path: action.IconPath})
+
+				var defaultPath = "/actions/" + app.Id
+				var executer = MakeExecuter(app.Exec, app.Terminal)
+				var act = action.MakeAction(app.Name, app.Comment, app.IconName, defaultPath, executer)
+				service.Map(defaultPath, resource.MakeJsonResource(act, action.ActionMediaType))
+
+				for actionId, da := range app.Actions {
+					var path = "/actions/" + app.Id + "-" + actionId
+					var iconName = da.IconName
+					if iconName == "" {
+						iconName = app.IconName
 					}
+					var executer = MakeExecuter(da.Exec, app.Terminal)
+					var act = action.MakeAction(app.Name + ": " + da.Name, app.Comment, da.IconName, path, executer)
+					service.Map(path, resource.MakeJsonResource(act, action.ActionMediaType))
 				}
 
 			}
@@ -62,6 +75,13 @@ func Run() {
 			lastLaunched[le.id] = le.time
 			SaveLastLaunched(lastLaunched)
 		}
+	}
+}
+
+func MakeExecuter(exec string, runInTerminal bool) action.Executer {
+	var expandedExec = regexp.MustCompile("%[uUfF]").ReplaceAllString(exec, "")
+	return func() {
+		runCmd(runInTerminal, expandedExec)
 	}
 }
 
