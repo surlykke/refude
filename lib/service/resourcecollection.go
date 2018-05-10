@@ -25,7 +25,10 @@ func standardize(p string) standardizedPath {
 		panic(fmt.Sprintf("path must start with '/': '%s'", p))
 	}
 
-	var buffer, pos, justSawSlash = make([]byte, len(p), len(p)), 0, false
+	var buffer = make([]byte, len(p), len(p))
+	var pos = 0
+	var justSawSlash = false
+
 	for i := 0; i < len(p); i++ {
 		if !justSawSlash || p[i] != '/' {
 			buffer[pos] = p[i]
@@ -78,6 +81,7 @@ func put(sp standardizedPath, res resource.Resource) {
 	}
 	rc[sp] = res
 	links.addLinkEntry(sp, res.Mt())
+	clearSearchCache()
 }
 
 func unput(sp standardizedPath) (resource.Resource, bool){
@@ -88,6 +92,7 @@ func unput(sp standardizedPath) (resource.Resource, bool){
 	if res, ok := rc[sp]; ok {
 		delete(rc, sp)
 		links.removeLinkEntry(sp)
+		clearSearchCache()
 		return res, true
 	} else {
 		return nil, false

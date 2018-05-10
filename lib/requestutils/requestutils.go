@@ -3,9 +3,9 @@ package requestutils
 import (
 	"regexp"
 	"net/http"
-	"github.com/surlykke/RefudeServices/lib/query"
 	"fmt"
 	"github.com/surlykke/RefudeServices/lib/mediatype"
+	"github.com/pkg/errors"
 )
 
 var r = regexp.MustCompile(`^\s*(?:W/)?("[^"]*")\s*`)
@@ -36,14 +36,6 @@ func extractETags(s string) []string {
 	}
 }
 
-func GetMatcher(w http.ResponseWriter, q string) (query.Matcher, bool) {
-	if matcher, err := query.Parse(q); err != nil {
-		ReportUnprocessableEntity(w, "Error in query: %s", mediatype.ToJSon(err))
-		return nil, false
-	} else {
-		return matcher, true
-	}
-}
 
 func GetSingleQueryParameter(r *http.Request, parameterName string, fallbackValue string) string {
 	if len(r.URL.Query()[parameterName]) == 0 {
@@ -58,7 +50,7 @@ func GetSingleQueryParameter(r *http.Request, parameterName string, fallbackValu
  * Errors if any of paramNames has more than one value
  * Returns value from query if there, "" if not
  */
-func GetSingleParams(w http.ResponseWriter, r *http.Request, paramNames ...string) (map[string]string, bool) {
+func GetSingleParams(w http.ResponseWriter, r *http.Request, paramNames ...string) (map[string]string, error) {
 	for queryParam, _ := range r.URL.Query() {
 		var ok = false
 		for _, paramName := range paramNames {
@@ -69,28 +61,26 @@ func GetSingleParams(w http.ResponseWriter, r *http.Request, paramNames ...strin
 		}
 
 		if !ok {
-			ReportUnprocessableEntity(w, "Unexpected parameter: %s", queryParam)
-			return nil, false
+			return nil, errors.Errorf("Unexpected parameter: %s", queryParam)
 		}
 	}
 	var result = make(map[string]string)
 
 	for _, paramName := range paramNames {
 		if len(r.URL.Query()[paramName]) > 1 {
-			ReportUnprocessableEntity(w, "Multiple parameter value for %s", paramNames)
-			return nil, false
+			return nil, errors.Errorf("Multiple parameter value for %s", paramNames)
 		} else if len(r.URL.Query()[paramName]) == 1 {
 			result[paramName] = r.URL.Query()[paramName][0]
 		}
 
 	}
 
-	return result, true
+	return result, nil
 }
 
-func ReportUnprocessableEntity(w http.ResponseWriter, errMsgFmt string, args...interface{}) {
+func ReportUnprocessableEntity(w http.ResponseWriter, err error) {
 	w.WriteHeader(http.StatusUnprocessableEntity)
-	w.Write(mediatype.ToJSon(fmt.Sprintf(errMsgFmt, args...)))
+	w.Write(mediatype.ToJSon(err.Error()))
 }
 
 
