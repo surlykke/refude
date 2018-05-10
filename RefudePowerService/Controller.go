@@ -12,6 +12,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/service"
 	"strings"
 	"fmt"
+	"github.com/surlykke/RefudeServices/lib/action"
 )
 
 const UPowService = "org.freedesktop.UPower"
@@ -40,9 +41,7 @@ func Run() {
 		service.Map("/lid", resource.MakeJsonResource(&Lid{open}, LidMediaType))
 	}
 
-	for _, powerAction := range GetPowerActions() {
-		service.Map("/actions/"+powerAction.Id, resource.MakeJsonResource(powerAction, PowerActionMediaType))
-	}
+	MapPowerActions()
 
 	var devices = make(map[dbus.ObjectPath]*Device)
 
@@ -99,22 +98,26 @@ func getProps(path dbus.ObjectPath, dbusInterface string) map[string]dbus.Varian
 	return call.Body[0].(map[string]dbus.Variant)
 }
 
-var possiblePowerActions = []*PowerAction{
-	{"PowerOff", "Shutdown", "Power off the machine", "system-shutdown", "power-service:/actions/PowerOff"},
-	{"Reboot", "Reboot", "Reboot the machine", "system-reboot", "power-service:/actions/Reboot"},
-	{"Suspend", "Suspend", "Suspend the machine", "system-suspend", "power-service:/actions/Suspend"},
-	{"Hibernate", "Hibernate", "Put the machine into hibernation", "system-suspend-hibernate", "power-service:/actions/Hibernate"},
-	{"HybridSleep", "HybridSleep", "Put the machine into hybrid sleep", "system-suspend-hibernate", "power-service:/actions/HybridSleep"},
-}
+var possibleActionValues = map[string][]string{
+	"PowerOff":{ "Shutdown", "Power off the machine", "system-shutdown", "power-service:/actions/PowerOff"},
+	"Reboot": { "Reboot", "Reboot the machine", "system-reboot", "power-service:/actions/Reboot"},
+	"Suspend": {"Suspend", "Suspend the machine", "system-suspend", "power-service:/actions/Suspend"},
+	"Hibernate": {"Hibernate", "Put the machine into hibernation", "system-suspend-hibernate", "power-service:/actions/Hibernate"},
+	"HybridSleep": {"HybridSleep", "Put the machine into hybrid sleep", "system-suspend-hibernate", "power-service:/actions/HybridSleep"}}
 
-func GetPowerActions() []*PowerAction {
-	var result = make([]*PowerAction, 0, len(possiblePowerActions))
-	for _, powerAction := range possiblePowerActions {
-		if "yes" == dbusConn.Object(login1Service, login1Path).Call(managerInterface+".Can"+powerAction.Id, dbus.Flags(0)).Body[0].(string) {
-			result = append(result, powerAction)
+func MapPowerActions() {
+	for id, pv := range possibleActionValues {
+		if "yes" == dbusConn.Object(login1Service, login1Path).Call(managerInterface+".Can" + id, dbus.Flags(0)).Body[0].(string) {
+			var dbusEndPoint = managerInterface + "." + id
+			var executer = func() {
+				fmt.Println("Calling", login1Service, login1Path, managerInterface+"." + id)
+				dbusConn.Object(login1Service, login1Path).Call(dbusEndPoint, dbus.Flags(0), false)
+			}
+			var act = action.MakeAction(pv[0], pv[1], pv[2], pv[3], executer)
+			service.Map("/actions/" + id, resource.MakeJsonResource(act, action.ActionMediaType))
+			delete(possibleActionValues, id)
 		}
 	}
-	return result
 }
 
 func updateDevice(d *Device, m map[string]dbus.Variant) {

@@ -5,7 +5,6 @@ import (
 	"github.com/surlykke/RefudeServices/lib/requestutils"
 	"github.com/surlykke/RefudeServices/lib/mediatype"
 	"github.com/surlykke/RefudeServices/lib/resource"
-	"fmt"
 	"github.com/surlykke/RefudeServices/lib/query"
 )
 
@@ -42,9 +41,7 @@ func Search(w http.ResponseWriter, r *http.Request) {
 			}
 
 			resources = resources[:found]
-			fmt.Println("found 1:", found)
 			if q, ok := flatParams["q"]; ok {
-				fmt.Println("Query: ", q)
 				if matcher, err := query.Parse(q); err != nil {
 					requestutils.ReportUnprocessableEntity(w, err)
 					return
@@ -56,7 +53,6 @@ func Search(w http.ResponseWriter, r *http.Request) {
 							found = found + 1
 						}
 					}
-					fmt.Println("found 2:", found)
 					resources = resources[:found]
 				}
 			}

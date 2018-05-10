@@ -60,3 +60,9 @@ func deviceTecnology(index uint32) string {
 	return devTecnology[index]
 }
 
+const LidMediaType mediatype.MediaType = "application/vnd.org.refude.upowerlid+json"
+
+type Lid struct {
+	Open bool
+}
+
