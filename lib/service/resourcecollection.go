@@ -12,6 +12,7 @@ import (
 	"strings"
 	"fmt"
 	"sync"
+	"github.com/surlykke/RefudeServices/lib/mediatype"
 )
 
 // A standardized path is a path that starts with '/' and has no double slashes
@@ -135,11 +136,13 @@ func MapAll(newEntries map[string]resource.Resource) {
 
 }
 
-func Map(path string, res resource.Resource) {
+func Map(path string, mappableType resource.MappableType, mt mediatype.MediaType) {
 	sp := standardize(path)
+	mappableType.SetSelf(string(sp))
+	var jsonResource = resource.MakeJsonResource(mappableType, mt)
 	mutex.Lock()
 	defer mutex.Unlock()
-	put(sp, res)
+	put(sp, jsonResource)
 }
 
 func Unmap(path string) (resource.Resource, bool ){

@@ -16,11 +16,13 @@ import (
 	time2 "time"
 	"github.com/surlykke/RefudeServices/lib/requestutils"
 	"github.com/surlykke/RefudeServices/lib/mediatype"
+	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
 const ItemMediaType mediatype.MediaType = "application/vnd.org.refude.statusnotifieritem+json"
 
 type Item struct {
+	resource.Self
 	Id                      string
 	Category                string
 	Status                  string
@@ -38,7 +40,6 @@ type Item struct {
 	iconThemePath string
 	path          string
 	menuIds       []string
-	Self          string
 }
 
 type MenuItem struct {

@@ -8,12 +8,14 @@ package main
 
 import (
 	"github.com/surlykke/RefudeServices/lib/mediatype"
+	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
 const DeviceMediaType mediatype.MediaType = "application/vnd.org.refude.upowerdevice+json"
 
 
 type Device struct {
+	resource.Self
 	NativePath       string
 	Vendor           string
 	Model            string
@@ -39,7 +41,6 @@ type Device struct {
 	Capacity         float64
 	Technology       string
 	DisplayDevice    bool
-	Self             string
 }
 
 func deviceType(index uint32) string {
@@ -69,6 +70,7 @@ func deviceTecnology(index uint32) string {
 const LidMediaType mediatype.MediaType = "application/vnd.org.refude.upowerlid+json"
 
 type Lid struct {
+	resource.Self
 	Open bool
 }
 

@@ -9,6 +9,7 @@ package action
 import (
 	"github.com/surlykke/RefudeServices/lib/mediatype"
 	"net/http"
+	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
 const ActionMediaType mediatype.MediaType = "application/vnd.org.refude.action+json"
@@ -16,15 +17,16 @@ const ActionMediaType mediatype.MediaType = "application/vnd.org.refude.action+j
 type Executer func()
 
 type Action struct {
-	Name          string
-	Comment       string
-	IconName      string
-	Self          string
-	executer      Executer
+	resource.Self
+	Name             string
+	Comment          string
+	IconName         string
+	PresentationHint string
+	executer         Executer
 }
 
-func MakeAction(Name string, Comment string, IconName string, Self string, executer Executer) *Action {
-	return &Action{Name, Comment, IconName, Self, executer}
+func MakeAction(Name string, Comment string, IconName string, presentationHint string, executer Executer) *Action {
+	return &Action{Name: Name, Comment: Comment, IconName: IconName, PresentationHint:presentationHint,  executer:executer}
 }
 
 func (a *Action) POST(w http.ResponseWriter, r *http.Request) {

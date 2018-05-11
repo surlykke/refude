@@ -37,6 +37,19 @@ type Resource interface {
 	Match(m query.Matcher) bool
 }
 
+type MappableType interface {
+	SetSelf(string)
+}
+
+
+type Self struct {
+	Self string `json:"_self,omitempty"`
+}
+
+func (s *Self) SetSelf(path string) {
+	s.Self = path
+}
+
 type JsonResource struct {
 	res       interface{}
 	data 	  []byte

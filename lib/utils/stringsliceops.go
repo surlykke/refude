@@ -19,18 +19,21 @@ func Copy(sl []string) []string {
 	return res
 }
 
-func Contains(sl []string, s string) bool {
+func Contains(sl []string, s ...string) bool {
 	for _, str := range sl {
-		if str == s {
-			return true
+		for _, s2 := range s {
+			if str == s2 {
+				return true
+			}
 		}
+
 	}
 
 	return false
 }
 
-func Among(s string, values...string) bool {
-	for _,v := range values {
+func Among(s string, values ...string) bool {
+	for _, v := range values {
 		if s == v {
 			return true
 		}
@@ -39,9 +42,8 @@ func Among(s string, values...string) bool {
 	return false
 }
 
-
 func ElementsInCommon(l1 []string, l2 []string) bool {
-	for _,s := range l1 {
+	for _, s := range l1 {
 		if Contains(l2, s) {
 			return true
 		}
@@ -49,7 +51,6 @@ func ElementsInCommon(l1 []string, l2 []string) bool {
 
 	return false
 }
-
 
 func AppendIfNotThere(list []string, s string) []string {
 	for _, v := range list {
@@ -96,7 +97,6 @@ func Map(list []string, mapper func(s string) string) []string {
 	return res
 }
 
-
 func Split(str string, sep string) []string {
 	return Filter(Map(strings.Split(str, sep),
 		func(s string) string {
@@ -112,4 +112,3 @@ func PrependEach(sl []string, prefix string) []string {
 		return prefix + s
 	})
 }
-

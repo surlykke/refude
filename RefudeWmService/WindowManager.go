@@ -19,8 +19,8 @@ import (
 	"github.com/BurntSushi/xgb"
 	"time"
 	"github.com/surlykke/RefudeServices/lib/icons"
-	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/action"
+	"github.com/surlykke/RefudeServices/lib/utils"
 )
 
 
@@ -87,10 +87,9 @@ func buildDisplay(conn *xgb.Conn) {
 	defaultScreen := xproto.Setup(conn).DefaultScreen(conn)
 	display.W = defaultScreen.WidthInPixels
 	display.H = defaultScreen.HeightInPixels
-
 	// TODO add screens
 
-	service.Map("/display", resource.MakeJsonResource(&display, DisplayMediaType))
+	service.Map("/display", &display, DisplayMediaType)
 }
 
 func updateWindows() {
@@ -119,10 +118,18 @@ func updateWindows() {
 		} else {
 			windows[wId] = getWindow(xproto.Window(wId), i)
 		}
-		windows[wId].Self =fmt.Sprintf("wm-service:/windows/%d", wId)
-		service.Map(fmt.Sprintf("/windows/%d", wId), resource.MakeJsonResource(windows[wId], WindowMediaType))
-		var act = action.MakeAction(windows[wId].Name, "", windows[wId].IconName, windows[wId].Self, MakeExecuter(wId))
-		service.Map(fmt.Sprintf("/actions/%d", wId), resource.MakeJsonResource(act, action.ActionMediaType))
+		var window = windows[wId]
+		service.Map(fmt.Sprintf("/windows/%d", wId), window, WindowMediaType)
+		if !  utils.Contains(window.States, "_NET_WM_STATE_ABOVE") { // TODO More that we won't offer as actions?
+			var presentationHint string
+			if utils.Among("_NET_WM_STATE_HIDDEN", windows[wId].States...) {
+				presentationHint = "minimizedwindow"
+			} else {
+				presentationHint = "window"
+			}
+			var act= action.MakeAction(windows[wId].Name, "", windows[wId].IconName, presentationHint, MakeExecuter(wId))
+			service.Map(fmt.Sprintf("/actions/%d", wId), act, action.ActionMediaType)
+		}
 	}
 }
 

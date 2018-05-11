@@ -9,11 +9,13 @@ package main
 import (
 	"golang.org/x/text/language"
 	"github.com/surlykke/RefudeServices/lib/mediatype"
+	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
 const DesktopApplicationMediaType mediatype.MediaType = "application/vnd.org.refude.desktopapplication+json"
 
 type DesktopApplication struct {
+	resource.Self
 	Type            string
 	Version         string `json:",omitempty"`
 	Name            string
@@ -40,7 +42,6 @@ type DesktopApplication struct {
 	Id              string
 	RelevanceHint   int64
 	languages       language.Matcher
-	Self            string
 }
 
 type Action struct {

@@ -20,7 +20,6 @@ import (
 	"github.com/surlykke/RefudeServices/lib/icons"
 	"log"
 	"reflect"
-	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
 const WATCHER_SERVICE = "org.kde.StatusNotifierWatcher"
@@ -188,9 +187,8 @@ func Controller() {
 				if item.menuPath != "" {
 					fetchMenu(item)
 				}
-				item.Self = "statusnotifier-service:" + item.restPath();
 				items = append(items, item)
-				service.Map(item.restPath(), resource.MakeJsonResource(item, ItemMediaType))
+				service.Map(item.restPath(), item, ItemMediaType)
 				updateWatcherProperties()
 				go monitorItem(event.sender, event.path)
 			}
@@ -205,14 +203,14 @@ func Controller() {
 				var copy = *items[index]
 				updateItem(&copy)
 				items[index] = &copy
-				service.Map(items[index].restPath(), resource.MakeJsonResource(items[index], ItemMediaType))
+				service.Map(items[index].restPath(), items[index], ItemMediaType)
 			}
 		case MenuUpdated:
 			if index := findByMenuPath(event.sender, event.path); index > -1 {
 				var copy = *items[index]
 				fetchMenu(&copy)
 				items[index] = &copy
-				service.Map(items[index].restPath(), resource.MakeJsonResource(*items[index], ItemMediaType))
+				service.Map(items[index].restPath(), items[index], ItemMediaType)
 			}
 		}
 	}

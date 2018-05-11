@@ -12,11 +12,13 @@ import (
 	"net/http"
 	"github.com/surlykke/RefudeServices/lib/mediatype"
 	"github.com/BurntSushi/xgbutil/ewmh"
+	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
 const WindowMediaType mediatype.MediaType = "application/vnd.org.refude.wmwindow+json"
 
 type Window struct {
+	resource.Self
 	x             *xgbutil.XUtil
 	Id            xproto.Window
 	X, Y, H, W    int
@@ -26,7 +28,6 @@ type Window struct {
 	States        []string
 	Actions       map[string]Action
 	RelevanceHint int
-	Self          string
 }
 
 type Action struct {

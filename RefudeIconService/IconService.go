@@ -15,6 +15,7 @@ import (
 	"os"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 	"github.com/fsnotify/fsnotify"
+	"strings"
 )
 
 var mutex  sync.RWMutex
@@ -132,7 +133,7 @@ func run() {
 			collect(tmpThemes, tmpFallbackIcons, searchDir)
 		}
 		collect(tmpThemes, tmpFallbackIcons, session_icons_dir)
-		
+
 		mutex.Lock()
 		themes = tmpThemes
 		fallbackIcons = tmpFallbackIcons
@@ -218,12 +219,14 @@ func collectIcons(icons map[string]Icon, iconDirPath string, iconDir IconDir) {
 		}
 
 		for _, imagePath := range imagePaths {
-		    var image = Image{iconDir.Context, iconDir.MinSize, iconDir.MaxSize, imagePath}
+
+			var image = Image{iconDir.Context, iconDir.MinSize, iconDir.MaxSize, imagePath}
 			var iconName = filepath.Base(imagePath[0 : len(imagePath)-4])
-			if iconName == "chrome_app_indicator_1_1" {
-				fmt.Println("imagePath: ", imagePath)
+			if strings.HasPrefix(iconName, "vlc") {
+				fmt.Println("adding image:", imagePath)
 			}
 			var icon, ok = icons[iconName]
+
 			if !ok {
 				icon = Icon{iconName, []Image{image}}
 			} else {

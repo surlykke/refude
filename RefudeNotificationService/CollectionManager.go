@@ -12,7 +12,6 @@ import (
 	"time"
 	"net/http"
 	"github.com/surlykke/RefudeServices/lib/requestutils"
-	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
 var removals = make(chan removal)
@@ -30,7 +29,7 @@ func Run() {
 	for {
 		select {
 		case notification := <-updates:
-			service.Map(path(notification.Id), resource.MakeJsonResource(*notification, NotificationMediaType))
+			service.Map(path(notification.Id), notification, NotificationMediaType)
 			if notification.Expires != nil {
 				fmt.Println("do afterFunc")
 				pendingTimouts[notification.Id] = *notification.Expires

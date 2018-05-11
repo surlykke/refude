@@ -9,11 +9,13 @@ package main
 import (
 	"time"
 	"github.com/surlykke/RefudeServices/lib/mediatype"
+	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
 const NotificationMediaType mediatype.MediaType = "application/vnd.org.refude.desktopnotification+json"
 
 type Notification struct {
+	resource.Self
 	Id            uint32
 	Sender        string
 	Subject       string
@@ -21,6 +23,5 @@ type Notification struct {
 	Actions       map[string]string
 	RelevanceHint int
 	Expires       *time.Time `json:",omitempty"`
-	Self          string
 }
 

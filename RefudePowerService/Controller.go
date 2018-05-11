@@ -8,7 +8,6 @@ package main
 
 import (
 	"github.com/godbus/dbus"
-	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/service"
 	"strings"
 	"fmt"
@@ -38,7 +37,7 @@ func Run() {
 
 	if variant := getSingleProp(UPowPath, UPowerInterface, "LidIsPresent"); variant.Value().(bool) {
 		var open = !getSingleProp(UPowPath, UPowerInterface, "LidIsClosed").Value().(bool)
-		service.Map("/lid", resource.MakeJsonResource(&Lid{open}, LidMediaType))
+		service.Map("/lid", &Lid{Open:open}, LidMediaType)
 	}
 
 	MapPowerActions()
@@ -51,7 +50,7 @@ func Run() {
 		var device = &Device{}
 		devices[path] = device
 		updateDevice(device, getProps(path, UPowerDeviceInterface))
-		service.Map(devicePath(path), resource.MakeJsonResource(device, DeviceMediaType))
+		service.Map(devicePath(path), device, DeviceMediaType)
 	}
 
 	for signal := range signals {
@@ -61,12 +60,12 @@ func Run() {
 				return
 			} else if signal.Path == UPowPath {
 				if prop, ok2 := props["LidIsClosed"]; ok2 {
-					service.Map("/lid", resource.MakeJsonResource(&Lid{!prop.Value().(bool)}, LidMediaType))
+					service.Map("/lid", &Lid{Open:!prop.Value().(bool)}, LidMediaType)
 				}
 			} else if device, ok := devices[signal.Path]; ok {
 				var copy = *device
 				updateDevice(&copy, props)
-				service.Map(devicePath(signal.Path), resource.MakeJsonResource(&copy, DeviceMediaType))
+				service.Map(devicePath(signal.Path), &copy, DeviceMediaType)
 			}
 			// TODO Handle device added/removed
 			// (need hardware to test)
@@ -99,11 +98,11 @@ func getProps(path dbus.ObjectPath, dbusInterface string) map[string]dbus.Varian
 }
 
 var possibleActionValues = map[string][]string{
-	"PowerOff":{ "Shutdown", "Power off the machine", "system-shutdown", "power-service:/actions/PowerOff"},
-	"Reboot": { "Reboot", "Reboot the machine", "system-reboot", "power-service:/actions/Reboot"},
-	"Suspend": {"Suspend", "Suspend the machine", "system-suspend", "power-service:/actions/Suspend"},
-	"Hibernate": {"Hibernate", "Put the machine into hibernation", "system-suspend-hibernate", "power-service:/actions/Hibernate"},
-	"HybridSleep": {"HybridSleep", "Put the machine into hybrid sleep", "system-suspend-hibernate", "power-service:/actions/HybridSleep"}}
+	"PowerOff":{"Shutdown", "Power off the machine", "system-shutdown", "leave", },
+	"Reboot": {"Reboot", "Reboot the machine", "system-reboot", "leave"},
+	"Suspend": {"Suspend", "Suspend the machine", "system-suspend", "leave"},
+	"Hibernate": {"Hibernate", "Put the machine into hibernation", "leave", "system-suspend-hibernate"},
+	"HybridSleep": {"HybridSleep", "Put the machine into hybrid sleep", "leave", "system-suspend-hibernate"}}
 
 func MapPowerActions() {
 	for id, pv := range possibleActionValues {
@@ -114,7 +113,7 @@ func MapPowerActions() {
 				dbusConn.Object(login1Service, login1Path).Call(dbusEndPoint, dbus.Flags(0), false)
 			}
 			var act = action.MakeAction(pv[0], pv[1], pv[2], pv[3], executer)
-			service.Map("/actions/" + id, resource.MakeJsonResource(act, action.ActionMediaType))
+			service.Map("/actions/" + id, act, action.ActionMediaType)
 			delete(possibleActionValues, id)
 		}
 	}

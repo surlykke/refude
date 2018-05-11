@@ -22,7 +22,6 @@ import (
 	"log"
 	"encoding/json"
 	"github.com/surlykke/RefudeServices/lib/requestutils"
-	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/action"
 )
 
@@ -51,12 +50,12 @@ func Run() {
 				if x, ok := lastLaunched[app.Id]; ok {
 					app.RelevanceHint = x
 				}
-				service.Map("/applications/"+app.Id, resource.MakeJsonResource(app, DesktopApplicationMediaType))
+				service.Map("/applications/"+app.Id, app, DesktopApplicationMediaType)
 
 				var defaultPath = "/actions/" + app.Id
 				var executer = MakeExecuter(app.Exec, app.Terminal)
-				var act = action.MakeAction(app.Name, app.Comment, app.IconName, defaultPath, executer)
-				service.Map(defaultPath, resource.MakeJsonResource(act, action.ActionMediaType))
+				var act = action.MakeAction(app.Name, app.Comment, app.IconName, "applicationlaunch", executer)
+				service.Map(defaultPath, act, action.ActionMediaType)
 
 				for actionId, da := range app.Actions {
 					var path = "/actions/" + app.Id + "-" + actionId
@@ -65,14 +64,14 @@ func Run() {
 						iconName = app.IconName
 					}
 					var executer = MakeExecuter(da.Exec, app.Terminal)
-					var act = action.MakeAction(app.Name + ": " + da.Name, app.Comment, da.IconName, path, executer)
-					service.Map(path, resource.MakeJsonResource(act, action.ActionMediaType))
+					var act = action.MakeAction(app.Name + ": " + da.Name, app.Comment, da.IconName, "applicationlaunch", executer)
+					service.Map(path, act, action.ActionMediaType)
 				}
 
 			}
 			service.RemoveAll("/mimetypes")
 			for _, mt := range update.mimetypes {
-				service.Map("/mimetypes/"+mt.Id, resource.MakeJsonResource(mt, MimetypeMediaType))
+				service.Map("/mimetypes/"+mt.Id, mt, MimetypeMediaType)
 			}
 		case le := <-launchEvents:
 			lastLaunched[le.id] = le.time
@@ -109,7 +108,7 @@ func (da *DesktopApplication) POST(w http.ResponseWriter, r *http.Request) {
 		var copy = *da
 		copy.RelevanceHint = time.Now().Unix()
 		launchEvents <- launchEvent{copy.Id, copy.RelevanceHint}
-		service.Map("/applications/"+ copy.Id, resource.MakeJsonResource(&copy, DesktopApplicationMediaType))
+		service.Map("/applications/"+ copy.Id, &copy, DesktopApplicationMediaType)
 		w.WriteHeader(http.StatusAccepted)
 	}
 }

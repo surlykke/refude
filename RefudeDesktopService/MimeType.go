@@ -18,6 +18,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/utils"
 	"golang.org/x/text/language"
 	"github.com/surlykke/RefudeServices/lib/mediatype"
+	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
 const freedesktopOrgXml = "/usr/share/mime/packages/freedesktop.org.xml"
@@ -25,6 +26,7 @@ const freedesktopOrgXml = "/usr/share/mime/packages/freedesktop.org.xml"
 const MimetypeMediaType mediatype.MediaType = "application/vnd.org.refude.mimetype+json"
 
 type Mimetype struct {
+	resource.Self
 	Id                     string
 	Comment                string
 	Acronym                string `json:",omitempty"`
@@ -36,7 +38,6 @@ type Mimetype struct {
 	GenericIcon            string
 	AssociatedApplications []string
 	DefaultApplication     string `json:",omitempty"`
-	Self                   string
 }
 
 var mimetypePattern = regexp.MustCompile(`^([^/]+)/([^/]+)$`)
@@ -53,7 +54,6 @@ func NewMimetype(id string) (*Mimetype, error) {
 			SubClassOf:   []string{},
 			IconName:     "unknown",
 			GenericIcon:  "unknown",
-			Self:         "desktop-service:/mimetypes/" + id,
 		}
 
 		if strings.HasPrefix(id, "x-scheme-handler/") {
