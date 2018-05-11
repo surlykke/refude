@@ -35,7 +35,7 @@ class Container extends React.Component {
 	    this.resources["power-service"] = [];
 
 		let winQuery = {
-//			type: "application/vnd.org.refude.wmwindow+json",
+			type: "application/vnd.org.refude.wmwindow+json",
 			q: `r.Name ~i '${term}' and not r.States[%] eq '_NET_WM_STATE_ABOVE' and r.Name neq 'Refude Do' and r.Name neq 'refudeDo'`
 		};
 		console.log("winQuery:", winQuery)
@@ -55,7 +55,7 @@ class Container extends React.Component {
             });
 
 			let powerQuery  = {
-				type: 'application/vnd.org.refude.poweraction+json',
+				type: 'application/vnd.org.refude.action+json',
 				q: `r.Name ~i '${term}'`
 			}
             doGet("power-service", "/search", powerQuery).then(resources => {
@@ -139,6 +139,7 @@ class Container extends React.Component {
 	}
 
 	execute = (self) => {
+		console.log("Self: ", self)
 		if (self) {
 			let item = this.state.items.find(i => self === i.Self)
 			this.select(self)
