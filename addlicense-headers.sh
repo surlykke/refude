@@ -1,6 +1,5 @@
 #!/bin/bash
 cd $(dirname $0)
-DIRS="appchooser common connman do panel power"
 
 addHeader () {
 	cat ./license-header.txt $1 | sponge $1
