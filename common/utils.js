@@ -66,9 +66,9 @@ let doGet = (service, path, params, changedSince) => {
                     if (typeof json === 'object') {
                         if (Array.isArray(json)) { // A list of resources, then
                             json.sort((e1, e2) => (e2.RelevanceHint || 0) - (e1.RelevanceHint || 0))
-                            json.forEach(res => adjustIconUrl(res));
+                            json.forEach(res => adjustIconUrl(service, res));
                         } else { // A single resource
-                            adjustIconUrl(json);
+                            adjustIconUrl(service, json);
                         }
                     }
                     resolve(json);
@@ -122,16 +122,15 @@ let doDelete = (resource) => {
     });
 };
 
-let adjustIconUrl = (res) => {
-    res.IconUrl = res.IconUrl ? new URL(res.IconUrl,"http://localhost:7938/" + res.Self.replace(":", "")).toString() :
-                  res.IconName ? iconServiceUrl(res.IconName) :
-                  undefined;
+let adjustIconUrl = (service, res) => {
+    res._self = service + ":" + res._self;
+    res.IconUrl = iconServiceUrl(res.IconName);
 };
 
 let url = (service, path, params, method) => `http://localhost:7938/${service}${path}${queryString(params)}`;
 
 let opts = (res, method, params) => {
-    return {host: 'localhost', port: 7938, path: "/" + res.Self.replace(':', '') + queryString(params), method: method}
+    return {host: 'localhost', port: 7938, path: "/" + res._self.replace(':', '') + queryString(params), method: method}
 };
 
 let queryString = (params) => {

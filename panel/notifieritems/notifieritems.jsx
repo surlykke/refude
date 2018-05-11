@@ -61,7 +61,7 @@ let NotifierItem = (props) => {
 		if (props.item.Menu) {
 			showMenu(event)
 		} else {
-            doPost(...props.item.Self.split(":"), {action: "right", x: x, y: y});
+            doPost(...props.item._self.split(":"), {action: "right", x: x, y: y});
 		}
 		event.preventDefault()
 	}
@@ -82,7 +82,7 @@ class NotifierItems extends React.Component {
 	}
 
 	componentDidMount = () => {
-        let itemCompare = (i1, i2) => i1.Self.localeCompare(i2.Self); // Just to keep them from flipping around
+        let itemCompare = (i1, i2) => i1._self.localeCompare(i2._self); // Just to keep them from flipping around
 		let update = () => {
             doGet("statusnotifier-service", "/search", {type: "application/vnd.org.refude.statusnotifieritem+json"}).then(items => {
                 this.setState({items: items.sort(itemCompare)});
@@ -97,7 +97,7 @@ class NotifierItems extends React.Component {
 
 	render = () =>
 		<div style={this.style}>
-			{this.state.items.map((item) => (<NotifierItem key={item.Self} item={item} /> ))}
+			{this.state.items.map((item) => (<NotifierItem key={item._self} item={item} /> ))}
 		</div>
 }
 

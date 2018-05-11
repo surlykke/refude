@@ -9,69 +9,76 @@ import ReactDom from 'react-dom'
 
 let Item = props => {
 
-	let {item, selected, select, execute} = props
+    let {item, selected, select, execute} = props
 
-	let style = {
-		marginRight: "5px",
-		padding: "4px",
-	    verticalAlign: "top",
-	    overflow: "hidden",
-		height: "30px",
-	}
+    let style = {
+        marginRight: "5px",
+        padding: "4px",
+        verticalAlign: "top",
+        overflow: "hidden",
+        height: "30px",
+    }
 
-	Object.assign(style, props.style)
+    Object.assign(style, props.style)
 
-	if (selected) {
-		Object.assign(style, {
-			border: "solid black 2px",
-		    borderRadius: "5px",
-	    	boxShadow: "1px 1px 1px #888888",
-		})
-	}
+    if (selected) {
+        Object.assign(style, {
+            border: "solid black 2px",
+            borderRadius: "5px",
+            boxShadow: "1px 1px 1px #888888",
+        })
+    }
 
-	let iconStyle =  {
-		float: "left",
-    	marginRight: "6px",
-	}
+    let iconStyle = {
+        float: "left",
+        marginRight: "6px",
+    }
 
-	if (item.States) {  // Its a window
-		Object.assign(iconStyle, {
-	    	WebkitFilter: "drop-shadow(5px 5px 3px grey)",
-		    overflow: "visible"
-		})
+    if (item.PresentationHint === "window") {
+        Object.assign(iconStyle, {
+            WebkitFilter: "drop-shadow(5px 5px 3px grey)",
+            overflow: "visible"
+        })
+    }
 
-		if (item.States.includes("_NET_WM_STATE_HIDDEN")) {
-			Object.assign(iconStyle, {
-				marginLeft: "14px",
-				marginTop: "14px",
-				width: "18px",
-				height: "18px",
-			    opacity: "0.4"
-			})
-		}
-	}
+    if (item.PresentationHint === "minimizedwindow") {
+        Object.assign(iconStyle, {
+            WebkitFilter: "drop-shadow(5px 5px 3px grey)",
+            overflow: "visible",
+            marginLeft: "14px",
+            marginTop: "14px",
+            width: "18px",
+            height: "18px",
+            opacity: "0.4"
+        })
+    }
 
-	Object.assign(iconStyle, props.item.extraIconStyle)
 
-	let nameStyle = {
-	    overflow: "hidden",
-	    whiteSpace: "nowrap",
-	    marginRight: "6px",
-	}
+    Object.assign(iconStyle, props.item.extraIconStyle)
 
-	let commentStyle = {
-    	fontSize: "0.8em",
-	}
+    let nameStyle = {
+        overflow: "hidden",
+        whiteSpace: "nowrap",
+        marginRight: "6px",
+    }
 
-	Object.assign(commentStyle, nameStyle)
+    let commentStyle = {
+        fontSize: "0.8em",
+    }
 
-	return (
-		<div id={props.item.Self} style={style} onClick={() => {select(item.Self)}} onDoubleClick={() => {execute(item.Self)}}>
-			<img width="24px" height="24px" style={iconStyle} src={item.IconUrl} />
-		    <div style={nameStyle}>{item.Name}</div>
-		    <div style={commentStyle}>{item.Comment}</div>
-		</div>
-	)
+    Object.assign(commentStyle, nameStyle)
+
+    return (
+        <div id={props.item._self} style={style} onClick={() => {
+            select(item._self)
+        }} onDoubleClick={() => {
+            execute(item._self)
+        }}>
+            <img width="24px" height="24px" style={iconStyle} src={item.IconUrl}/>
+            <div style={nameStyle}>{item.Name}</div>
+            <div style={commentStyle}>{item.Comment}</div>
+        </div>
+    )
 }
 
 export {Item}

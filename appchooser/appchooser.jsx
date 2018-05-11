@@ -78,8 +78,8 @@ class AppChooser extends React.Component {
             console.log("Setting apps:", apps);
             let selected = this.state.selected
             if (apps.length > 0) {
-                if (! apps.find(item => item.Self === selected)) {
-                    selected = apps[0].Self;
+                if (! apps.find(item => item._self === selected)) {
+                    selected = apps[0]._self;
                 }
             } else {
                 selected = undefined;
@@ -98,7 +98,7 @@ class AppChooser extends React.Component {
 
 	run = (self) => {
 		this.select(self)
-		let app = this.state.apps.find(app => app.Self === self)
+		let app = this.state.apps.find(app => app._self === self)
 		if (!app) return
         if (this.state.useAsDefault) {
 		    let mimetype = this.mimetypes[mimetypeId];
@@ -126,13 +126,13 @@ class AppChooser extends React.Component {
 	move = (down) => {
 		let {apps, selected} = this.state;
 		console.log("move, selected:", selected, ", apps:", apps);
-		let index = apps.findIndex(app => app.Self === selected);
+		let index = apps.findIndex(app => app._self === selected);
         console.log("index:", index);
 
 		if (index > -1) {
 			index = (index + apps.length + (down ? 1 : -1)) % apps.length;
 			console.log(" - now:", index, ", selecting:", apps[index])
-			this.select(apps[index].Self)
+			this.select(apps[index]._self)
 		}
 	}
 

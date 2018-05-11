@@ -42,7 +42,7 @@ let Notification = (props) => {
 
     let notificationClicked = (event) => {
         console.log("notification clicked");
-        doPost(props.item.Self, {action: "default"});
+        doPost(props.item._self, {action: "default"});
         event.stopPropagation()
     }
 

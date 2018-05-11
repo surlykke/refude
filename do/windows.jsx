@@ -7,8 +7,8 @@
 import React from 'react';
 import ReactDom from 'react-dom'
 
-let zIndex = (win, index, selectedSelf) => win.Self === selectedSelf ? 1 : -index
-let fillOpacity = (win, selectedSelf) => win.Self === selectedSelf ? "0.1" : "0.05"
+let zIndex = (win, index, selectedSelf) => win._self === selectedSelf ? 1 : -index
+let fillOpacity = (win, selectedSelf) => win._self === selectedSelf ? "0.1" : "0.05"
 
 let Windows = props =>
 	<div id="disp" style={props.style || {}}>

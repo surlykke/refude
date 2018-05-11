@@ -15,8 +15,9 @@ class ItemList extends React.Component {
 	}
 
 	componentDidUpdate() {
-		if (this.props.selectedId) {
-			let selectedDiv = document.getElementById(this.props.selectedId)
+		console.log("componentDidUpdate, props: ", this.props)
+		if (this.props.selectedSelf) {
+			let selectedDiv = document.getElementById(this.props.selectedSelf)
 			if (selectedDiv) {
 				let listDiv = document.getElementById("itemListDiv")
 				let {top: listTop, bottom: listBottom} = listDiv.getBoundingClientRect()
@@ -49,7 +50,7 @@ class ItemList extends React.Component {
 				content.push(<div style={headingStyle}>{item.group}</div>)
 				prevGroup = item.group
 			}
-			content.push(<Item key={item.Self} item={item} selected={item.Self === selectedSelf} select={select} execute={execute}/>)
+			content.push(<Item key={item._self} item={item} selected={item._self === selectedSelf} select={select} execute={execute}/>)
 		})
 		return (
 			<div id="itemListDiv" style={style}>
