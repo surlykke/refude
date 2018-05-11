@@ -12,6 +12,7 @@ import (
 	"errors"
 	"golang.org/x/sys/unix"
 	"fmt"
+	"github.com/surlykke/RefudeServices/lib/icons"
 )
 
 type collection struct {
@@ -212,8 +213,11 @@ func readDesktopFile(path string) (*DesktopApplication, error) {
 		da.Comment = group.Entries["Comment"]
 		icon := group.Entries["Icon"]
 		if strings.HasPrefix(icon, "/") {
-			da.IconPath = icon
-			da.IconUrl = "../icons" + icon
+			if iconName, err := icons.CopyIconToSessionIconDir(icon); err != nil {
+				log.Printf("Problem with iconpath %s in %s: %s", icon, da.Id, err.Error())
+			} else {
+				da.IconName = iconName
+			}
 		} else {
 			da.IconName = icon
 		}
@@ -246,8 +250,11 @@ func readDesktopFile(path string) (*DesktopApplication, error) {
 				}
 				icon = actionGroup.Entries["Icon"]
 				if strings.HasPrefix(icon, "/") {
-					action.IconPath = icon
-					action.IconUrl = "../icons" + icon
+					if iconName, err := icons.CopyIconToSessionIconDir(icon); err != nil {
+						log.Printf("Problem with iconpath %s in %s: %s", icon, da.Id, err.Error())
+					} else {
+						action.IconName = iconName
+					}
 				} else {
 					action.IconName = icon
 				}
@@ -257,10 +264,8 @@ func readDesktopFile(path string) (*DesktopApplication, error) {
 		}
 
 		for _, action := range da.Actions {
-			if action.IconName == "" && action.IconPath == "" {
+			if action.IconName == "" {
 				action.IconName = da.IconName
-				action.IconPath = da.IconPath
-				action.IconUrl = da.IconUrl
 			}
 		}
 

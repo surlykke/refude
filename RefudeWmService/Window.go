@@ -10,8 +10,8 @@ import (
 	"github.com/BurntSushi/xgb/xproto"
 	"github.com/BurntSushi/xgbutil"
 	"net/http"
-	"github.com/BurntSushi/xgbutil/ewmh"
 	"github.com/surlykke/RefudeServices/lib/mediatype"
+	"github.com/BurntSushi/xgbutil/ewmh"
 )
 
 const WindowMediaType mediatype.MediaType = "application/vnd.org.refude.wmwindow+json"
@@ -21,7 +21,8 @@ type Window struct {
 	Id            xproto.Window
 	X, Y, H, W    int
 	Name          string
-	IconUrl       string
+	IconName      string        `json:",omitempty"`
+	IconUrl       string        `json:",omitempty"`
 	States        []string
 	Actions       map[string]Action
 	RelevanceHint int

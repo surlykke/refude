@@ -46,9 +46,6 @@ func Run() {
 					app.RelevanceHint = x
 				}
 				service.Map("/applications/"+app.Id, resource.MakeJsonResource(app, DesktopApplicationMediaType))
-				if app.IconUrl != "" {
-					service.Map(string("/icons"+app.IconPath), IconPath{path: app.IconPath})
-				}
 
 				var defaultPath = "/actions/" + app.Id
 				var executer = MakeExecuter(app.Exec, app.Terminal)

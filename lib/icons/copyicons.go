@@ -7,7 +7,42 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"github.com/pkg/errors"
 )
+
+func CopyIconToSessionIconDir(iconPath string) (string, error) {
+	var ext = filepath.Ext(iconPath)
+	if !(ext == ".png" || ext == ".xpm" || ext == ".svg") {
+		return "", errors.Errorf("'%s' does not look like an icon.", iconPath)
+	}
+	var fileName = filepath.Base(iconPath)
+	var iconName = fileName[:len(fileName) - len(ext)]
+	var sessionIconDir = xdg.RuntimeDir + "/org.refude.icon-service-session-icons/"
+	var destPath =  sessionIconDir + fileName
+
+	r, err := os.Open(iconPath)
+	if err != nil {
+		return "", err
+	}
+	defer r.Close()
+
+	w, err := os.Create(destPath)
+	if err != nil {
+		return "", err
+	}
+	defer w.Close()
+
+	if _, err := io.Copy(w, r); err != nil {
+		log.Println("Error copying file", err)
+		return "", err
+	}
+
+	if _, err := os.Create(sessionIconDir + "/marker"); err != nil {
+		log.Println("Error updating marker:", err)
+	}
+
+	return iconName, nil
+}
 
 func CopyIcons(iconName string, iconThemePath string) {
 	if iconName == "" || iconThemePath == "" {

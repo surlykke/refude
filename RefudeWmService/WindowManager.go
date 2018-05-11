@@ -20,6 +20,7 @@ import (
 	"time"
 	"github.com/surlykke/RefudeServices/lib/icons"
 	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib/action"
 )
 
 
@@ -108,6 +109,7 @@ func updateWindows() {
 		if ! find(newWindowIds, wId) {
 			delete(windows, wId)
 			service.Unmap(fmt.Sprintf("/windows/%d", wId))
+			service.Unmap(fmt.Sprintf("/actions/%d", wId))
 		}
 	}
 
@@ -119,6 +121,8 @@ func updateWindows() {
 		}
 		windows[wId].Self =fmt.Sprintf("wm-service:/windows/%d", wId)
 		service.Map(fmt.Sprintf("/windows/%d", wId), resource.MakeJsonResource(windows[wId], WindowMediaType))
+		var act = action.MakeAction(windows[wId].Name, "", windows[wId].IconName, windows[wId].Self, MakeExecuter(wId))
+		service.Map(fmt.Sprintf("/actions/%d", wId), resource.MakeJsonResource(act, action.ActionMediaType))
 	}
 }
 
@@ -131,7 +135,6 @@ func getWindow(wId xproto.Window, stackingOrder int) *Window {
 		name,_ = icccm.WmNameGet(x, wId)
 	}
 	window.Name = name
-	fmt.Println("Setting RelevanceHint: ", -stackingOrder)
 	window.RelevanceHint = -stackingOrder
 	if rect, err := xwindow.New(x, wId).DecorGeometry(); err == nil {
 		window.X = rect.X()
@@ -147,10 +150,9 @@ func getWindow(wId xproto.Window, stackingOrder int) *Window {
 	}
 
 	if iconArr, err := xprop.PropValNums(xprop.GetProperty(x, wId, "_NET_WM_ICON")); err == nil {
-		argbIcon := icons.ExtractARGBIcon(iconArr)
-		if iconUrl, err := icons.ServeAsPng(argbIcon); err == nil {
-			window.IconUrl = ".." + iconUrl
-		}
+		argbIcon := extractARGBIcon(iconArr)
+		window.IconName = icons.SaveAsPngToSessionIconDir(argbIcon)
+		fmt.Println("Setting iconname to: ", window.IconName)
 	}
 
 	window.Actions = make(map[string]Action)
@@ -182,6 +184,7 @@ func updateWindow(window *Window, stackOrder int) *Window {
 		newWindow.States = states
 	}
 
+	newWindow.IconName = window.IconName
 	newWindow.IconUrl = window.IconUrl
 
 	newWindow.Actions = make(map[string]Action)
@@ -204,3 +207,40 @@ func find(windowIds []xproto.Window, windowId xproto.Window) bool {
 	return false
 }
 
+func MakeExecuter(id xproto.Window) action.Executer {
+	return func() {
+		ewmh.ActiveWindowReq(x, xproto.Window(id))
+	}
+}
+
+
+/**
+ * Icons retrieved from the X-server (EWMH) will come as arrays of uint. There will be first two ints giving
+ * width and height, then width*height uints each holding a pixel in ARGB format (on 64bit system the 4 most
+ * significant bytes are not used). After that it may repeat: again a width and height uint and then pixels and
+ * so on...
+ */
+func extractARGBIcon(uints []uint) icons.Icon {
+	res := make(icons.Icon, 0)
+	for len(uints) >= 2 {
+		width := int32(uints[0])
+		height := int32(uints[1])
+		fmt.Println("image dimensions: ", width, "x", height)
+
+		uints = uints[2:]
+		if len(uints) < int(width*height) {
+			break
+		}
+		pixels := make([]byte, 4*width*height)
+		for pos := int32(0); pos < width*height; pos++ {
+			pixels[4*pos] = uint8((uints[pos] & 0xFF000000) >> 24)
+			pixels[4*pos+1] = uint8((uints[pos] & 0xFF0000) >> 16)
+			pixels[4*pos+2] = uint8((uints[pos] & 0xFF00) >> 8)
+			pixels[4*pos+3] = uint8(uints[pos] & 0xFF)
+		}
+		res = append(res, icons.Img{Width: width, Height: height, Pixels: pixels})
+		uints = uints[width*height:]
+	}
+
+	return res
+}

@@ -160,6 +160,7 @@ func collectThemes() map[string]Theme {
 		}
 
 		for _, indexThemeFilePath := range indexThemeFilePaths {
+			fmt.Println("Looking at: ", indexThemeFilePath)
 			themeId := filepath.Base(filepath.Dir(indexThemeFilePath))
 			if _, ok := themes[themeId]; !ok {
 				if theme, err := readIndexTheme(themeId, indexThemeFilePath); err == nil {
@@ -219,6 +220,9 @@ func collectIcons(icons map[string]Icon, iconDirPath string, iconDir IconDir) {
 		for _, imagePath := range imagePaths {
 		    var image = Image{iconDir.Context, iconDir.MinSize, iconDir.MaxSize, imagePath}
 			var iconName = filepath.Base(imagePath[0 : len(imagePath)-4])
+			if iconName == "chrome_app_indicator_1_1" {
+				fmt.Println("imagePath: ", imagePath)
+			}
 			var icon, ok = icons[iconName]
 			if !ok {
 				icon = Icon{iconName, []Image{image}}

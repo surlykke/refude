@@ -7,10 +7,8 @@
 package main
 
 import (
-	"net/http"
 	"golang.org/x/text/language"
 	"github.com/surlykke/RefudeServices/lib/mediatype"
-	"github.com/surlykke/RefudeServices/lib/query"
 )
 
 const DesktopApplicationMediaType mediatype.MediaType = "application/vnd.org.refude.desktopapplication+json"
@@ -23,8 +21,6 @@ type DesktopApplication struct {
 	NoDisplay       bool
 	Comment         string `json:",omitempty"`
 	IconName        string `json:",omitempty"`
-	IconPath        string `json:",omitempty"`
-	IconUrl         string `json:",omitempty"`
 	Hidden          bool
 	OnlyShowIn      []string
 	NotShowIn       []string
@@ -51,27 +47,5 @@ type Action struct {
 	Name     string
 	Exec     string
 	IconName string
-	IconPath string
-	IconUrl  string
-}
-
-type IconPath struct {
-	path string
-}
-
-func (ip IconPath) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "GET" {
-		http.ServeFile(w, r, ip.path)
-	} else {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-	}
-}
-
-func (ip IconPath) Match(m query.Matcher) bool {
-	return false
-}
-
-func (ip IconPath) Mt() mediatype.MediaType {
-	return mediatype.MediaType("image/png")
 }
 
