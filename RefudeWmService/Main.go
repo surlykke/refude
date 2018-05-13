@@ -11,6 +11,6 @@ import (
 )
 
 func main() {
-	go WmRun()
+	go Run()
 	service.Serve("org.refude.wm-service")
 }
