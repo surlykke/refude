@@ -10,8 +10,8 @@ import (
 	"regexp"
 	"net/http"
 	"fmt"
-	"github.com/surlykke/RefudeServices/lib/mediatype"
 	"github.com/pkg/errors"
+	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
 var r = regexp.MustCompile(`^\s*(?:W/)?("[^"]*")\s*`)
@@ -86,7 +86,7 @@ func GetSingleParams(r *http.Request, paramNames ...string) (map[string]string, 
 
 func ReportUnprocessableEntity(w http.ResponseWriter, err error) {
 	w.WriteHeader(http.StatusUnprocessableEntity)
-	w.Write(mediatype.ToJSon(err.Error()))
+	w.Write(resource.ToJSon(err.Error()))
 }
 
 

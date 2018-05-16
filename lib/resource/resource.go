@@ -12,8 +12,8 @@ import (
 	"crypto/sha1"
 	"github.com/surlykke/RefudeServices/lib/mediatype"
 	"github.com/surlykke/RefudeServices/lib/query"
+	"encoding/json"
 )
-
 
 type GetHandler interface {
 	GET(w http.ResponseWriter, r *http.Request)
@@ -33,14 +33,13 @@ type DeleteHandler interface {
 
 type Resource interface {
 	ServeHTTP(w http.ResponseWriter, r *http.Request)
-	Mt()   mediatype.MediaType
+	Mt() mediatype.MediaType
 	Match(m query.Matcher) bool
 }
 
 type MappableType interface {
 	SetSelf(string)
 }
-
 
 type Self struct {
 	Self string `json:"_self,omitempty"`
@@ -51,10 +50,20 @@ func (s *Self) SetSelf(path string) {
 }
 
 type JsonResource struct {
-	res       interface{}
-	data 	  []byte
+	Res       interface{}
+	data      []byte
 	mediaType mediatype.MediaType
 	etag      string
+	prepared  bool
+}
+
+// Caller must make sure that no other goroutine accesses during this.
+func (jr *JsonResource) Prepare() {
+	if !jr.prepared {
+		jr.data = ToJSon(jr.Res)
+		jr.etag = fmt.Sprintf("\"%x\"", sha1.Sum(jr.data))
+		jr.prepared = true
+	}
 }
 
 func (jr *JsonResource) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -66,18 +75,18 @@ func (jr *JsonResource) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	case "POST":
 		fmt.Println("JsonResource doing POST")
-		if postHandler, ok := jr.res.(PostHandler); ok {
+		if postHandler, ok := jr.Res.(PostHandler); ok {
 			fmt.Println("Found handler")
 			postHandler.POST(w, r)
 			return
 		}
 	case "PATCH":
-		if patchHandler, ok := jr.res.(PatchHandler); ok {
+		if patchHandler, ok := jr.Res.(PatchHandler); ok {
 			patchHandler.PATCH(w, r)
 			return
 		}
 	case "DELETE":
-		if deleteHandler, ok := jr.res.(DeleteHandler); ok {
+		if deleteHandler, ok := jr.Res.(DeleteHandler); ok {
 			deleteHandler.DELETE(w, r)
 			return
 		}
@@ -93,12 +102,14 @@ func (jr *JsonResource) Mt() mediatype.MediaType {
 	return jr.mediaType
 }
 
-func (jr *JsonResource) Match(m query.Matcher) bool {
-	return m(jr.res)
+func ToJSon(res interface{}) []byte {
+	if bytes, err := json.Marshal(res); err != nil {
+		panic("Could not json-marshal")
+	} else {
+		return bytes
+	}
 }
 
 func MakeJsonResource(res interface{}, mediaType mediatype.MediaType) *JsonResource {
-	var data = mediatype.ToJSon(res)
-	var etag = fmt.Sprintf("\"%x\"", sha1.Sum(data))
-	return &JsonResource{res, data, mediaType, etag}
+	return &JsonResource{Res: res, mediaType:mediaType}
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/query"
 	"time"
 	"fmt"
+	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
 const LinksMediaType mediatype.MediaType = "application/vnd.org.refude.Links+json"
@@ -80,7 +81,7 @@ func (l *Links) getByteRepresentation(mediaType mediatype.MediaType) []byte {
 	data, ok := l.cache[mediaType]
 	if !ok {
 		if mediaType == "" {
-			data = mediatype.ToJSon(l.entries)
+			data = resource.ToJSon(l.entries)
 		} else {
 			var matching= make(map[string]mediatype.MediaType, len(l.entries))
 			for path, mt := range l.entries {
@@ -88,7 +89,7 @@ func (l *Links) getByteRepresentation(mediaType mediatype.MediaType) []byte {
 					matching[path] = mt
 				}
 			}
-			data = mediatype.ToJSon(matching)
+			data = resource.ToJSon(matching)
 		}
 		l.cache[mediaType] = data
 	}

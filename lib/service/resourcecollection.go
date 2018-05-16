@@ -67,7 +67,7 @@ func separate(sp standardizedPath) (standardizedPath, string) {
 }
 
 var mutex sync.Mutex
-var rc = make(map[standardizedPath]resource.Resource)
+var rc = make(map[standardizedPath]*resource.JsonResource)
 
 var links = MakeLinks()
 
@@ -76,22 +76,19 @@ var reservedPaths = map[standardizedPath]bool{
 	"/search": true,
 }
 
-func init() {
-	rc["/links"] = links
-}
 
 // TODO: Note about threadsafety
 
-func put(sp standardizedPath, res resource.Resource) {
+func put(sp standardizedPath, jRes *resource.JsonResource) {
 	if reservedPaths[sp] {
 		panic("Attempt to map to reserved path: " + sp)
 	}
-	rc[sp] = res
-	links.addLinkEntry(sp, res.Mt())
+	rc[sp] = jRes
+	links.addLinkEntry(sp, jRes.Mt())
 	clearSearchCache()
 }
 
-func unput(sp standardizedPath) (resource.Resource, bool){
+func unput(sp standardizedPath) (*resource.JsonResource, bool) {
 	if reservedPaths[sp] {
 		panic("Attempt to unmap reserved path: " + sp)
 	}
@@ -106,7 +103,7 @@ func unput(sp standardizedPath) (resource.Resource, bool){
 	}
 }
 
-func findForServing(path standardizedPath) (resource.Resource, bool) {
+func findForServing(path standardizedPath) (*resource.JsonResource, bool) {
 	mutex.Lock()
 	defer mutex.Unlock()
 	var res, ok = rc[path];
@@ -126,7 +123,7 @@ func RemoveAll(dirpath string) {
 	}
 }
 
-func MapAll(newEntries map[string]resource.Resource) {
+func MapAll(newEntries map[string]*resource.JsonResource) {
 	mutex.Lock()
 	defer mutex.Unlock()
 	for path, res := range newEntries {
@@ -145,23 +142,13 @@ func Map(path string, mappableType resource.MappableType, mt mediatype.MediaType
 	put(sp, jsonResource)
 }
 
-func Unmap(path string) (resource.Resource, bool ){
+func Unmap(path string) (*resource.JsonResource, bool ){
 	sp := standardize(path)
 	mutex.Lock()
 	defer mutex.Unlock()
 	return unput(sp)
 }
 
-func Has(path string) bool {
-	sp := standardize(path)
-	mutex.Lock()
-	defer mutex.Unlock()
-	if _, ok := rc[sp]; ok {
-		return true
-	} else {
-		return false
-	}
-}
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	sp := standardize(r.URL.Path)
@@ -171,6 +158,8 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		} else {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 		}
+	} else if sp == "/links" {
+		links.ServeHTTP(w,r)
 	} else if res, ok := findForServing(sp); !ok {
 		w.WriteHeader(http.StatusNotFound)
 	} else {

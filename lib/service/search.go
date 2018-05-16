@@ -37,33 +37,36 @@ func Search(w http.ResponseWriter, r *http.Request) {
 				mediaType = "application/json"
 			}
 
-			var resources = make([]resource.Resource, len(rc))
+			var jsonResources = make([]*resource.JsonResource, len(rc))
 			var found = 0
 			for _, res := range rc {
 				if mediatype.MediaTypeMatch(mediaType, res.Mt()) {
-					resources[found] = res
+					jsonResources[found] = res
 					found = found + 1
 				}
 			}
 
-			resources = resources[:found]
+			jsonResources = jsonResources[:found]
 			if q, ok := flatParams["q"]; ok {
 				if matcher, err := query.Parse(q); err != nil {
 					requestutils.ReportUnprocessableEntity(w, err)
 					return
 				} else {
 					found = 0
-					for _, res := range resources {
-						if res.Match(matcher) {
-							resources[found] = res
+					for _, jsonRes := range jsonResources {
+						if matcher(jsonRes.Res) {
+							jsonResources[found] = jsonRes
 							found = found + 1
 						}
 					}
-					resources = resources[:found]
+					jsonResources = jsonResources[:found]
 				}
 			}
 
-			data = mediatype.ToJSon(resources)
+			for _, jsonRes := range jsonResources {
+				jsonRes.Prepare()
+			}
+			data = resource.ToJSon(jsonResources)
 			searchCache[r.URL.RawQuery] = data
 		}
 	}

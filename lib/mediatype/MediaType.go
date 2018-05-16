@@ -7,7 +7,6 @@
 package mediatype
 
 import (
-	"encoding/json"
 	"strings"
 )
 
@@ -36,11 +35,4 @@ func MediaTypeMatch(sought, actual MediaType) bool {
 
 
 
-func ToJSon(res interface{}) []byte {
-	if bytes, err := json.Marshal(res); err != nil {
-		panic("Could not json-marshal")
-	} else {
-		return bytes
-	}
-}
 
