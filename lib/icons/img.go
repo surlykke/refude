@@ -96,7 +96,6 @@ func SaveAsPngToSessionIconDir(argbIcon Icon) string {
 	if registerName(iconName) {
 
 		for _, img := range argbIcon {
-			fmt.Println("Consider img, width:", img.Width, ", height:", img.Height)
 			if img.Height == img.Width && hicolorMapSizes[img.Height] {
 				var destDir = fmt.Sprintf("%shicolor/%dx%d/apps", sessionIconDir, img.Width, img.Height)
 				var destPath = destDir + "/" + iconName + ".png"
@@ -119,7 +118,6 @@ func SaveAsPngToSessionIconDir(argbIcon Icon) string {
 			}
 		}
 	}
-	fmt.Println("Returning iconName:", iconName)
 	return iconName
 }
 

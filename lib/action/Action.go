@@ -18,15 +18,15 @@ type Executer func()
 
 type Action struct {
 	resource.Self
-	Name             string
-	Comment          string
-	IconName         string
-	PresentationHint string
-	executer         Executer
+	Name     string
+	Comment  string
+	IconName string
+	Hint     string
+	executer Executer
 }
 
-func MakeAction(Name string, Comment string, IconName string, presentationHint string, executer Executer) *Action {
-	return &Action{Name: Name, Comment: Comment, IconName: IconName, PresentationHint:presentationHint,  executer:executer}
+func MakeAction(Name string, Comment string, IconName string, hint string, executer Executer) *Action {
+	return &Action{Name: Name, Comment: Comment, IconName: IconName, Hint: hint,  executer:executer}
 }
 
 func (a *Action) POST(w http.ResponseWriter, r *http.Request) {

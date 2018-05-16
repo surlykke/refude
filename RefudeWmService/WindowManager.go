@@ -7,25 +7,27 @@
 package main
 
 import (
-	"fmt"
-	"github.com/BurntSushi/xgbutil"
-	"github.com/BurntSushi/xgbutil/xwindow"
+	"time"
+
+	"github.com/BurntSushi/xgb"
 	"github.com/BurntSushi/xgb/xproto"
+	"github.com/BurntSushi/xgbutil"
 	"github.com/BurntSushi/xgbutil/ewmh"
 	"github.com/BurntSushi/xgbutil/icccm"
 	"github.com/BurntSushi/xgbutil/xprop"
-	"github.com/surlykke/RefudeServices/lib/service"
-	"github.com/BurntSushi/xgb/randr"
-	"github.com/BurntSushi/xgb"
-	"time"
-	"github.com/surlykke/RefudeServices/lib/icons"
+	"github.com/BurntSushi/xgbutil/xwindow"
 	"github.com/surlykke/RefudeServices/lib/action"
+	"github.com/surlykke/RefudeServices/lib/icons"
+	"github.com/surlykke/RefudeServices/lib/service"
 	"github.com/surlykke/RefudeServices/lib/utils"
+	"fmt"
 )
 
 var display = Display{Screens: make([]Rect, 0)}
 var windows = make(map[xproto.Window]*Window)
 var xutil *xgbutil.XUtil
+
+var serverEvents = make(chan xgb.Event)
 
 func Run() {
 	var err error
@@ -39,59 +41,39 @@ func Run() {
 		return
 	}
 
-	getWindows()
-
-	conn, err := getXgbConnection()
-	if err != nil {
-		panic(err)
-	}
-
-	randr.Init(conn)
-	buildDisplay(conn)
-
-	var serverEvents = make(chan xgb.Event)
-	go watchServer(serverEvents)
-
+	go watchServer()
+	var nudges = time.Tick(time.Millisecond * 200)
+	var somethingChanged = true // True to force first update
 	for {
 		select {
-		case evt := <-serverEvents:
+		case _ = <-nudges:
+			if somethingChanged {
+				fmt.Println(">>>>>>>>>>>> add..")
+				service.RemoveAll("/windows")
+				service.RemoveAll("/actions")
+				if tmp, err := ewmh.ClientListStackingGet(xutil); err == nil {
+					for _, wId := range tmp {
+						if rect, err := xwindow.New(xutil, wId).DecorGeometry(); err == nil {
+							w := getWindow(wId, rect.X(), rect.Y(), rect.Height(), rect.Width())
 
-			switch e := evt.(type) {
-			case xproto.CreateNotifyEvent:
-				fmt.Println(evt)
-				getWindows()
-			case xproto.ConfigureNotifyEvent:
-				if w, ok := windows[e.Window]; ok {
-					copy := *w
-					copy.X = int(e.X)
-					copy.Y = int(e.Y)
-					copy.H = int(e.Height)
-					copy.W = int(e.Width)
-					mapWindow(&copy)
-				}
-			case xproto.DestroyNotifyEvent:
-				fmt.Println(evt)
-				delete(windows, e.Window)
-				service.Unmap(fmt.Sprintf("/windows/%d", e.Window))
-				service.Unmap(fmt.Sprintf("/actions/%d", e.Window))
-			case xproto.MapNotifyEvent:
-				if w, ok := windows[e.Window]; ok {
-					copy := *w
-					copy.States = utils.Filter(copy.States, func(state string) bool { return state != "_NET_WM_STATE_HIDDEN" })
-					mapWindow(&copy)
-				}
-			case xproto.UnmapNotifyEvent:
-				if w, ok := windows[e.Window]; ok {
-					copy := *w
-					if !utils.Contains(copy.States, "_NET_WM_STATE_HIDDEN") {
-						copy.States = append(copy.States, "_NET_WM_STATE_HIDDEN")
-						mapWindow(&copy)
+							windows[w.Id] = w
+							fmt.Println("Mapping:", fmt.Sprintf("/windows/%d", w.Id))
+							service.Map(fmt.Sprintf("/windows/%d", w.Id), w, WindowMediaType)
+							if normal(w) {
+								var switchAction = action.MakeAction(w.Name, "Switch to this window", w.IconName, "switch", makeSwitchAction(w.Id))
+								fmt.Println("Mapping:", fmt.Sprintf("/actions/%d", w.Id))
+								service.Map(fmt.Sprintf("/actions/%d", w.Id), switchAction, action.ActionMediaType)
+							} else {
+								fmt.Println("Window", w.Id, "without action:", w.States)
+							}
+						}
 					}
 				}
-			case randr.ScreenChangeNotifyEvent:
-				fmt.Println("Got screen change event: ", e) // TODO update display resource
-			default:
+
+				somethingChanged = false
 			}
+		case _ = <-serverEvents: // Need more events here
+			somethingChanged = true
 		}
 	}
 }
@@ -107,70 +89,17 @@ func getXConnection() (*xgbutil.XUtil, error) {
 	return nil, err
 }
 
-func getXgbConnection() (*xgb.Conn, error) {
-	var err error
-	for i := 0; i < 5; i++ {
-		if conn, err := xgb.NewConn(); err == nil {
-			return conn, nil
-		}
-		time.Sleep(time.Second)
-	}
-	return nil, err
-}
-
-func buildDisplay(conn *xgb.Conn) {
-
-	defaultScreen := xproto.Setup(conn).DefaultScreen(conn)
-	display.W = defaultScreen.WidthInPixels
-	display.H = defaultScreen.HeightInPixels
-	// TODO add screens
-
-	service.Map("/display", &display, DisplayMediaType)
-}
-
-
-func watchServer(evts chan xgb.Event) {
-	for ; ; {
+func watchServer() {
+	for {
 		if evt, err := xutil.Conn().WaitForEvent(); err == nil {
-			evts <- evt
+			serverEvents <- evt
 		}
-	}
-}
-
-func getWindows() {
-	if tmp, err := ewmh.ClientListStackingGet(xutil); err == nil {
-		for _, wId := range tmp {
-			if _, ok := windows[wId]; !ok {
-				if rect, err := xwindow.New(xutil, wId).DecorGeometry(); err == nil {
-					w := getWindow(wId, rect.X(), rect.Y(), rect.Height(), rect.Width())
-					mapWindow(w)
-					windows[wId] = w
-				}
-			}
-		}
-	}
-}
-
-func mapWindow(w *Window) {
-	windows[w.Id] = w
-	service.Map(fmt.Sprintf("/windows/%d", w.Id), w, WindowMediaType)
-	if normal(w) {
-		var presentationHint string
-		if utils.Contains(w.States, "_NET_WM_STATE_HIDDEN") {
-			presentationHint = "minimizedwindow"
-		} else {
-			presentationHint = "window"
-		}
-		var act = action.MakeAction(w.Name, "", w.IconName, presentationHint, MakeExecuter(w.Id))
-		service.Map(fmt.Sprintf("/actions/%d", w.Id), act, action.ActionMediaType)
 	}
 }
 
 func normal(w *Window) bool {
-	return ! utils.Contains(w.States, "_NET_WM_STATE_ABOVE")
+	return !utils.Contains(w.States, "_NET_WM_STATE_ABOVE")
 }
-
-
 
 func getWindow(id xproto.Window, x int, y int, h int, w int) *Window {
 	window := Window{}
@@ -196,13 +125,12 @@ func getWindow(id xproto.Window, x int, y int, h int, w int) *Window {
 	if iconArr, err := xprop.PropValNums(xprop.GetProperty(xutil, id, "_NET_WM_ICON")); err == nil {
 		argbIcon := extractARGBIcon(iconArr)
 		window.IconName = icons.SaveAsPngToSessionIconDir(argbIcon)
-		fmt.Println("Setting iconname to: ", window.IconName)
 	}
 
 	return &window
 }
 
-func MakeExecuter(id xproto.Window) action.Executer {
+func makeSwitchAction(id xproto.Window) action.Executer {
 	return func() {
 		ewmh.ActiveWindowReq(xutil, xproto.Window(id))
 	}
@@ -214,13 +142,11 @@ func MakeExecuter(id xproto.Window) action.Executer {
  * significant bytes are not used). After that it may repeat: again a width and height uint and then pixels and
  * so on...
  */
-func
-extractARGBIcon(uints []uint) icons.Icon {
+func extractARGBIcon(uints []uint) icons.Icon {
 	res := make(icons.Icon, 0)
 	for len(uints) >= 2 {
 		width := int32(uints[0])
 		height := int32(uints[1])
-		fmt.Println("image dimensions: ", width, "x", height)
 
 		uints = uints[2:]
 		if len(uints) < int(width*height) {

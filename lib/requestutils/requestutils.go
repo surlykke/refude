@@ -56,7 +56,7 @@ func GetSingleQueryParameter(r *http.Request, parameterName string, fallbackValu
  * Errors if any of paramNames has more than one value
  * Returns value from query if there, "" if not
  */
-func GetSingleParams(w http.ResponseWriter, r *http.Request, paramNames ...string) (map[string]string, error) {
+func GetSingleParams(r *http.Request, paramNames ...string) (map[string]string, error) {
 	for queryParam, _ := range r.URL.Query() {
 		var ok = false
 		for _, paramName := range paramNames {

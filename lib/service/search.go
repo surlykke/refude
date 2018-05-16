@@ -28,7 +28,7 @@ func Search(w http.ResponseWriter, r *http.Request) {
 	defer mutex.Unlock()
 	data, ok := searchCache[r.URL.RawQuery]
 	if !ok {
-		if flatParams, err := requestutils.GetSingleParams(w, r, "type", "q"); err != nil {
+		if flatParams, err := requestutils.GetSingleParams(r, "type", "q"); err != nil {
 			requestutils.ReportUnprocessableEntity(w, err)
 			return
 		} else {

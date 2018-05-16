@@ -54,7 +54,7 @@ func Run() {
 
 				var defaultPath = "/actions/" + app.Id
 				var executer = MakeExecuter(app.Exec, app.Terminal)
-				var act = action.MakeAction(app.Name, app.Comment, app.IconName, "applicationlaunch", executer)
+				var act = action.MakeAction(app.Name, app.Comment, app.IconName, "launch", executer)
 				service.Map(defaultPath, act, action.ActionMediaType)
 
 				for actionId, da := range app.Actions {
@@ -64,7 +64,7 @@ func Run() {
 						iconName = app.IconName
 					}
 					var executer = MakeExecuter(da.Exec, app.Terminal)
-					var act = action.MakeAction(app.Name + ": " + da.Name, app.Comment, da.IconName, "applicationlaunch", executer)
+					var act = action.MakeAction(app.Name + ": " + da.Name, app.Comment, da.IconName, "launch", executer)
 					service.Map(path, act, action.ActionMediaType)
 				}
 

@@ -60,7 +60,7 @@ func (l *Links) removeLinkEntry(path standardizedPath) {
 func (l *Links) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var t1 = time.Now()
 	if r.Method == "GET" {
-		if flattenedParameterMap, err := requestutils.GetSingleParams(w, r, "type"); err != nil {
+		if flattenedParameterMap, err := requestutils.GetSingleParams(r, "type"); err != nil {
 			requestutils.ReportUnprocessableEntity(w, err)
 		} else {
 			var mediaType= mediatype.MediaType(flattenedParameterMap["type"])

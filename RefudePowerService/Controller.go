@@ -98,11 +98,11 @@ func getProps(path dbus.ObjectPath, dbusInterface string) map[string]dbus.Varian
 }
 
 var possibleActionValues = map[string][]string{
-	"PowerOff":{"Shutdown", "Power off the machine", "system-shutdown", "leave", },
-	"Reboot": {"Reboot", "Reboot the machine", "system-reboot", "leave"},
-	"Suspend": {"Suspend", "Suspend the machine", "system-suspend", "leave"},
-	"Hibernate": {"Hibernate", "Put the machine into hibernation", "leave", "system-suspend-hibernate"},
-	"HybridSleep": {"HybridSleep", "Put the machine into hybrid sleep", "leave", "system-suspend-hibernate"}}
+	"PowerOff":{"Shutdown", "Power off the machine", "system-shutdown"},
+	"Reboot": {"Reboot", "Reboot the machine", "system-reboot"},
+	"Suspend": {"Suspend", "Suspend the machine", "system-suspend"},
+	"Hibernate": {"Hibernate", "Put the machine into hibernation", "system-suspend-hibernate"},
+	"HybridSleep": {"HybridSleep", "Put the machine into hybrid sleep", "system-suspend-hibernate"}}
 
 func MapPowerActions() {
 	for id, pv := range possibleActionValues {
@@ -112,7 +112,7 @@ func MapPowerActions() {
 				fmt.Println("Calling", login1Service, login1Path, managerInterface+"." + id)
 				dbusConn.Object(login1Service, login1Path).Call(dbusEndPoint, dbus.Flags(0), false)
 			}
-			var act = action.MakeAction(pv[0], pv[1], pv[2], pv[3], executer)
+			var act = action.MakeAction(pv[0], pv[1], pv[2], "leave", executer)
 			service.Map("/actions/" + id, act, action.ActionMediaType)
 			delete(possibleActionValues, id)
 		}
