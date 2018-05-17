@@ -52,20 +52,22 @@ func Run() {
 				}
 				service.Map("/applications/"+app.Id, app, DesktopApplicationMediaType)
 
-				var defaultPath = "/actions/" + app.Id
-				var executer = MakeExecuter(app.Exec, app.Terminal)
-				var act = action.MakeAction(app.Name, app.Comment, app.IconName, "launch", executer)
-				service.Map(defaultPath, act, action.ActionMediaType)
+				if ! app.NoDisplay {
+					var defaultPath= "/actions/" + app.Id
+					var executer= MakeExecuter(app.Exec, app.Terminal)
+					var act= action.MakeAction(app.Name, app.Comment, app.IconName, "launch", executer)
+					service.Map(defaultPath, act, action.ActionMediaType)
 
-				for actionId, da := range app.Actions {
-					var path = "/actions/" + app.Id + "-" + actionId
-					var iconName = da.IconName
-					if iconName == "" {
-						iconName = app.IconName
+					for actionId, da := range app.Actions {
+						var path= "/actions/" + app.Id + "-" + actionId
+						var iconName= da.IconName
+						if iconName == "" {
+							iconName = app.IconName
+						}
+						var executer= MakeExecuter(da.Exec, app.Terminal)
+						var act= action.MakeAction(app.Name+": "+da.Name, app.Comment, da.IconName, "launch", executer)
+						service.Map(path, act, action.ActionMediaType)
 					}
-					var executer = MakeExecuter(da.Exec, app.Terminal)
-					var act = action.MakeAction(app.Name + ": " + da.Name, app.Comment, da.IconName, "launch", executer)
-					service.Map(path, act, action.ActionMediaType)
 				}
 
 			}

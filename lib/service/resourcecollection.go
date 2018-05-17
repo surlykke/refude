@@ -107,6 +107,9 @@ func findForServing(path standardizedPath) (*resource.JsonResource, bool) {
 	mutex.Lock()
 	defer mutex.Unlock()
 	var res, ok = rc[path];
+	if ok {
+		res.Prepare()
+	}
 	return res, ok
 }
 
