@@ -14,6 +14,8 @@ import (
 	"encoding/json"
 	"github.com/surlykke/RefudeServices/lib/requestutils"
 	"github.com/surlykke/RefudeServices/lib/query"
+	"path/filepath"
+	"github.com/pkg/errors"
 )
 
 type GetHandler interface {
@@ -40,7 +42,7 @@ type Resource interface {
 type AbstractResource struct {
 	Self string `json:"_self,omitempty"`
 	Relates map[string]mediatype.MediaType `json:"_relates,omitempty"`
-	Mt mediatype.MediaType `json:,omit`
+	Mt mediatype.MediaType `json:"-"`
 }
 
 func Ar(mt mediatype.MediaType) AbstractResource {
@@ -63,8 +65,17 @@ func Relate(r1, r2 *AbstractResource) {
 		r2.Relates = make(map[string]mediatype.MediaType)
 	}
 
-	r1.Relates[r2.Self] = r2.Mt  // FIXME links should be relative
-	r2.Relates[r1.Self] = r1.Mt
+	if r2RelativeToR1, err := filepath.Rel(filepath.Dir(r1.Self), r2.Self); err != nil {
+		panic(errors.Errorf("Cannot determine relative path from '%s' and '%s': '%s'", r1.Self, r2.Self, err.Error()))
+	} else {
+		r1.Relates[r2RelativeToR1] = r2.Mt
+	}
+
+	if r1RelativeToR2, err := filepath.Rel(filepath.Dir(r2.Self), r1.Self); err != nil {
+		panic(errors.Errorf("Cannot determine relative path from '%s' and '%s': '%s'", r2.Self, r1.Self, err.Error()))
+	} else {
+		r2.Relates[r1RelativeToR2] = r1.Mt
+	}
 }
 
 
