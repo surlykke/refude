@@ -17,7 +17,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
-const LinksMediaType mediatype.MediaType = "application/vnd.org.refude.Links+json"
+const LinksMediaType mediatype.MediaType = "application/vnd.org.refude.AbstractResource+json"
 
 type Links struct {
 	entries   map[string]mediatype.MediaType
@@ -62,7 +62,7 @@ func (l *Links) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var t1 = time.Now()
 	if r.Method == "GET" {
 		if flattenedParameterMap, err := requestutils.GetSingleParams(r, "type"); err != nil {
-			requestutils.ReportUnprocessableEntity(w, err)
+			requestutils.ReportUnprocessableEntity(w, resource.ToJSon(err))
 		} else {
 			var mediaType= mediatype.MediaType(flattenedParameterMap["type"])
 			w.Header().Set("Content-Type", string(LinksMediaType))

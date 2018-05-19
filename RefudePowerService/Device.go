@@ -15,7 +15,7 @@ const DeviceMediaType mediatype.MediaType = "application/vnd.org.refude.upowerde
 
 
 type Device struct {
-	resource.Self
+	resource.AbstractResource
 	NativePath       string
 	Vendor           string
 	Model            string
@@ -70,7 +70,7 @@ func deviceTecnology(index uint32) string {
 const LidMediaType mediatype.MediaType = "application/vnd.org.refude.upowerlid+json"
 
 type Lid struct {
-	resource.Self
+	resource.AbstractResource
 	Open bool
 }
 

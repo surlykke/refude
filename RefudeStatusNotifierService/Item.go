@@ -22,7 +22,7 @@ import (
 const ItemMediaType mediatype.MediaType = "application/vnd.org.refude.statusnotifieritem+json"
 
 type Item struct {
-	resource.Self
+	resource.AbstractResource
 	Id                      string
 	Category                string
 	Status                  string

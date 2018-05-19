@@ -15,7 +15,7 @@ import (
 const WindowMediaType mediatype.MediaType = "application/vnd.org.refude.wmwindow+json"
 
 type Window struct {
-	resource.Self
+	resource.AbstractResource
 	Id            xproto.Window
 	X, Y, H, W    int
 	Name          string

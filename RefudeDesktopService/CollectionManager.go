@@ -23,6 +23,8 @@ import (
 	"encoding/json"
 	"github.com/surlykke/RefudeServices/lib/requestutils"
 	"github.com/surlykke/RefudeServices/lib/action"
+	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib/mediatype"
 )
 
 
@@ -50,13 +52,13 @@ func Run() {
 				if x, ok := lastLaunched[app.Id]; ok {
 					app.RelevanceHint = x
 				}
-				service.Map("/applications/"+app.Id, app, DesktopApplicationMediaType)
 
 				if ! app.NoDisplay {
 					var defaultPath= "/actions/" + app.Id
 					var executer= MakeExecuter(app.Exec, app.Terminal)
-					var act= action.MakeAction(app.Name, app.Comment, app.IconName, "launch", executer)
-					service.Map(defaultPath, act, action.ActionMediaType)
+					var act= action.MakeAction(defaultPath, app.Name, app.Comment, app.IconName, "launch", executer)
+					resource.Relate(&app.AbstractResource, &act.AbstractResource)
+					service.Map(act)
 
 					for actionId, da := range app.Actions {
 						var path= "/actions/" + app.Id + "-" + actionId
@@ -65,15 +67,17 @@ func Run() {
 							iconName = app.IconName
 						}
 						var executer= MakeExecuter(da.Exec, app.Terminal)
-						var act= action.MakeAction(app.Name+": "+da.Name, app.Comment, da.IconName, "launch", executer)
-						service.Map(path, act, action.ActionMediaType)
+						var act= action.MakeAction(path, app.Name+": "+da.Name, app.Comment, da.IconName, "launch", executer)
+						resource.Relate(&app.AbstractResource, & act.AbstractResource)
+						service.Map(act)
 					}
 				}
+				service.Map(app)
 
 			}
 			service.RemoveAll("/mimetypes")
 			for _, mt := range update.mimetypes {
-				service.Map("/mimetypes/"+mt.Id, mt, MimetypeMediaType)
+				service.Map(mt)
 			}
 		case le := <-launchEvents:
 			lastLaunched[le.id] = le.time
@@ -108,9 +112,13 @@ func (da *DesktopApplication) POST(w http.ResponseWriter, r *http.Request) {
 		var expandedExec = regexp.MustCompile("%[uUfF]").ReplaceAllString(exec, strings.Join(args, " "))
 		runCmd(da.Terminal, expandedExec)
 		var copy = *da
+		copy.Relates = make(map[string]mediatype.MediaType)
+		for p,mt := range da.Relates {
+			copy.Relates[p] = mt
+		}
 		copy.RelevanceHint = time.Now().Unix()
 		launchEvents <- launchEvent{copy.Id, copy.RelevanceHint}
-		service.Map("/applications/"+ copy.Id, &copy, DesktopApplicationMediaType)
+		service.Map(&copy)
 		w.WriteHeader(http.StatusAccepted)
 	}
 }

@@ -21,6 +21,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/service"
 	"github.com/surlykke/RefudeServices/lib/utils"
 	"fmt"
+	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
 var display = Display{Screens: make([]Rect, 0)}
@@ -58,14 +59,15 @@ func Run() {
 
 							windows[w.Id] = w
 							fmt.Println("Mapping:", fmt.Sprintf("/windows/%d", w.Id))
-							service.Map(fmt.Sprintf("/windows/%d", w.Id), w, WindowMediaType)
 							if normal(w) {
-								var switchAction = action.MakeAction(w.Name, "Switch to this window", w.IconName, "switch", makeSwitchAction(w.Id))
+								var switchAction = action.MakeAction(fmt.Sprintf("/actions/%d", w.Id), w.Name, "Switch to this window", w.IconName, "switch", makeSwitchAction(w.Id))
 								fmt.Println("Mapping:", fmt.Sprintf("/actions/%d", w.Id))
-								service.Map(fmt.Sprintf("/actions/%d", w.Id), switchAction, action.ActionMediaType)
+								resource.Relate(&switchAction.AbstractResource, &w.AbstractResource)
+								service.Map(switchAction)
 							} else {
 								fmt.Println("Window", w.Id, "without action:", w.States)
 							}
+							service.Map(w)
 						}
 					}
 				}
@@ -104,6 +106,8 @@ func normal(w *Window) bool {
 func getWindow(id xproto.Window, x int, y int, h int, w int) *Window {
 	window := Window{}
 	window.Id = id
+	window.Self = fmt.Sprintf("/windows/%d", id)
+	window.Mt = WindowMediaType
 
 	name, err := ewmh.WmNameGet(xutil, window.Id)
 	if err != nil || len(name) == 0 {

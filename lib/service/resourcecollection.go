@@ -12,7 +12,6 @@ import (
 	"strings"
 	"fmt"
 	"sync"
-	"github.com/surlykke/RefudeServices/lib/mediatype"
 )
 
 // A standardized path is a path that starts with '/' and has no double slashes
@@ -79,25 +78,26 @@ var reservedPaths = map[standardizedPath]bool{
 
 // TODO: Note about threadsafety
 
-func put(sp standardizedPath, jRes *resource.JsonResource) {
+func put(sp standardizedPath, res resource.Resource) {
 	if reservedPaths[sp] {
 		panic("Attempt to map to reserved path: " + sp)
 	}
-	rc[sp] = jRes
-	links.addLinkEntry(sp, jRes.Mt())
+	var jsonResource = resource.MakeJsonResource(res)
+	rc[sp] = jsonResource
+	links.addLinkEntry(sp, res.GetMt())
 	clearSearchCache()
 }
 
-func unput(sp standardizedPath) (*resource.JsonResource, bool) {
+func unput(sp standardizedPath) (resource.Resource, bool) {
 	if reservedPaths[sp] {
 		panic("Attempt to unmap reserved path: " + sp)
 	}
 
-	if res, ok := rc[sp]; ok {
+	if jsonRes, ok := rc[sp]; ok {
 		delete(rc, sp)
 		links.removeLinkEntry(sp)
 		clearSearchCache()
-		return res, true
+		return jsonRes.GetRes(), true
 	} else {
 		return nil, false
 	}
@@ -108,7 +108,7 @@ func findForServing(path standardizedPath) (*resource.JsonResource, bool) {
 	defer mutex.Unlock()
 	var res, ok = rc[path];
 	if ok {
-		res.Prepare()
+		res.EnsureReady()
 	}
 	return res, ok
 }
@@ -126,26 +126,18 @@ func RemoveAll(dirpath string) {
 	}
 }
 
-func MapAll(newEntries map[string]*resource.JsonResource) {
-	mutex.Lock()
-	defer mutex.Unlock()
-	for path, res := range newEntries {
-		sp := standardize(path)
+func Map(res resource.Resource) {
+	if self := res.GetSelf(); self == "" {
+		panic("Mapping resource with empty self")
+	} else {
+		sp := standardize(self)
+		mutex.Lock()
+		defer mutex.Unlock()
 		put(sp, res)
 	}
-
 }
 
-func Map(path string, mappableType resource.MappableType, mt mediatype.MediaType) {
-	sp := standardize(path)
-	mappableType.SetSelf(string(sp))
-	var jsonResource = resource.MakeJsonResource(mappableType, mt)
-	mutex.Lock()
-	defer mutex.Unlock()
-	put(sp, jsonResource)
-}
-
-func Unmap(path string) (*resource.JsonResource, bool ){
+func Unmap(path string) (resource.Resource, bool ){
 	sp := standardize(path)
 	mutex.Lock()
 	defer mutex.Unlock()

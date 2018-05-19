@@ -183,12 +183,14 @@ func Controller() {
 		case ItemCreated:
 			if findByItemPath(event.sender, event.path) == -1 {
 				item := &Item{sender: event.sender, itemPath: event.path}
+				item.Self = item.restPath()
+				item.Mt = ItemMediaType
 				updateItem(item)
 				if item.menuPath != "" {
 					fetchMenu(item)
 				}
 				items = append(items, item)
-				service.Map(item.restPath(), item, ItemMediaType)
+				service.Map(item)
 				updateWatcherProperties()
 				go monitorItem(event.sender, event.path)
 			}
@@ -203,14 +205,14 @@ func Controller() {
 				var copy = *items[index]
 				updateItem(&copy)
 				items[index] = &copy
-				service.Map(items[index].restPath(), items[index], ItemMediaType)
+				service.Map(items[index])
 			}
 		case MenuUpdated:
 			if index := findByMenuPath(event.sender, event.path); index > -1 {
 				var copy = *items[index]
 				fetchMenu(&copy)
 				items[index] = &copy
-				service.Map(items[index].restPath(), items[index], ItemMediaType)
+				service.Map(items[index])
 			}
 		}
 	}

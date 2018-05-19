@@ -113,6 +113,7 @@ func (c *collection) collectApplications(appdir string) {
 			app, err := readDesktopFile(path)
 			if err == nil {
 				app.Id = strings.Replace(path[len(appdir)+1:], "/", "-", -1)
+				app.Self = fmt.Sprintf("/applications/%s", app.Id)
 				if oldApp, ok := c.applications[app.Id]; ok {
 					c.removeApp(oldApp)
 				}
@@ -201,6 +202,7 @@ func readDesktopFile(path string) (*DesktopApplication, error) {
 		return nil, errors.New("File must start with '[Desktop Entry]'")
 	} else {
 		var da = DesktopApplication{}
+		da.Mt = DesktopApplicationMediaType
 		da.Actions = make(map[string]*Action)
 		var actionNames = []string{}
 		group := iniFile[0]

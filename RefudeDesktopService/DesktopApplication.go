@@ -15,7 +15,7 @@ import (
 const DesktopApplicationMediaType mediatype.MediaType = "application/vnd.org.refude.desktopapplication+json"
 
 type DesktopApplication struct {
-	resource.Self
+	resource.AbstractResource
 	Type            string
 	Version         string `json:",omitempty"`
 	Name            string

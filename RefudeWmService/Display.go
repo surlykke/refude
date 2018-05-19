@@ -19,7 +19,7 @@ type Rect struct {
 }
 
 type Display struct {
-	resource.Self
+	resource.AbstractResource
 	W,H uint16
 	Screens []Rect
 }

@@ -37,7 +37,10 @@ func Run() {
 
 	if variant := getSingleProp(UPowPath, UPowerInterface, "LidIsPresent"); variant.Value().(bool) {
 		var open = !getSingleProp(UPowPath, UPowerInterface, "LidIsClosed").Value().(bool)
-		service.Map("/lid", &Lid{Open:open}, LidMediaType)
+		var lid = Lid{Open: open}
+		lid.Self = "/lid"
+		lid.Mt = LidMediaType
+		service.Map(&lid)
 	}
 
 	MapPowerActions()
@@ -48,9 +51,11 @@ func Run() {
 	devicePaths := append(enumCall.Body[0].([]dbus.ObjectPath), DisplayDevicePath)
 	for _, path := range devicePaths {
 		var device = &Device{}
+		device.Self = devicePath(path)
+		device.Mt = DeviceMediaType
 		devices[path] = device
 		updateDevice(device, getProps(path, UPowerDeviceInterface))
-		service.Map(devicePath(path), device, DeviceMediaType)
+		service.Map(device)
 	}
 
 	for signal := range signals {
@@ -60,12 +65,16 @@ func Run() {
 				return
 			} else if signal.Path == UPowPath {
 				if prop, ok2 := props["LidIsClosed"]; ok2 {
-					service.Map("/lid", &Lid{Open:!prop.Value().(bool)}, LidMediaType)
+					var lid  Lid
+					lid.Self = "/lid"
+					lid.Mt = LidMediaType
+					lid.Open = !prop.Value().(bool)
+					service.Map(&lid)
 				}
 			} else if device, ok := devices[signal.Path]; ok {
 				var copy = *device
 				updateDevice(&copy, props)
-				service.Map(devicePath(signal.Path), &copy, DeviceMediaType)
+				service.Map(&copy)
 			}
 			// TODO Handle device added/removed
 			// (need hardware to test)
@@ -112,9 +121,8 @@ func MapPowerActions() {
 				fmt.Println("Calling", login1Service, login1Path, managerInterface+"." + id)
 				dbusConn.Object(login1Service, login1Path).Call(dbusEndPoint, dbus.Flags(0), false)
 			}
-			var act = action.MakeAction(pv[0], pv[1], pv[2], "leave", executer)
-			service.Map("/actions/" + id, act, action.ActionMediaType)
-			delete(possibleActionValues, id)
+			var act = action.MakeAction(fmt.Sprintf("/actions/%s", id), pv[0], pv[1], pv[2], "leave", executer)
+			service.Map(act)
 		}
 	}
 }

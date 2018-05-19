@@ -150,6 +150,8 @@ func makeNotifyFunction(notifications chan *Notification) interface{} {
 			Body:    sanitize(body, allowedTags, allowedEscapes),
 			Actions: map[string]string{},
 		}
+		notification.Self = path(id)
+		notification.Mt = NotificationMediaType
 
 		if expire_timeout == 0  {
 			expire_timeout = 2000

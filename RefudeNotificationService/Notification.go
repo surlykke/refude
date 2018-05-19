@@ -15,7 +15,7 @@ import (
 const NotificationMediaType mediatype.MediaType = "application/vnd.org.refude.desktopnotification+json"
 
 type Notification struct {
-	resource.Self
+	resource.AbstractResource
 	Id            uint32
 	Sender        string
 	Subject       string

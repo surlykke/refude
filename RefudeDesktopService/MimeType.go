@@ -26,7 +26,7 @@ const freedesktopOrgXml = "/usr/share/mime/packages/freedesktop.org.xml"
 const MimetypeMediaType mediatype.MediaType = "application/vnd.org.refude.mimetype+json"
 
 type Mimetype struct {
-	resource.Self
+	resource.AbstractResource
 	Id                     string
 	Comment                string
 	Acronym                string `json:",omitempty"`
@@ -55,6 +55,9 @@ func NewMimetype(id string) (*Mimetype, error) {
 			IconName:     "unknown",
 			GenericIcon:  "unknown",
 		}
+		mt.Self = fmt.Sprintf("/mimetypes/%s", id)
+		mt.Mt = MimetypeMediaType
+
 
 		if strings.HasPrefix(id, "x-scheme-handler/") {
 			mt.Comment = id[len("x-scheme-handler/"):] + " url"

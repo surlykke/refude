@@ -7,40 +7,13 @@
 package requestutils
 
 import (
-	"regexp"
 	"net/http"
-	"fmt"
 	"github.com/pkg/errors"
-	"github.com/surlykke/RefudeServices/lib/resource"
+//	"github.com/surlykke/RefudeServices/lib/resource"
+	"regexp"
 )
 
-var r = regexp.MustCompile(`^\s*(?:W/)?("[^"]*")\s*`)
 
-
-func extractETags(s string) []string {
-	var result = make([]string, 0, 5)
-	var pos = 0
-
-	for {
-		matched := r.FindStringSubmatch(s[pos:])
-		if matched != nil {
-			result = append(result, matched[1])
-			pos += len(matched[0])
-		} else {
-			return nil
-		}
-
-		if pos >= len(s) {
-			return result
-		} else {
-			if s[pos] != ',' {
-				return nil
-			} else {
-				pos++
-			}
-		}
-	}
-}
 
 
 func GetSingleQueryParameter(r *http.Request, parameterName string, fallbackValue string) string {
@@ -84,36 +57,41 @@ func GetSingleParams(r *http.Request, paramNames ...string) (map[string]string, 
 	return result, nil
 }
 
-func ReportUnprocessableEntity(w http.ResponseWriter, err error) {
+func ReportUnprocessableEntity(w http.ResponseWriter, body []byte) {
 	w.WriteHeader(http.StatusUnprocessableEntity)
-	w.Write(resource.ToJSon(err.Error()))
+	w.Write(body)
 }
 
 
+var r = regexp.MustCompile(`^\s*(?:W/)?("[^"]*")\s*`)
 
-/*
- * Will return false if
- *  - request contains no valid If-None-Match or
- *  - none of the etags in the If-None-Match equals the given etag
- *
- * We do not differ between hard and weak etags - iow. we ignore W/ prefixes
- */
-func EtagMatch(r *http.Request, etag string) bool {
-	fmt.Println("EtagMatch")
-	if ifNoneMatch := r.Header.Get("if-none-match"); ifNoneMatch != "" {
-		fmt.Println("ifNoneMatch: ", ifNoneMatch)
-		if tags := extractETags(ifNoneMatch); tags != nil {
-			for _, tag := range tags {
-				fmt.Println("Compare", tag, "to", etag)
-				if etag == tag {
-					return true
-				}
+
+// We do not do weak matches, so any 'W/' preceding a tag is
+// ignored
+func EtagMatch(etag string, etagList string) bool {
+	var pos = 0
+
+	for {
+		matched := r.FindStringSubmatch(etagList[pos:])
+		if matched != nil {
+			if etag == matched[1] {
+				return true
+			} else {
+				pos += len(matched[0])
+			}
+		} else {
+			return false
+		}
+
+		if pos >= len(etagList) {
+			return false
+		} else {
+			if etagList[pos] != ',' {
+				return false
+			} else {
+				pos++
 			}
 		}
 	}
-
-	return false
 }
-
-
 

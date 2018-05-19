@@ -11,8 +11,9 @@ import (
 	"fmt"
 	"crypto/sha1"
 	"github.com/surlykke/RefudeServices/lib/mediatype"
-	"github.com/surlykke/RefudeServices/lib/query"
 	"encoding/json"
+	"github.com/surlykke/RefudeServices/lib/requestutils"
+	"github.com/surlykke/RefudeServices/lib/query"
 )
 
 type GetHandler interface {
@@ -32,74 +33,136 @@ type DeleteHandler interface {
 }
 
 type Resource interface {
-	ServeHTTP(w http.ResponseWriter, r *http.Request)
-	Mt() mediatype.MediaType
-	Match(m query.Matcher) bool
+	GetSelf() string
+	GetMt() mediatype.MediaType
 }
 
-type MappableType interface {
-	SetSelf(string)
-}
-
-type Self struct {
+type AbstractResource struct {
 	Self string `json:"_self,omitempty"`
+	Relates map[string]mediatype.MediaType `json:"_relates,omitempty"`
+	Mt mediatype.MediaType `json:,omit`
 }
 
-func (s *Self) SetSelf(path string) {
-	s.Self = path
+func Ar(mt mediatype.MediaType) AbstractResource {
+	return AbstractResource{"", make(map[string]mediatype.MediaType), mt}
 }
+
+func (ar *AbstractResource) GetSelf() string {
+	return ar.Self
+}
+
+func (ar *AbstractResource) GetMt() mediatype.MediaType {
+	return ar.Mt
+}
+
+func Relate(r1, r2 *AbstractResource) {
+	if r1.Relates == nil {
+		r1.Relates = make(map[string]mediatype.MediaType)
+	}
+	if r2.Relates == nil {
+		r2.Relates = make(map[string]mediatype.MediaType)
+	}
+
+	r1.Relates[r2.Self] = r2.Mt  // FIXME links should be relative
+	r2.Relates[r1.Self] = r1.Mt
+}
+
+
 
 type JsonResource struct {
-	Res       interface{}
-	data      []byte
-	mediaType mediatype.MediaType
-	etag      string
-	prepared  bool
+	res          Resource
+	data         []byte
+	etag         string
+	readyToServe bool
+}
+
+func (jr *JsonResource) GetRes() Resource {
+	return jr.res
+}
+
+func (jr *JsonResource) GetSelf() string {
+	return jr.res.GetSelf()
+}
+
+func (jr *JsonResource) GetMt() mediatype.MediaType {
+	return jr.res.GetMt()
+}
+
+func (jr *JsonResource) Matches(matcher query.Matcher) bool {
+	return matcher(jr.res)
 }
 
 // Caller must make sure that no other goroutine accesses during this.
-func (jr *JsonResource) Prepare() {
-	if !jr.prepared {
-		jr.data = ToJSon(jr.Res)
+func (jr *JsonResource) EnsureReady() {
+	if !jr.readyToServe {
+		jr.data = ToJSon(jr.res)
 		jr.etag = fmt.Sprintf("\"%x\"", sha1.Sum(jr.data))
-		jr.prepared = true
+		jr.readyToServe = true
 	}
 }
 
 func (jr *JsonResource) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
-		w.Header().Set("Content-Type", string(jr.mediaType))
-		w.Header().Set("ETag", jr.etag)
-		w.Write(jr.data)
+		if preventedByEtagCondition(r, jr.etag, true) {
+			w.WriteHeader(http.StatusNotModified)
+		} else {
+			w.Header().Set("Content-Type", string(jr.res.GetMt()))
+			w.Header().Set("ETag", jr.etag)
+			w.Write(jr.data)
+		}
 		return
 	case "POST":
 		fmt.Println("JsonResource doing POST")
-		if postHandler, ok := jr.Res.(PostHandler); ok {
-			fmt.Println("Found handler")
-			postHandler.POST(w, r)
+		if postHandler, ok := jr.res.(PostHandler); ok {
+			if preventedByEtagCondition(r, jr.etag, false) {
+				w.WriteHeader(http.StatusPreconditionFailed)
+			} else {
+				postHandler.POST(w, r)
+			}
 			return
 		}
 	case "PATCH":
-		if patchHandler, ok := jr.Res.(PatchHandler); ok {
-			patchHandler.PATCH(w, r)
+		if patchHandler, ok := jr.res.(PatchHandler); ok {
+			if preventedByEtagCondition(r, jr.etag, false) {
+				w.WriteHeader(http.StatusPreconditionFailed)
+			} else {
+				patchHandler.PATCH(w, r)
+			}
 			return
 		}
 	case "DELETE":
-		if deleteHandler, ok := jr.Res.(DeleteHandler); ok {
-			deleteHandler.DELETE(w, r)
+		if deleteHandler, ok := jr.res.(DeleteHandler); ok {
+			if preventedByEtagCondition(r, jr.etag, false) {
+				w.WriteHeader(http.StatusPreconditionFailed)
+			} else {
+				deleteHandler.DELETE(w, r)
+			}
 			return
 		}
 	}
 	w.WriteHeader(http.StatusMethodNotAllowed)
 }
 
-func (jr *JsonResource) MarshalJSON() ([]byte, error) {
-	return jr.data, nil
+func preventedByEtagCondition(r *http.Request, resourceEtag string, safeMethod bool) bool {
+	var etagList string
+	if safeMethod { // Safe methods are GET and HEAD
+		etagList  = r.Header.Get("If-None-Match")
+	} else {
+		etagList = r.Header.Get("If-Match")
+	}
+
+	if etagList == "" {
+		return false
+	} else if requestutils.EtagMatch(resourceEtag, etagList) {
+		return safeMethod
+	} else {
+		return !safeMethod
+	}
 }
 
-func (jr *JsonResource) Mt() mediatype.MediaType {
-	return jr.mediaType
+func (jr *JsonResource) MarshalJSON() ([]byte, error) {
+	return jr.data, nil
 }
 
 func ToJSon(res interface{}) []byte {
@@ -110,6 +173,6 @@ func ToJSon(res interface{}) []byte {
 	}
 }
 
-func MakeJsonResource(res interface{}, mediaType mediatype.MediaType) *JsonResource {
-	return &JsonResource{Res: res, mediaType:mediaType}
+func MakeJsonResource(res Resource) *JsonResource {
+	return &JsonResource{res: res}
 }

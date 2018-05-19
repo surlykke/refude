@@ -17,7 +17,7 @@ const ActionMediaType mediatype.MediaType = "application/vnd.org.refude.action+j
 type Executer func()
 
 type Action struct {
-	resource.Self
+	resource.AbstractResource
 	Name     string
 	Comment  string
 	IconName string
@@ -25,8 +25,16 @@ type Action struct {
 	executer Executer
 }
 
-func MakeAction(Name string, Comment string, IconName string, hint string, executer Executer) *Action {
-	return &Action{Name: Name, Comment: Comment, IconName: IconName, Hint: hint,  executer:executer}
+func MakeAction(Self string, Name string, Comment string, IconName string, hint string, executer Executer) *Action {
+	var act = Action{}
+	act.Self = Self
+	act.Mt = ActionMediaType
+	act.Name= Name
+	act.Comment = Comment
+	act.IconName = IconName
+	act.Hint = hint
+	act.executer=executer
+	return &act
 }
 
 func (a *Action) POST(w http.ResponseWriter, r *http.Request) {

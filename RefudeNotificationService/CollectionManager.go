@@ -29,7 +29,7 @@ func Run() {
 	for {
 		select {
 		case notification := <-updates:
-			service.Map(path(notification.Id), notification, NotificationMediaType)
+			service.Map(notification)
 			if notification.Expires != nil {
 				fmt.Println("do afterFunc")
 				pendingTimouts[notification.Id] = *notification.Expires
@@ -38,7 +38,7 @@ func Run() {
 		case rem := <-removals:
 
 			if res, ok := service.Unmap(path(rem.id)); ok {
-				if res.Mt() == NotificationMediaType {
+				if res.GetMt() == NotificationMediaType {
 					notificationClosed(rem.id, rem.reason)
 				}
 			}
