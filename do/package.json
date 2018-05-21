@@ -3,6 +3,7 @@
   "main": "main.html",
   "version": "0.0.1",
   "window": {
-  	"id": "org.refude.do"
+  	"id": "org.refude.do",
+	"always_on_top": true
   }
 }

@@ -11,7 +11,9 @@
  * It is distributed under the GPL v2 license.
  * Please refer to the LICENSE file for a copy of the license.
  */
-const http = require('http')
+const http = require('http');
+
+const hostPart = "http://locahost:7938";
 
 let combinedUrl = (absoluteUrl, relativeUrl) =>  {
 	let p = absoluteUrl.lastIndexOf("/");
@@ -66,9 +68,9 @@ let doGet = (service, path, params, changedSince) => {
                     if (typeof json === 'object') {
                         if (Array.isArray(json)) { // A list of resources, then
                             json.sort((e1, e2) => (e2.RelevanceHint || 0) - (e1.RelevanceHint || 0))
-                            json.forEach(res => adjustIconUrl(service, res));
+                            json.forEach(res => adjustUrls(service, res));
                         } else { // A single resource
-                            adjustIconUrl(service, json);
+                            adjustUrls(service, json);
                         }
                     }
                     resolve(json);
@@ -122,15 +124,23 @@ let doDelete = (resource) => {
     });
 };
 
-let adjustIconUrl = (service, res) => {
-    res._self = service + ":" + res._self;
+let adjustUrls = (service, res) => {
+    res._self = "/" + service + res._self;  // Proxy should really do this
+    if (res._relates ) {
+        let correctedRelates = {};
+        for (let key in res._relates) {
+            correctedRelates["/" + service + key] = res._relates[key];
+        }
+        res._relates = correctedRelates
+    }
+
     res.IconUrl = iconServiceUrl(res.IconName);
 };
 
 let url = (service, path, params, method) => `http://localhost:7938/${service}${path}${queryString(params)}`;
 
 let opts = (res, method, params) => {
-    return {host: 'localhost', port: 7938, path: "/" + res._self.replace(':', '') + queryString(params), method: method}
+    return {host: 'localhost', port: 7938, path: res._self + queryString(params), method: method}
 };
 
 let queryString = (params) => {
