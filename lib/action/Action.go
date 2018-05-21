@@ -22,6 +22,7 @@ type Action struct {
 	Comment  string
 	IconName string
 	Hint     string
+	RelevanceHint int
 	executer Executer
 }
 

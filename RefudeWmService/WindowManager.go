@@ -22,6 +22,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/utils"
 	"fmt"
 	"github.com/surlykke/RefudeServices/lib/resource"
+	"math"
 )
 
 var display = Display{Screens: make([]Rect, 0)}
@@ -29,6 +30,17 @@ var windows = make(map[xproto.Window]*Window)
 var xutil *xgbutil.XUtil
 
 var serverEvents = make(chan xgb.Event)
+
+type highlightRequest struct {
+	winId   xproto.Window
+	opacity float64
+}
+
+var highlightRequests = make(chan highlightRequest)
+
+var veryLongFromNow = time.Unix(math.MaxInt64, 0)
+
+var timeToUnhighlight time.Time = veryLongFromNow
 
 func Run() {
 	var err error
@@ -44,28 +56,37 @@ func Run() {
 
 	go watchServer()
 	var nudges = time.Tick(time.Millisecond * 200)
+
 	var somethingChanged = true // True to force first update
 	for {
 		select {
+		case req := <- highlightRequests:
+			ewmh.WmWindowOpacitySet(xutil, req.winId, req.opacity)
+			timeToUnhighlight = time.Now().Add(time.Second*2)
 		case _ = <-nudges:
+			if timeToUnhighlight.Before(time.Now()) {
+				for _, window := range windows {
+					ewmh.WmWindowOpacitySet(xutil, window.Id, 1)
+				}
+				timeToUnhighlight = veryLongFromNow
+			}
+
 			if somethingChanged {
 				fmt.Println(">>>>>>>>>>>> add..")
 				service.RemoveAll("/windows")
 				service.RemoveAll("/actions")
 				if tmp, err := ewmh.ClientListStackingGet(xutil); err == nil {
-					for _, wId := range tmp {
+					for i, wId := range tmp {
 						if rect, err := xwindow.New(xutil, wId).DecorGeometry(); err == nil {
 							w := getWindow(wId, rect.X(), rect.Y(), rect.Height(), rect.Width())
+							w.RelevanceHint = i
 
 							windows[w.Id] = w
-							fmt.Println("Mapping:", fmt.Sprintf("/windows/%d", w.Id))
 							if normal(w) {
 								var switchAction = action.MakeAction(fmt.Sprintf("/actions/%d", w.Id), w.Name, "Switch to this window", w.IconName, "switch", makeSwitchAction(w.Id))
-								fmt.Println("Mapping:", fmt.Sprintf("/actions/%d", w.Id))
+								switchAction.RelevanceHint = i
 								resource.Relate(&switchAction.AbstractResource, &w.AbstractResource)
 								service.Map(switchAction)
-							} else {
-								fmt.Println("Window", w.Id, "without action:", w.States)
 							}
 							service.Map(w)
 						}
@@ -75,7 +96,7 @@ func Run() {
 				somethingChanged = false
 			}
 		case _ = <-serverEvents: // Need more events here
-			somethingChanged = true
+                     somethingChanged = true
 		}
 	}
 }
@@ -169,3 +190,14 @@ func extractARGBIcon(uints []uint) icons.Icon {
 
 	return res
 }
+
+func setOpacity(winId xproto.Window, opacity float64) {
+	if opacity > 1 {
+		opacity = 1
+	} else if opacity < 0 {
+		opacity = 0
+	}
+	ewmh.WmWindowOpacitySet(xutil, winId, opacity)
+}
+
+
