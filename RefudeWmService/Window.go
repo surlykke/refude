@@ -24,7 +24,7 @@ type Window struct {
 	Name          string
 	IconName      string        `json:",omitempty"`
 	States        []string
-	RelevanceHint int
+	RelevanceHint int64
 }
 
 func (win *Window) POST(w http.ResponseWriter, r *http.Request) {

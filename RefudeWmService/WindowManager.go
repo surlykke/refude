@@ -79,12 +79,12 @@ func Run() {
 					for i, wId := range tmp {
 						if rect, err := xwindow.New(xutil, wId).DecorGeometry(); err == nil {
 							w := getWindow(wId, rect.X(), rect.Y(), rect.Height(), rect.Width())
-							w.RelevanceHint = i
+							w.RelevanceHint = int64(i)
 
 							windows[w.Id] = w
 							if normal(w) {
 								var switchAction = action.MakeAction(fmt.Sprintf("/actions/%d", w.Id), w.Name, "Switch to this window", w.IconName, "switch", makeSwitchAction(w.Id))
-								switchAction.RelevanceHint = i
+								switchAction.RelevanceHint = int64(i)
 								resource.Relate(&switchAction.AbstractResource, &w.AbstractResource)
 								service.Map(switchAction)
 							}

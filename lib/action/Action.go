@@ -22,7 +22,7 @@ type Action struct {
 	Comment  string
 	IconName string
 	Hint     string
-	RelevanceHint int
+	RelevanceHint int64
 	executer Executer
 }
 
