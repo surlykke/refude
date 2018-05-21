@@ -9,49 +9,39 @@ package main
 import (
 	"github.com/surlykke/RefudeServices/lib/service"
 	"fmt"
-	"time"
 	"net/http"
 	"github.com/surlykke/RefudeServices/lib/requestutils"
+	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
 var removals = make(chan removal)
-
+var notifications = make(map[uint32]*Notification)
 
 func Run() {
 	var updates = make(chan *Notification)
-	var removals = make(chan removal)
-	var reap = make(chan struct{})
-
-	var pendingTimouts = make(map[uint32]time.Time)
-
 	go DoDBus(updates, removals)
 
 	for {
 		select {
 		case notification := <-updates:
+			notifications[notification.Id] = notification
+			var actions = notification.getActions()
+			service.Unmap(fmt.Sprintf("/notifications/%d", notification.Id))
+			service.RemoveAll(fmt.Sprintf("/actions/%d", notification.Id))
+			for _, action := range actions {
+				resource.Relate(&action.AbstractResource, &notification.AbstractResource)
+				service.Map(action)
+			}
 			service.Map(notification)
-			if notification.Expires != nil {
-				fmt.Println("do afterFunc")
-				pendingTimouts[notification.Id] = *notification.Expires
-				time.AfterFunc(notification.Expires.Sub(time.Now()), func(){fmt.Println("Signal reaper"); reap <- struct{}{}})
-			}
-		case rem := <-removals:
 
-			if res, ok := service.Unmap(path(rem.id)); ok {
-				if res.GetMt() == NotificationMediaType {
+		case rem := <-removals:
+			fmt.Println("Got removal..")
+			if notification, ok := notifications[rem.id]; ok {
+				if rem.internalId == 0 || rem.internalId == notification.internalId {
+					service.Unmap(fmt.Sprintf("/notifications/%d", rem.id))
+					service.RemoveAll(fmt.Sprintf("/actions/%d", rem.id))
+					delete(notifications, rem.id)
 					notificationClosed(rem.id, rem.reason)
-				}
-			}
-		case _ = <-reap:
-			fmt.Println("Reaping..")
-			for id,expires := range pendingTimouts {
-				fmt.Println("compare", expires, "to", time.Now())
-				if expires.Before(time.Now()) {
-					fmt.Println("deleting")
-					delete(pendingTimouts, id)
-					if _, ok := service.Unmap(path(id)); ok {
-						notificationClosed(id, Expired)
-					}
 				}
 			}
 		}
@@ -62,21 +52,14 @@ func path(id uint32) string {
 	return fmt.Sprintf("/notifications/%d", id)
 }
 
-func reaper(reap chan struct{}) {
-	for {
-		time.Sleep(time.Second)
-		reap <- struct{}{}
-	}
-}
-
 func (n *Notification) POST(w http.ResponseWriter, r *http.Request) {
-		action := requestutils.GetSingleQueryParameter(r, "action", "default")
-		conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".ActionInvoked", n.Id, action)
-		w.WriteHeader(http.StatusAccepted)
+	action := requestutils.GetSingleQueryParameter(r, "action", "default")
+	conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".ActionInvoked", n.Id, action)
+	w.WriteHeader(http.StatusAccepted)
 }
 
 func (n *Notification) DELETE(w http.ResponseWriter, r *http.Request) {
-	removals <- removal{n.Id, Dismissed}
+	removals <- removal{n.Id, 0, Dismissed}
 	w.WriteHeader(http.StatusAccepted)
 }
 

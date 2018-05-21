@@ -56,7 +56,7 @@ func Run() {
 				if ! app.NoDisplay {
 					var defaultPath= "/actions/" + app.Id
 					var executer= MakeExecuter(app.Exec, app.Terminal)
-					var act= action.MakeAction(defaultPath, app.Name, app.Comment, app.IconName, "launch", executer)
+					var act= action.MakeAction(defaultPath, app.Name, app.Comment, app.IconName, executer)
 					act.RelevanceHint = app.RelevanceHint
 					resource.Relate(&app.AbstractResource, &act.AbstractResource)
 					service.Map(act)
@@ -68,7 +68,7 @@ func Run() {
 							iconName = app.IconName
 						}
 						var executer= MakeExecuter(da.Exec, app.Terminal)
-						var act= action.MakeAction(path, app.Name+": "+da.Name, app.Comment, da.IconName, "launch", executer)
+						var act= action.MakeAction(path, app.Name+": "+da.Name, app.Comment, da.IconName, executer)
 						act.RelevanceHint = app.RelevanceHint
 						resource.Relate(&app.AbstractResource, & act.AbstractResource)
 						service.Map(act)

@@ -121,7 +121,7 @@ func MapPowerActions() {
 				fmt.Println("Calling", login1Service, login1Path, managerInterface+"." + id)
 				dbusConn.Object(login1Service, login1Path).Call(dbusEndPoint, dbus.Flags(0), false)
 			}
-			var act = action.MakeAction(fmt.Sprintf("/actions/%s", id), pv[0], pv[1], pv[2], "leave", executer)
+			var act = action.MakeAction(fmt.Sprintf("/actions/%s", id), pv[0], pv[1], pv[2], executer)
 			service.Map(act)
 		}
 	}

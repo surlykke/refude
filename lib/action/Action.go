@@ -18,22 +18,21 @@ type Executer func()
 
 type Action struct {
 	resource.AbstractResource
-	Name     string
-	Comment  string
-	IconName string
-	Hint     string
+	Name      string
+	Comment   string
+	IconName  string
 	RelevanceHint int64
-	executer Executer
+	executer  Executer
 }
 
-func MakeAction(Self string, Name string, Comment string, IconName string, hint string, executer Executer) *Action {
+
+func MakeAction(Self string, Name string, Comment string, IconName string, executer Executer) *Action {
 	var act = Action{}
 	act.Self = Self
 	act.Mt = ActionMediaType
 	act.Name= Name
 	act.Comment = Comment
 	act.IconName = IconName
-	act.Hint = hint
 	act.executer=executer
 	return &act
 }

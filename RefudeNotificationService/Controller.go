@@ -89,7 +89,6 @@ const INTROSPECT_XML = `<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object 
     </interface>
 </node>`
 
-
 const (
 	Expired   uint32 = 1
 	Dismissed        = 2
@@ -97,14 +96,13 @@ const (
 )
 
 type removal struct {
-	id     uint32
-	reason uint32
+	id     	   uint32
+	internalId uint32
+	reason     uint32
 }
-
 
 var conn *dbus.Conn
 var ids = make(chan uint32, 0)
-
 
 func generate(out chan uint32) {
 	for id := uint32(1); ; id++ {
@@ -142,24 +140,27 @@ func makeNotifyFunction(notifications chan *Notification) interface{} {
 			id = <-ids
 		}
 
-
 		notification := &Notification{
-			Id:      id,
-			Sender:  app_name,
-			Subject: sanitize(summary, []string{}, []string{}),
-			Body:    sanitize(body, allowedTags, allowedEscapes),
-			Actions: map[string]string{},
+			Id:         id,
+			internalId: <- ids,
+			Sender:     app_name,
+			Subject:    sanitize(summary, []string{}, []string{}),
+			Body:       sanitize(body, allowedTags, allowedEscapes),
+			Actions:    map[string]string{},
 		}
 		notification.Self = path(id)
 		notification.Mt = NotificationMediaType
 
-		if expire_timeout == 0  {
+		if expire_timeout == 0 {
 			expire_timeout = 2000
 		}
 
+
 		if expire_timeout > 0 {
-			var expires = time.Now().Add(time.Duration(1000000*int64(expire_timeout)))
+			var timeToExpire = time.Millisecond*time.Duration(expire_timeout)
+			var expires = time.Now().Add(timeToExpire)
 			notification.Expires = &expires
+			notification.removeAfter(timeToExpire)
 		}
 
 		for i := 0; i+1 < len(actions); i = i + 2 {
@@ -173,11 +174,10 @@ func makeNotifyFunction(notifications chan *Notification) interface{} {
 
 func makeCloseFuntion(removals chan removal) interface{} {
 	return func(id uint32) *dbus.Error {
-		removals <- removal{id, Closed}
+		removals <- removal{id, 0, Closed}
 		return nil
 	}
 }
-
 
 func notificationClosed(id uint32, reason uint32) {
 	conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", id, reason)

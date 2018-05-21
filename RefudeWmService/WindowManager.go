@@ -83,7 +83,7 @@ func Run() {
 
 							windows[w.Id] = w
 							if normal(w) {
-								var switchAction = action.MakeAction(fmt.Sprintf("/actions/%d", w.Id), w.Name, "Switch to this window", w.IconName, "switch", makeSwitchAction(w.Id))
+								var switchAction = action.MakeAction(fmt.Sprintf("/actions/%d", w.Id), w.Name, "Switch to this window", w.IconName, makeSwitchAction(w.Id))
 								switchAction.RelevanceHint = int64(i)
 								resource.Relate(&switchAction.AbstractResource, &w.AbstractResource)
 								service.Map(switchAction)
