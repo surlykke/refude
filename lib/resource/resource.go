@@ -14,6 +14,7 @@ import (
 	"encoding/json"
 	"github.com/surlykke/RefudeServices/lib/requestutils"
 	"github.com/surlykke/RefudeServices/lib/query"
+	"log"
 )
 
 type GetHandler interface {
@@ -39,12 +40,8 @@ type Resource interface {
 
 type AbstractResource struct {
 	Self string `json:"_self,omitempty"`
-	Relates map[string]mediatype.MediaType `json:"_relates,omitempty"`
+	Relates map[mediatype.MediaType][]string `json:"_relates,omitempty"`
 	Mt mediatype.MediaType `json:"-"`
-}
-
-func Ar(mt mediatype.MediaType) AbstractResource {
-	return AbstractResource{"", make(map[string]mediatype.MediaType), mt}
 }
 
 func (ar *AbstractResource) GetSelf() string {
@@ -56,15 +53,19 @@ func (ar *AbstractResource) GetMt() mediatype.MediaType {
 }
 
 func Relate(r1, r2 *AbstractResource) {
-	if r1.Relates == nil {
-		r1.Relates = make(map[string]mediatype.MediaType)
-	}
-	if r2.Relates == nil {
-		r2.Relates = make(map[string]mediatype.MediaType)
+	if r1.Self == "" || r2.Self == "" {
+		log.Fatal("Relating resources with empty 'self'")
 	}
 
-	r1.Relates[r2.Self] = r2.Mt
-	r2.Relates[r1.Self] = r1.Mt
+	if r1.Relates == nil {
+		r1.Relates = make(map[mediatype.MediaType][]string)
+	}
+	if r2.Relates == nil {
+		r2.Relates = make(map[mediatype.MediaType][]string)
+	}
+
+	r1.Relates[r2.Mt] = append(r1.Relates[r2.Mt], r2.Self)
+	r2.Relates[r1.Mt] = append(r2.Relates[r1.Mt], r1.Self)
 }
 
 

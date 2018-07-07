@@ -114,9 +114,9 @@ func (da *DesktopApplication) POST(w http.ResponseWriter, r *http.Request) {
 		var expandedExec = regexp.MustCompile("%[uUfF]").ReplaceAllString(exec, strings.Join(args, " "))
 		runCmd(da.Terminal, expandedExec)
 		var copy = *da
-		copy.Relates = make(map[string]mediatype.MediaType)
-		for p,mt := range da.Relates {
-			copy.Relates[p] = mt
+		copy.Relates = make(map[mediatype.MediaType][]string)
+		for mt,urls := range da.Relates {
+			copy.Relates[mt] = urls
 		}
 		copy.RelevanceHint = time.Now().Unix()
 		launchEvents <- launchEvent{copy.Id, copy.RelevanceHint}
