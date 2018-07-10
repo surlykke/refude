@@ -11,7 +11,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
-const DisplayMediaType mediatype.MediaType = "application/vnd.org.refude.wmdisplay"
+const DisplayMediaType mediatype.MediaType = "application/vnd.org.refude.wmdisplay+json"
 
 type Rect struct {
 	X,Y int16
@@ -21,7 +21,4 @@ type Rect struct {
 type Display struct {
 	resource.AbstractResource
 	W,H uint16
-	Screens []Rect
 }
-
-

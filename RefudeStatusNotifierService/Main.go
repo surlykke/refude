@@ -10,7 +10,9 @@ import (
 	"github.com/surlykke/RefudeServices/lib/service"
 )
 
+var resourceCollection = service.MakeJsonResourceMap()
+
 func main() {
 	go Controller()
-	service.Serve("org.refude.statusnotifier-service")
+	service.Serve("org.refude.statusnotifier-service", resourceCollection)
 }

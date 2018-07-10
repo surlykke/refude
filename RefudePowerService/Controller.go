@@ -8,7 +8,6 @@ package main
 
 import (
 	"github.com/godbus/dbus"
-	"github.com/surlykke/RefudeServices/lib/service"
 	"strings"
 	"fmt"
 	"github.com/surlykke/RefudeServices/lib/action"
@@ -40,7 +39,7 @@ func Run() {
 		var lid = Lid{Open: open}
 		lid.Self = "/lid"
 		lid.Mt = LidMediaType
-		service.Map(&lid)
+		resourceCollection.Map(&lid)
 	}
 
 	MapPowerActions()
@@ -55,7 +54,7 @@ func Run() {
 		device.Mt = DeviceMediaType
 		devices[path] = device
 		updateDevice(device, getProps(path, UPowerDeviceInterface))
-		service.Map(device)
+		resourceCollection.Map(device)
 	}
 
 	for signal := range signals {
@@ -69,12 +68,12 @@ func Run() {
 					lid.Self = "/lid"
 					lid.Mt = LidMediaType
 					lid.Open = !prop.Value().(bool)
-					service.Map(&lid)
+					resourceCollection.Map(&lid)
 				}
 			} else if device, ok := devices[signal.Path]; ok {
 				var copy = *device
 				updateDevice(&copy, props)
-				service.Map(&copy)
+				resourceCollection.Map(&copy)
 			}
 			// TODO Handle device added/removed
 			// (need hardware to test)
@@ -122,7 +121,7 @@ func MapPowerActions() {
 				dbusConn.Object(login1Service, login1Path).Call(dbusEndPoint, dbus.Flags(0), false)
 			}
 			var act = action.MakeAction(fmt.Sprintf("/actions/%s", id), pv[0], pv[1], pv[2], executer)
-			service.Map(act)
+			resourceCollection.Map(act)
 		}
 	}
 }

@@ -7,7 +7,6 @@
 package main
 
 import (
-	"github.com/surlykke/RefudeServices/lib/service"
 	"net/http"
 	"strings"
 	"fmt"
@@ -46,8 +45,8 @@ func Run() {
 		select {
 		case update := <-collected:
 			fmt.Println("recieving...")
-			service.RemoveAll("/applications")
-			service.RemoveAll("/actions")
+			resources.RemoveAll("/applications")
+			resources.RemoveAll("/actions")
 			for _, app := range update.applications {
 				if x, ok := lastLaunched[app.Id]; ok {
 					app.RelevanceHint = x
@@ -59,7 +58,7 @@ func Run() {
 					var act= action.MakeAction(defaultPath, app.Name, app.Comment, app.IconName, executer)
 					act.RelevanceHint = app.RelevanceHint
 					resource.Relate(&app.AbstractResource, &act.AbstractResource)
-					service.Map(act)
+					resources.Map(act)
 
 					for actionId, da := range app.Actions {
 						var path= "/actions/" + app.Id + "-" + actionId
@@ -71,15 +70,15 @@ func Run() {
 						var act= action.MakeAction(path, app.Name+": "+da.Name, app.Comment, da.IconName, executer)
 						act.RelevanceHint = app.RelevanceHint
 						resource.Relate(&app.AbstractResource, & act.AbstractResource)
-						service.Map(act)
+						resources.Map(act)
 					}
 				}
-				service.Map(app)
+				resources.Map(app)
 
 			}
-			service.RemoveAll("/mimetypes")
+			resources.RemoveAll("/mimetypes")
 			for _, mt := range update.mimetypes {
-				service.Map(mt)
+				resources.Map(mt)
 			}
 		case le := <-launchEvents:
 			lastLaunched[le.id] = le.time
@@ -120,7 +119,7 @@ func (da *DesktopApplication) POST(w http.ResponseWriter, r *http.Request) {
 		}
 		copy.RelevanceHint = time.Now().Unix()
 		launchEvents <- launchEvent{copy.Id, copy.RelevanceHint}
-		service.Map(&copy)
+		resources.Map(&copy)
 		w.WriteHeader(http.StatusAccepted)
 	}
 }

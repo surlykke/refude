@@ -3,7 +3,7 @@ function services
 end
 
 function paths
-    RefudeGET $argv[1] /links | grep -Po '"[^"]*"\s*:' | sed -e 's/"\(.*\)"\s*:/\/\1/g'
+	RefudeGET $argv[1] /links | grep -Po '"/[^"]*"\s*' | sed -e 's/"\(.*\)"\s*/\1/g'
 end
 
 complete -c RefudeGET -n "test (count (commandline -opc)) -lt 2" -a "(services)" -f 

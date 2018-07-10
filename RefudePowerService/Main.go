@@ -10,7 +10,9 @@ import (
 	"github.com/surlykke/RefudeServices/lib/service"
 )
 
+var resourceCollection = service.MakeJsonResourceMap()
+
 func main() {
 	go Run()
-	service.Serve("org.refude.power-service")
+	service.Serve("org.refude.power-service", resourceCollection)
 }

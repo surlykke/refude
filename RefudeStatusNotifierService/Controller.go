@@ -14,7 +14,6 @@ import (
 	"strings"
 	"github.com/godbus/dbus/prop"
 	"regexp"
-	"github.com/surlykke/RefudeServices/lib/service"
 	"time"
 	"github.com/surlykke/RefudeServices/lib/utils"
 	"github.com/surlykke/RefudeServices/lib/icons"
@@ -190,13 +189,13 @@ func Controller() {
 					fetchMenu(item)
 				}
 				items = append(items, item)
-				service.Map(item)
+				resourceCollection.Map(item)
 				updateWatcherProperties()
 				go monitorItem(event.sender, event.path)
 			}
 		case ItemRemoved:
 			if index := findByItemPath(event.sender, event.path); index > -1 {
-				service.Unmap(items[index].restPath())
+				resourceCollection.Unmap(items[index].restPath())
 				items = append(items[0:index], items[index + 1:len(items)]...)
 				updateWatcherProperties()
 			}
@@ -205,14 +204,14 @@ func Controller() {
 				var copy = *items[index]
 				updateItem(&copy)
 				items[index] = &copy
-				service.Map(items[index])
+				resourceCollection.Map(items[index])
 			}
 		case MenuUpdated:
 			if index := findByMenuPath(event.sender, event.path); index > -1 {
 				var copy = *items[index]
 				fetchMenu(&copy)
 				items[index] = &copy
-				service.Map(items[index])
+				resourceCollection.Map(items[index])
 			}
 		}
 	}

@@ -114,7 +114,6 @@ func (jr *JsonResource) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	case "POST":
-		fmt.Println("JsonResource doing POST")
 		if postHandler, ok := jr.res.(PostHandler); ok {
 			if preventedByEtagCondition(r, jr.etag, false) {
 				w.WriteHeader(http.StatusPreconditionFailed)
@@ -168,7 +167,8 @@ func (jr *JsonResource) MarshalJSON() ([]byte, error) {
 
 func ToJSon(res interface{}) []byte {
 	if bytes, err := json.Marshal(res); err != nil {
-		panic("Could not json-marshal")
+		panic(fmt.Sprintln(err))
+		return nil
 	} else {
 		return bytes
 	}

@@ -8,98 +8,169 @@ package main
 
 import (
 	"time"
-
+	"fmt"
 	"github.com/BurntSushi/xgb"
 	"github.com/BurntSushi/xgb/xproto"
 	"github.com/BurntSushi/xgbutil"
 	"github.com/BurntSushi/xgbutil/ewmh"
-	"github.com/BurntSushi/xgbutil/icccm"
 	"github.com/BurntSushi/xgbutil/xprop"
 	"github.com/BurntSushi/xgbutil/xwindow"
 	"github.com/surlykke/RefudeServices/lib/action"
 	"github.com/surlykke/RefudeServices/lib/icons"
-	"github.com/surlykke/RefudeServices/lib/service"
 	"github.com/surlykke/RefudeServices/lib/utils"
-	"fmt"
 	"github.com/surlykke/RefudeServices/lib/resource"
-	"math"
+	"strings"
+	"strconv"
+	"github.com/surlykke/RefudeServices/lib/service"
+	"log"
+	"github.com/surlykke/RefudeServices/lib/mediatype"
 )
 
-var display = Display{Screens: make([]Rect, 0)}
-var windows = make(map[xproto.Window]*Window)
+const NET_WM_STATE_ABOVE = "_NET_WM_STATE_ABOVE"
+
 var xutil *xgbutil.XUtil
+var xgbConn *xgb.Conn
 
-var serverEvents = make(chan xgb.Event)
+type Collection struct{}
 
-type highlightRequest struct {
-	winId   xproto.Window
-	opacity float64
+func (c *Collection) GetResource(path service.StandardizedPath) *resource.JsonResource {
+	var res *resource.JsonResource = nil
+	if path == "/display" {
+		fmt.Println("Building display")
+		res = resource.MakeJsonResource(buildDisplay())
+	} else if strings.HasPrefix(string(path), "/windows/") {
+		if u, err := strconv.ParseUint(string(path[9:]), 10, 32); err == nil {
+			if window, _, err := buildWindowAndAction(xproto.Window(u)); err == nil && window != nil {
+				res = resource.MakeJsonResource(window)
+			}
+		}
+	} else if strings.HasPrefix(string(path), "/actions/") {
+		if u, err := strconv.ParseUint(string(path[9:]), 10, 32); err == nil {
+			if _, action, err := buildWindowAndAction(xproto.Window(u)); err == nil && action != nil {
+				res = resource.MakeJsonResource(action)
+			}
+		}
+	}
+
+	if res != nil {
+		res.EnsureReady()
+	}
+
+	return res
 }
 
-var highlightRequests = make(chan highlightRequest)
+func (c *Collection) GetAll() []*resource.JsonResource {
+	var allResources = []*resource.JsonResource{resource.MakeJsonResource(buildDisplay())}
+	if tmp, err := ewmh.ClientListStackingGet(xutil); err == nil {
+		for _, wId := range tmp {
+			if window, action, err := buildWindowAndAction(wId); err == nil {
+				if window != nil {
+					allResources = append(allResources, resource.MakeJsonResource(window))
+				}
+				if action != nil {
+					allResources = append(allResources, resource.MakeJsonResource(action))
+				}
+			}
+		}
+	}
 
-var veryLongFromNow = time.Unix(math.MaxInt64, 0)
+	for _,jsonRes := range allResources {
+		jsonRes.EnsureReady()
+	}
 
-var timeToUnhighlight time.Time = veryLongFromNow
+	return allResources
+}
 
-func Run() {
+func (c *Collection) GetLinks() service.Links {
+	fmt.Println("In GetLinks")
+	var links = make(service.Links)
+	links[DisplayMediaType] = []string{"/display"}
+	if tmp, err := ewmh.ClientListStackingGet(xutil); err == nil && len(tmp) > 0 {
+		for _, wId := range tmp {
+			// TODO Filtrer actions?
+			fmt.Println("tmp:", tmp)
+			links[WindowMediaType] = append(links[WindowMediaType], fmt.Sprintf("/windows/%d", wId))
+			if normalById(wId) {
+				links[action.ActionMediaType] = append(links[action.ActionMediaType], fmt.Sprintf("/actions/%d", wId))
+			}
+		}
+	}
+
+	return links
+}
+
+func setup() {
 	var err error
 	if xutil, err = getXConnection(); err != nil {
-		panic(err)
+		log.Fatal("No X connection", err)
 	}
 
-	xwindow.New(xutil, xutil.RootWin()).Listen(xproto.EventMaskSubstructureNotify)
-
-	if err != nil {
-		return
+	if xgbConn, err = getXgbConnection(); err != nil {
+		log.Fatal("No xgb conn", err)
 	}
 
-	go watchServer()
-	var nudges = time.Tick(time.Millisecond * 200)
+}
 
-	var somethingChanged = true // True to force first update
-	for {
-		select {
-		case req := <- highlightRequests:
-			ewmh.WmWindowOpacitySet(xutil, req.winId, req.opacity)
-			timeToUnhighlight = time.Now().Add(time.Second*2)
-		case _ = <-nudges:
-			if timeToUnhighlight.Before(time.Now()) {
-				for _, window := range windows {
-					ewmh.WmWindowOpacitySet(xutil, window.Id, 1)
-				}
-				timeToUnhighlight = veryLongFromNow
+func buildDisplay() *Display {
+	var display = Display{}
+	defaultScreen := xproto.Setup(xgbConn).DefaultScreen(xgbConn)
+	display.Self = "/display"
+	display.Mt = DisplayMediaType
+	display.Relates = make(map[mediatype.MediaType][]string)
+	display.W = defaultScreen.WidthInPixels
+	display.H = defaultScreen.HeightInPixels
+	return &display
+}
+
+func windowExists(wId xproto.Window) bool {
+	if tmp, err := ewmh.ClientListStackingGet(xutil); err == nil {
+		for _, id := range tmp {
+			if wId == id {
+				return true
 			}
+		}
+	}
 
-			if somethingChanged {
-				fmt.Println(">>>>>>>>>>>> add..")
-				service.RemoveAll("/windows")
-				service.RemoveAll("/actions")
-				if tmp, err := ewmh.ClientListStackingGet(xutil); err == nil {
-					for i, wId := range tmp {
-						if rect, err := xwindow.New(xutil, wId).DecorGeometry(); err == nil {
-							w := getWindow(wId, rect.X(), rect.Y(), rect.Height(), rect.Width())
-							w.RelevanceHint = int64(i)
+	return false
+}
 
-							windows[w.Id] = w
-							if normal(w) {
-								var switchAction = action.MakeAction(fmt.Sprintf("/actions/%d", w.Id), w.Name, "Switch to this window", w.IconName, makeSwitchAction(w.Id))
-								switchAction.RelevanceHint = int64(i)
-								resource.Relate(&switchAction.AbstractResource, &w.AbstractResource)
-								service.Map(switchAction)
-							}
-							service.Map(w)
-						}
-					}
-				}
-
-				somethingChanged = false
-			}
-		case _ = <-serverEvents: // Need more events here
-                     somethingChanged = true
+func buildWindowAndAction(wId xproto.Window) (*Window, *action.Action, error) {
+	if rect, err := xwindow.New(xutil, wId).DecorGeometry(); err != nil {
+		return nil, nil, err;
+	} else if name, err := ewmh.WmNameGet(xutil, wId); err != nil {
+		return nil, nil, err;
+	} else if states, err := ewmh.WmStateGet(xutil, wId); err != nil {
+		return nil, nil, err;
+	} else if iconArr, err := xprop.PropValNums(xprop.GetProperty(xutil, wId, "_NET_WM_ICON")); err != nil {
+		return nil, nil, err;
+	} else {
+		var window Window
+		window.Id = wId
+		window.Self = fmt.Sprintf("/windows/%d", wId)
+		window.Mt = WindowMediaType
+		window.Name = name
+		window.X = rect.X()
+		window.Y = rect.Y()
+		window.H = rect.Height()
+		window.W = rect.Width()
+		window.States = states
+		argbIcon := extractARGBIcon(iconArr)
+		window.IconName = icons.SaveAsPngToSessionIconDir(argbIcon)
+		if normal(&window) {
+			var action = buildAction(&window)
+			return &window, action, nil
+		} else {
+			return &window, nil, nil
 		}
 	}
 }
+
+func buildAction(w *Window) *action.Action {
+	return action.MakeAction(fmt.Sprintf("/actions/%d", w.Id), w.Name, "Switch to this window", w.IconName, func() {
+		ewmh.ActiveWindowReq(xutil, xproto.Window(w.Id))
+	})
+}
+
 
 func getXConnection() (*xgbutil.XUtil, error) {
 	var err error
@@ -112,52 +183,15 @@ func getXConnection() (*xgbutil.XUtil, error) {
 	return nil, err
 }
 
-func watchServer() {
-	for {
-		if evt, err := xutil.Conn().WaitForEvent(); err == nil {
-			serverEvents <- evt
-		}
-	}
-}
-
 func normal(w *Window) bool {
 	return !utils.Contains(w.States, "_NET_WM_STATE_ABOVE")
 }
 
-func getWindow(id xproto.Window, x int, y int, h int, w int) *Window {
-	window := Window{}
-	window.Id = id
-	window.Self = fmt.Sprintf("/windows/%d", id)
-	window.Mt = WindowMediaType
-
-	name, err := ewmh.WmNameGet(xutil, window.Id)
-	if err != nil || len(name) == 0 {
-		name, _ = icccm.WmNameGet(xutil, window.Id)
-	}
-	window.Name = name
-
-	window.X = x
-	window.Y = y
-	window.H = h
-	window.W = w
-
-	if states, err := ewmh.WmStateGet(xutil, window.Id); err == nil {
-		window.States = states
+func normalById(wId xproto.Window) bool {
+	if states, err := ewmh.WmStateGet(xutil, wId); err == nil {
+		return !utils.Contains(states, NET_WM_STATE_ABOVE)
 	} else {
-		window.States = []string{}
-	}
-
-	if iconArr, err := xprop.PropValNums(xprop.GetProperty(xutil, id, "_NET_WM_ICON")); err == nil {
-		argbIcon := extractARGBIcon(iconArr)
-		window.IconName = icons.SaveAsPngToSessionIconDir(argbIcon)
-	}
-
-	return &window
-}
-
-func makeSwitchAction(id xproto.Window) action.Executer {
-	return func() {
-		ewmh.ActiveWindowReq(xutil, xproto.Window(id))
+		return false
 	}
 }
 
@@ -191,13 +225,14 @@ func extractARGBIcon(uints []uint) icons.Icon {
 	return res
 }
 
-func setOpacity(winId xproto.Window, opacity float64) {
-	if opacity > 1 {
-		opacity = 1
-	} else if opacity < 0 {
-		opacity = 0
+func getXgbConnection() (*xgb.Conn, error) {
+	var err error
+	for i := 0; i < 5; i++ {
+		if conn, err := xgb.NewConn(); err == nil {
+			return conn, nil
+		}
+		time.Sleep(time.Second)
 	}
-	ewmh.WmWindowOpacitySet(xutil, winId, opacity)
+	return nil, err
 }
-
 

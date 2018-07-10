@@ -7,7 +7,6 @@
 package main
 
 import (
-	"github.com/surlykke/RefudeServices/lib/service"
 	"fmt"
 	"net/http"
 	"github.com/surlykke/RefudeServices/lib/requestutils"
@@ -26,20 +25,20 @@ func Run() {
 		case notification := <-updates:
 			notifications[notification.Id] = notification
 			var actions = notification.getActions()
-			service.Unmap(fmt.Sprintf("/notifications/%d", notification.Id))
-			service.RemoveAll(fmt.Sprintf("/actions/%d", notification.Id))
+			resourceCollection.Unmap(fmt.Sprintf("/notifications/%d", notification.Id))
+			resourceCollection.RemoveAll(fmt.Sprintf("/actions/%d", notification.Id))
 			for _, action := range actions {
 				resource.Relate(&action.AbstractResource, &notification.AbstractResource)
-				service.Map(action)
+				resourceCollection.Map(action)
 			}
-			service.Map(notification)
+			resourceCollection.Map(notification)
 
 		case rem := <-removals:
 			fmt.Println("Got removal..")
 			if notification, ok := notifications[rem.id]; ok {
 				if rem.internalId == 0 || rem.internalId == notification.internalId {
-					service.Unmap(fmt.Sprintf("/notifications/%d", rem.id))
-					service.RemoveAll(fmt.Sprintf("/actions/%d", rem.id))
+					resourceCollection.Unmap(fmt.Sprintf("/notifications/%d", rem.id))
+					resourceCollection.RemoveAll(fmt.Sprintf("/actions/%d", rem.id))
 					delete(notifications, rem.id)
 					notificationClosed(rem.id, rem.reason)
 				}

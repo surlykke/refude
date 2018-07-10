@@ -11,6 +11,6 @@ import (
 )
 
 func main() {
-	go Run()
-	service.Serve("org.refude.wm-service")
+	setup()
+	service.Serve("org.refude.wm-service", &Collection{})
 }
