@@ -11,6 +11,6 @@ import (
 )
 
 func main() {
-	setup()
+	go maintainDisplay()
 	service.Serve("org.refude.wm-service", &Collection{})
 }

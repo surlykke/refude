@@ -13,14 +13,47 @@ import (
 )
 
 const WindowMediaType mediatype.MediaType = "application/vnd.org.refude.wmwindow+json"
+const DisplayMediaType mediatype.MediaType = "application/vnd.org.refude.wmdisplay+json"
+
+type Rect struct {
+	X, Y int
+	W, H uint
+}
 
 type Window struct {
 	resource.AbstractResource
 	Id            xproto.Window
-	X, Y, H, W    int
+	Geometry      Rect
 	Name          string
-	IconName      string        `json:",omitempty"`
+	IconName      string `json:",omitempty"`
 	States        []string
 	RelevanceHint int64
 }
 
+type Display struct {
+	resource.AbstractResource
+	RootGeometry Rect
+	Screens      Screens
+}
+
+type Screen struct {
+	X, Y int
+	W, H uint
+}
+
+type Screens []Screen
+
+func (s Screens) Len() int {
+	return len(s)
+}
+
+func (s Screens) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+
+func (s Screens) Less(i, j int) bool {
+	return s[i].X < s[j].X ||
+		s[i].X == s[j].X && s[i].Y < s[j].Y ||
+		s[i].X == s[j].X && s[i].Y == s[j].Y && s[i].W < s[j].W ||
+		s[i].X == s[j].X && s[i].Y == s[j].Y && s[i].W == s[j].W && s[i].H < s[j].H
+}
