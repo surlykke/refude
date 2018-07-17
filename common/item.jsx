@@ -70,9 +70,9 @@ let Item = props => {
 
     return (
         <div id={props.item._self} style={style} onClick={() => {
-            select(item._self)
+            select(item)
         }} onDoubleClick={() => {
-            execute(item._self)
+            execute(item)
         }}>
             <img width="24px" height="24px" style={iconStyle} src={item.IconUrl}/>
             <div style={nameStyle}>{item.Name}</div>

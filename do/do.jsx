@@ -145,51 +145,24 @@ class Container extends React.Component {
         })
     }
 
-    highlight = (self) => {
-        let repeatHighlight = () => {
-            if (self === this.state.selected) {
-                highlightSelf();
-            }
-        }
-
-        let highlightSelf = () => {
-            console.log("highlight, self:", self, ", selected:", this.state.selected)
-            this.windows.forEach(w => {
-                let opacity = w._relates && w._relates[self] ? "1" : "0";
-                doPost(w, {opacity: opacity})
-            })
-            setTimeout(repeatHighlight, 1000);
-        }
-
-        let unhighlight = () => {
-            this.windows.forEach(w => doPost(w, "1.0"));
-        };
-
-        if (this.isAWindowAction(self)) {
-            highlightSelf();
-        } else {
-            unhighlight()
-        }
-    };
-
     isAWindowAction = (self) => {
         return this.windows && this.windows.findIndex(w => w._relates && w._relates[self]) > -1;
     }
 
     execute = (self) => {
-        console.log("Self: ", self)
         if (self) {
-            let item = this.state.items.find(i => self === i._self)
+            let item = this.state.items.find(i => self === i._self);
             this.select(self)
             doPost(item).then(response => {
-                this.dismiss()
+                this.dismiss();
             })
         }
     };
 
     dismiss = () => {
         console.log("dismiss");
-        this.select(undefined)
+        this.select(undefined);
+        this.setState({searchTerm: ""});
         nwHide()
     };
 
@@ -206,8 +179,6 @@ class Container extends React.Component {
 
     render = () => {
         let {apps, selected, searchTerm} = this.state
-        console.log("Highlighting, selected:", selected)
-        this.highlight(selected)
 
         let contentStyle = {
             position: "relative",

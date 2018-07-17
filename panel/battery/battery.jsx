@@ -34,7 +34,6 @@ class Battery extends React.Component {
     componentDidMount = () => {
         let update = () => {
             let p = doGet("power-service", "/devices/DisplayDevice").then(battery => {
-                console.log("Got battery:", battery);
 
                 let charging = ["Charging", "Fully charged"].includes(battery.State)
                 this.setState({

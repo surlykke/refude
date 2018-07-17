@@ -35,13 +35,11 @@ const crossStyle = {
 let Notification = (props) => {
 
     let dismiss = (event) => {
-        console.log(event)
         doDelete(props.item);
         event.stopPropagation()
     }
 
     let notificationClicked = (event) => {
-        console.log("notification clicked");
         doPost(props.item._self, {action: "default"});
         event.stopPropagation()
     }
@@ -57,7 +55,6 @@ let Notification = (props) => {
 
             {Object.keys(item.Actions).filter(k => k !== "default").map(k => {
                 let buttonClicked = (event) => {
-                    console.log("button", k, "clicked")
                     doPost(props.item, {action: k}, "POST")
                     event.stopPropagation()
                 }
@@ -84,7 +81,6 @@ class Notifications extends React.Component {
         super(props)
         this.state = {items: []}
         this.onUpdated = props.onUpdated
-        console.log("constructor: this.state.items:", this.state.items)
     }
 
     componentDidMount = () => {
@@ -101,7 +97,6 @@ class Notifications extends React.Component {
     }
 
     render = () => {
-        console.log("render Notifications, items: ", this.state.items)
         return (<div>
             {this.state.items.map(item => (<Notification key={item.Id} item={item}/>))}
         </div>);
