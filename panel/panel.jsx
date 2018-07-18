@@ -13,7 +13,7 @@
  */
 import React from 'react'
 import {render} from 'react-dom'
-import {doGetH, nwSetup} from '../common/utils'
+import {nwSetup, watchPos, adjustPos, devtools} from '../common/utils'
 import {Clock} from './clock/clock'
 import {Battery} from './battery/battery'
 import {NotifierItems} from './notifieritems/notifieritems'
@@ -49,35 +49,18 @@ class Panel extends React.Component {
         })
     }
 
-    onMove = (x, y) => {
-        if (this.dispEtag) {
-            localStorage.setItem(this.dispEtag + ".x", x);
-            localStorage.setItem(this.dispEtag + ".y", y);
-        }
-    };
-
 
     maintainPos = () => {
-        doGetH({service: "wm-service", path: "/display", ifNoneMatch: this.dispEtag}, (json, headers) => {
-            if (headers && headers.etag) {
-                let x = localStorage.getItem(headers.etag + ".x");
-                let y = localStorage.getItem(headers.etag + ".y");
-                if (x && y) {
-                    Window.moveTo(parseInt(x), parseInt(y));
-                }
-                this.dispEtag = headers.etag;
-            }
-        });
-
-
+        adjustPos();
         setTimeout(this.maintainPos, 5000);
     };
 
 
     componentDidMount = () => {
         this.adjustSize();
-        Window.on('move', this.onMove);
-        setTimeout(this.maintainPos, 10000);
+        watchPos();
+        this.maintainPos();
+//        devtools();
     };
 
 

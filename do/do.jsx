@@ -6,7 +6,7 @@
 //
 import React from 'react'
 import {render} from 'react-dom'
-import {NW, devtools, nwHide, nwSetup, doGet, doPost} from '../common/utils'
+import {NW, devtools, nwHide, nwSetup, doGet, doPost, watchPos, adjustPos} from '../common/utils'
 import {ItemList} from "../common/itemlist"
 import {SearchBox} from "../common/searchbox"
 
@@ -96,7 +96,9 @@ class Container extends React.Component {
     };
 
     componentDidMount = () => {
-        this.readArgs(NW.App.argv)
+        //devtools();
+        watchPos();
+        this.readArgs(NW.App.argv);
         this.fetchResources("")
     };
 
@@ -167,6 +169,7 @@ class Container extends React.Component {
     };
 
     readArgs = (args) => {
+        adjustPos();
         this.fetchResources("");
         if (args.includes("up")) {
             this.move(false)

@@ -72,7 +72,10 @@ let doGet = (service, path, params, ifNoneMatchEtag) => {
                 }
             });
         });
-        req.on('error', e => { console.log("req: ", options); reject(e);});
+        req.on('error', e => {
+            console.log("req: ", options);
+            reject(e);
+        });
         req.end();
     });
 };
@@ -197,4 +200,31 @@ let nwSetup = (onOpen) => {
     })
 };
 
-export {nwHide, devtools, NW, nwSetup, iconServiceUrl, doGet, doGetH, doPost, doDelete}
+let displayEtag = null;
+
+let watchPos = () => {
+    WIN.on('move', (x, y) => {
+        console.log("on move, displayEtag:", displayEtag)
+        if (displayEtag) {
+            localStorage.setItem(displayEtag + ".x", x);
+            localStorage.setItem(displayEtag + ".y", y);
+        }
+    });
+};
+
+let adjustPos = () => {
+    doGetH({service: "wm-service", path: "/display", ifNoneMatch: displayEtag}, (json, headers) => {
+        if (headers && headers.etag) {
+            let x = localStorage.getItem(headers.etag + ".x");
+            let y = localStorage.getItem(headers.etag + ".y");
+            if (x && y) {
+                WIN.moveTo(parseInt(x), parseInt(y));
+            }
+            displayEtag = headers.etag;
+            console.log("setting displayEtag:", displayEtag)
+        }
+    });
+};
+
+
+export {nwHide, devtools, NW, nwSetup, iconServiceUrl, doGet, doGetH, doPost, doDelete, watchPos, adjustPos}
