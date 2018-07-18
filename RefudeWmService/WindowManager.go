@@ -104,7 +104,9 @@ func getDisplay() *Display {
 
 func (c *Collection) GetResource(path service.StandardizedPath) *resource.JsonResource {
 	var res *resource.JsonResource = nil
-	if path == "/display" {
+	if path == "/links" {
+		res = resource.MakeJsonResource(c.GetLinks())
+	} else if path == "/display" {
 		if d := getDisplay(); d != nil {
 			res = resource.MakeJsonResource(d)
 		}
@@ -156,12 +158,12 @@ func (c *Collection) GetAll() []*resource.JsonResource {
 
 func (c *Collection) GetLinks() service.Links {
 	var links = make(service.Links)
-	links[DisplayMediaType] = []string{"/display"} // Small race here
+	links[DisplayMediaType] = []service.StandardizedPath{"/display"} // Small race here
 	if tmp, err := ewmh.ClientListStackingGet(xutil); err == nil && len(tmp) > 0 {
 		for _, wId := range tmp {
-			links[WindowMediaType] = append(links[WindowMediaType], fmt.Sprintf("/windows/%d", wId))
+			links[WindowMediaType] = append(links[WindowMediaType], service.StandardizedPath(fmt.Sprintf("/windows/%d", wId)));
 			if normalById(wId) {
-				links[action.ActionMediaType] = append(links[action.ActionMediaType], fmt.Sprintf("/actions/%d", wId))
+				links[action.ActionMediaType] = append(links[action.ActionMediaType], service.StandardizedPath(fmt.Sprintf("/actions/%d", wId)))
 			}
 		}
 	}

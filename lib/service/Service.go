@@ -70,14 +70,6 @@ func Serve(socketName string, jsonCollection JsonCollection) {
 				} else {
 					w.WriteHeader(http.StatusMethodNotAllowed)
 				}
-			} else if sp == "/links" {
-				var links = jsonCollection.GetLinks()
-				if bytes, err := json.Marshal(links); err == nil {
-					w.Header().Set("Content-Type", "application/json")
-					w.Write(bytes)
-				} else {
-					requestutils.ReportUnprocessableEntity(w, resource.ToJSon(err))
-				}
 			} else if res := jsonCollection.GetResource(sp); res == nil {
 				w.WriteHeader(http.StatusNotFound)
 			} else {

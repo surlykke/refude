@@ -5,10 +5,22 @@ import (
 	"github.com/surlykke/RefudeServices/lib/mediatype"
 )
 
-type Links map[mediatype.MediaType][]string
+const LinksMediaType mediatype.MediaType = "application/vnd.org.refude.links+json"
 
 type JsonCollection interface {
 	GetResource(path StandardizedPath) *resource.JsonResource
 	GetAll() []*resource.JsonResource
-	GetLinks() Links
 }
+
+type Links map[mediatype.MediaType][]StandardizedPath
+
+func (Links) GetSelf() string {
+	return "/links"
+}
+
+func (Links) GetMt() mediatype.MediaType {
+	return LinksMediaType
+}
+
+
+

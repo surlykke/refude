@@ -18,13 +18,11 @@ type StandardizedPath string
 type JsonResourceMap struct {
 	mutex sync.Mutex
 	rmap  map[StandardizedPath]*resource.JsonResource
-	links Links
-	linksNeedUpdate bool
 }
 
 
 func MakeJsonResourceMap() *JsonResourceMap {
-	return &JsonResourceMap{rmap: make(map[StandardizedPath]*resource.JsonResource), links: make(Links)}
+	return &JsonResourceMap{rmap: make(map[StandardizedPath]*resource.JsonResource)}
 }
 
 
@@ -92,7 +90,7 @@ func (jm *JsonResourceMap) put(sp StandardizedPath, res resource.Resource) {
 	}
 	var jsonResource = resource.MakeJsonResource(res)
 	jm.rmap[sp] = jsonResource
-	jm.linksNeedUpdate = true
+	delete(jm.rmap, "/links")
 }
 
 func (jm *JsonResourceMap) unput(sp StandardizedPath) (resource.Resource, bool) {
@@ -102,7 +100,7 @@ func (jm *JsonResourceMap) unput(sp StandardizedPath) (resource.Resource, bool) 
 
 	if jsonRes, ok := jm.rmap[sp]; ok {
 		delete(jm.rmap, sp)
-		jm.linksNeedUpdate = true
+		delete(jm.rmap, "/links")
 		return jsonRes.GetRes(), true
 	} else {
 		return nil, false
@@ -145,6 +143,15 @@ func (jm *JsonResourceMap) Unmap(path string) (resource.Resource, bool ){
 func (jm *JsonResourceMap) GetResource(path StandardizedPath) *resource.JsonResource {
 	jm.mutex.Lock()
 	defer jm.mutex.Unlock()
+	if (path == "/links") {
+		if _,ok := jm.rmap["/links"]; !ok {
+			var links = make(Links);
+			for path, jsonRes := range jm.rmap {
+				links[jsonRes.GetMt()] = append(links[jsonRes.GetMt()], path)
+			}
+			jm.rmap["/links"] = resource.MakeJsonResource(links)
+		}
+	}
 	var res, ok = jm.rmap[path];
 	if ok {
 		res.EnsureReady()
@@ -166,20 +173,6 @@ func (jm *JsonResourceMap) GetAll() []*resource.JsonResource {
 		pos++
 	}
 	return result
-}
-
-func (jm *JsonResourceMap) GetLinks() Links{
-	jm.mutex.Lock()
-	defer jm.mutex.Unlock()
-	if jm.linksNeedUpdate {
-		jm.links = make(Links)
-		for _, jsonRes := range jm.rmap {
-			jm.links[jsonRes.GetMt()] = append(jm.links[jsonRes.GetMt()], jsonRes.GetSelf())
-		}
-		jm.linksNeedUpdate = false
-	}
-
-	return jm.links
 }
 
 // ----------------------------------------------------------------------------------------------
