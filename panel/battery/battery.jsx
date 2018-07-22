@@ -12,7 +12,7 @@
  * Please refer to the LICENSE file for a copy of the license.
  */
 import React from 'react'
-import {doGet} from '../../common/utils'
+import {doGetIfNoneMatch} from '../../common/utils'
 
 const errorData = {
     style: {
@@ -29,21 +29,22 @@ class Battery extends React.Component {
         super(props)
         this.onUpdated = props.onUpdated
         this.state = {data: errorData}
+        this.etag = undefined;
     }
 
     componentDidMount = () => {
         let update = () => {
-            let p = doGet("power-service", "/devices/DisplayDevice").then(battery => {
-
-                let charging = ["Charging", "Fully charged"].includes(battery.State)
+            doGetIfNoneMatch("power-service", "/devices/DisplayDevice", this.etag).then(resp => {
+                this.etag = resp.etag
+                let charging = ["Charging", "Fully charged"].includes(resp.json.State)
                 this.setState({
                     data: {
                         style: {
-                            color: (charging || battery.Percentage >= 20 ? 'black' : 'red'),
+                            color: (charging || resp.json.Percentage >= 20 ? 'black' : 'red'),
                             fontWeight: charging ? 'bold' : 'normal',
                             marginRight: '0.4em'
                         },
-                        percentage: Math.floor(battery.Percentage + 0.5),
+                        percentage: Math.floor(resp.json.Percentage + 0.5),
                     }
                 });
             }).catch(err => {console.log("err:", err); this.setState({data: errorData})}).then(setTimeout(update, 1000));

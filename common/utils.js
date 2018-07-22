@@ -117,8 +117,51 @@ let doGetH = (query, handler) => {
     });
     req.on('error', e => console.log("Request error:", e));
     req.end();
-}
+};
 
+let doGet2 = options => {
+    Object.assign(options, {method: "GET", host: "localhost", port: 7938, path: '/' + options.service + options.path});
+    try {
+    return new Promise((successHandler, errorHandler) => {
+        let req = http.request(options, resp => {
+            let data = '';
+            resp.setEncoding('utf8');
+            resp.on('data', chunk => data += chunk);
+            resp.on('end', () => {
+                let o = {
+                    status: resp.statusCode,
+                    headers: resp.headers,
+                    data: data,
+                    json: parseAndPostprocess(options.service, data)
+                };
+                if (o.status >= 300) {
+                    if (errorHandler) {
+                        errorHandler(o);
+                    }
+                } else {
+                    successHandler(o);
+                }
+            });
+        });
+        req.on('error', e => {
+            console.log("req: ", options, " -> ", e);
+        });
+        req.end();
+    }) }
+    catch (e) {
+       console.log("Error:", e);
+    }
+};
+
+let doGetIfNoneMatch = (service, path, etag) => {
+    let options = {
+        service: service,
+        path: path,
+        headers: etag ? {"If-None-Match": `${etag}`} : {}
+    };
+
+    return doGet2(options);
+}
 
 /**
  * We assume no response body
@@ -163,6 +206,17 @@ let doDelete = (resource) => {
         req.end();
     });
 };
+
+let parseAndPostprocess = (service, data) => {
+    if (data) {
+        let json = JSON.parse(data);
+        json._self = "/" + service + json._self;
+        json.IconUrl = iconServiceUrl(json.IconName);
+        return json;
+    } else {
+        return undefined;
+    }
+}
 
 let adjustUrls = (service, res) => {
     res._self = "/" + service + res._self;  // Proxy should really do this
@@ -227,4 +281,4 @@ let adjustPos = () => {
 };
 
 
-export {nwHide, devtools, NW, nwSetup, iconServiceUrl, doGet, doGetH, doPost, doDelete, watchPos, adjustPos}
+export {nwHide, devtools, NW, nwSetup, iconServiceUrl, doGet, doGetH, doGet2, doGetIfNoneMatch, doPost, doDelete, watchPos, adjustPos}

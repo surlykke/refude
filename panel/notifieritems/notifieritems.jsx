@@ -6,99 +6,94 @@
 //
 import React from 'react'
 import {render} from 'react-dom'
-import {doGet, doPost} from '../../common/utils'
+import {doGetIfNoneMatch, doPost} from '../../common/utils'
+import {monitorResources} from "../common/monitor";
 
 let NotifierItem = (props) => {
 
-	let showMenu = (event) => {
-		let buildMenu = (jsonMenu) => {
-			let menu = new nw.Menu()
-			jsonMenu.forEach(jsonMenuItem => {
+    let showMenu = (event) => {
+        let buildMenu = (jsonMenu) => {
+            let menu = new nw.Menu()
+            jsonMenu.forEach(jsonMenuItem => {
 
-				let menuItem = new nw.MenuItem({
-					type: jsonMenuItem.Type === "separator" ? "separator" :
-					      jsonMenuItem.ToggleType === "checkmark" ? "checkbox" :
-					      jsonMenuItem.ToggleType === "radio" ? "checkbox" :
-						  "normal",
-					label: (jsonMenuItem.Label || "").replace( /_([^_])/g, "$1" ),
-					checked: jsonMenuItem.ToggleState === 1
-				})
-				if (jsonMenuItem.SubMenus) {
-					menuItem.submenu = buildMenu(jsonMenuItem.SubMenus)
-				} else if (menuItem.type === "normal" || menuItem.type === "checkbox") {
-					menuItem.click = () => {
-						doPost(props.item, {action: "menu", id: jsonMenuItem.Id});
-					}
-				}
-				menu.append(menuItem)
-			})
-			return menu
-		};
+                let menuItem = new nw.MenuItem({
+                    type: jsonMenuItem.Type === "separator" ? "separator" :
+                        jsonMenuItem.ToggleType === "checkmark" ? "checkbox" :
+                            jsonMenuItem.ToggleType === "radio" ? "checkbox" :
+                                "normal",
+                    label: (jsonMenuItem.Label || "").replace(/_([^_])/g, "$1"),
+                    checked: jsonMenuItem.ToggleState === 1
+                })
+                if (jsonMenuItem.SubMenus) {
+                    menuItem.submenu = buildMenu(jsonMenuItem.SubMenus)
+                } else if (menuItem.type === "normal" || menuItem.type === "checkbox") {
+                    menuItem.click = () => {
+                        doPost(props.item, {action: "menu", id: jsonMenuItem.Id});
+                    }
+                }
+                menu.append(menuItem)
+            })
+            return menu
+        };
 
-		buildMenu(props.item.Menu).popup(event.clientX, event.clientY)
-	}
+        buildMenu(props.item.Menu).popup(event.clientX, event.clientY)
+    }
 
-	let getXY = (event) => {
-		return  {
-			x: Math.round(event.view.devicePixelRatio * event.screenX),
-			y: Math.round(event.view.devicePixelRatio * event.screenY)
-		}
-	}
+    let getXY = (event) => {
+        return {
+            x: Math.round(event.view.devicePixelRatio * event.screenX),
+            y: Math.round(event.view.devicePixelRatio * event.screenY)
+        }
+    }
 
-	let onClick = (event) => {
-		event.persist()
-		let {x,y} = getXY(event)
-		if (event.button === 0) {
+    let onClick = (event) => {
+        event.persist()
+        let {x, y} = getXY(event)
+        if (event.button === 0) {
             doPost(props.item, {action: "left", x: x, y: y});
-		} else if (event.button === 1){
+        } else if (event.button === 1) {
             doPost(props.item, {action: "middle", x: x, y: y});
-		}
-		event.preventDefault()
-	}
+        }
+        event.preventDefault()
+    }
 
-	let onRightClick = (event) => {
-		event.persist()
-		if (props.item.Menu) {
-			showMenu(event)
-		} else {
+    let onRightClick = (event) => {
+        event.persist()
+        if (props.item.Menu) {
+            showMenu(event)
+        } else {
             doPost(...props.item._self.split(":"), {action: "right", x: x, y: y});
-		}
-		event.preventDefault()
-	}
+        }
+        event.preventDefault()
+    }
 
 
-	return (<img src={props.item.IconUrl} height="18px" width="18px"
-	             style={{paddingRight: "5px"}} onClick={onClick} onContextMenu={onRightClick}/>)
+    return (<img src={props.item.IconUrl} height="18px" width="18px"
+                 style={{paddingRight: "5px"}} onClick={onClick} onContextMenu={onRightClick}/>)
 }
 
 
 class NotifierItems extends React.Component {
-	constructor(props) {
+    constructor(props) {
 		super(props)
 		this.state = {items : []}
 		this.onUpdated = props.onUpdated
 		this.style = Object.assign({}, props.style)
 		this.style.margin = "0px"
-	}
+    }
 
-	componentDidMount = () => {
-        let itemCompare = (i1, i2) => i1._self.localeCompare(i2._self); // Just to keep them from flipping around
-		let update = () => {
-            doGet("statusnotifier-service", "/search", {type: "application/vnd.org.refude.statusnotifieritem+json"}).then(items => {
-                this.setState({items: items.sort(itemCompare)});
-            }).catch().then(setTimeout(update, 1000));
-        };
-		update();
-	};
+    componentDidMount = () => {
+        monitorResources("statusnotifier-service", "application/vnd.org.refude.statusnotifieritem+json", items => this.setState({items: items}));
+    };
 
-	componentDidUpdate = () => {
-		this.onUpdated();
-	};
+    componentDidUpdate = () => {
+        this.onUpdated();
+    };
 
-	render = () =>
-		<div style={this.style}>
-			{this.state.items.map((item) => (<NotifierItem key={item._self} item={item} /> ))}
-		</div>
+    render = () =>
+        <div style={this.style}>
+            {this.state.items.map((item) => (<NotifierItem key={item._self} item={item}/>))}
+        </div>
 }
 
 export {NotifierItems}

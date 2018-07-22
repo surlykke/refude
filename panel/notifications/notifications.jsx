@@ -6,7 +6,8 @@
 //
 import React from 'react'
 import {render} from 'react-dom'
-import {doGet, doPost, doDelete} from '../../common/utils'
+import {doGetIfNoneMatch, doPost, doDelete} from '../../common/utils'
+import {monitorResources} from "../common/monitor";
 
 const notificationStyle = {
     position: "relative",
@@ -84,12 +85,7 @@ class Notifications extends React.Component {
     }
 
     componentDidMount = () => {
-        let update = () => {
-            doGet("notifications-service", "/search", {type: "application/vnd.org.refude.desktopnotification+json"}).then(notifications => {
-                this.setState({items: notifications});
-            }).catch().then(setTimeout(update, 1000));
-        };
-        update();
+        monitorResources("notifications-service", "application/vnd.org.refude.desktopnotification+json", items => this.setState({items: items}));
     }
 
     componentDidUpdate = () => {
