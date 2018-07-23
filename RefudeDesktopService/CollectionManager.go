@@ -26,14 +26,12 @@ import (
 	"github.com/surlykke/RefudeServices/lib/mediatype"
 )
 
-
 type launchEvent struct {
 	id   string
 	time int64
 }
 
 var launchEvents = make(chan launchEvent)
-
 
 func Run() {
 	var collected = make(chan collection)
@@ -44,7 +42,6 @@ func Run() {
 	for {
 		select {
 		case update := <-collected:
-			fmt.Println("recieving...")
 			resources.RemoveAll("/applications")
 			resources.RemoveAll("/actions")
 			for _, app := range update.applications {
@@ -53,23 +50,23 @@ func Run() {
 				}
 
 				if ! app.NoDisplay {
-					var defaultPath= "/actions/" + app.Id
-					var executer= MakeExecuter(app.Exec, app.Terminal)
-					var act= action.MakeAction(defaultPath, app.Name, app.Comment, app.IconName, executer)
+					var defaultPath = "/actions/" + app.Id
+					var executer = MakeExecuter(app.Exec, app.Terminal)
+					var act = action.MakeAction(defaultPath, app.Name, app.Comment, app.IconName, executer)
 					act.RelevanceHint = app.RelevanceHint
 					resource.Relate(&app.AbstractResource, &act.AbstractResource)
 					resources.Map(act)
 
 					for actionId, da := range app.Actions {
-						var path= "/actions/" + app.Id + "-" + actionId
-						var iconName= da.IconName
+						var path = "/actions/" + app.Id + "-" + actionId
+						var iconName = da.IconName
 						if iconName == "" {
 							iconName = app.IconName
 						}
-						var executer= MakeExecuter(da.Exec, app.Terminal)
-						var act= action.MakeAction(path, app.Name+": "+da.Name, app.Comment, da.IconName, executer)
+						var executer = MakeExecuter(da.Exec, app.Terminal)
+						var act = action.MakeAction(path, app.Name+": "+da.Name, app.Comment, da.IconName, executer)
 						act.RelevanceHint = app.RelevanceHint
-						resource.Relate(&app.AbstractResource, & act.AbstractResource)
+						resource.Relate(&app.AbstractResource, &act.AbstractResource)
 						resources.Map(act)
 					}
 				}
@@ -90,7 +87,7 @@ func Run() {
 func MakeExecuter(exec string, runInTerminal bool) action.Executer {
 	var expandedExec = regexp.MustCompile("%[uUfF]").ReplaceAllString(exec, "")
 	return func() {
-		runCmd(runInTerminal, expandedExec)
+		runCmd(strings.Fields(expandedExec))
 	}
 }
 
@@ -110,11 +107,38 @@ func (da *DesktopApplication) POST(w http.ResponseWriter, r *http.Request) {
 	if onlySingleArg && len(args) > 1 {
 		w.WriteHeader(http.StatusUnprocessableEntity)
 	} else {
-		var expandedExec = regexp.MustCompile("%[uUfF]").ReplaceAllString(exec, strings.Join(args, " "))
-		runCmd(da.Terminal, expandedExec)
+		var argv []string
+		var argsReg = regexp.MustCompile("%[uUfF]");
+		if da.Terminal {
+			var terminal, ok = os.LookupEnv("TERMINAL")
+			if !ok {
+				reportError(fmt.Sprintf("Trying to run %s in terminal, but env variable TERMINAL not set", exec))
+				return
+			}
+			var arglist = []string{}
+			for _,arg := range args {
+				arglist = append(arglist, "'" + strings.Replace(arg, "'", "'\\''", -1) + "'")
+			}
+			var argListS = strings.Join(arglist, " ");
+			var cmd = argsReg.ReplaceAllString(exec, argListS)
+			fmt.Println("Run in terminal with cmd:", cmd)
+			argv = []string{terminal, "-e", cmd}
+		} else {
+			var fields = strings.Fields(exec)
+			for _, field := range fields {
+				if argsReg.MatchString(field) {
+					argv = append(argv, args...)
+				} else {
+					argv = append(argv, field)
+				}
+			}
+		}
+
+		runCmd(argv)
+
 		var copy = *da
 		copy.Relates = make(map[mediatype.MediaType][]string)
-		for mt,urls := range da.Relates {
+		for mt, urls := range da.Relates {
 			copy.Relates[mt] = urls
 		}
 		copy.RelevanceHint = time.Now().Unix()
@@ -124,23 +148,12 @@ func (da *DesktopApplication) POST(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func runCmd(runInTerminal bool, cmdStr string) {
-	var cmd *exec.Cmd
-	if runInTerminal {
-		var terminal, ok = os.LookupEnv("TERMINAL")
-		if !ok {
-			reportError(fmt.Sprintf("Trying to run %s in terminal, but env variable TERMINAL not set", cmdStr))
-			return
-		}
-		cmdStr = fmt.Sprintf("%s -e %s", terminal, cmdStr)
-	}
-	var argv = strings.Fields(cmdStr)
-	cmd = exec.Command(argv[0], argv[1:]...)
+func runCmd(argv []string) {
+	var cmd = exec.Command(argv[0], argv[1:]...)
 
 	cmd.Dir = xdg.Home
 	cmd.Stdout = nil
 	cmd.Stderr = nil
-
 
 	if err := cmd.Start(); err != nil {
 		reportError(fmt.Sprint(err))
