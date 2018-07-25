@@ -6,228 +6,133 @@
 //
 import React from 'react'
 import {render} from 'react-dom'
-import {NW, devtools, nwHide, nwSetup, doGet, doPost, watchPos, adjustPos} from '../common/utils'
-import {ItemList} from "../common/itemlist"
-import {SearchBox} from "../common/searchbox"
+import {NW, WIN, devtools, nwHide, nwSetup, doSearch, doPost, watchPos, adjustPos} from '../common/utils'
+import {linkItems, ItemList} from "../common/itemlist"
 
+const searches = [
+    {
+        minTermSize: 0,
+        service: "wm-service",
+        query: "r.Name ~i '@TERM@' and r.Name neq 'Refude Do' and r.Name neq 'refudeDo'",
+        group: "Open windows"
+    },
+    {
+        minTermSize: 1,
+        service: "desktop-service",
+        query: "r.Name ~i '@TERM@'",
+        group: "Applications"
+    },
+    {
+        minTermSize: 1,
+        service: "power-service",
+        query: "r.Name ~i '@TERM@'",
+        group: "Leave"
+    }
+];
 
 class Container extends React.Component {
-
     constructor(props) {
         super(props);
-        this.state = {items: [], searchTerm: ""};
-        this.resources = {
-            "wm-service": [],
-            "desktop-service": [],
-            "power-service": []
-        };
-
-        this.windows = []
-        this.getWindows()
+        this.state = {items: []};
+        this.itemList = React.createRef();
+        this.windows = [];
 
         nwSetup((argv) => {
             this.readArgs(argv);
-            this.windows = []
-            this.getWindows()
-            this.fetchResources("")
-        })
-    };
+            this.windows = [];
+        });
 
-    fetchResources = (term) => {
-        console.log("Fetching for", term);
-        term = term || "";
-        this.resources["wm-service"] = [];
-        this.resources["desktop-service"] = [];
-        this.resources["power-service"] = [];
-
-        let winQuery = {
-            type: "application/vnd.org.refude.action+json",
-            q: `r.Name ~i '${term}' and r.Name neq 'Refude Do' and r.Name neq 'refudeDo'`
-        };
-        console.log("winQuery:", winQuery)
-        doGet("wm-service", "/search", winQuery).then(resources => {
-            this.resources["wm-service"] = resources;
-            this.updateItems();
-        }, error => console.log(error));
-
-        if (term && term.length > 0) {
-            let appQuery = {
-                type: "application/vnd.org.refude.action+json",
-                q: `r.Name ~i '${term}'`
-            };
-            doGet("desktop-service", "/search", appQuery).then(resources => {
-                this.resources["desktop-service"] = resources;
-                this.updateItems();
-            });
-
-            let powerQuery = {
-                type: 'application/vnd.org.refude.action+json',
-                q: `r.Name ~i '${term}'`
-            }
-            doGet("power-service", "/search", powerQuery).then(resources => {
-                this.resources["power-service"] = resources;
-                this.updateItems();
-            });
-        }
-    };
-
-    updateItems = () => {
-        let addAll = (dst, src, group) => {
-            src.forEach(item => {
-                item.group = group
-                dst.push(item)
-            })
-        }
-        console.log("Into updateItems, resources:", this.resources);
-        let items = [];
-        addAll(items, this.resources["wm-service"], "Open windows");
-        addAll(items, this.resources["desktop-service"], "Applications");
-        addAll(items, this.resources["power-service"], "Leave");
-
-        if (items.length > 0) {
-            if (!items.find(item => item._self === this.state.selected)) {
-                this.select(items[0]._self)
-            }
-        } else {
-            this.select(undefined)
-        }
-
-        this.setState({items: items})
+        WIN.on('focus', () => {this.hasfocus = true;});
+        WIN.on('blur', () => {
+            this.hasfocus = false;
+            // TAB momentarily unfocuses window - so we wait a bit
+            setTimeout(() => { if (!this.hasfocus) this.itemList.current.dismiss(); }, 100);
+        });
     };
 
     componentDidMount = () => {
         //devtools();
         watchPos();
-        this.readArgs(NW.App.argv);
-        this.fetchResources("")
+        this.termChange("");
     };
 
-    onTermChange = (searchTerm) => {
-        this.setState({searchTerm: searchTerm})
-        this.fetchResources(searchTerm);
-    };
-
-    onKeyDown = (event) => {
-        let {key, ctrlKey, shiftKey, altKey, metaKey} = event
-        if (key === "Tab" && !ctrlKey && shiftKey && !altKey && !metaKey) this.move(false)
-        else if (key === "Tab" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.move(true)
-        else if (key === "ArrowUp" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.move(false)
-        else if (key === "ArrowDown" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.move(true)
-        else if (key === "Enter" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.execute(this.state.selected)
-        else if (key === " " && !ctrlKey && !shiftKey && !altKey && !metaKey) this.execute(this.state.selected)
-        else if (key === "Escape" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.dismiss()
-        else {
-            return
-        }
-
-        event.stopPropagation();
-    };
-
-    move = (down) => {
-        let index = this.state.items.findIndex(item => item._self === this.state.selected)
-        if (index > -1) {
-            index = (index + this.state.items.length + (down ? 1 : -1)) % this.state.items.length
-            this.select(this.state.items[index]._self)
+    fetch = (searchTerm, searchList, collected) => {
+        if (searchList.length > 0) {
+            let [head, ...tail] = searchList;
+            if (head.minTermSize <= searchTerm.length) {
+                let mimetype = "application/vnd.org.refude.action+json";
+                let query = head.query.replace("@TERM@", searchTerm);
+                doSearch(head.service, mimetype, query).then((resp) => {
+                    resp.json.forEach(item => {
+                        item.__group = head.group;
+                        collected.push(item);
+                    });
+                    this.fetch(searchTerm, tail, collected);
+                }, (resp) => {
+                    this.fetch(searchTerm, tail, collected);
+                }).catch(() => {
+                    this.fetch(searchTerm, tail, collected);
+                });
+            } else {
+                this.fetch(searchTerm, tail, collected);
+            }
+        } else {
+            linkItems(collected);
+            this.setState({items: collected});
         }
     };
 
-    select = (self) => {
-        this.setState({selected: self})
+
+    termChange = (newTerm) => {
+        this.fetch(newTerm, searches, []);
+    };
+
+    select = item => {
+        console.log(item._self, "selected");
+    };
+
+    execute = (item) => {
+        doPost(item).then(response => {
+            this.dismiss();
+        })
+    };
+
+    onDismiss = () => {
+        console.log("dismiss");
+        nwHide()
     };
 
 
     getWindows = () => {
-        let q = {
-            type: "application/vnd.org.refude.wmwindow+json",
-            q: `r.Name neq 'Refude Do' and r.Name neq 'refudeDo'`
-        };
-        doGet("wm-service", "/search", q).then(windows => {
-            this.windows = windows;
-            console.log("windows now:", windows);
-        })
-    }
-
-    isAWindowAction = (self) => {
-        return this.windows && this.windows.findIndex(w => w._relates && w._relates[self]) > -1;
-    }
-
-    execute = (self) => {
-        if (self) {
-            let item = this.state.items.find(i => self === i._self);
-            this.select(self)
-            doPost(item).then(response => {
-                this.dismiss();
-            })
-        }
-    };
-
-    dismiss = () => {
-        console.log("dismiss");
-        this.select(undefined);
-        this.setState({searchTerm: ""});
-        nwHide()
+        doSearch("wm-service", "application/vnd.org.refude.wmwindow+json").then(resp => {
+            this.windows = resp.json;
+            this.termChange("");
+        }, resp => {
+            this.termChange("");
+        });
     };
 
     readArgs = (args) => {
         adjustPos();
-        this.fetchResources("");
+        this.termChange("");
         if (args.includes("up")) {
-            this.move(false)
+            this.itemList.current.move(false)
         }
         else {
-            this.move(true)
+            this.itemList.current.move(true)
         }
-    }
-
+    };
 
     render = () => {
-        let {apps, selected, searchTerm} = this.state
-
-        let contentStyle = {
-            position: "relative",
-            display: "flex",
-            boxSizing: "border-box",
-            width: "calc(100% - 1px)",
-            height: "calc(100% - 1px)",
-            padding: "4px",
-        }
-
-        let leftColumnStyle = {
-            position: "relative",
-            width: "100%",
-            height: "100%",
-            display: "flex",
-            flexDirection: "column",
-            margin: "0px"
-        }
-
-        let searchBoxStyle = {
-            marginBottom: "5px",
-        }
-
-        let itemListStyle = {
-            flex: "1",
-        }
-
-
         return (
-            <div style={contentStyle} onKeyDown={this.onKeyDown} onKeyUp={this.onKeyUp}>
-                <div style={leftColumnStyle}>
-                    <SearchBox style={searchBoxStyle} onChange={evt => this.onTermChange(evt.target.value)}
-                               searchTerm={this.state.searchTerm}/>
-                    <ItemList style={itemListStyle} items={this.state.items} selectedSelf={this.state.selected}
-                              select={this.select} execute={this.execute}/>
-                </div>
-            </div>
+            <ItemList items={this.state.items}
+                      onTermChange={this.termChange}
+                      select={this.select}
+                      execute={this.execute}
+                      onDismiss={this.onDismiss}
+                      ref={this.itemList}/>
         )
     }
 }
 
-render(
-    <Container/>,
-    document
-        .getElementById(
-            'root'
-        )
-)
-;
+render(<Container/>, document.getElementById('root'));

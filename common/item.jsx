@@ -5,11 +5,10 @@
 // Please refer to the GPL2 file for a copy of the license.
 //
 import React from 'react';
-import ReactDom from 'react-dom'
 
 let Item = props => {
 
-    let {item, selected, select, execute} = props
+    let {item, selected, select, execute} = props;
 
     let style = {
         marginRight: "5px",
@@ -17,9 +16,7 @@ let Item = props => {
         verticalAlign: "top",
         overflow: "hidden",
         height: "30px",
-    }
-
-    Object.assign(style, props.style)
+    };
 
     if (selected) {
         Object.assign(style, {
@@ -32,48 +29,20 @@ let Item = props => {
     let iconStyle = {
         float: "left",
         marginRight: "6px",
-    }
-
-    if (item.PresentationHint === "window") {
-        Object.assign(iconStyle, {
-            WebkitFilter: "drop-shadow(5px 5px 3px grey)",
-            overflow: "visible"
-        })
-    }
-
-    if (item.PresentationHint === "minimizedwindow") {
-        Object.assign(iconStyle, {
-            WebkitFilter: "drop-shadow(5px 5px 3px grey)",
-            overflow: "visible",
-            marginLeft: "14px",
-            marginTop: "14px",
-            width: "18px",
-            height: "18px",
-            opacity: "0.4"
-        })
-    }
-
-
-    Object.assign(iconStyle, props.item.extraIconStyle)
+    };
 
     let nameStyle = {
         overflow: "hidden",
         whiteSpace: "nowrap",
         marginRight: "6px",
-    }
+    };
 
     let commentStyle = {
         fontSize: "0.8em",
-    }
-
-    Object.assign(commentStyle, nameStyle)
+    };
 
     return (
-        <div id={props.item._self} style={style} onClick={() => {
-            select(item)
-        }} onDoubleClick={() => {
-            execute(item)
-        }}>
+        <div id={props.item._self} style={style} onClick={() => select(item)} onDoubleClick={() => execute(item)}>
             <img width="24px" height="24px" style={iconStyle} src={item.IconUrl}/>
             <div style={nameStyle}>{item.Name}</div>
             <div style={commentStyle}>{item.Comment}</div>

@@ -122,34 +122,35 @@ let doGetH = (query, handler) => {
 let doGet2 = options => {
     Object.assign(options, {method: "GET", host: "localhost", port: 7938, path: '/' + options.service + options.path});
     try {
-    return new Promise((successHandler, errorHandler) => {
-        let req = http.request(options, resp => {
-            let data = '';
-            resp.setEncoding('utf8');
-            resp.on('data', chunk => data += chunk);
-            resp.on('end', () => {
-                let o = {
-                    status: resp.statusCode,
-                    headers: resp.headers,
-                    data: data,
-                    json: parseAndPostprocess(options.service, data)
-                };
-                if (o.status >= 300) {
-                    if (errorHandler) {
-                        errorHandler(o);
+        return new Promise((successHandler, errorHandler) => {
+            let req = http.request(options, resp => {
+                let data = '';
+                resp.setEncoding('utf8');
+                resp.on('data', chunk => data += chunk);
+                resp.on('end', () => {
+                    let o = {
+                        status: resp.statusCode,
+                        headers: resp.headers,
+                        data: data,
+                        json: parseAndPostprocess(options.service, data)
+                    };
+                    if (o.status >= 300) {
+                        if (errorHandler) {
+                            errorHandler(o);
+                        }
+                    } else {
+                        successHandler(o);
                     }
-                } else {
-                    successHandler(o);
-                }
+                });
             });
-        });
-        req.on('error', e => {
-            console.log("req: ", options, " -> ", e);
-        });
-        req.end();
-    }) }
+            req.on('error', e => {
+                console.log("req: ", options, " -> ", e);
+            });
+            req.end();
+        })
+    }
     catch (e) {
-       console.log("Error:", e);
+        console.log("Error:", e);
     }
 };
 
@@ -161,7 +162,15 @@ let doGetIfNoneMatch = (service, path, etag) => {
     };
 
     return doGet2(options);
-}
+};
+
+export let doSearch = (service, mimetype, query) => {
+    let options = {
+        service: service,
+        path: `/search?type=${encodeURIComponent(mimetype)}&q=${encodeURIComponent(query)}`
+    };
+    return doGet2(options);
+};
 
 /**
  * We assume no response body
@@ -171,6 +180,7 @@ let doGetIfNoneMatch = (service, path, etag) => {
  * @returns {Promise<any>}
  */
 let doPost = (resource, params) => {
+    let options = opts(resource, "POST", params);
     return new Promise((resolve, reject) => {
         let req = http.request(opts(resource, "POST", params), resp => {
             let data = '';
@@ -209,10 +219,22 @@ let doDelete = (resource) => {
 
 let parseAndPostprocess = (service, data) => {
     if (data) {
-        let json = JSON.parse(data);
-        json._self = "/" + service + json._self;
-        json.IconUrl = iconServiceUrl(json.IconName);
-        return json;
+        try {
+            let json = JSON.parse(data);
+            if (Array.isArray(json)) {
+                json.forEach(resource => {
+                    resource._self = "/" + service + resource._self;
+                    resource.IconUrl = iconServiceUrl(resource.IconName);
+                });
+            } else {
+                json._self = "/" + service + json._self;
+                json.IconUrl = iconServiceUrl(json.IconName);
+            }
+            return json;
+        }
+        catch (e) {
+            return undefined;
+        }
     } else {
         return undefined;
     }
@@ -258,7 +280,6 @@ let displayEtag = null;
 
 let watchPos = () => {
     WIN.on('move', (x, y) => {
-        console.log("on move, displayEtag:", displayEtag)
         if (displayEtag) {
             localStorage.setItem(displayEtag + ".x", x);
             localStorage.setItem(displayEtag + ".y", y);
@@ -275,10 +296,9 @@ let adjustPos = () => {
                 WIN.moveTo(parseInt(x), parseInt(y));
             }
             displayEtag = headers.etag;
-            console.log("setting displayEtag:", displayEtag)
         }
     });
 };
 
 
-export {nwHide, devtools, NW, nwSetup, iconServiceUrl, doGet, doGetH, doGet2, doGetIfNoneMatch, doPost, doDelete, watchPos, adjustPos}
+export {nwHide, devtools, NW, WIN, nwSetup, iconServiceUrl, doGet, doGetH, doGet2, doGetIfNoneMatch, doPost, doDelete, watchPos, adjustPos}

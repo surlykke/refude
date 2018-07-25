@@ -5,27 +5,40 @@
 // Please refer to the GPL2 file for a copy of the license.
 //
 import React from 'react';
-import ReactDom from 'react-dom'
 
-let SearchBox = props => {
-	let style = {
-		boxSizing: "border-box",
-		paddingRight: "5px",
-	}
-	Object.assign(style, props.style)
+export class SearchBox extends React.Component {
 
-	let inputStyle =  {
-	    width: "100%",
-		height: "36px",
-	    borderRadius: "5px",
-	    outlineStyle: "none",
-	}
+    constructor(props) {
+        super(props);
+        this.inputField = React.createRef();
+    }
 
-	return (
-		<div style={style}>
-			<input style={inputStyle} type="search" onChange={props.onChange} value={props.searchTerm} autoFocus/>
-		</div>
-	)
+    onChange = (event) => {
+        this.props.onChange(event.target.value)
+    };
+
+    clear = () => {
+        this.inputField.current.value = "";
+    };
+
+    render = () => {
+        let style = {
+            boxSizing: "border-box",
+            paddingRight: "5px",
+        }
+
+        let inputStyle = {
+            width: "100%",
+            height: "36px",
+            borderRadius: "5px",
+            outlineStyle: "none",
+        }
+
+        return (
+            <div style={style}>
+                <input style={inputStyle} type="search" onChange={this.onChange} ref={this.inputField} autoFocus/>
+            </div>
+        )
+    }
 }
 
-export {SearchBox}
