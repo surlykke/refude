@@ -31,6 +31,8 @@ let Item = props => {
         marginRight: "6px",
     };
 
+    Object.assign(iconStyle, item.__iconStyle)
+
     let nameStyle = {
         overflow: "hidden",
         whiteSpace: "nowrap",

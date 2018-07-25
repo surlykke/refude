@@ -165,10 +165,20 @@ let doGetIfNoneMatch = (service, path, etag) => {
 };
 
 export let doSearch = (service, mimetype, query) => {
+    let path = "/search";
+    let separator = "?";
+    if (mimetype) {
+        path += `?type=${encodeURIComponent(mimetype)}`;
+        separator = '&';
+    }
+    if (query) {
+        path += `${separator}q=${encodeURIComponent(query)}`;
+    }
     let options = {
         service: service,
-        path: `/search?type=${encodeURIComponent(mimetype)}&q=${encodeURIComponent(query)}`
+        path:    path
     };
+
     return doGet2(options);
 };
 

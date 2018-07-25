@@ -5,7 +5,6 @@
 // Please refer to the GPL2 file for a copy of the license.
 //
 import React from 'react';
-import ReactDom from 'react-dom'
 import {Item} from './item.jsx'
 import {SearchBox} from "./searchbox";
 
@@ -28,22 +27,14 @@ export class ItemList extends React.Component {
         this.searchBox = React.createRef();
     }
 
-    componentDidMount = () => {
-        console.log("componentDidMount");
-    };
-
     componentDidUpdate = () => {
-        console.log("componentDidUpdate");
         // Scroll selected item into view
         if (this.state.selected) {
-            console.log("Attempt to scroll, looking for:", this.state.selected._self);
             let selectedDiv = document.getElementById(this.state.selected._self)
-            console.log("selectedDiv:", selectedDiv);
             if (selectedDiv) {
                 let listDiv = document.getElementById("itemListDiv");
                 let {top: listTop, bottom: listBottom} = listDiv.getBoundingClientRect();
                 let {top: selectedTop, bottom: selectedBottom} = selectedDiv.getBoundingClientRect();
-                console.log("listTop, listbottom, selectedTop, selectedBottom", listTop, listBottom, selectedTop, selectedBottom);
                 if (selectedTop < listTop) listDiv.scrollTop -= (listTop - selectedTop + 25)
                 else if (selectedBottom > listBottom) listDiv.scrollTop += (selectedBottom - listBottom + 10)
             }
@@ -53,7 +44,6 @@ export class ItemList extends React.Component {
     componentWillReceiveProps = (newProps) => {
         let newSelected = undefined;
         if (this.state.selected) {
-            console.log("looking for selected");
             newSelected = newProps.items.find(item => item._self === this.state.selected._self);
 
         }
@@ -65,7 +55,6 @@ export class ItemList extends React.Component {
     };
 
     keyDown = (event) => {
-        console.log("keydown:", event);
         let {key, ctrlKey, shiftKey, altKey, metaKey} = event;
         if (key === "Tab" && !ctrlKey && shiftKey && !altKey && !metaKey) this.move(false);
         else if (key === "Tab" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.move(true);
@@ -100,15 +89,12 @@ export class ItemList extends React.Component {
     };
 
     dismiss = () => {
-        console.log(this.searchBox.current.clear)
         this.searchBox.current.clear();
-        //this.props.onTermChange("");
         this.props.onDismiss();
     };
 
 
     render = () => {
-        console.log("render");
         let {items, onTermChange, select} = this.props
         let outerStyle = {
             display: "flex",
@@ -140,7 +126,7 @@ export class ItemList extends React.Component {
         let content = [];
         items.forEach(item => {
             if (item.__group !== prevGroup) {
-                content.push(<div style={headingStyle}>{item.__group}</div>)
+                content.push(<div key={item.__group} style={headingStyle}>{item.__group}</div>)
                 prevGroup = item.__group
             }
             content.push(<Item key={item._self}

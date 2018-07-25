@@ -39,21 +39,22 @@ class Container extends React.Component {
 
         nwSetup((argv) => {
             this.readArgs(argv);
-            this.windows = [];
         });
+        this.initialize();
 
-        WIN.on('focus', () => {this.hasfocus = true;});
+        WIN.on('focus', () =>  this.hasfocus = true );
         WIN.on('blur', () => {
             this.hasfocus = false;
             // TAB momentarily unfocuses window - so we wait a bit
-            setTimeout(() => { if (!this.hasfocus) this.itemList.current.dismiss(); }, 100);
+            setTimeout(() => {
+                if (!this.hasfocus) this.itemList.current.dismiss();
+            }, 100);
         });
-        // devtools();
+//        devtools();
     };
 
     componentDidMount = () => {
         watchPos();
-        this.termChange("");
     };
 
     fetch = (searchTerm, searchList, collected) => {
@@ -78,14 +79,38 @@ class Container extends React.Component {
             }
         } else {
             linkItems(collected);
+            collected.forEach(item => {
+                if (item._relates && item._relates["application/vnd.org.refude.wmwindow+json"]) {
+                    item.__iconStyle = {
+                        WebkitFilter: "drop-shadow(5px 5px 3px grey)",
+                        overflow: "visible"
+                    };
+                    let win = this.windows["/wm-service" + item._relates["application/vnd.org.refude.wmwindow+json"]];
+                    if (win && win.States.includes("_NET_WM_STATE_HIDDEN")) {
+                        Object.assign(item.__iconStyle, {
+                            marginLeft: "10px",
+                            marginTop: "10px",
+                            width: "14px",
+                            height: "14px",
+                            opacity: "0.7"
+                        })
+                    }
+                }
+            });
             this.setState({items: collected});
         }
     };
 
+    /*    if (item.States) {  // Its a window
+        Object.assign(iconStyle, {
+            WebkitFilter: "drop-shadow(5px 5px 3px grey)",
+            overflow: "visible"
+        })
 
-    termChange = (newTerm) => {
-        this.fetch(newTerm, searches, []);
-    };
+        if (item.States.includes("_NET_WM_STATE_HIDDEN")) {
+
+    }
+    }*/
 
     select = item => {
         console.log(item._self, "selected");
@@ -98,23 +123,23 @@ class Container extends React.Component {
     };
 
     onDismiss = () => {
-        console.log("dismiss");
         nwHide()
     };
 
 
-    getWindows = () => {
+    initialize = () => {
         doSearch("wm-service", "application/vnd.org.refude.wmwindow+json").then(resp => {
-            this.windows = resp.json;
-            this.termChange("");
+            this.windows = {}
+            resp.json.forEach(win => this.windows[win._self] = win);
+            this.fetch("", searches, []);
         }, resp => {
-            this.termChange("");
+            this.fetch("", searches, []);
         });
     };
 
     readArgs = (args) => {
         adjustPos();
-        this.termChange("");
+        this.initialize();
         if (args.includes("up")) {
             this.itemList.current.move(false)
         }
@@ -126,7 +151,7 @@ class Container extends React.Component {
     render = () => {
         return (
             <ItemList items={this.state.items}
-                      onTermChange={this.termChange}
+                      onTermChange={(term) => this.fetch(term, searches, [])}
                       select={this.select}
                       execute={this.execute}
                       onDismiss={this.onDismiss}
