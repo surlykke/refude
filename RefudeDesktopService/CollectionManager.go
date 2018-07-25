@@ -86,12 +86,25 @@ func Run() {
 
 func MakeExecuter(exec string, runInTerminal bool) action.Executer {
 	var expandedExec = regexp.MustCompile("%[uUfF]").ReplaceAllString(exec, "")
+	var argv []string
+	if runInTerminal {
+		var terminal, ok = os.LookupEnv("TERMINAL")
+		if !ok {
+			reportError(fmt.Sprintf("Trying to make executer for %s in terminal, but env variable TERMINAL not set", exec))
+			return func() {}
+		}
+		argv = []string{terminal, "-e", "'" + strings.TrimSpace(strings.Replace(expandedExec, "'", "'\\''", -1)) + "'"}
+	} else {
+		argv = strings.Fields(expandedExec)
+	}
+
 	return func() {
-		runCmd(strings.Fields(expandedExec))
+		runCmd(argv)
 	}
 }
 
 func (da *DesktopApplication) POST(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("In post")
 	var actionName = requestutils.GetSingleQueryParameter(r, "action", "")
 	var args = r.URL.Query()["arg"]
 	var exec string
@@ -116,8 +129,8 @@ func (da *DesktopApplication) POST(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			var arglist = []string{}
-			for _,arg := range args {
-				arglist = append(arglist, "'" + strings.Replace(arg, "'", "'\\''", -1) + "'")
+			for _, arg := range args {
+				arglist = append(arglist, "'"+strings.Replace(arg, "'", "'\\''", -1)+"'")
 			}
 			var argListS = strings.Join(arglist, " ");
 			var cmd = argsReg.ReplaceAllString(exec, argListS)
@@ -149,6 +162,10 @@ func (da *DesktopApplication) POST(w http.ResponseWriter, r *http.Request) {
 }
 
 func runCmd(argv []string) {
+	fmt.Println("runCmd")
+	for i := 0; i < len(argv); i++ {
+		fmt.Println(i, ":", argv[i])
+	}
 	var cmd = exec.Command(argv[0], argv[1:]...)
 
 	cmd.Dir = xdg.Home
