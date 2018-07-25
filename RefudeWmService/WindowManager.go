@@ -175,7 +175,11 @@ func buildWindowAndAction(wId xproto.Window) (*Window, *action.Action, error) {
 	if window, err := buildWindow(wId); err != nil {
 		return nil, nil, err
 	} else if normal(window) {
-		return window, buildAction(window), nil
+		var action = action.MakeAction(fmt.Sprintf("/actions/%d", window.Id), window.Name, "Switch to this window", window.IconName, func() {
+			ewmh.ActiveWindowReq(xutil, xproto.Window(window.Id))
+		});
+		resource.Relate(&action.AbstractResource, &window.AbstractResource)
+		return window, action, nil
 	} else {
 		return window, nil, nil
 	}
@@ -206,12 +210,6 @@ func buildWindow(wId xproto.Window) (*Window, error) {
 		window.IconName = icons.SaveAsPngToSessionIconDir(argbIcon)
 		return &window, nil
 	}
-}
-
-func buildAction(w *Window) *action.Action {
-	return action.MakeAction(fmt.Sprintf("/actions/%d", w.Id), w.Name, "Switch to this window", w.IconName, func() {
-		ewmh.ActiveWindowReq(xutil, xproto.Window(w.Id))
-	})
 }
 
 func getXConnection() (*xgbutil.XUtil, error) {
