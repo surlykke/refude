@@ -34,6 +34,20 @@ export class ItemList extends React.Component {
 
     componentDidUpdate = () => {
         console.log("componentDidUpdate");
+        // Scroll selected item into view
+        if (this.state.selected) {
+            console.log("Attempt to scroll, looking for:", this.state.selected._self);
+            let selectedDiv = document.getElementById(this.state.selected._self)
+            console.log("selectedDiv:", selectedDiv);
+            if (selectedDiv) {
+                let listDiv = document.getElementById("itemListDiv");
+                let {top: listTop, bottom: listBottom} = listDiv.getBoundingClientRect();
+                let {top: selectedTop, bottom: selectedBottom} = selectedDiv.getBoundingClientRect();
+                console.log("listTop, listbottom, selectedTop, selectedBottom", listTop, listBottom, selectedTop, selectedBottom);
+                if (selectedTop < listTop) listDiv.scrollTop -= (listTop - selectedTop + 25)
+                else if (selectedBottom > listBottom) listDiv.scrollTop += (selectedBottom - listBottom + 10)
+            }
+        }
     };
 
     componentWillReceiveProps = (newProps) => {
@@ -49,18 +63,6 @@ export class ItemList extends React.Component {
 
         this.setState({selected: newSelected});
     };
-
-
-    /*if (this.props.selectedSelf) {
-        let selectedDiv = document.getElementById(this.props.selectedSelf)
-        if (selectedDiv) {
-            let listDiv = document.getElementById("itemListDiv")
-            let {top: listTop, bottom: listBottom} = listDiv.getBoundingClientRect()
-            let {top: selectedTop, bottom: selectedBottom} = selectedDiv.getBoundingClientRect()
-            if (selectedTop < listTop) listDiv.scrollTop -=  (listTop - selectedTop + 25)
-            else if (selectedBottom > listBottom) listDiv.scrollTop += (selectedBottom - listBottom + 10)
-        }
-    }*/
 
     keyDown = (event) => {
         console.log("keydown:", event);
@@ -80,10 +82,8 @@ export class ItemList extends React.Component {
     };
 
     move = (down) => {
-        console.log("move, this.state.selected:", this.state.selected, "down:", down);
         if (this.state.selected) {
             let newSelected = down ? this.state.selected.__next : this.state.selected.__prev;
-            console.log("newSelected:", newSelected);
             this.setState({selected: newSelected});
         }
     };
@@ -108,11 +108,25 @@ export class ItemList extends React.Component {
 
 
     render = () => {
+        console.log("render");
         let {items, onTermChange, select} = this.props
-        let style = {
-            overflow: "auto",
-        }
-        Object.assign(style, this.props.style)
+        let outerStyle = {
+            display: "flex",
+            flexFlow: "column",
+            height: "100%",
+            paddingTop: "0.3em",
+            paddingLeft: "0.3em"
+        };
+
+        let searchBoxStyle = {
+            width: "calc(100% - 16px)",
+            marginTop: "4px"
+        };
+
+        let innerStyle = {
+            marginTop: "8px",
+            overflowY: "scroll"
+        };
 
         let headingStyle = {
             fontSize: "0.9em",
@@ -122,8 +136,8 @@ export class ItemList extends React.Component {
             marginBottom: "3px",
         };
 
-        let prevGroup
-        let content = []
+        let prevGroup;
+        let content = [];
         items.forEach(item => {
             if (item.__group !== prevGroup) {
                 content.push(<div style={headingStyle}>{item.__group}</div>)
@@ -136,9 +150,9 @@ export class ItemList extends React.Component {
                                execute={this.execute}/>)
         })
         return (
-            <div onKeyDown={this.keyDown}>
-                <SearchBox onChange={onTermChange} ref={this.searchBox}/>
-                <div id="itemListDiv" style={style}>
+            <div onKeyDown={this.keyDown} style={outerStyle}>
+                <SearchBox onChange={onTermChange} style={searchBoxStyle} ref={this.searchBox}/>
+                <div id="itemListDiv" style={innerStyle}>
                     {content}
                 </div>
             </div>

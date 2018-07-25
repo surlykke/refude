@@ -48,10 +48,10 @@ class Container extends React.Component {
             // TAB momentarily unfocuses window - so we wait a bit
             setTimeout(() => { if (!this.hasfocus) this.itemList.current.dismiss(); }, 100);
         });
+        // devtools();
     };
 
     componentDidMount = () => {
-        //devtools();
         watchPos();
         this.termChange("");
     };

@@ -25,14 +25,16 @@ export class SearchBox extends React.Component {
         let style = {
             boxSizing: "border-box",
             paddingRight: "5px",
-        }
+        };
+
+        Object.assign(style, this.props.style);
 
         let inputStyle = {
             width: "100%",
             height: "36px",
             borderRadius: "5px",
             outlineStyle: "none",
-        }
+        };
 
         return (
             <div style={style}>
