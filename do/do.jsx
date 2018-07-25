@@ -30,7 +30,7 @@ const searches = [
     }
 ];
 
-class Container extends React.Component {
+class Do extends React.Component {
     constructor(props) {
         super(props);
         this.state = {items: []};
@@ -160,4 +160,4 @@ class Container extends React.Component {
     }
 }
 
-render(<Container/>, document.getElementById('root'));
+render(<Do/>, document.getElementById('root'));
