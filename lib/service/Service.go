@@ -90,13 +90,10 @@ func getSearchParams(w http.ResponseWriter, r *http.Request) (mediatype.MediaTyp
 	var flatParams map[string]string
 	var err error
 	if flatParams, err = requestutils.GetSingleParams(r, "type", "q"); err != nil {
-		requestutils.ReportUnprocessableEntity(w, resource.ToJSon(err))
 		return "", nil, err
-	}
-	if q, ok := flatParams["q"]; ok {
+	} else if q, ok := flatParams["q"]; ok {
 		if matcher, err = query.Parse(q); err != nil {
 			fmt.Println("Parsing problem:", err)
-			requestutils.ReportUnprocessableEntity(w, resource.ToJSon(err))
 			return "", matcher, err
 		}
 	}
@@ -105,6 +102,7 @@ func getSearchParams(w http.ResponseWriter, r *http.Request) (mediatype.MediaTyp
 }
 
 func Search(w http.ResponseWriter, r *http.Request, jsonCollection JsonCollection) {
+	fmt.Println("Search, query:", r.URL.RawQuery);
 	if mt, matcher, err := getSearchParams(w, r); err == nil {
 		var allResources = jsonCollection.GetAll();
 		if mt != "" {
@@ -138,6 +136,6 @@ func Search(w http.ResponseWriter, r *http.Request, jsonCollection JsonCollectio
 			panic(fmt.Sprintln("Problem marshalling searchresult: ", err))
 		}
 	} else {
-		requestutils.ReportUnprocessableEntity(w, resource.ToJSon(err))
+		requestutils.ReportUnprocessableEntity(w, err)
 	}
 }

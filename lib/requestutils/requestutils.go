@@ -9,12 +9,11 @@ package requestutils
 import (
 	"net/http"
 	"github.com/pkg/errors"
-//	"github.com/surlykke/RefudeServices/lib/resource"
+	//	"github.com/surlykke/RefudeServices/lib/resource"
 	"regexp"
+	"fmt"
+	"encoding/json"
 )
-
-
-
 
 func GetSingleQueryParameter(r *http.Request, parameterName string, fallbackValue string) string {
 	if len(r.URL.Query()[parameterName]) == 0 {
@@ -57,14 +56,18 @@ func GetSingleParams(r *http.Request, paramNames ...string) (map[string]string, 
 	return result, nil
 }
 
-func ReportUnprocessableEntity(w http.ResponseWriter, body []byte) {
-	w.WriteHeader(http.StatusUnprocessableEntity)
-	w.Write(body)
+func ReportUnprocessableEntity(w http.ResponseWriter, err error) {
+	fmt.Println("unp: err: ", err)
+	if body, err2 := json.Marshal(err.Error()); err2 == nil {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		fmt.Println("Writing unp:", string(body))
+		w.Write(body)
+	} else {
+		panic(fmt.Sprintf("Cannot json-marshall %s", err.Error()))
+	}
 }
 
-
 var r = regexp.MustCompile(`^\s*(?:W/)?("[^"]*")\s*`)
-
 
 // We do not do weak matches, so any 'W/' preceding a tag is
 // ignored
@@ -94,4 +97,3 @@ func EtagMatch(etag string, etagList string) bool {
 		}
 	}
 }
-

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"reflect"
 	"strconv"
+	"github.com/pkg/errors"
 )
 
 /**
@@ -82,7 +83,7 @@ func Parse(query string) (m Matcher, err error) {
 		r := recover();
 		if r != nil {
 			if parseError, ok := r.(ParseError); ok {
-				err = ErrorMsg{query, parseError, l.tokenStart}
+				err = errors.Errorf("query: %s\nerror:d %s\nat:%d", query, parseError, l.tokenStart);
 			} else {
 				panic(r)
 			}
