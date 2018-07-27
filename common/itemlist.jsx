@@ -85,7 +85,6 @@ export class ItemList extends React.Component {
 
     execute = (item) => {
         this.props.execute(item);
-        this.dismiss();
     };
 
     dismiss = () => {

@@ -118,12 +118,12 @@ class Do extends React.Component {
 
     execute = (item) => {
         doPost(item).then(response => {
-            this.dismiss();
+            nwHide();
         })
     };
 
     onDismiss = () => {
-        nwHide()
+        nwHide();
     };
 
 
@@ -155,7 +155,8 @@ class Do extends React.Component {
                       select={this.select}
                       execute={this.execute}
                       onDismiss={this.onDismiss}
-                      ref={this.itemList}/>
+                      ref={this.itemList}
+            />
         )
     }
 }

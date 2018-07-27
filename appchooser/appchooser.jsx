@@ -6,210 +6,179 @@
 //
 import React from 'react';
 import {render} from 'react-dom';
-import {doGet, doPost, iconServiceUrl} from '../common/utils'
-import {ItemList} from "../common/itemlist"
-import {Item} from "../common/item"
-import {SearchBox} from "../common/searchbox"
+import {doGet2, doPost, doSearch, devtools} from '../common/utils'
+import {ItemList, linkItems} from "../common/itemlist"
 
-let gui = window.require('nw.gui')
-let appArgument = gui.App.argv[0]
-let mimetypeId = gui.App.argv[1]
-let isUrl = mimetypeId.startsWith("x-scheme-handler")
+let gui = window.require('nw.gui');
+let filePath = gui.App.argv[0];
+let fileName = filePath.substring(filePath.lastIndexOf('/') + 1);
+let mimetypeId = gui.App.argv[1];
+let isUrl = mimetypeId.startsWith("x-scheme-handler");
+const desktopapp = "application/vnd.org.refude.desktopapplication+json";
 
 class AppChooser extends React.Component {
-	constructor(props) {
-		super(props)
-		this.mimetypeIds = []
-		this.mimetypes = new Map()
-		this.state = {
-			iconUrl: iconServiceUrl(["unknown"], 32),
-			comment: mimetypeId,
-			apps: [],
-			searchTerm: "",
-		}
-	}
-
-	componentDidMount() {
-        // Get mimetypes, starting with the given recursing through SubClassOf relation
-        // Once all is gotten, fetch apps and order according to what mimetypes they support
-	    let helper = (pos) => {
-            if (pos >= this.mimetypeIds.length) {
-                this.update(this.state.searchTerm)
-            } else {
-                let id = this.mimetypeIds[pos];
-                doGet("desktop-service", "/mimetypes/" + id).then(
-                   mimetype => {
-                       mimetype.IconUrl = iconServiceUrl([mimetype.IconName, mimetype.GenericIcon]);
-                       this.mimetypes[id] = mimetype;
-                       console.log("Consider mimetype:", mimetype);
-                       mimetype.SubClassOf.filter(subId => this.mimetypeIds.indexOf(subId) < 0).forEach(this.mimetypeIds.push);
-				       if (id === mimetypeId) {
-                           this.setState({iconUrl: mimetype.IconUrl, comment: mimetype.Comment});
-				       }
-				       helper(pos + 1);
-                   }
-               )
-            }
+    constructor(props) {
+        //devtools();
+        super(props);
+        this.mimeMap = new Map();
+        this.apps = [];
+        this.state = {
+            items: []
         };
-	    this.mimetypeIds.push(mimetypeId);
-	    helper(0);
-	}
+        console.log("Calling fetch");
+        this.fetch([mimetypeId], 0);
+    }
 
-    update = (searchTerm)	=> {
-		let appQuery = {
-			type: "application/vnd.org.refude.desktopapplication+json",
-			q:    `r.Name ~i '${searchTerm}'`
-		}
-	    doGet("desktop-service", "/search", appQuery).then( apps => {
-	        apps = apps.filter(app => app.Exec.toUpperCase().includes("%F") || app.Exec.toUpperCase().includes("%U"))
-	        apps.forEach(app => {
-	            app.__order = this.mimetypeIds.length;
-                app.group = "Other applications"
-                for (let i = 0; i < this.mimetypeIds.length; i++) {
-                    if (app.Mimetypes.includes(this.mimetypeIds[i])) {
-                        app.__order = i;
-                        app.group = "Applications that handle: '" + this.mimetypes[mimetypeId].Comment + "'";
-                        break;
+    fetch = (queued, pos) => {
+        if (pos < queued.length) {
+            console.log("Looking for", queued[pos]);
+            doGet2({service: "desktop-service", path: `/mimetypes/${queued[pos]}`}).then(
+                (resp) => {
+                    queued.push(...resp.json.SubClassOf.filter(sub => !queued.includes(sub)));
+                    this.mimeMap.set(queued[pos], resp.json);
+                    this.fetch(queued, pos + 1);
+                },
+                (resp) => {
+                    this.fetch(queued, pos + 1);
+                }
+            )
+        } else {
+            console.log("queued now:", queued);
+            console.log("mimeMap:", this.mimeMap);
+            doSearch("desktop-service", desktopapp, "r.Exec ~i '%f' or r.Exec ~i '%u'").then(
+                resp => {
+                    let apps = resp.json;
+                    for (let [mimetypeId, mimetype] of this.mimeMap) {
+                        let remains = [];
+                        apps.forEach(app => {
+                            if (app.Mimetypes.includes(mimetypeId)) {
+                                app.__group = `Applications that handle ${mimetype.Comment}`
+                                this.apps.push(app);
+                            } else {
+                                remains.push(app);
+                            }
+                        });
+                        apps = remains;
                     }
+                    ;
+                    apps.forEach(app => app.__group = "Other applications");
+                    this.apps.push(...apps);
+                    console.log("this.apps now:", this.apps);
+                    this.filter("");
+                },
+                resp => {
+                    console.log("error resp:", resp);
                 }
-            });
-
-            apps.sort((app1, app2) => app1.__order - app2.__order);
-            console.log("Setting apps:", apps);
-            let selected = this.state.selected
-            if (apps.length > 0) {
-                if (! apps.find(item => item._self === selected)) {
-                    selected = apps[0]._self;
-                }
-            } else {
-                selected = undefined;
-            }
-            console.log("selected:", selected);
-            this.setState({selected: selected});
-            this.setState({apps: apps});
-	    });
+            )
+        }
     };
 
-	select = (self) => {
-		console.log("I select, self:", self);
-		this.userHasMadeSelection = true
-		this.setState({selected: self})
-	};
+    filter = (term) => {
+        term = term.toUpperCase();
+        let filteredApps = this.apps.filter(app => app.Name.toUpperCase().includes(term));
+        linkItems(filteredApps);
+        this.setState({items: filteredApps});
+    };
 
-	run = (self) => {
-		this.select(self)
-		let app = this.state.apps.find(app => app._self === self)
-		if (!app) return
-        if (this.state.useAsDefault) {
-		    let mimetype = this.mimetypes[mimetypeId];
-		    doPost(this.mimetypes[mimetypeId], {defaultApp: app.Id});
+
+
+    select = (item) => {
+    };
+
+    execute = (item) => {
+        this.setState({selected: item})
+    };
+
+    dismiss = () => {
+        gui.App.quit();
+    }
+
+   	launch = (always) => {
+        if (always) {
+		    doPost(this.mimeMap.get(mimetypeId), {defaultApp: this.state.selected.Id});
         }
-        doPost(app, {arg: appArgument}).then(resp => {
+        doPost(this.state.selected, {arg: filePath}).then(resp => {
             gui.App.quit();
         });
 	};
 
-	onKeyDown = (event) => {
-		console.log("onKeyDown, event:", event);
-		let {key, ctrlKey, shiftKey, altKey, metaKey} = event
-		if      (key === "Tab" && !ctrlKey &&  shiftKey && !altKey && !metaKey) this.move(false)
-		else if (key === "Tab" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.move(true)
-		else if (key === "ArrowUp" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.move(false)
-		else if (key === "ArrowDown" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.move(true)
-		else if (key === "Enter" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.run(this.state.selected)
-		else if (key === " " && !ctrlKey && !shiftKey && !altKey && !metaKey) this.run(this.state.selected)
-		else if (key === "Escape" && !ctrlKey && !shiftKey && !altKey && !metaKey) gui.App.quit()
-		else return;
-		//event.stopPropagation()
-	};
+    cancel = () => {
+        this.setState({selected: undefined});
+    }
 
-	move = (down) => {
-		let {apps, selected} = this.state;
-		console.log("move, selected:", selected, ", apps:", apps);
-		let index = apps.findIndex(app => app._self === selected);
-        console.log("index:", index);
+    render = () => {
+        let style = {
+            display: "flex",
+            flexFlow: "column",
+            height: "100%"
+        };
 
-		if (index > -1) {
-			index = (index + apps.length + (down ? 1 : -1)) % apps.length;
-			console.log(" - now:", index, ", selecting:", apps[index])
-			this.select(apps[index]._self)
-		}
-	}
+        let headingStyle = {
+            padding: "0.3em"
+        };
 
-	onTermChange = (event) => {
-		this.setState({searchTerm: event.target.value});
-        this.update(event.target.value);
-	}
+        let overlayStyle = {
+            position: "absolute",
+            top: "0px",
+            left: "0px",
+            width: "100%",
+            height: "100%",
+            zAxis: "10",
+            backgroundColor: "rgba(255, 255, 255, 0.7)",
+        };
 
-	render = () => {
-		let {iconUrl, comment, apps, selected, confirm} = this.state
-		console.log("Render: selected:", selected);
-		let styles = {
-			content: {
-				position: "relative",
-				display: "flex",
-				flexDirection: "column",
-				boxSizing: "border-box",
-				width: "100%",
-				height: "100%",
-				padding: "8px",
-				//margin: "8px 8px 0px 8px",
-			},
-			heading: {
-				marginBottom: "8px",
-			},
-			item: {
-				marginBottom: "8px",
-			},
-			searchBox: {
-				width: "calc(100% - 16px)",
-				marginBottom: "3px",
-			},
-			list: {
-				flex: "1",
-				paddingBottom: "80px",
-			},
-			useAsDefault: {
-				boxSizing: "border-box",
-				width: "calc(100% - 16px)",
-				paddingTop: "12px",
-				paddingBottom: "8px",
-				display: "flex",
-				borderRadius: "5px",
-				backgroundColor: "rgba(245,245,245,1)",
-			},
-		}
+        let popupStyle = {
+            position: "relative",
+            top: "3em",
+            left: "calc(20% - 1em)",
+            padding: "1em",
+            height: "8em",
+            width: "60%",
+            backgroundColor: "rgba(255, 255, 255, 1)",
+            borderRadius: "5px",
+            border: "solid black 2px"
+        };
 
-		let item = {
-			IconUrl: iconUrl,
-			Name: appArgument,
-			Comment: comment
-		}
+        let buttonBarStyle = {
+            position: "absolute",
+            bottom: "1em",
+            right: "1em",
+        };
 
-		return (
-			<div style={styles.content} onKeyDown={this.onKeyDown}>
-				<div style={styles.heading}>Select an application to open:</div>
-				<Item item={item} style={styles.item}/>
-				<SearchBox style={styles.searchBox} onChange={this.onTermChange} searchTerm={this.state.searchTerm}/>
-				<ItemList style={styles.list} items={apps} selectedSelf={selected} select={this.select} execute={this.run}/>
-				<div style={{height: "8px"}}/>
-				{	this.state.selected &&
-					<div style={styles.useAsDefault}>
-						<input id="checkbox"
-							   type="checkbox"
-							   value={this.state.useAsDefault}
-							   onChange={(evt) => {this.setState({useAsDefault: evt.target.checked})}}/>
-						<label htmlFor="checkbox" accessKey="M">
-							Always use <em>{this.state.selected.Name}</em> to open {isUrl ? "urls" : "files"} of this type?
-						</label>
-					</div>
-				}
-			</div>
-		)
-	}
+        let buttonStyle = {
+            backgroundColor: "white",
+            borderRadius: "5px",
+            border: "black solid 1px",
+            marginLeft: "0.8em"
+        }
+
+        return (
+            <div style={style}>
+                {this.state.selected &&
+                    <div style={overlayStyle}>
+                        <div style={popupStyle}>
+                            Open files of type <b>{this.mimeMap.get(mimetypeId).Comment}</b><br/>
+                            with <b>{this.state.selected.Name}</b>?
+                            <div style={buttonBarStyle}>
+                                <button style={buttonStyle} onClick={() => this.launch(false)}>Just now</button>
+                                <button style={buttonStyle} onClick={() => this.launch(true)}>Always</button>
+                                <button style={buttonStyle} onClick={this.cancel}>Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                }
+                <div style={headingStyle}>
+                    Open &nbsp;<b>{fileName}</b>&nbsp;with:
+                </div>
+                <ItemList items={this.state.items}
+                          onTermChange={this.filter}
+                          select={this.select}
+                          execute={this.execute}
+                          onDismiss={this.dismiss}/>
+
+            </div>
+        )
+    }
 }
 
-render(
-	<AppChooser appArgument={gui.App.argv[0]} mimetypeId={gui.App.argv[1]}/>,
-	document.getElementById('root')
-);
+render(<AppChooser/>, document.getElementById('root'));
