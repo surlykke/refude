@@ -6,7 +6,6 @@
 //
 import React from 'react';
 import {Item} from './item.jsx'
-import {SearchBox} from "./searchbox";
 
 export let linkItems = (items) => {
     if (items.length > 0) {
@@ -28,6 +27,7 @@ export class ItemList extends React.Component {
     }
 
     componentDidUpdate = () => {
+        document.getElementById("input").focus();
         // Scroll selected item into view
         if (this.state.selected) {
             let selectedDiv = document.getElementById(this.state.selected._self)
@@ -56,6 +56,7 @@ export class ItemList extends React.Component {
 
     keyDown = (event) => {
         let {key, ctrlKey, shiftKey, altKey, metaKey} = event;
+
         if (key === "Tab" && !ctrlKey && shiftKey && !altKey && !metaKey) this.move(false);
         else if (key === "Tab" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.move(true);
         else if (key === "ArrowUp" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.move(false);
@@ -66,8 +67,7 @@ export class ItemList extends React.Component {
         else {
             return;
         }
-
-        event.stopPropagation();
+        event.preventDefault();
     };
 
     move = (down) => {
@@ -88,7 +88,7 @@ export class ItemList extends React.Component {
     };
 
     dismiss = () => {
-        this.searchBox.current.clear();
+        document.getElementById("input").value = ""
         this.props.onDismiss();
     };
 
@@ -104,9 +104,19 @@ export class ItemList extends React.Component {
         };
 
         let searchBoxStyle = {
+            boxSizing: "border-box",
+            paddingRight: "5px",
             width: "calc(100% - 16px)",
             marginTop: "4px"
         };
+
+        let inputStyle = {
+            width: "100%",
+            height: "36px",
+            borderRadius: "5px",
+            outlineStyle: "none",
+        };
+
 
         let innerStyle = {
             marginTop: "8px",
@@ -136,7 +146,13 @@ export class ItemList extends React.Component {
         })
         return (
             <div onKeyDown={this.keyDown} style={outerStyle}>
-                <SearchBox onChange={onTermChange} style={searchBoxStyle} ref={this.searchBox}/>
+                <div style={searchBoxStyle}>
+                    <input id="input"
+                           style={inputStyle}
+                           type="search"
+                           onChange={(event) => {onTermChange(event.target.value);}}
+                           disabled={this.props.disabled}/>
+                </div>
                 <div id="itemListDiv" style={innerStyle}>
                     {content}
                 </div>

@@ -7,6 +7,7 @@
 import React from 'react';
 import {render} from 'react-dom';
 import {doGet2, doPost, doSearch, devtools} from '../common/utils'
+import {PopUp} from "./popup";
 import {ItemList, linkItems} from "../common/itemlist"
 
 let gui = window.require('nw.gui');
@@ -25,13 +26,11 @@ class AppChooser extends React.Component {
         this.state = {
             items: []
         };
-        console.log("Calling fetch");
         this.fetch([mimetypeId], 0);
     }
 
     fetch = (queued, pos) => {
         if (pos < queued.length) {
-            console.log("Looking for", queued[pos]);
             doGet2({service: "desktop-service", path: `/mimetypes/${queued[pos]}`}).then(
                 (resp) => {
                     queued.push(...resp.json.SubClassOf.filter(sub => !queued.includes(sub)));
@@ -43,8 +42,6 @@ class AppChooser extends React.Component {
                 }
             )
         } else {
-            console.log("queued now:", queued);
-            console.log("mimeMap:", this.mimeMap);
             doSearch("desktop-service", desktopapp, "r.Exec ~i '%f' or r.Exec ~i '%u'").then(
                 resp => {
                     let apps = resp.json;
@@ -63,7 +60,6 @@ class AppChooser extends React.Component {
                     ;
                     apps.forEach(app => app.__group = "Other applications");
                     this.apps.push(...apps);
-                    console.log("this.apps now:", this.apps);
                     this.filter("");
                 },
                 resp => {
@@ -80,8 +76,6 @@ class AppChooser extends React.Component {
         this.setState({items: filteredApps});
     };
 
-
-
     select = (item) => {
     };
 
@@ -93,18 +87,18 @@ class AppChooser extends React.Component {
         gui.App.quit();
     }
 
-   	launch = (always) => {
+    launch = (always) => {
         if (always) {
-		    doPost(this.mimeMap.get(mimetypeId), {defaultApp: this.state.selected.Id});
+            doPost(this.mimeMap.get(mimetypeId), {defaultApp: this.state.selected.Id});
         }
         doPost(this.state.selected, {arg: filePath}).then(resp => {
             gui.App.quit();
         });
-	};
+    };
 
     cancel = () => {
         this.setState({selected: undefined});
-    }
+    };
 
     render = () => {
         let style = {
@@ -117,27 +111,6 @@ class AppChooser extends React.Component {
             padding: "0.3em"
         };
 
-        let overlayStyle = {
-            position: "absolute",
-            top: "0px",
-            left: "0px",
-            width: "100%",
-            height: "100%",
-            zAxis: "10",
-            backgroundColor: "rgba(255, 255, 255, 0.7)",
-        };
-
-        let popupStyle = {
-            position: "relative",
-            top: "3em",
-            left: "calc(20% - 1em)",
-            padding: "1em",
-            height: "8em",
-            width: "60%",
-            backgroundColor: "rgba(255, 255, 255, 1)",
-            borderRadius: "5px",
-            border: "solid black 2px"
-        };
 
         let buttonBarStyle = {
             position: "absolute",
@@ -153,20 +126,17 @@ class AppChooser extends React.Component {
         }
 
         return (
-            <div style={style}>
+            <div style={style} onKeyDown={(event) => {event.key === 'Escape' && this.setState({selected: undefined})}}>
                 {this.state.selected &&
-                    <div style={overlayStyle}>
-                        <div style={popupStyle}>
-                            Open files of type <b>{this.mimeMap.get(mimetypeId).Comment}</b><br/>
-                            with <b>{this.state.selected.Name}</b>?
-                            <div style={buttonBarStyle}>
-                                <button style={buttonStyle} onClick={() => this.launch(false)}>Just now</button>
-                                <button style={buttonStyle} onClick={() => this.launch(true)}>Always</button>
-                                <button style={buttonStyle} onClick={this.cancel}>Cancel</button>
-                            </div>
-                        </div>
+                <PopUp>
+                    Open files of type <b>{this.mimeMap.get(mimetypeId).Comment}</b><br/>
+                    with <b>{this.state.selected.Name}</b>?
+                    <div style={buttonBarStyle}>
+                        <button style={buttonStyle} onClick={() => this.launch(false)} autoFocus>Just once</button>
+                        <button style={buttonStyle} onClick={() => this.launch(true)}>Always</button>
+                        <button style={buttonStyle} onClick={this.cancel}>Cancel</button>
                     </div>
-                }
+                </PopUp>}
                 <div style={headingStyle}>
                     Open &nbsp;<b>{fileName}</b>&nbsp;with:
                 </div>
@@ -174,10 +144,11 @@ class AppChooser extends React.Component {
                           onTermChange={this.filter}
                           select={this.select}
                           execute={this.execute}
-                          onDismiss={this.dismiss}/>
+                          onDismiss={this.dismiss}
+                          disabled={this.state.selected}/>
 
             </div>
-        )
+        );
     }
 }
 
