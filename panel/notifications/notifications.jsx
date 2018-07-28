@@ -6,7 +6,7 @@
 //
 import React from 'react'
 import {render} from 'react-dom'
-import {doGetIfNoneMatch, doPost, doDelete} from '../../common/utils'
+import {doGetIfNoneMatch, doPost, doDelete} from '../../common/http'
 import {monitorResources} from "../common/monitor";
 
 const notificationStyle = {

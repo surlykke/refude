@@ -6,7 +6,8 @@
 //
 import React from 'react'
 import {render} from 'react-dom'
-import {NW, WIN, devtools, nwHide, nwSetup, doSearch, doPost, watchPos, adjustPos} from '../common/utils'
+import {doSearch, doPost} from '../common/http'
+import {NW, WIN, devtools, nwHide, nwSetup, watchPos, adjustPos} from "../common/nw";
 import {linkItems, ItemList} from "../common/itemlist"
 
 const searches = [

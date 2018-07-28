@@ -1,4 +1,4 @@
-import {doGetIfNoneMatch} from '../../common/utils'
+import {doGetIfNoneMatch} from '../../common/http'
 
 let monitorResources = (service, mimetype, onUpdated) => {
     let linksEtag = null;

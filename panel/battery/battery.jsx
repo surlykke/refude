@@ -12,7 +12,7 @@
  * Please refer to the LICENSE file for a copy of the license.
  */
 import React from 'react'
-import {doGetIfNoneMatch} from '../../common/utils'
+import {doGetIfNoneMatch} from '../../common/http'
 
 const errorData = {
     style: {

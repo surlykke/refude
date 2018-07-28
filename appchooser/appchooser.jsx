@@ -6,7 +6,7 @@
 //
 import React from 'react';
 import {render} from 'react-dom';
-import {doGet2, doPost, doSearch, devtools} from '../common/utils'
+import {doGet, doPost, doSearch, devtools} from '../common/http'
 import {PopUp} from "./popup";
 import {ItemList, linkItems} from "../common/itemlist"
 
@@ -31,7 +31,7 @@ class AppChooser extends React.Component {
 
     fetch = (queued, pos) => {
         if (pos < queued.length) {
-            doGet2({service: "desktop-service", path: `/mimetypes/${queued[pos]}`}).then(
+            doGet({service: "desktop-service", path: `/mimetypes/${queued[pos]}`}).then(
                 (resp) => {
                     queued.push(...resp.json.SubClassOf.filter(sub => !queued.includes(sub)));
                     this.mimeMap.set(queued[pos], resp.json);

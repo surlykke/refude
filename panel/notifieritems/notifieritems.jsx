@@ -6,7 +6,7 @@
 //
 import React from 'react'
 import {render} from 'react-dom'
-import {doGetIfNoneMatch, doPost} from '../../common/utils'
+import {doGetIfNoneMatch, doPost} from '../../common/http'
 import {monitorResources} from "../common/monitor";
 
 let NotifierItem = (props) => {
