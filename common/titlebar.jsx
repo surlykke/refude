@@ -11,7 +11,7 @@ export let TitleBar = props => {
         WebkitAppRegion: "drag",
         width: "100%",
         height: "1.3em",
-        background: "linear-gradient(to bottom, darkgray, lightgray, darkgray)"
+        backgroundColor: "lightgray"
     };
 
     let closeStyle = {
@@ -19,7 +19,6 @@ export let TitleBar = props => {
         float: "right",
         width: "calc(1.3em - 4px)",
         height: "calc(1.3em - 4px)",
-        background: "linear-gradient(to bottom, lightgray, white, lightgray)",
         padding: "0px",
         margin: "2px"
     };
@@ -28,10 +27,9 @@ export let TitleBar = props => {
         <div style={titleBarStyle}>
             <div style={closeStyle} onClick={() => gui.App.quit()}>
                 <svg viewBox="0 0 100 100">
-                    <g fillOpacity="0" strokeWidth="10" stroke="black">
-                        <rect x="2" y="2" width="96" height="96" strokeWidth="4"/>
-                        <line x1="13" y1="13" x2="87" y2="87"/>
-                        <line x1="13" y1="87" x2="97" y2="13"/>
+                    <g fillOpacity="0" strokeWidth="8" stroke="white">
+                        <line x1="15" y1="15" x2="85" y2="85"/>
+                        <line x1="15" y1="85" x2="85" y2="15"/>
                     </g>
                 </svg>
             </div>
