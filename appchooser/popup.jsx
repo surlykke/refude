@@ -27,7 +27,7 @@ export class PopUp extends React.Component {
         };
 
         return (
-            <div style={overlayStyle}>
+            <div style={overlayStyle} onKeyDown={this.props.dismiss}>
                 <div style={popupStyle}>
                    {this.props.children}
                 </div>

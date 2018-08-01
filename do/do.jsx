@@ -3,11 +3,15 @@
 // This file is part of the refude project.
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
-//
+
+
+
+const http = require('http')
 import React from 'react'
 import {render} from 'react-dom'
 import {doSearch, doPost} from '../common/http'
-import {NW, WIN, devtools, nwHide, nwSetup, watchPos, adjustPos} from "../common/nw";
+import {WIN, devtools, watchWindowPositionAndSize, showWindowIfHidden, hideWindow} from "../common/nw";
+import {TitleBar} from "../common/titlebar";
 import {linkItems, ItemList} from "../common/itemlist"
 
 const searches = [
@@ -33,29 +37,35 @@ const searches = [
 
 class Do extends React.Component {
     constructor(props) {
+        //devtools();
         super(props);
         this.state = {items: []};
         this.itemList = React.createRef();
         this.windows = [];
+        let outerThis = this;
+        http.createServer(function (req, res) {
+            console.log("Url:", "'" + req.url + "'");
+            if (req.url === "/u") {
+                outerThis.showWin();
+                outerThis.itemList.current.move(true);
+            } else if (req.url === "/d") {
+                this.showWin();
+                outerThis.itemList.current.move(false);
+            }
+            res.end('')
+        }).listen("/run/user/1000/org.refude.do");
 
-        nwSetup((argv) => {
-            this.readArgs(argv);
-        });
         this.initialize();
 
-        WIN.on('focus', () =>  this.hasfocus = true );
+        WIN.on('focus', () => this.hasfocus = true);
         WIN.on('blur', () => {
             this.hasfocus = false;
-            // TAB momentarily unfocuses window - so we wait a bit
+            // TAB momentarily unfocuses window - so we wait a bit to see if it's for real
             setTimeout(() => {
-                if (!this.hasfocus) this.itemList.current.dismiss();
+                if (!this.hasfocus) this.onDismiss();
             }, 100);
         });
-//        devtools();
-    };
-
-    componentDidMount = () => {
-        watchPos();
+        WIN.on('loaded', watchWindowPositionAndSize())
     };
 
     fetch = (searchTerm, searchList, collected) => {
@@ -102,16 +112,12 @@ class Do extends React.Component {
         }
     };
 
-    /*    if (item.States) {  // Its a window
-        Object.assign(iconStyle, {
-            WebkitFilter: "drop-shadow(5px 5px 3px grey)",
-            overflow: "visible"
-        })
-
-        if (item.States.includes("_NET_WM_STATE_HIDDEN")) {
-
-    }
-    }*/
+    showWin = () => {
+        if (this.needsInitialize) {
+            this.initialize();
+            this.needsInitialize = undefined;
+        }
+    };
 
     select = item => {
         console.log(item._self, "selected");
@@ -119,12 +125,14 @@ class Do extends React.Component {
 
     execute = (item) => {
         doPost(item).then(response => {
-            nwHide();
+            this.onDismiss();
         })
     };
 
     onDismiss = () => {
-        nwHide();
+        this.itemList.current.clear();
+        this.needsInitialize = true;
+        hideWindow()
     };
 
 
@@ -136,30 +144,25 @@ class Do extends React.Component {
         }, resp => {
             this.fetch("", searches, []);
         });
-    };
-
-    readArgs = (args) => {
-        adjustPos();
-        this.initialize();
-        if (args.includes("up")) {
-            this.itemList.current.move(false)
-        }
-        else {
-            this.itemList.current.move(true)
-        }
+        showWindowIfHidden();
     };
 
     render = () => {
-        return (
-            <ItemList items={this.state.items}
-                      onTermChange={(term) => this.fetch(term, searches, [])}
-                      select={this.select}
-                      execute={this.execute}
-                      onDismiss={this.onDismiss}
-                      ref={this.itemList}
-            />
-        )
+        return [
+            <TitleBar/>,
+            <ItemList key="itemlist"
+                         items={this.state.items}
+                         onTermChange={(term) => {
+                             console.log("termChange:", term);
+                             this.fetch(term, searches, []);
+                         }}
+                         select={this.select}
+                         execute={this.execute}
+                         onDismiss={this.onDismiss}
+                         ref={this.itemList} />
+            ]
     }
 }
+
 
 render(<Do/>, document.getElementById('root'));

@@ -13,15 +13,16 @@
  */
 import React from 'react'
 import {render} from 'react-dom'
-import {nwSetup, watchPos, adjustPos, devtools} from '../common/nw'
+import {WIN, watchWindowPositionAndSize, watchScreenChanges, showWindowIfHidden, devtools} from '../common/nw'
 import {Clock} from './clock/clock'
 import {Battery} from './battery/battery'
 import {NotifierItems} from './notifieritems/notifieritems'
 import {HideButton} from './hidebutton/hidebutton'
-import {DragField} from './dragfield/dragfield'
 import {Notifications} from './notifications/notifications'
+import {DragField} from './dragfield/dragfield'
 
 const Window = nw.Window.get();
+
 const style = {
     display: "inline-block",
     margin: "0px",
@@ -43,26 +44,14 @@ const pluginStyle = {
 class Panel extends React.Component {
 
     constructor(props) {
+        //devtools();
         super(props)
-
-        nwSetup((argv) => {
+        WIN.on('loaded', () => {
+            watchWindowPositionAndSize();
+            watchScreenChanges();
+            showWindowIfHidden();
         })
     }
-
-
-    maintainPos = () => {
-        adjustPos();
-        setTimeout(this.maintainPos, 5000);
-    };
-
-
-    componentDidMount = () => {
-        this.adjustSize();
-        watchPos();
-        this.maintainPos();
-//        devtools();
-    };
-
 
     adjustSize = () => {
         setTimeout(

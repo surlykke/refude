@@ -15,7 +15,7 @@ class DragField extends React.Component {
 		super(props)
 		this.style = Object.assign({}, props.style)
 		Object.assign(this.style, {
-			WebkitAppRegion: "drag",
+            WebkitAppRegion: "drag",
 			width: "16px",
 			height: "16px",
 			padding: "2px",

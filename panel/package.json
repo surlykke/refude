@@ -4,7 +4,7 @@
   "window" : {
   	"id" : "org.refude.Panel",
   	"frame": false,
-	"always_on_top": true,
+    "always_on_top": true,
 	"transparent": true
   }
 }

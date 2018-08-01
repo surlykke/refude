@@ -61,9 +61,9 @@ export class ItemList extends React.Component {
         else if (key === "Tab" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.move(true);
         else if (key === "ArrowUp" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.move(false);
         else if (key === "ArrowDown" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.move(true);
-        else if (key === "Enter" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.execute(this.state.selected);
-        else if (key === " " && !ctrlKey && !shiftKey && !altKey && !metaKey) this.execute(this.state.selected);
-        else if (key === "Escape" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.dismiss();
+        else if (key === "Enter" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.props.execute(this.state.selected);
+        else if (key === " " && !ctrlKey && !shiftKey && !altKey && !metaKey) this.props.execute(this.state.selected);
+        else if (key === "Escape" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.props.onDismiss();
         else {
             return;
         }
@@ -77,21 +77,14 @@ export class ItemList extends React.Component {
         }
     };
 
-
     select = (item) => {
         this.setState({selected: item});
         this.props.select(item);
     };
 
-    execute = (item) => {
-        this.props.execute(item);
+    clear = () => {
+        document.getElementById("input").value = "";
     };
-
-    dismiss = () => {
-        document.getElementById("input").value = ""
-        this.props.onDismiss();
-    };
-
 
     render = () => {
         let {items, onTermChange, select} = this.props
@@ -100,14 +93,14 @@ export class ItemList extends React.Component {
             flexFlow: "column",
             height: "100%",
             paddingTop: "0.3em",
-            paddingLeft: "0.3em"
+            paddingLeft: "0.3em",
         };
 
         let searchBoxStyle = {
             boxSizing: "border-box",
             paddingRight: "5px",
             width: "calc(100% - 16px)",
-            marginTop: "4px"
+            marginTop: "4px",
         };
 
         let inputStyle = {
@@ -142,7 +135,7 @@ export class ItemList extends React.Component {
                                item={item}
                                selected={item === this.state.selected}
                                select={this.select}
-                               execute={this.execute}/>)
+                               execute={this.props.execute}/>)
         })
         return (
             <div onKeyDown={this.keyDown} style={outerStyle}>

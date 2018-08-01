@@ -3,6 +3,9 @@
   "main": "main.html",
   "version": "0.0.1",
   "window": {
-  	"id": "org.refude.do"
+    "frame": false,
+    "always_on_top": true,
+    "show": false,
+    "show_in_taskbar": false
   }
 }

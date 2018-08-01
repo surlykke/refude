@@ -18,7 +18,7 @@ gulp.task('assets', function() {
 })
 
 gulp.task('js', function() {
-	browserify({ entries: ["./appchooser.jsx"], extensions: [".jsx", ".js"], debug: true })
+	browserify({ entries: ["./appchooser.jsx"], extensions: [".jsx", ".js"], node: true, debug: true })
 		.transform(babelify, {presets: ["react", "es2015", "stage-0"]})
 		.bundle()
 		.on('error',gutil.log)

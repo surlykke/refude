@@ -2,46 +2,82 @@ import {doGetIfNoneMatch} from "./http";
 // -------------------- NW stuff ---------------------
 export let NW = window.require('nw.gui');
 export let WIN = NW.Window.get();
-
-export let nwHide = () => {
-    WIN.hide();
-};
+let SCREEN = NW.Screen;
+SCREEN.Init();
 
 export let devtools = () => {
     WIN.showDevTools();
 };
 
-export let nwSetup = (onOpen) => {
-    NW.App.on("open", (args) => {
-        WIN.show();
-        onOpen && onOpen(args.split(/\s+/));
-    })
+let displayEtag, storingSceduled, windowIsShown;
+
+let load = () => {
+    let [x, y, w, h] = [
+        parseInt(localStorage.getItem(displayEtag + ".x")),
+        parseInt(localStorage.getItem(displayEtag + ".y")),
+        parseInt(localStorage.getItem(displayEtag + ".w")),
+        parseInt(localStorage.getItem(displayEtag + ".h"))
+    ];
+    if (!isNaN(x) && !isNaN(y) && !isNaN(w) && !isNaN(h)) {
+        [WIN.x, WIN.y, WIN.width, WIN.height] = [x, y, w, h];
+    }
 };
 
-let displayEtag = null;
+let sceduleStoring = () => {
+    if (!storingSceduled) {
+        storingSceduled = true;
+        setTimeout(() => {
+            if (displayEtag) {
+                localStorage.setItem(displayEtag + ".x", WIN.x);
+                localStorage.setItem(displayEtag + ".y", WIN.y);
+                localStorage.setItem(displayEtag + ".w", WIN.width);
+                localStorage.setItem(displayEtag + ".h", WIN.height);
+            }
+            storingSceduled = undefined;
+        }, 1000);
+    }
+};
 
-export let watchPos = () => {
-    WIN.on('move', (x, y) => {
-        if (displayEtag) {
-            localStorage.setItem(displayEtag + ".x", x);
-            localStorage.setItem(displayEtag + ".y", y);
-        }
+export let watchWindowPositionAndSize = () => {
+    WIN.on('move', () => {
+        sceduleStoring();
+    });
+
+    WIN.on('resize', () => {
+        sceduleStoring();
     });
 };
 
-export let adjustPos = () => {
-    doGetIfNoneMatch("wm-service", "/display", displayEtag).then(
-        resp => {
-            if (resp.headers && resp.headers.etag) {
-                let x = localStorage.getItem(resp.headers.etag + ".x");
-                let y = localStorage.getItem(resp.headers.etag + ".y");
-                if (x && y) {
-                    WIN.moveTo(parseInt(x), parseInt(y));
-                }
-                displayEtag = resp.headers.etag;
-            }
-        },
-        resp => {}
-    );
+export let watchScreenChanges = () => {
+    SCREEN.on("displayBoundsChanged", () => {
+        setTimeout(() => doGetIfNoneMatch("wm-service", "/display", displayEtag).then((resp) => {
+            displayEtag = resp.headers.etag;
+            load();
+        }), 1000);
+    });
 };
+
+
+export let showWindowIfHidden = () => {
+    if (!windowIsShown) {
+        windowIsShown = true;
+        doGetIfNoneMatch("wm-service", "/display", displayEtag).then(
+            (resp) => {
+                displayEtag = resp.headers.etag;
+                load();
+                WIN.show();
+            },
+            (resp) => {
+                WIN.show();
+            });
+    }
+};
+
+export let hideWindow = () => {
+    windowIsShown = undefined;
+    WIN.hide();
+};
+
+
+
 

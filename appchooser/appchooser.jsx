@@ -6,9 +6,11 @@
 //
 import React from 'react';
 import {render} from 'react-dom';
-import {doGet, doPost, doSearch, devtools} from '../common/http'
+import {doGet, doPost, doSearch} from '../common/http'
 import {PopUp} from "./popup";
 import {ItemList, linkItems} from "../common/itemlist"
+import {WIN, watchWindowPositionAndSize, showWindowIfHidden, devtools} from "../common/nw";
+import {TitleBar} from "../common/titlebar";
 
 let gui = window.require('nw.gui');
 let filePath = gui.App.argv[0];
@@ -27,6 +29,10 @@ class AppChooser extends React.Component {
             items: []
         };
         this.fetch([mimetypeId], 0);
+        WIN.on('loaded', () => {
+            showWindowIfHidden();
+            watchWindowPositionAndSize();
+        });
     }
 
     fetch = (queued, pos) => {
@@ -89,15 +95,33 @@ class AppChooser extends React.Component {
 
     launch = (always) => {
         if (always) {
-            doPost(this.mimeMap.get(mimetypeId), {defaultApp: this.state.selected.Id});
+            doPost(this.mimeMap.get(mimetypeId), {defaultApp: this.state.selected.Id}).then(
+                (resp) => {
+                    doPost(this.state.selected, {arg: filePath}).then(resp => {
+                        gui.App.quit();
+                    });
+                },
+                (resp) => {
+                    doPost(this.state.selected, {arg: filePath}).then(resp => {
+                        gui.App.quit();
+                    });
+                }
+            );
+        } else {
+            doPost(this.state.selected, {arg: filePath}).then(resp => {
+                gui.App.quit();
+            });
         }
-        doPost(this.state.selected, {arg: filePath}).then(resp => {
-            gui.App.quit();
-        });
     };
 
     cancel = () => {
         this.setState({selected: undefined});
+    };
+
+    cancelOnEscape = (event) => {
+        if (event.key === 'Escape') {
+            this.cancel();
+        }
     };
 
     render = () => {
@@ -121,34 +145,35 @@ class AppChooser extends React.Component {
         let buttonStyle = {
             backgroundColor: "white",
             borderRadius: "5px",
-            border: "black solid 1px",
-            marginLeft: "0.8em"
+            border: "black solid 2px",
+            marginLeft: "0.8em",
+            height: "2em",
+            boxShadow: "1px 1px 1px #888888",
         }
 
-        return (
-            <div style={style} onKeyDown={(event) => {event.key === 'Escape' && this.setState({selected: undefined})}}>
-                {this.state.selected &&
-                <PopUp>
-                    Open files of type <b>{this.mimeMap.get(mimetypeId).Comment}</b><br/>
-                    with <b>{this.state.selected.Name}</b>?
-                    <div style={buttonBarStyle}>
-                        <button style={buttonStyle} onClick={() => this.launch(false)} autoFocus>Just once</button>
-                        <button style={buttonStyle} onClick={() => this.launch(true)}>Always</button>
-                        <button style={buttonStyle} onClick={this.cancel}>Cancel</button>
-                    </div>
-                </PopUp>}
-                <div style={headingStyle}>
-                    Open &nbsp;<b>{fileName}</b>&nbsp;with:
+        return [
+            this.state.selected &&
+            <PopUp key="popup" dismiss={this.cancelOnEscape}>
+                Open files of type <b>{this.mimeMap.get(mimetypeId).Comment}</b><br/>
+                with <b>{this.state.selected.Name}</b>?
+                <div style={buttonBarStyle}>
+                    <button style={buttonStyle} onClick={() => this.launch(false)} autoFocus>Just once</button>
+                    <button style={buttonStyle} onClick={() => this.launch(true)}>Always</button>
+                    <button style={buttonStyle} onClick={this.cancel}>Cancel</button>
                 </div>
-                <ItemList items={this.state.items}
-                          onTermChange={this.filter}
-                          select={this.select}
-                          execute={this.execute}
-                          onDismiss={this.dismiss}
-                          disabled={this.state.selected}/>
-
-            </div>
-        );
+            </PopUp>
+            ,
+            <TitleBar key="titlebar"/>,
+            <div key="heading" style={headingStyle}>
+                Open &nbsp;<b>{fileName}</b>&nbsp;with:
+            </div>,
+            <ItemList key="itemlist" items={this.state.items}
+                      onTermChange={this.filter}
+                      select={this.select}
+                      execute={this.execute}
+                      onDismiss={this.dismiss}
+                      disabled={this.state.selected}/>
+        ];
     }
 }
 

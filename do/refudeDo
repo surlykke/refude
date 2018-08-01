@@ -1,2 +1,4 @@
 #!/usr/bin/env bash
-nw $(dirname $(realpath $0)) $@ 
+curl -D - --unix "/run/user/1000/org.refude.do"    "http://localhost/u" && exit 0;
+unlink "$XDG_RUNTIME_DIR/org.refude.do"
+nw $(dirname $(realpath $0)) &
