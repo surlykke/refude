@@ -12,17 +12,14 @@ import (
 	"log"
 	"strconv"
 	"fmt"
-	"github.com/surlykke/RefudeServices/lib/utils"
+	"github.com/surlykke/RefudeServices/lib"
 	time2 "time"
-	"github.com/surlykke/RefudeServices/lib/requestutils"
-	"github.com/surlykke/RefudeServices/lib/mediatype"
-	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
-const ItemMediaType mediatype.MediaType = "application/vnd.org.refude.statusnotifieritem+json"
+const ItemMediaType lib.MediaType = "application/vnd.org.refude.statusnotifieritem+json"
 
 type Item struct {
-	resource.AbstractResource
+	lib.AbstractResource
 	Id                      string
 	Category                string
 	Status                  string
@@ -57,19 +54,19 @@ type MenuItem struct {
 
 func (item *Item) POST(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("POST: ", r.URL)
-	action := requestutils.GetSingleQueryParameter(r, "action", "left")
-	x, _ := strconv.Atoi(requestutils.GetSingleQueryParameter(r, "x", "0"))
-	y, _ := strconv.Atoi(requestutils.GetSingleQueryParameter(r, "y", "0"))
-	id := requestutils.GetSingleQueryParameter(r, "id", "")
+	action := lib.GetSingleQueryParameter(r, "action", "left")
+	x, _ := strconv.Atoi(lib.GetSingleQueryParameter(r, "x", "0"))
+	y, _ := strconv.Atoi(lib.GetSingleQueryParameter(r, "y", "0"))
+	id := lib.GetSingleQueryParameter(r, "id", "")
 
 	fmt.Println("action: ", action, ", known ids: ", item.menuIds)
 	var call *dbus.Call
-	if utils.Among(action, "left", "middle", "right") {
+	if lib.Among(action, "left", "middle", "right") {
 		action2method := map[string]string{"left": "Activate", "middle": "SecondaryActivate", "right": "ContextMenu"}
 		fmt.Println("Calling: ", "org.kde.StatusNotifierItem."+action2method[action], dbus.Flags(0), x, y)
 		dbusObj := conn.Object(item.sender, item.itemPath)
 		call = dbusObj.Call("org.kde.StatusNotifierItem."+action2method[action], dbus.Flags(0), x, y);
-	} else if action == "menu" && utils.Among(id, item.menuIds...) {
+	} else if action == "menu" && lib.Among(id, item.menuIds...) {
 		idAsInt, _ := strconv.Atoi(id)
 		data := dbus.MakeVariant("")
 		time := uint32(time2.Now().Unix())

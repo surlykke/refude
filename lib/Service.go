@@ -4,20 +4,15 @@
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
 //
-package service
+package lib
 
 import (
 	"net/http"
 	"log"
 	"context"
 	"net"
-	"github.com/surlykke/RefudeServices/lib/xdg"
 	"syscall"
 	"fmt"
-	"github.com/surlykke/RefudeServices/lib/requestutils"
-	"github.com/surlykke/RefudeServices/lib/resource"
-	"github.com/surlykke/RefudeServices/lib/query"
-	"github.com/surlykke/RefudeServices/lib/mediatype"
 	"encoding/json"
 )
 
@@ -40,7 +35,7 @@ func seemsToBeRunning(socketPath string) bool {
 }
 
 func makeListener(socketName string) (*net.UnixListener, bool) {
-	socketPath := xdg.RuntimeDir + "/" + socketName
+	socketPath := RuntimeDir + "/" + socketName
 
 	if seemsToBeRunning(socketPath) {
 		log.Fatal("Application seems to be running. Let's leave it at that")
@@ -63,7 +58,7 @@ func makeListener(socketName string) (*net.UnixListener, bool) {
 func Serve(socketName string, jsonCollection JsonCollection) {
 	if listener, ok := makeListener(socketName); ok {
 		http.Serve(listener, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			sp := standardize(r.URL.Path)
+			sp := Standardize(r.URL.Path)
 			if sp == "/search" {
 				if r.Method == "GET" {
 					Search(w, r, jsonCollection)
@@ -85,20 +80,20 @@ func ServeWith(socketName string, handler http.Handler) {
 	}
 }
 
-func getSearchParams(w http.ResponseWriter, r *http.Request) (mediatype.MediaType, query.Matcher, error) {
-	var matcher query.Matcher
+func getSearchParams(w http.ResponseWriter, r *http.Request) (MediaType, Matcher, error) {
+	var matcher Matcher
 	var flatParams map[string]string
 	var err error
-	if flatParams, err = requestutils.GetSingleParams(r, "type", "q"); err != nil {
+	if flatParams, err = GetSingleParams(r, "type", "q"); err != nil {
 		return "", nil, err
 	} else if q, ok := flatParams["q"]; ok {
-		if matcher, err = query.Parse(q); err != nil {
+		if matcher, err = Parse(q); err != nil {
 			fmt.Println("Parsing problem:", err)
 			return "", matcher, err
 		}
 	}
 
-	return mediatype.MediaType(flatParams["type"]), matcher, err
+	return MediaType(flatParams["type"]), matcher, err
 }
 
 func Search(w http.ResponseWriter, r *http.Request, jsonCollection JsonCollection) {
@@ -106,10 +101,10 @@ func Search(w http.ResponseWriter, r *http.Request, jsonCollection JsonCollectio
 	if mt, matcher, err := getSearchParams(w, r); err == nil {
 		var allResources = jsonCollection.GetAll();
 		if mt != "" {
-			var tmp = make([]*resource.JsonResource, len(allResources))
+			var tmp = make([]*JsonResource, len(allResources))
 			var found = 0;
 			for _, jsonRes := range allResources {
-				if mediatype.MediaTypeMatch(mt, jsonRes.GetMt()) {
+				if MediaTypeMatch(mt, jsonRes.GetMt()) {
 					tmp[found] = jsonRes
 					found++
 				}
@@ -118,7 +113,7 @@ func Search(w http.ResponseWriter, r *http.Request, jsonCollection JsonCollectio
 		}
 
 		if matcher != nil {
-			var tmp = make([]*resource.JsonResource, len(allResources))
+			var tmp = make([]*JsonResource, len(allResources))
 			var found = 0;
 			for _, jsonRes := range allResources {
 				if jsonRes.Matches(matcher) {
@@ -136,6 +131,6 @@ func Search(w http.ResponseWriter, r *http.Request, jsonCollection JsonCollectio
 			panic(fmt.Sprintln("Problem marshalling searchresult: ", err))
 		}
 	} else {
-		requestutils.ReportUnprocessableEntity(w, err)
+		ReportUnprocessableEntity(w, err)
 	}
 }

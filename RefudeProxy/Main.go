@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/surlykke/RefudeServices/lib/xdg"
+	"github.com/surlykke/RefudeServices/lib"
 )
 
 var prefixes = []string{
@@ -27,7 +27,7 @@ var prefixes = []string{
 }
 
 func dialContext(ctx context.Context, network, addr string) (net.Conn, error) {
-	socketAddr := xdg.RuntimeDir + "/org.refude." + addr[0:len(addr)-3] // Strip trailing ':80'
+	socketAddr := lib.RuntimeDir + "/org.refude." + addr[0:len(addr)-3] // Strip trailing ':80'
 	return net.Dial("unix", socketAddr)
 }
 

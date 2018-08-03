@@ -14,19 +14,16 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/surlykke/RefudeServices/lib/ini"
-	"github.com/surlykke/RefudeServices/lib/utils"
+	"github.com/surlykke/RefudeServices/lib"
 	"golang.org/x/text/language"
-	"github.com/surlykke/RefudeServices/lib/mediatype"
-	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
 const freedesktopOrgXml = "/usr/share/mime/packages/freedesktop.org.xml"
 
-const MimetypeMediaType mediatype.MediaType = "application/vnd.org.refude.mimetype+json"
+const MimetypeMediaType lib.MediaType = "application/vnd.org.refude.mimetype+json"
 
 type Mimetype struct {
-	resource.AbstractResource
+	lib.AbstractResource
 	Id                     string
 	Comment                string
 	Acronym                string `json:",omitempty"`
@@ -55,7 +52,7 @@ func NewMimetype(id string) (*Mimetype, error) {
 			IconName:     "unknown",
 			GenericIcon:  "unknown",
 		}
-		mt.Self = fmt.Sprintf("/mimetypes/%s", id)
+		mt.Self = lib.Standardizef("/mimetypes/%s", id)
 		mt.Mt = MimetypeMediaType
 
 
@@ -123,19 +120,19 @@ func CollectMimeTypes() map[string]*Mimetype {
 		}
 
 		for _, tmpComment := range tmp.Comment {
-			if ini.LocaleMatch(tmpComment.Lang) || (tmpComment.Lang == "" && mimeType.Comment == "") {
+			if lib.LocaleMatch(tmpComment.Lang) || (tmpComment.Lang == "" && mimeType.Comment == "") {
 				mimeType.Comment = tmpComment.Text
 			}
 		}
 
 		for _, tmpAcronym := range tmp.Acronym {
-			if ini.LocaleMatch(tmpAcronym.Lang) || (tmpAcronym.Lang == "" && mimeType.Acronym == "") {
+			if lib.LocaleMatch(tmpAcronym.Lang) || (tmpAcronym.Lang == "" && mimeType.Acronym == "") {
 				mimeType.Acronym = tmpAcronym.Text
 			}
 		}
 
 		for _, tmpExpandedAcronym := range tmp.ExpandedAcronym {
-			if (ini.LocaleMatch(tmpExpandedAcronym.Lang) || tmpExpandedAcronym.Lang == "" && mimeType.Acronym == "") {
+			if (lib.LocaleMatch(tmpExpandedAcronym.Lang) || tmpExpandedAcronym.Lang == "" && mimeType.Acronym == "") {
 				mimeType.ExpandedAcronym = tmpExpandedAcronym.Text
 			}
 		}
@@ -147,15 +144,15 @@ func CollectMimeTypes() map[string]*Mimetype {
 		}
 
 		for _, aliasStruct := range tmp.Alias {
-			mimeType.Aliases = utils.AppendIfNotThere(mimeType.Aliases, aliasStruct.Type)
+			mimeType.Aliases = lib.AppendIfNotThere(mimeType.Aliases, aliasStruct.Type)
 		}
 
 		for _, tmpGlob := range tmp.Glob {
-			mimeType.Globs = utils.AppendIfNotThere(mimeType.Globs, tmpGlob.Pattern)
+			mimeType.Globs = lib.AppendIfNotThere(mimeType.Globs, tmpGlob.Pattern)
 		}
 
 		for _, tmpSubClassOf := range tmp.SubClassOf {
-			mimeType.SubClassOf = utils.AppendIfNotThere(mimeType.SubClassOf, tmpSubClassOf.Type)
+			mimeType.SubClassOf = lib.AppendIfNotThere(mimeType.SubClassOf, tmpSubClassOf.Type)
 		}
 
 		if tmp.GenericIcon.Name != "" {

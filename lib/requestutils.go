@@ -4,7 +4,7 @@
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
 //
-package requestutils
+package lib
 
 import (
 	"net/http"
@@ -60,7 +60,6 @@ func ReportUnprocessableEntity(w http.ResponseWriter, err error) {
 	fmt.Println("unp: err: ", err)
 	if body, err2 := json.Marshal(err.Error()); err2 == nil {
 		w.WriteHeader(http.StatusUnprocessableEntity)
-		fmt.Println("Writing unp:", string(body))
 		w.Write(body)
 	} else {
 		panic(fmt.Sprintf("Cannot json-marshall %s", err.Error()))

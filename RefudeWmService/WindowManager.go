@@ -15,13 +15,9 @@ import (
 	"github.com/BurntSushi/xgbutil/ewmh"
 	"github.com/BurntSushi/xgbutil/xprop"
 	"github.com/BurntSushi/xgbutil/xwindow"
-	"github.com/surlykke/RefudeServices/lib/action"
-	"github.com/surlykke/RefudeServices/lib/icons"
-	"github.com/surlykke/RefudeServices/lib/utils"
-	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib"
 	"strings"
 	"strconv"
-	"github.com/surlykke/RefudeServices/lib/service"
 	"log"
 	"github.com/BurntSushi/xgb/randr"
 	"sync"
@@ -102,24 +98,24 @@ func getDisplay() *Display {
 	return display
 }
 
-func (c *Collection) GetResource(path service.StandardizedPath) *resource.JsonResource {
-	var res *resource.JsonResource = nil
+func (c *Collection) GetResource(path lib.StandardizedPath) *lib.JsonResource {
+	var res *lib.JsonResource = nil
 	if path == "/links" {
-		res = resource.MakeJsonResource(c.GetLinks())
+		res = lib.MakeJsonResource(c.GetLinks())
 	} else if path == "/display" {
 		if d := getDisplay(); d != nil {
-			res = resource.MakeJsonResource(d)
+			res = lib.MakeJsonResource(d)
 		}
 	} else if strings.HasPrefix(string(path), "/windows/") {
 		if u, err := strconv.ParseUint(string(path[9:]), 10, 32); err == nil {
 			if window, _, err := buildWindowAndAction(xproto.Window(u)); err == nil && window != nil {
-				res = resource.MakeJsonResource(window)
+				res = lib.MakeJsonResource(window)
 			}
 		}
 	} else if strings.HasPrefix(string(path), "/actions/") {
 		if u, err := strconv.ParseUint(string(path[9:]), 10, 32); err == nil {
 			if _, action, err := buildWindowAndAction(xproto.Window(u)); err == nil && action != nil {
-				res = resource.MakeJsonResource(action)
+				res = lib.MakeJsonResource(action)
 			}
 		}
 	}
@@ -131,19 +127,19 @@ func (c *Collection) GetResource(path service.StandardizedPath) *resource.JsonRe
 	return res
 }
 
-func (c *Collection) GetAll() []*resource.JsonResource {
-	var allResources = []*resource.JsonResource{}
+func (c *Collection) GetAll() []*lib.JsonResource {
+	var allResources = []*lib.JsonResource{}
 	if d := getDisplay(); d != nil {
-		allResources = append(allResources, resource.MakeJsonResource(d))
+		allResources = append(allResources, lib.MakeJsonResource(d))
 	}
 	if tmp, err := ewmh.ClientListStackingGet(xutil); err == nil {
 		for _, wId := range tmp {
 			if window, action, err := buildWindowAndAction(wId); err == nil {
 				if window != nil {
-					allResources = append(allResources, resource.MakeJsonResource(window))
+					allResources = append(allResources, lib.MakeJsonResource(window))
 				}
 				if action != nil {
-					allResources = append(allResources, resource.MakeJsonResource(action))
+					allResources = append(allResources, lib.MakeJsonResource(action))
 				}
 			}
 		}
@@ -156,14 +152,14 @@ func (c *Collection) GetAll() []*resource.JsonResource {
 	return allResources
 }
 
-func (c *Collection) GetLinks() service.Links {
-	var links = make(service.Links)
-	links[DisplayMediaType] = []service.StandardizedPath{"/display"} // Small race here
+func (c *Collection) GetLinks() lib.Links {
+	var links = make(lib.Links)
+	links[DisplayMediaType] = []lib.StandardizedPath{"/display"} // Small race here
 	if tmp, err := ewmh.ClientListStackingGet(xutil); err == nil && len(tmp) > 0 {
 		for _, wId := range tmp {
-			links[WindowMediaType] = append(links[WindowMediaType], service.StandardizedPath(fmt.Sprintf("/windows/%d", wId)));
+			links[WindowMediaType] = append(links[WindowMediaType], lib.StandardizedPath(fmt.Sprintf("/windows/%d", wId)));
 			if normalById(wId) {
-				links[action.ActionMediaType] = append(links[action.ActionMediaType], service.StandardizedPath(fmt.Sprintf("/actions/%d", wId)))
+				links[lib.ActionMediaType] = append(links[lib.ActionMediaType], lib.StandardizedPath(fmt.Sprintf("/actions/%d", wId)))
 			}
 		}
 	}
@@ -171,14 +167,14 @@ func (c *Collection) GetLinks() service.Links {
 	return links
 }
 
-func buildWindowAndAction(wId xproto.Window) (*Window, *action.Action, error) {
+func buildWindowAndAction(wId xproto.Window) (*Window, *lib.Action, error) {
 	if window, err := buildWindow(wId); err != nil {
 		return nil, nil, err
 	} else if normal(window) {
-		var action = action.MakeAction(fmt.Sprintf("/actions/%d", window.Id), window.Name, "Switch to this window", window.IconName, func() {
+		var action = lib.MakeAction(lib.Standardizef("/actions/%d", window.Id), window.Name, "Switch to this window", window.IconName, func() {
 			ewmh.ActiveWindowReq(xutil, xproto.Window(window.Id))
 		});
-		resource.Relate(&action.AbstractResource, &window.AbstractResource)
+		lib.Relate(&action.AbstractResource, &window.AbstractResource)
 		return window, action, nil
 	} else {
 		return window, nil, nil
@@ -198,7 +194,7 @@ func buildWindow(wId xproto.Window) (*Window, error) {
 	} else {
 		var window Window
 		window.Id = wId
-		window.Self = fmt.Sprintf("/windows/%d", wId)
+		window.Self = lib.Standardizef("/windows/%d", wId)
 		window.Mt = WindowMediaType
 		window.Name = name
 		window.Geometry.X = rect.X()
@@ -207,7 +203,7 @@ func buildWindow(wId xproto.Window) (*Window, error) {
 		window.Geometry.W = uint(rect.Width())
 		window.States = states
 		argbIcon := extractARGBIcon(iconArr)
-		window.IconName = icons.SaveAsPngToSessionIconDir(argbIcon)
+		window.IconName = lib.SaveAsPngToSessionIconDir(argbIcon)
 		return &window, nil
 	}
 }
@@ -224,12 +220,12 @@ func getXConnection() (*xgbutil.XUtil, error) {
 }
 
 func normal(w *Window) bool {
-	return !utils.Contains(w.States, "_NET_WM_STATE_ABOVE")
+	return !lib.Contains(w.States, "_NET_WM_STATE_ABOVE")
 }
 
 func normalById(wId xproto.Window) bool {
 	if states, err := ewmh.WmStateGet(xutil, wId); err == nil {
-		return !utils.Contains(states, NET_WM_STATE_ABOVE)
+		return !lib.Contains(states, NET_WM_STATE_ABOVE)
 	} else {
 		return false
 	}
@@ -241,8 +237,8 @@ func normalById(wId xproto.Window) bool {
  * significant bytes are not used). After that it may repeat: again a width and height uint and then pixels and
  * so on...
  */
-func extractARGBIcon(uints []uint) icons.Icon {
-	res := make(icons.Icon, 0)
+func extractARGBIcon(uints []uint) lib.Icon {
+	res := make(lib.Icon, 0)
 	for len(uints) >= 2 {
 		width := int32(uints[0])
 		height := int32(uints[1])
@@ -258,7 +254,7 @@ func extractARGBIcon(uints []uint) icons.Icon {
 			pixels[4*pos+2] = uint8((uints[pos] & 0xFF00) >> 8)
 			pixels[4*pos+3] = uint8(uints[pos] & 0xFF)
 		}
-		res = append(res, icons.Img{Width: width, Height: height, Pixels: pixels})
+		res = append(res, lib.Img{Width: width, Height: height, Pixels: pixels})
 		uints = uints[width*height:]
 	}
 

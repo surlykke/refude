@@ -4,7 +4,7 @@
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
 //
-package icons
+package lib
 
 import (
 	"image"
@@ -13,7 +13,6 @@ import (
 	"image/png"
 	"fmt"
 	"github.com/pkg/errors"
-	"github.com/surlykke/RefudeServices/lib/xdg"
 	"os"
 	"log"
 	"crypto/sha1"
@@ -86,7 +85,7 @@ func registerName(name string) bool {
 }
 
 func SaveAsPngToSessionIconDir(argbIcon Icon) string {
-	var sessionIconDir = xdg.RuntimeDir + "/org.refude.icon-service-session-icons/"
+	var sessionIconDir = RuntimeDir + "/org.refude.icon-service-session-icons/"
 	var wroteSomething = false
 	hash := sha1.New()
 	for _, img := range argbIcon {

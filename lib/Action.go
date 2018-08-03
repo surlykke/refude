@@ -4,20 +4,18 @@
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
 //
-package action
+package lib
 
 import (
-	"github.com/surlykke/RefudeServices/lib/mediatype"
 	"net/http"
-	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
-const ActionMediaType mediatype.MediaType = "application/vnd.org.refude.action+json"
+const ActionMediaType MediaType = "application/vnd.org.refude.action+json"
 
 type Executer func()
 
 type Action struct {
-	resource.AbstractResource
+	AbstractResource
 	Name      string
 	Comment   string
 	IconName  string
@@ -26,7 +24,7 @@ type Action struct {
 }
 
 
-func MakeAction(Self string, Name string, Comment string, IconName string, executer Executer) *Action {
+func MakeAction(Self StandardizedPath, Name string, Comment string, IconName string, executer Executer) *Action {
 	var act = Action{}
 	act.Self = Self
 	act.Mt = ActionMediaType

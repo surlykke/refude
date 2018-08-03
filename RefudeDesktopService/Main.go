@@ -7,12 +7,12 @@
 package main
 
 import (
-	"github.com/surlykke/RefudeServices/lib/service"
+	"github.com/surlykke/RefudeServices/lib"
 )
 
-var resources = service.MakeJsonResourceMap()
+var resources = lib.MakeJsonResourceMap()
 
 func main() {
 	go Run()
-	service.Serve("org.refude.desktop-service", resources)
+	lib.Serve("org.refude.desktop-service", resources)
 }

@@ -6,11 +6,9 @@
 //
 package main
 
-import (
-	"github.com/surlykke/RefudeServices/lib/service"
-)
+import "github.com/surlykke/RefudeServices/lib"
 
 func main() {
 	go maintainDisplay()
-	service.Serve("org.refude.wm-service", &Collection{})
+	lib.Serve("org.refude.wm-service", &Collection{})
 }

@@ -7,11 +7,11 @@
 package main
 
 import (
-	"github.com/surlykke/RefudeServices/lib/service"
+	"github.com/surlykke/RefudeServices/lib"
 	"net/http"
 )
 
 func main() {
 	go run()
-	service.ServeWith("org.refude.icon-service", http.HandlerFunc(ServeHTTP))
+	lib.ServeWith("org.refude.icon-service", http.HandlerFunc(ServeHTTP))
 }

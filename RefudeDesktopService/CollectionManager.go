@@ -10,20 +10,13 @@ import (
 	"net/http"
 	"strings"
 	"fmt"
-	"os/exec"
 	"os"
-	"github.com/surlykke/RefudeServices/lib/xdg"
+	"github.com/surlykke/RefudeServices/lib"
 	"regexp"
-	"github.com/surlykke/RefudeServices/lib/ini"
-	"github.com/surlykke/RefudeServices/lib/utils"
 	"time"
 	"io/ioutil"
 	"log"
 	"encoding/json"
-	"github.com/surlykke/RefudeServices/lib/requestutils"
-	"github.com/surlykke/RefudeServices/lib/action"
-	"github.com/surlykke/RefudeServices/lib/resource"
-	"github.com/surlykke/RefudeServices/lib/mediatype"
 )
 
 type launchEvent struct {
@@ -50,23 +43,23 @@ func Run() {
 				}
 
 				if ! app.NoDisplay {
-					var defaultPath = "/actions/" + app.Id
+					var defaultPath = lib.Standardizef("/actions/%s", app.Id)
 					var executer = MakeExecuter(app.Exec, app.Terminal)
-					var act = action.MakeAction(defaultPath, app.Name, app.Comment, app.IconName, executer)
+					var act = lib.MakeAction(defaultPath, app.Name, app.Comment, app.IconName, executer)
 					act.RelevanceHint = app.RelevanceHint
-					resource.Relate(&app.AbstractResource, &act.AbstractResource)
+					lib.Relate(&app.AbstractResource, &act.AbstractResource)
 					resources.Map(act)
 
 					for actionId, da := range app.Actions {
-						var path = "/actions/" + app.Id + "-" + actionId
+						var path = lib.Standardizef("/actions/%s-%d", app.Id, actionId)
 						var iconName = da.IconName
 						if iconName == "" {
 							iconName = app.IconName
 						}
 						var executer = MakeExecuter(da.Exec, app.Terminal)
-						var act = action.MakeAction(path, app.Name+": "+da.Name, app.Comment, da.IconName, executer)
+						var act = lib.MakeAction(path, app.Name+": "+da.Name, app.Comment, da.IconName, executer)
 						act.RelevanceHint = app.RelevanceHint
-						resource.Relate(&app.AbstractResource, &act.AbstractResource)
+						lib.Relate(&app.AbstractResource, &act.AbstractResource)
 						resources.Map(act)
 					}
 				}
@@ -84,7 +77,7 @@ func Run() {
 	}
 }
 
-func MakeExecuter(exec string, runInTerminal bool) action.Executer {
+func MakeExecuter(exec string, runInTerminal bool) lib.Executer {
 	var expandedExec = regexp.MustCompile("%[uUfF]").ReplaceAllString(exec, "")
 	var argv []string
 	if runInTerminal {
@@ -99,13 +92,13 @@ func MakeExecuter(exec string, runInTerminal bool) action.Executer {
 	}
 
 	return func() {
-		runCmd(argv)
+		lib.RunCmd(argv)
 	}
 }
 
 func (da *DesktopApplication) POST(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("In post")
-	var actionName = requestutils.GetSingleQueryParameter(r, "action", "")
+	var actionName = lib.GetSingleQueryParameter(r, "action", "")
 	var args = r.URL.Query()["arg"]
 	var exec string
 	if actionName == "" {
@@ -147,10 +140,10 @@ func (da *DesktopApplication) POST(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		runCmd(argv)
+		lib.RunCmd(argv)
 
 		var copy = *da
-		copy.Relates = make(map[mediatype.MediaType][]string)
+		copy.Relates = make(map[lib.MediaType][]lib.StandardizedPath)
 		for mt, urls := range da.Relates {
 			copy.Relates[mt] = urls
 		}
@@ -161,24 +154,6 @@ func (da *DesktopApplication) POST(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func runCmd(argv []string) {
-	fmt.Println("runCmd")
-	for i := 0; i < len(argv); i++ {
-		fmt.Println(i, ":", argv[i])
-	}
-	var cmd = exec.Command(argv[0], argv[1:]...)
-
-	cmd.Dir = xdg.Home
-	cmd.Stdout = nil
-	cmd.Stderr = nil
-
-	if err := cmd.Start(); err != nil {
-		reportError(fmt.Sprint(err))
-		return
-	}
-
-	go cmd.Wait()
-}
 
 func (mt *Mimetype) POST(w http.ResponseWriter, r *http.Request) {
 	defaultAppId := r.URL.Query()["defaultApp"]
@@ -191,22 +166,22 @@ func (mt *Mimetype) POST(w http.ResponseWriter, r *http.Request) {
 }
 
 func setDefaultApp(mimetypeId string, appId string) {
-	path := xdg.ConfigHome + "/mimeapps.list"
+	path := lib.ConfigHome + "/mimeapps.list"
 
-	if iniFile, err := ini.ReadIniFile(path); err != nil && !os.IsNotExist(err) {
+	if iniFile, err := lib.ReadIniFile(path); err != nil && !os.IsNotExist(err) {
 		reportError(fmt.Sprint(err))
 	} else {
 		var defaultGroup = iniFile.FindGroup("Default Applications")
 		if defaultGroup == nil {
-			defaultGroup = &ini.Group{"Default Applications", make(map[string]string)}
+			defaultGroup = &lib.Group{"Default Applications", make(map[string]string)}
 			iniFile = append(iniFile, defaultGroup)
 		}
 		var defaultAppsS = defaultGroup.Entries[mimetypeId]
-		var defaultApps = utils.Split(defaultAppsS, ";")
-		defaultApps = utils.PushFront(appId, utils.Remove(defaultApps, appId))
+		var defaultApps = lib.Split(defaultAppsS, ";")
+		defaultApps = lib.PushFront(appId, lib.Remove(defaultApps, appId))
 		defaultAppsS = strings.Join(defaultApps, ";")
 		defaultGroup.Entries[mimetypeId] = defaultAppsS
-		if err = ini.WriteIniFile(path, iniFile); err != nil {
+		if err = lib.WriteIniFile(path, iniFile); err != nil {
 			reportError(fmt.Sprint(err))
 		}
 	}
@@ -216,7 +191,7 @@ func reportError(msg string) {
 	log.Println(msg)
 }
 
-var lastLaunchedDir = xdg.ConfigHome + "/RefudeDesktopService"
+var lastLaunchedDir = lib.ConfigHome + "/RefudeDesktopService"
 var lastLaunchedPath = lastLaunchedDir + "/lastLaunched.json"
 
 func LoadLastLaunched() map[string]int64 {

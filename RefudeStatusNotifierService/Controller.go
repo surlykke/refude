@@ -15,8 +15,7 @@ import (
 	"github.com/godbus/dbus/prop"
 	"regexp"
 	"time"
-	"github.com/surlykke/RefudeServices/lib/utils"
-	"github.com/surlykke/RefudeServices/lib/icons"
+	"github.com/surlykke/RefudeServices/lib"
 	"log"
 	"reflect"
 )
@@ -71,7 +70,7 @@ func monitorSignals() {
 func monitorItem(sender string, itemPath dbus.ObjectPath) {
 	fmt.Println("itemWatcher: ", sender, itemPath)
 	for {
-		if _, ok := utils.GetSingleProp(conn, sender, itemPath, ITEM_INTERFACE, "Status"); !ok {
+		if _, ok := lib.GetSingleProp(conn, sender, itemPath, ITEM_INTERFACE, "Status"); !ok {
 			break
 		}
 		time.Sleep(time.Second)
@@ -109,7 +108,7 @@ func getOnTheBus() {
 	)
 
 	// Add Introspectable interface
-	conn.Export(introspect.Introspectable(INTROSPECT_XML), WATCHER_PATH, utils.INTROSPECT_INTERFACE)
+	conn.Export(introspect.Introspectable(INTROSPECT_XML), WATCHER_PATH, lib.INTROSPECT_INTERFACE)
 
 	// Add properties interface
 	watcherProperties = prop.New(
@@ -218,7 +217,7 @@ func Controller() {
 }
 
 func updateItem(item *Item) {
-	props := utils.GetAllProps(conn, item.sender, item.itemPath, ITEM_INTERFACE)
+	props := lib.GetAllProps(conn, item.sender, item.itemPath, ITEM_INTERFACE)
 
 	item.Id = getStringOr(props, "ID", "")
 	item.Category = getStringOr(props, "Category", "")
@@ -234,12 +233,12 @@ func updateItem(item *Item) {
 	if item.IconName == "" {
 		item.IconName = collectPixMap(props, "IconPixmap")
 	} else if item.iconThemePath != "" {
-		icons.CopyIcons(item.IconName, item.iconThemePath)
+		lib.CopyIcons(item.IconName, item.iconThemePath)
 	}
 	if item.AttentionIconName == "" {
 		item.AttentionIconName = collectPixMap(props, "AttentionIconPixmap")
 	} else if item.iconThemePath != "" {
-		icons.CopyIcons(item.AttentionIconName, item.iconThemePath)
+		lib.CopyIcons(item.AttentionIconName, item.iconThemePath)
 	}
 }
 
@@ -257,7 +256,7 @@ func fetchMenu(item *Item) {
 	} else if menu, menuIds, err := parseMenu(interfaces); err != nil {
 		log.Println("Error retrieving menu", err)
 	} else if len(menu.SubMenus) > 0 {
-		item.Menu, item.menuIds = menu.SubMenus, utils.Remove(menuIds, menu.Id)
+		item.Menu, item.menuIds = menu.SubMenus, lib.Remove(menuIds, menu.Id)
 	} else {
 		item.Menu, item.menuIds = []MenuItem{menu}, menuIds
 	}
@@ -330,7 +329,7 @@ func parseMenu(value []interface{}) (MenuItem, []string, error) {
 	menuItem.Id = fmt.Sprintf("%d", id)
 
 	if menuItem.Type = getStringOr(m, "type", "standard");
-		!utils.Among(menuItem.Type, "standard", "separator") {
+		!lib.Among(menuItem.Type, "standard", "separator") {
 		return MenuItem{}, []string{}, errors.New("Illegal menuitem type: " + menuItem.Type)
 	}
 	menuItem.Label = getStringOr(m, "label", "")
@@ -339,7 +338,7 @@ func parseMenu(value []interface{}) (MenuItem, []string, error) {
 	if menuItem.IconName = getStringOr(m, "icon-name", ""); menuItem.IconName == "" {
 		// FIXME: Look for pixmap
 	}
-	if menuItem.ToggleType = getStringOr(m, "toggle-type", ""); !utils.Among(menuItem.ToggleType, "checkmark", "radio", "") {
+	if menuItem.ToggleType = getStringOr(m, "toggle-type", ""); !lib.Among(menuItem.ToggleType, "checkmark", "radio", "") {
 		return MenuItem{}, []string{}, errors.New("Illegal toggle-type: " + menuItem.ToggleType)
 	}
 
@@ -366,8 +365,10 @@ func parseMenu(value []interface{}) (MenuItem, []string, error) {
 }
 
 
-func (item *Item) restPath() string {
-	return "/items/" + strings.Replace(item.sender[1:]+string(item.itemPath), "/", "-", -1)
+func (item *Item) restPath() lib.StandardizedPath {
+	var tmp = strings.Replace(item.sender[1:]+string(item.itemPath), "/", "-", -1)
+	return lib.Standardizef("/items/%s", tmp)
+
 }
 
 func collectPixMap(m map[string]dbus.Variant, key string) string {
@@ -375,17 +376,17 @@ func collectPixMap(m map[string]dbus.Variant, key string) string {
 		if arrs, ok := variant.Value().([][]interface{}); !ok {
 			log.Println("Looking for [][]interface{} at"+key+", got:", reflect.TypeOf(variant.Value()))
 		} else {
-			res := make(icons.Icon, 0)
+			res := make(lib.Icon, 0)
 			for _, arr := range (arrs) {
 				for len(arr) > 2 {
 					width := arr[0].(int32)
 					height := arr[1].(int32)
 					pixels := arr[2].([]byte)
-					res = append(res, icons.Img{Width: width, Height: height, Pixels: pixels})
+					res = append(res, lib.Img{Width: width, Height: height, Pixels: pixels})
 					arr = arr[3:]
 				}
 			}
-			return icons.SaveAsPngToSessionIconDir(res)
+			return lib.SaveAsPngToSessionIconDir(res)
 		}
 	}
 	return ""

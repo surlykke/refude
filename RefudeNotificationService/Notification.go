@@ -8,16 +8,14 @@ package main
 
 import (
 	"time"
-	"github.com/surlykke/RefudeServices/lib/mediatype"
-	"github.com/surlykke/RefudeServices/lib/resource"
-	"github.com/surlykke/RefudeServices/lib/action"
 	"fmt"
+	"github.com/surlykke/RefudeServices/lib"
 )
 
-const NotificationMediaType mediatype.MediaType = "application/vnd.org.refude.desktopnotification+json"
+const NotificationMediaType lib.MediaType = "application/vnd.org.refude.desktopnotification+json"
 
 type Notification struct {
-	resource.AbstractResource
+	lib.AbstractResource
 	Id            uint32
 	internalId    uint32
 	Sender        string
@@ -32,12 +30,12 @@ func (n *Notification) removeAfter(duration time.Duration) {
 	time.AfterFunc(duration, func() { removals <- removal{n.Id, n.internalId, Expired} })
 }
 
-func (n *Notification) getActions() []*action.Action {
-	var actions = make([]*action.Action, 0, len(n.Actions))
+func (n *Notification) getActions() []*lib.Action {
+	var actions = make([]*lib.Action, 0, len(n.Actions))
 
 	actions = append(actions,
-		action.MakeAction(
-			fmt.Sprintf("/actions/%d/a/dismiss", n.Id),
+		lib.MakeAction(
+			lib.Standardizef("/actions/%d/a/dismiss", n.Id),
 			"Dismiss",
 			n.Subject,
 			"",
@@ -51,8 +49,8 @@ func (n *Notification) getActions() []*action.Action {
 			continue
 		}
 		var actionIdCopy = actionId
-		actions = append(actions, action.MakeAction(
-			fmt.Sprintf("/actions/%d/b/%s", n.Id, actionId),
+		actions = append(actions, lib.MakeAction(
+			lib.Standardizef("/actions/%d/b/%s", n.Id, actionId),
 			actionName,
 			n.Subject,
 			"",

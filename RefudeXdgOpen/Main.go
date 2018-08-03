@@ -21,7 +21,7 @@ import (
 	"regexp"
 
 	"github.com/rakyll/magicmime"
-	"github.com/surlykke/RefudeServices/lib/xdg"
+	"github.com/surlykke/RefudeServices/lib"
 )
 
 type MimeType struct {
@@ -31,7 +31,7 @@ type MimeType struct {
 var client = http.Client{
 	Transport: &http.Transport{
 		DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
-			return net.Dial("unix", xdg.RuntimeDir+"/org.refude.desktop-service")
+			return net.Dial("unix", lib.RuntimeDir+"/org.refude.desktop-service")
 		},
 	},
 }

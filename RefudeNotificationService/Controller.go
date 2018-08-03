@@ -13,6 +13,7 @@ import (
 	"github.com/godbus/dbus/introspect"
 	"time"
 	"strings"
+	"github.com/surlykke/RefudeServices/lib"
 )
 
 const NOTIFICATIONS_SERVICE = "org.freedesktop.Notifications"
@@ -148,7 +149,8 @@ func makeNotifyFunction(notifications chan *Notification) interface{} {
 			Body:       sanitize(body, allowedTags, allowedEscapes),
 			Actions:    map[string]string{},
 		}
-		notification.Self = path(id)
+
+		notification.Self = lib.Standardizef("/notifications/%d", id)
 		notification.Mt = NotificationMediaType
 
 		if expire_timeout == 0 {

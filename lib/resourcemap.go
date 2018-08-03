@@ -4,75 +4,23 @@
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
 //
-package service
+package lib
 
 import (
-	"github.com/surlykke/RefudeServices/lib/resource"
 	"strings"
-	"fmt"
 	"sync"
 )
-// A standardized path is a path that starts with '/' and has no double slashes
-type StandardizedPath string
 
 type JsonResourceMap struct {
 	mutex sync.Mutex
-	rmap  map[StandardizedPath]*resource.JsonResource
+	rmap  map[StandardizedPath]*JsonResource
 }
 
 
 func MakeJsonResourceMap() *JsonResourceMap {
-	return &JsonResourceMap{rmap: make(map[StandardizedPath]*resource.JsonResource)}
+	return &JsonResourceMap{rmap: make(map[StandardizedPath]*JsonResource)}
 }
 
-
-/** transform a path to a standardized path
- * Watered down version of path.Clean. Replace any sequence of '/' with single '/'
- * Remove ending '/'
- * We do not resolve '..', (so '/foo/../baa' is different from '/baa')
- * Examples:
- *       '//foo/baa' becomes '/foo/baa'
- *       '/foo///baa/////muh/' becomes '/foo/baa/muh'
- *       '/foo/..//baa//' becomes '/foo/../baa'
- */
-func standardize(p string) StandardizedPath {
-	if len(p) == 0 || p[0] != '/' {
-		panic(fmt.Sprintf("path must start with '/': '%s'", p))
-	}
-
-	var buffer = make([]byte, len(p), len(p))
-	var pos = 0
-	var justSawSlash = false
-
-	for i := 0; i < len(p); i++ {
-		if !justSawSlash || p[i] != '/' {
-			buffer[pos] = p[i]
-			pos++
-		}
-		justSawSlash = p[i] == '/'
-	}
-
-	if buffer[pos-1] == '/' {
-		return StandardizedPath(buffer[:pos-1])
-	} else {
-		return StandardizedPath(buffer[:pos])
-	}
-
-}
-
-/**
-	Break standardized path into dir-part and base-part
-    '/foo/baa/res' -> '/foo/baa', 'res'
-    '/foo/baa' -> '/foo', 'baa'
- */
-func separate(sp StandardizedPath) (StandardizedPath, string) {
-	if len(sp) == 0 {
-		panic("Separating empty string")
-	} else {
-		var pos = strings.LastIndexByte(string(sp[:len(sp)-1]), '/')
-		return sp[:pos], string(sp[pos+1:])
-	}
-}
 
 
 
@@ -84,16 +32,16 @@ var reservedPaths = map[StandardizedPath]bool{
 
 // The public methods, further down, are responsible for thread safety - ie. aquiring of locks
 
-func (jm *JsonResourceMap) put(sp StandardizedPath, res resource.Resource) {
+func (jm *JsonResourceMap) put(sp StandardizedPath, res Resource) {
 	if reservedPaths[sp] {
 		panic("Attempt to map to reserved path: " + sp)
 	}
-	var jsonResource = resource.MakeJsonResource(res)
+	var jsonResource = MakeJsonResource(res)
 	jm.rmap[sp] = jsonResource
 	delete(jm.rmap, "/links")
 }
 
-func (jm *JsonResourceMap) unput(sp StandardizedPath) (resource.Resource, bool) {
+func (jm *JsonResourceMap) unput(sp StandardizedPath) (Resource, bool) {
 	if reservedPaths[sp] {
 		panic("Attempt to unmap reserved path: " + sp)
 	}
@@ -110,7 +58,7 @@ func (jm *JsonResourceMap) unput(sp StandardizedPath) (resource.Resource, bool) 
 // ------------------------------------ Public ----------------------------------------------------
 
 func (jm *JsonResourceMap) RemoveAll(dirpath string) {
-	var lookFor = string(standardize(dirpath) + "/")
+	var lookFor = string(Standardize(dirpath) + "/")
 	jm.mutex.Lock()
 	defer jm.mutex.Unlock()
 	for path, _ := range jm.rmap {
@@ -120,27 +68,46 @@ func (jm *JsonResourceMap) RemoveAll(dirpath string) {
 	}
 }
 
-func (jm *JsonResourceMap) Map(res resource.Resource) {
-	if self := res.GetSelf(); self == "" {
-		panic("Mapping resource with empty self")
-	} else {
-		sp := standardize(self)
-		jm.mutex.Lock()
-		defer jm.mutex.Unlock()
-		jm.put(sp, res)
+func (jm *JsonResourceMap) RemoveAndMap(prefixesToRemove []string, resources []Resource) {
+	var prefixesStandardized = make([]StandardizedPath, len(prefixesToRemove))
+	for i,pr := range prefixesToRemove {
+		prefixesStandardized[i] = Standardize(pr)
+	}
+	jm.mutex.Lock()
+	defer jm.mutex.Unlock()
+	for path,_ := range jm.rmap {
+		for _,prefix := range prefixesStandardized {
+			if strings.HasPrefix(string(path), string(prefix)) {
+				jm.unput(path)
+				break
+			}
+		}
+	}
+
+	for _,resource := range resources {
+		jm.put(resource.GetSelf(), resource)
 	}
 }
 
-func (jm *JsonResourceMap) Unmap(path string) (resource.Resource, bool ){
-	sp := standardize(path)
+func (jm *JsonResourceMap) Map(res Resource) {
+	if res.GetSelf() == "" {
+		panic("Mapping resource with empty self")
+	} else {
+		jm.mutex.Lock()
+		defer jm.mutex.Unlock()
+		jm.put(res.GetSelf(), res)
+	}
+}
+
+func (jm *JsonResourceMap) Unmap(path StandardizedPath) (Resource, bool ){
 	jm.mutex.Lock()
 	defer jm.mutex.Unlock()
-	return jm.unput(sp)
+	return jm.unput(path)
 }
 
 // --------------------------- Implement JsonCollection -----------------------------------------
 
-func (jm *JsonResourceMap) GetResource(path StandardizedPath) *resource.JsonResource {
+func (jm *JsonResourceMap) GetResource(path StandardizedPath) *JsonResource {
 	jm.mutex.Lock()
 	defer jm.mutex.Unlock()
 	if (path == "/links") {
@@ -149,7 +116,7 @@ func (jm *JsonResourceMap) GetResource(path StandardizedPath) *resource.JsonReso
 			for path, jsonRes := range jm.rmap {
 				links[jsonRes.GetMt()] = append(links[jsonRes.GetMt()], path)
 			}
-			jm.rmap["/links"] = resource.MakeJsonResource(links)
+			jm.rmap["/links"] = MakeJsonResource(links)
 		}
 	}
 	var res, ok = jm.rmap[path];
@@ -162,8 +129,8 @@ func (jm *JsonResourceMap) GetResource(path StandardizedPath) *resource.JsonReso
 
 
 
-func (jm *JsonResourceMap) GetAll() []*resource.JsonResource {
-	var result = make([]*resource.JsonResource, len(jm.rmap))
+func (jm *JsonResourceMap) GetAll() []*JsonResource {
+	var result = make([]*JsonResource, len(jm.rmap))
 	jm.mutex.Lock()
 	defer jm.mutex.Unlock()
 	var pos = 0

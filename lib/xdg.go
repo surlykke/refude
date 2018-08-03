@@ -4,12 +4,10 @@
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
 //
-package xdg
+package lib
 
 import (
 	"os"
-
-	"github.com/surlykke/RefudeServices/lib/utils"
 	"strings"
 	"fmt"
 )
@@ -27,13 +25,13 @@ var Locale string
 func init() {
 	Home = os.Getenv("HOME")
 	ConfigHome = notEmptyOr(os.Getenv("XDG_CONFIG_HOME"), Home+"/.config")
-	ConfigDirs = utils.Split(notEmptyOr(os.Getenv("XDG_CONFIG_DIRS"), "/etc/xdg"), ":")
+	ConfigDirs = Split(notEmptyOr(os.Getenv("XDG_CONFIG_DIRS"), "/etc/xdg"), ":")
 	CacheHome = notEmptyOr(os.Getenv("XDG_CACHE_HOME"), Home+"/.cache")
 	DataHome = notEmptyOr(os.Getenv("XDG_DATA_HOME"), Home+"/.local/share")
-	DataDirs = utils.Split(notEmptyOr(os.Getenv("XDG_DATA_DIRS"), "/usr/share:/usr/local/share"), ":")
-	DataDirs = utils.Remove(DataDirs, DataHome)
+	DataDirs = Split(notEmptyOr(os.Getenv("XDG_DATA_DIRS"), "/usr/share:/usr/local/share"), ":")
+	DataDirs = Remove(DataDirs, DataHome)
 	RuntimeDir = notEmptyOr(os.Getenv("XDG_RUNTIME_DIR"), "/tmp")
-	CurrentDesktop = utils.Split(notEmptyOr(os.Getenv("XDG_CURRENT_DESKTOP"), ""), ":")
+	CurrentDesktop = Split(notEmptyOr(os.Getenv("XDG_CURRENT_DESKTOP"), ""), ":")
 	Locale = notEmptyOr(os.Getenv("LANG"), "") // TODO Look at other env variables too
 	if index := strings.Index(Locale, "."); index > -1 { // Strip away encoding part (ie. '.UTF-8')
 		Locale = Locale[0:index]

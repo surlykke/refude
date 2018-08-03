@@ -10,7 +10,7 @@ import (
 	"github.com/godbus/dbus"
 	"strings"
 	"fmt"
-	"github.com/surlykke/RefudeServices/lib/action"
+	"github.com/surlykke/RefudeServices/lib"
 )
 
 const UPowService = "org.freedesktop.UPower"
@@ -50,7 +50,8 @@ func Run() {
 	devicePaths := append(enumCall.Body[0].([]dbus.ObjectPath), DisplayDevicePath)
 	for _, path := range devicePaths {
 		var device = &Device{}
-		device.Self = devicePath(path)
+
+		device.Self = lib.Standardizef("/devices%s", path[strings.LastIndex(string(path), "/"):])
 		device.Mt = DeviceMediaType
 		devices[path] = device
 		updateDevice(device, getProps(path, UPowerDeviceInterface))
@@ -120,7 +121,7 @@ func MapPowerActions() {
 				fmt.Println("Calling", login1Service, login1Path, managerInterface+"." + id)
 				dbusConn.Object(login1Service, login1Path).Call(dbusEndPoint, dbus.Flags(0), false)
 			}
-			var act = action.MakeAction(fmt.Sprintf("/actions/%s", id), pv[0], pv[1], pv[2], executer)
+			var act = lib.MakeAction(lib.Standardizef("/actions/%s", id), pv[0], pv[1], pv[2], executer)
 			resourceCollection.Map(act)
 		}
 	}

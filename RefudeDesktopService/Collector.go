@@ -12,13 +12,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/surlykke/RefudeServices/lib/ini"
-	"github.com/surlykke/RefudeServices/lib/utils"
-	"github.com/surlykke/RefudeServices/lib/xdg"
 	"errors"
 	"golang.org/x/sys/unix"
 	"fmt"
-	"github.com/surlykke/RefudeServices/lib/icons"
+	"github.com/surlykke/RefudeServices/lib"
 )
 
 type collection struct {
@@ -34,7 +31,7 @@ func CollectAndWatch(collected chan collection) {
 	if err != nil {
 		panic(err)
 	}
-	for _, dataDir := range append(xdg.DataDirs, xdg.DataHome) {
+	for _, dataDir := range append(lib.DataDirs, lib.DataHome) {
 		appDir := dataDir + "/applications"
 		fmt.Println("Watching: " + appDir)
 		if _, err := unix.InotifyAddWatch(fd, appDir, unix.IN_CREATE|unix.IN_MODIFY|unix.IN_DELETE); err != nil {
@@ -42,7 +39,7 @@ func CollectAndWatch(collected chan collection) {
 		}
 	}
 
-	if _, err := unix.InotifyAddWatch(fd, xdg.ConfigHome+"/mimeapps.list", unix.IN_CLOSE_WRITE); err != nil {
+	if _, err := unix.InotifyAddWatch(fd, lib.ConfigHome+"/mimeapps.list", unix.IN_CLOSE_WRITE); err != nil {
 		panic(err)
 	}
 
@@ -65,21 +62,21 @@ func Collect(collected chan collection) {
 	c.applications = make(map[string]*DesktopApplication)
 	c.defaultApps = make(map[string][]string)
 
-	for _, dir := range xdg.DataDirs {
+	for _, dir := range lib.DataDirs {
 		c.collectApplications(dir + "/applications")
 		c.readMimeappsList(dir + "/applications/mimeapps.list")
 	}
 
-	c.collectApplications(xdg.DataHome + "/applications")
+	c.collectApplications(lib.DataHome + "/applications")
 
-	for _, dir := range append(xdg.ConfigDirs, xdg.ConfigHome) {
+	for _, dir := range append(lib.ConfigDirs, lib.ConfigHome) {
 		c.readMimeappsList(dir + "/mimeapps.list")
 	}
 
 	for appId, app := range c.applications {
 		for _, mimetypeId := range app.Mimetypes {
 			if mimetype, ok := c.mimetypes[mimetypeId]; ok {
-				utils.AppendIfNotThere(mimetype.AssociatedApplications, appId)
+				lib.AppendIfNotThere(mimetype.AssociatedApplications, appId)
 			}
 		}
 	}
@@ -102,7 +99,7 @@ func (c *collection) removeApp(app *DesktopApplication) {
 	delete(c.applications, app.Id)
 	for _,mimetypeId := range app.Mimetypes {
 		if mimetype,ok := c.mimetypes[mimetypeId]; ok {
-			mimetype.AssociatedApplications = utils.Remove(mimetype.AssociatedApplications, app.Id)
+			mimetype.AssociatedApplications = lib.Remove(mimetype.AssociatedApplications, app.Id)
 		}
 	}
 }
@@ -113,18 +110,18 @@ func (c *collection) collectApplications(appdir string) {
 			app, err := readDesktopFile(path)
 			if err == nil {
 				app.Id = strings.Replace(path[len(appdir)+1:], "/", "-", -1)
-				app.Self = fmt.Sprintf("/applications/%s", app.Id)
+				app.Self = lib.Standardizef("/applications/%s", app.Id)
 				if oldApp, ok := c.applications[app.Id]; ok {
 					c.removeApp(oldApp)
 				}
 				if !(app.Hidden ||
-					(len(app.OnlyShowIn) > 0 && !utils.ElementsInCommon(xdg.CurrentDesktop, app.OnlyShowIn)) ||
-					(len(app.NotShowIn) > 0 && utils.ElementsInCommon(xdg.CurrentDesktop, app.NotShowIn))) {
+					(len(app.OnlyShowIn) > 0 && !lib.ElementsInCommon(lib.CurrentDesktop, app.OnlyShowIn)) ||
+					(len(app.NotShowIn) > 0 && lib.ElementsInCommon(lib.CurrentDesktop, app.NotShowIn))) {
 					delete(c.applications, app.Id)
 					c.applications[app.Id] = app
 					for _, mimetypeId := range app.Mimetypes {
 						if mimetype := c.getOrAdd(mimetypeId); mimetype != nil {
-							mimetype.AssociatedApplications = utils.AppendIfNotThere(mimetype.AssociatedApplications, app.Id)
+							mimetype.AssociatedApplications = lib.AppendIfNotThere(mimetype.AssociatedApplications, app.Id)
 						}
 					}
 				}
@@ -150,14 +147,14 @@ func (c *collection) getOrAdd(mimetypeId string) *Mimetype {
 }
 
 func (c *collection) readMimeappsList(path string) {
-	if iniFile, err := ini.ReadIniFile(path); err == nil {
+	if iniFile, err := lib.ReadIniFile(path); err == nil {
 		if addedAssociations := iniFile.FindGroup("Added Associations"); addedAssociations != nil {
 			for mimetypeId, appIds := range addedAssociations.Entries {
 				if mimetype := c.getOrAdd(mimetypeId); mimetype != nil {
-					for _, appId := range utils.Split(appIds, ";") {
+					for _, appId := range lib.Split(appIds, ";") {
 						if app, ok := c.applications[appId]; ok {
-							app.Mimetypes = utils.AppendIfNotThere(app.Mimetypes, mimetypeId)
-							mimetype.AssociatedApplications = utils.AppendIfNotThere(mimetype.AssociatedApplications, appId)
+							app.Mimetypes = lib.AppendIfNotThere(app.Mimetypes, mimetypeId)
+							mimetype.AssociatedApplications = lib.AppendIfNotThere(mimetype.AssociatedApplications, appId)
 						}
 					}
 				}
@@ -168,10 +165,10 @@ func (c *collection) readMimeappsList(path string) {
 		if removedAssociations := iniFile.FindGroup("Removed Associations"); removedAssociations != nil {
 			for mimetypeId, appIds := range removedAssociations.Entries {
 				if mimetype := c.getOrAdd(mimetypeId); mimetype != nil {
-					for _, appId := range utils.Split(appIds, ";") {
+					for _, appId := range lib.Split(appIds, ";") {
 						if app, ok := c.applications[appId]; ok {
-							app.Mimetypes = utils.Remove(app.Mimetypes, mimetypeId)
-							mimetype.AssociatedApplications = utils.Remove(mimetype.AssociatedApplications, appId)
+							app.Mimetypes = lib.Remove(app.Mimetypes, mimetypeId)
+							mimetype.AssociatedApplications = lib.Remove(mimetype.AssociatedApplications, appId)
 						}
 					}
 				}
@@ -182,7 +179,7 @@ func (c *collection) readMimeappsList(path string) {
 		if defaultApplications := iniFile.FindGroup("Default Applications"); defaultApplications != nil {
 			for mimetypeId, appIds := range defaultApplications.Entries {
 				if mimetype := c.getOrAdd(mimetypeId); mimetype != nil {
-					var apps = utils.Split(appIds, ";")
+					var apps = lib.Split(appIds, ";")
 					list, ok := c.defaultApps[mimetypeId]
 					if !ok {
 						list = make([]string, 0)
@@ -196,7 +193,7 @@ func (c *collection) readMimeappsList(path string) {
 
 
 func readDesktopFile(path string) (*DesktopApplication, error) {
-	if iniFile, err := ini.ReadIniFile(path); err != nil {
+	if iniFile, err := lib.ReadIniFile(path); err != nil {
 		return nil, err
 	} else if len(iniFile) == 0 || iniFile[0].Name != "Desktop Entry" {
 		return nil, errors.New("File must start with '[Desktop Entry]'")
@@ -220,7 +217,7 @@ func readDesktopFile(path string) (*DesktopApplication, error) {
 		da.Comment = group.Entries["Comment"]
 		icon := group.Entries["Icon"]
 		if strings.HasPrefix(icon, "/") {
-			if iconName, err := icons.CopyIconToSessionIconDir(icon); err != nil {
+			if iconName, err := lib.CopyIconToSessionIconDir(icon); err != nil {
 				log.Printf("Problem with iconpath %s in %s: %s", icon, da.Id, err.Error())
 			} else {
 				da.IconName = iconName
@@ -229,17 +226,17 @@ func readDesktopFile(path string) (*DesktopApplication, error) {
 			da.IconName = icon
 		}
 		da.Hidden = group.Entries["Hidden"] == "true"
-		da.OnlyShowIn = utils.Split(group.Entries["OnlyShowIn"], ";")
-		da.NotShowIn = utils.Split(group.Entries["NotShowIn"], ";")
+		da.OnlyShowIn = lib.Split(group.Entries["OnlyShowIn"], ";")
+		da.NotShowIn = lib.Split(group.Entries["NotShowIn"], ";")
 		da.DbusActivatable = group.Entries["DBusActivatable"] == "true"
 		da.TryExec = group.Entries["TryExec"]
 		da.Exec = group.Entries["Exec"]
 		da.Path = group.Entries["Path"]
 		da.Terminal = group.Entries["Terminal"] == "true"
-		actionNames = utils.Split(group.Entries["Actions"], ";")
-		da.Mimetypes = utils.Split(group.Entries["MimeType"], ";")
-		da.Categories = utils.Split(group.Entries["Categories"], ";")
-		da.Implements = utils.Split(group.Entries["Implements"], ";")
+		actionNames = lib.Split(group.Entries["Actions"], ";")
+		da.Mimetypes = lib.Split(group.Entries["MimeType"], ";")
+		da.Categories = lib.Split(group.Entries["Categories"], ";")
+		da.Implements = lib.Split(group.Entries["Implements"], ";")
 		// FIXMEda.Keywords[tag] = utils.Split(group[""], ";")
 		da.StartupNotify = group.Entries["StartupNotify"] == "true"
 		da.StartupWmClass = group.Entries["StartupWMClass"]
@@ -248,7 +245,7 @@ func readDesktopFile(path string) (*DesktopApplication, error) {
 		for _, actionGroup := range iniFile[1:] {
 			if !strings.HasPrefix(actionGroup.Name, "Desktop Action ") {
 				log.Print(path, ", ", "Unknown group type: ", actionGroup.Name, " - ignoring\n")
-			} else if currentAction := actionGroup.Name[15:]; !utils.Contains(actionNames, currentAction) {
+			} else if currentAction := actionGroup.Name[15:]; !lib.Contains(actionNames, currentAction) {
 				log.Print(path, ", undeclared action: ", currentAction, " - ignoring\n")
 			} else {
 				var action Action
@@ -257,7 +254,7 @@ func readDesktopFile(path string) (*DesktopApplication, error) {
 				}
 				icon = actionGroup.Entries["Icon"]
 				if strings.HasPrefix(icon, "/") {
-					if iconName, err := icons.CopyIconToSessionIconDir(icon); err != nil {
+					if iconName, err := lib.CopyIconToSessionIconDir(icon); err != nil {
 						log.Printf("Problem with iconpath %s in %s: %s", icon, da.Id, err.Error())
 					} else {
 						action.IconName = iconName

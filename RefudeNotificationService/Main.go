@@ -7,12 +7,12 @@
 package main
 
 import (
-	"github.com/surlykke/RefudeServices/lib/service"
+	"github.com/surlykke/RefudeServices/lib"
 )
 
-var resourceCollection = service.MakeJsonResourceMap()
+var resourceCollection = lib.MakeJsonResourceMap()
 
 func main() {
 	go Run()
-	service.Serve("org.refude.notifications-service", resourceCollection)
+	lib.Serve("org.refude.notifications-service", resourceCollection)
 }

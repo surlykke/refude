@@ -8,12 +8,11 @@ package main
 
 import (
 	"github.com/BurntSushi/xgb/xproto"
-	"github.com/surlykke/RefudeServices/lib/mediatype"
-	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib"
 )
 
-const WindowMediaType mediatype.MediaType = "application/vnd.org.refude.wmwindow+json"
-const DisplayMediaType mediatype.MediaType = "application/vnd.org.refude.wmdisplay+json"
+const WindowMediaType lib.MediaType = "application/vnd.org.refude.wmwindow+json"
+const DisplayMediaType lib.MediaType = "application/vnd.org.refude.wmdisplay+json"
 
 type Rect struct {
 	X, Y int
@@ -21,7 +20,7 @@ type Rect struct {
 }
 
 type Window struct {
-	resource.AbstractResource
+	lib.AbstractResource
 	Id            xproto.Window
 	Geometry      Rect
 	Name          string
@@ -31,7 +30,7 @@ type Window struct {
 }
 
 type Display struct {
-	resource.AbstractResource
+	lib.AbstractResource
 	RootGeometry Rect
 	Screens      Screens
 }

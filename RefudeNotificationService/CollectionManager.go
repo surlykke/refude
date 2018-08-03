@@ -9,8 +9,7 @@ package main
 import (
 	"fmt"
 	"net/http"
-	"github.com/surlykke/RefudeServices/lib/requestutils"
-	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib"
 )
 
 var removals = make(chan removal)
@@ -25,10 +24,10 @@ func Run() {
 		case notification := <-updates:
 			notifications[notification.Id] = notification
 			var actions = notification.getActions()
-			resourceCollection.Unmap(fmt.Sprintf("/notifications/%d", notification.Id))
+			resourceCollection.Unmap(lib.Standardizef("/notifications/%d", notification.Id))
 			resourceCollection.RemoveAll(fmt.Sprintf("/actions/%d", notification.Id))
 			for _, action := range actions {
-				resource.Relate(&action.AbstractResource, &notification.AbstractResource)
+				lib.Relate(&action.AbstractResource, &notification.AbstractResource)
 				resourceCollection.Map(action)
 			}
 			resourceCollection.Map(notification)
@@ -37,7 +36,7 @@ func Run() {
 			fmt.Println("Got removal..")
 			if notification, ok := notifications[rem.id]; ok {
 				if rem.internalId == 0 || rem.internalId == notification.internalId {
-					resourceCollection.Unmap(fmt.Sprintf("/notifications/%d", rem.id))
+					resourceCollection.Unmap(lib.Standardizef("/notifications/%d", rem.id))
 					resourceCollection.RemoveAll(fmt.Sprintf("/actions/%d", rem.id))
 					delete(notifications, rem.id)
 					notificationClosed(rem.id, rem.reason)
@@ -47,12 +46,8 @@ func Run() {
 	}
 }
 
-func path(id uint32) string {
-	return fmt.Sprintf("/notifications/%d", id)
-}
-
 func (n *Notification) POST(w http.ResponseWriter, r *http.Request) {
-	action := requestutils.GetSingleQueryParameter(r, "action", "default")
+	action := lib.GetSingleQueryParameter(r, "action", "default")
 	conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".ActionInvoked", n.Id, action)
 	w.WriteHeader(http.StatusAccepted)
 }

@@ -8,14 +8,13 @@ package main
 
 import (
 	"golang.org/x/text/language"
-	"github.com/surlykke/RefudeServices/lib/mediatype"
-	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib"
 )
 
-const DesktopApplicationMediaType mediatype.MediaType = "application/vnd.org.refude.desktopapplication+json"
+const DesktopApplicationMediaType lib.MediaType = "application/vnd.org.refude.desktopapplication+json"
 
 type DesktopApplication struct {
-	resource.AbstractResource
+	lib.AbstractResource
 	Type            string
 	Version         string `json:",omitempty"`
 	Name            string

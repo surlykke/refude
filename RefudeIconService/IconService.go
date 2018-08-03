@@ -13,7 +13,7 @@ import (
 	"path/filepath"
 	"log"
 	"os"
-	"github.com/surlykke/RefudeServices/lib/xdg"
+	"github.com/surlykke/RefudeServices/lib"
 	"github.com/fsnotify/fsnotify"
 	"strings"
 )
@@ -107,7 +107,7 @@ func defaultTheme() string {
 
 func run() {
 	fmt.Println("IconService, run")
-	var session_icons_dir = xdg.RuntimeDir + "/org.refude.icon-service-session-icons"
+	var session_icons_dir = lib.RuntimeDir + "/org.refude.icon-service-session-icons"
 	var marker_path = session_icons_dir + "/marker"
 
 	if err := os.MkdirAll(session_icons_dir, os.ModePerm); err != nil {
@@ -243,11 +243,11 @@ func collectIcons(icons map[string]Icon, iconDirPath string, iconDir IconDir) {
 // If both $HOME/.local/share/icons/hicolor/22x22/apps/myIcon.png and /usr/share/icons/hicolor/22x22/apps/myIcon.png
 // exists, we prefer the one under $HOME/.local
 func getSearchDirectories() []string {
-	searchDirs := []string{xdg.Home + "/.icons", xdg.DataHome + "/icons"}
-	for _, datadir := range reverse(xdg.DataDirs) {
+	searchDirs := []string{lib.Home + "/.icons", lib.DataHome + "/icons"}
+	for _, datadir := range reverse(lib.DataDirs) {
 		searchDirs = append(searchDirs, datadir+"/icons")
 	}
-	searchDirs = append(searchDirs, xdg.RuntimeDir + "/refude-icons")
+	searchDirs = append(searchDirs, lib.RuntimeDir + "/refude-icons")
 	searchDirs = append(searchDirs, "/usr/share/pixmaps")
 	return searchDirs
 }
