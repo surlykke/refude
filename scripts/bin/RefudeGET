@@ -1,2 +1,0 @@
-#!/usr/bin/bash
-curl --unix $XDG_RUNTIME_DIR/org.refude.$1 -Ss http://locahost$2 
