@@ -15,6 +15,7 @@ for dir in Refude*; do
     fi
 done
 
+cp scripts/bin/runRefude.sh $BIN_DIR
 cp scripts/completions/bash/* ${BASH_COMPLETION_DIR}
 cp scripts/completions/zsh/* ${ZSH_COMPLETION_DIR}
 cp scripts/completions/fish/* ${FISH_COMPLETION_DIR}
