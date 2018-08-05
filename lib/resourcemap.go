@@ -57,26 +57,21 @@ func (jm *JsonResourceMap) unput(sp StandardizedPath) (Resource, bool) {
 
 // ------------------------------------ Public ----------------------------------------------------
 
-func (jm *JsonResourceMap) RemoveAll(dirpath string) {
-	var lookFor = string(Standardize(dirpath) + "/")
+func (jm *JsonResourceMap) RemoveAll(prefix StandardizedPath) {
 	jm.mutex.Lock()
 	defer jm.mutex.Unlock()
 	for path, _ := range jm.rmap {
-		if strings.HasPrefix(string(path), lookFor) {
+		if strings.HasPrefix(string(path), string(prefix)) {
 			jm.unput(path)
 		}
 	}
 }
 
-func (jm *JsonResourceMap) RemoveAndMap(prefixesToRemove []string, resources []Resource) {
-	var prefixesStandardized = make([]StandardizedPath, len(prefixesToRemove))
-	for i,pr := range prefixesToRemove {
-		prefixesStandardized[i] = Standardize(pr)
-	}
+func (jm *JsonResourceMap) RemoveAndMap(prefixesToRemove []StandardizedPath, resources []Resource) {
 	jm.mutex.Lock()
 	defer jm.mutex.Unlock()
 	for path,_ := range jm.rmap {
-		for _,prefix := range prefixesStandardized {
+		for _,prefix := range prefixesToRemove {
 			if strings.HasPrefix(string(path), string(prefix)) {
 				jm.unput(path)
 				break

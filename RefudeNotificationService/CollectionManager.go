@@ -25,7 +25,7 @@ func Run() {
 			notifications[notification.Id] = notification
 			var actions = notification.getActions()
 			resourceCollection.Unmap(lib.Standardizef("/notifications/%d", notification.Id))
-			resourceCollection.RemoveAll(fmt.Sprintf("/actions/%d", notification.Id))
+			resourceCollection.RemoveAll(lib.Standardizef("/actions/%d", notification.Id))
 			for _, action := range actions {
 				lib.Relate(&action.AbstractResource, &notification.AbstractResource)
 				resourceCollection.Map(action)
@@ -37,7 +37,7 @@ func Run() {
 			if notification, ok := notifications[rem.id]; ok {
 				if rem.internalId == 0 || rem.internalId == notification.internalId {
 					resourceCollection.Unmap(lib.Standardizef("/notifications/%d", rem.id))
-					resourceCollection.RemoveAll(fmt.Sprintf("/actions/%d", rem.id))
+					resourceCollection.RemoveAll(lib.Standardizef("/actions/%d", rem.id))
 					delete(notifications, rem.id)
 					notificationClosed(rem.id, rem.reason)
 				}

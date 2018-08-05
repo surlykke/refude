@@ -9,7 +9,6 @@ package lib
 import (
 	"os"
 	"strings"
-	"fmt"
 )
 
 var Home string
@@ -36,7 +35,6 @@ func init() {
 	if index := strings.Index(Locale, "."); index > -1 { // Strip away encoding part (ie. '.UTF-8')
 		Locale = Locale[0:index]
 	}
-	fmt.Println("Locale: ", Locale)
 }
 
 func notEmptyOr(primary string, secondary string) string {
