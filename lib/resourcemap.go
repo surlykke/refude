@@ -57,12 +57,14 @@ func (jm *JsonResourceMap) unput(sp StandardizedPath) (Resource, bool) {
 
 // ------------------------------------ Public ----------------------------------------------------
 
-func (jm *JsonResourceMap) RemoveAll(prefix StandardizedPath) {
+func (jm *JsonResourceMap) RemoveAll(prefixes...StandardizedPath) {
 	jm.mutex.Lock()
 	defer jm.mutex.Unlock()
-	for path, _ := range jm.rmap {
-		if strings.HasPrefix(string(path), string(prefix)) {
-			jm.unput(path)
+	for _,prefix := range prefixes {
+		for path, _ := range jm.rmap {
+			if strings.HasPrefix(string(path), string(prefix)) {
+				jm.unput(path)
+			}
 		}
 	}
 }
