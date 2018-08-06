@@ -27,8 +27,8 @@ func main() {
 	if len(os.Args) < 4 {
 		fail("Not enough arguments")
 	}
-	var method = os.Args[1]
-	var service = os.Args[2]
+	var service = os.Args[1]
+	var method = os.Args[2]
 	var path = os.Args[3]
 	var body = bytes.NewBuffer([]byte(strings.Join(os.Args[4:], " ")))
 
