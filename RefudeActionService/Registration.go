@@ -11,7 +11,7 @@ import (
 	"errors"
 )
 
-const RegistrationMediaType = "application/vnd.org.refude.registration"
+const RegistrationMediaType = "application/vnd.org.refude.registration+json"
 
 type ActionDesc struct {
 	Name     string

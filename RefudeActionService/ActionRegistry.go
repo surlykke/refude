@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-const RegistryMediaType = "application/vnd.org.refude.actionregistry"
+const RegistryMediaType = "application/vnd.org.refude.actionregistry+json"
 
 type ActionRegistry struct {
 	lib.AbstractResource
