@@ -1,5 +1,5 @@
-# Bash autocompletion for the Refude command
-_Refude()
+# Bash autocompletion for the RefudeReq command
+_RefudeReq()
 {
     local cur prev pref words
 	
@@ -11,14 +11,14 @@ _Refude()
     elif [[ "2" == "$COMP_CWORD" ]]; then
         words=`ls $XDG_RUNTIME_DIR/org.refude.*service |  sed -e 's/.*org.refude.//g'`
     elif [[ "3" == "$COMP_CWORD" ]]; then
-        words=`Refude GET $prev /links  2>/dev/null | grep -Po '"/[^"]*"\s*' | sed -e 's/"\(.*\)"\s*:/\1/g'`
+        words=`RefudeReq GET $prev /links  2>/dev/null | grep -Po '"/[^"]*"\s*' | sed -e 's/"\(.*\)"\s*:/\1/g'`
     fi
 
 
     COMPREPLY=( $( compgen -W "$words" -- "$cur" ) )
     [[ $COMPREPLY =~ /$ ]] && compopt -o nospace
 } &&
-complete  -F _Refude Refude
+complete  -F _RefudeReq RefudeReq
 
 
 
