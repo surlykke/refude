@@ -110,6 +110,7 @@ func (jm *JsonResourceMap) GetResource(path StandardizedPath) *JsonResource {
 	if (path == "/links") {
 		if _,ok := jm.rmap["/links"]; !ok {
 			var links = make(Links);
+			links[LinksMediaType] = []StandardizedPath{"/links"}
 			for path, jsonRes := range jm.rmap {
 				links[jsonRes.GetMt()] = append(links[jsonRes.GetMt()], path)
 			}
