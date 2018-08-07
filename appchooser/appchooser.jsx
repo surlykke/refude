@@ -63,8 +63,8 @@ class AppChooser extends React.Component {
                         });
                         apps = remains;
                     }
-                    ;
-                    apps.forEach(app => app.__group = "Other applications");
+                    let otherHeading = this.mimeMap.size > 0 ? "Other applications" : undefined
+                    apps.forEach(app => app.__group = otherHeading);
                     this.apps.push(...apps);
                     this.filter("");
                 },
@@ -86,29 +86,33 @@ class AppChooser extends React.Component {
     };
 
     execute = (item) => {
-        this.setState({selected: item})
+        if (this.mimeMap.get(mimetypeId)) {
+            this.setState({selected: item});
+        } else {
+            this.launch(item);
+        }
     };
 
     dismiss = () => {
         gui.App.quit();
     }
 
-    launch = (always) => {
+    launch = (app, always) => {
         if (always) {
-            doPost(this.mimeMap.get(mimetypeId), {defaultApp: this.state.selected.Id}).then(
+            doPost(this.mimeMap.get(mimetypeId), {defaultApp: app.Id}).then(
                 (resp) => {
-                    doPost(this.state.selected, {arg: filePath}).then(resp => {
+                    doPost(app, {arg: filePath}).then(resp => {
                         gui.App.quit();
                     });
                 },
                 (resp) => {
-                    doPost(this.state.selected, {arg: filePath}).then(resp => {
+                    doPost(app, {arg: filePath}).then(resp => {
                         gui.App.quit();
                     });
                 }
             );
         } else {
-            doPost(this.state.selected, {arg: filePath}).then(resp => {
+            doPost(app, {arg: filePath}).then(resp => {
                 gui.App.quit();
             });
         }
@@ -157,8 +161,8 @@ class AppChooser extends React.Component {
                 Open files of type <b>{this.mimeMap.get(mimetypeId).Comment}</b><br/>
                 with <b>{this.state.selected.Name}</b>?
                 <div style={buttonBarStyle}>
-                    <button style={buttonStyle} onClick={() => this.launch(false)} autoFocus>Just once</button>
-                    <button style={buttonStyle} onClick={() => this.launch(true)}>Always</button>
+                    <button style={buttonStyle} onClick={() => this.launch(this.state.selected, false)} autoFocus>Just once</button>
+                    <button style={buttonStyle} onClick={() => this.launch(this.state.selected, true)}>Always</button>
                     <button style={buttonStyle} onClick={this.cancel}>Cancel</button>
                 </div>
             </PopUp>
