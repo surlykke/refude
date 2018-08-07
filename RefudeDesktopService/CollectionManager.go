@@ -51,12 +51,13 @@ func Run() {
 					resources.Map(act)
 
 					for actionId, da := range app.Actions {
-						var path = lib.Standardizef("/actions/%s-%d", app.Id, actionId)
+						var path = lib.Standardizef("/actions/%s-%s", app.Id, actionId)
 						var iconName = da.IconName
 						if iconName == "" {
 							iconName = app.IconName
 						}
 						var executer = MakeExecuter(da.Exec, app.Terminal)
+						fmt.Println("Create action for", path)
 						var act = lib.MakeAction(path, app.Name+": "+da.Name, app.Comment, da.IconName, executer)
 						act.RelevanceHint = app.RelevanceHint
 						lib.Relate(&app.AbstractResource, &act.AbstractResource)
