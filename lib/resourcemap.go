@@ -16,19 +16,14 @@ type JsonResourceMap struct {
 	rmap  map[StandardizedPath]*JsonResource
 }
 
-
 func MakeJsonResourceMap() *JsonResourceMap {
 	return &JsonResourceMap{rmap: make(map[StandardizedPath]*JsonResource)}
 }
-
-
-
 
 var reservedPaths = map[StandardizedPath]bool{
 	"/links":  true,
 	"/search": true,
 }
-
 
 // The public methods, further down, are responsible for thread safety - ie. aquiring of locks
 
@@ -57,10 +52,10 @@ func (jm *JsonResourceMap) unput(sp StandardizedPath) (Resource, bool) {
 
 // ------------------------------------ Public ----------------------------------------------------
 
-func (jm *JsonResourceMap) RemoveAll(prefixes...StandardizedPath) {
+func (jm *JsonResourceMap) RemoveAll(prefixes ...StandardizedPath) {
 	jm.mutex.Lock()
 	defer jm.mutex.Unlock()
-	for _,prefix := range prefixes {
+	for _, prefix := range prefixes {
 		for path, _ := range jm.rmap {
 			if strings.HasPrefix(string(path), string(prefix)) {
 				jm.unput(path)
@@ -72,8 +67,8 @@ func (jm *JsonResourceMap) RemoveAll(prefixes...StandardizedPath) {
 func (jm *JsonResourceMap) RemoveAndMap(prefixesToRemove []StandardizedPath, resources []Resource) {
 	jm.mutex.Lock()
 	defer jm.mutex.Unlock()
-	for path,_ := range jm.rmap {
-		for _,prefix := range prefixesToRemove {
+	for path, _ := range jm.rmap {
+		for _, prefix := range prefixesToRemove {
 			if strings.HasPrefix(string(path), string(prefix)) {
 				jm.unput(path)
 				break
@@ -81,7 +76,7 @@ func (jm *JsonResourceMap) RemoveAndMap(prefixesToRemove []StandardizedPath, res
 		}
 	}
 
-	for _,resource := range resources {
+	for _, resource := range resources {
 		jm.put(resource.GetSelf(), resource)
 	}
 }
@@ -90,13 +85,17 @@ func (jm *JsonResourceMap) Map(res Resource) {
 	if res.GetSelf() == "" {
 		panic("Mapping resource with empty self")
 	} else {
-		jm.mutex.Lock()
-		defer jm.mutex.Unlock()
-		jm.put(res.GetSelf(), res)
+		jm.MapTo(res.GetSelf(), res)
 	}
 }
 
-func (jm *JsonResourceMap) Unmap(path StandardizedPath) (Resource, bool ){
+func (jm *JsonResourceMap) MapTo(path StandardizedPath, res Resource) {
+	jm.mutex.Lock()
+	defer jm.mutex.Unlock()
+	jm.put(path, res)
+}
+
+func (jm *JsonResourceMap) Unmap(path StandardizedPath) (Resource, bool) {
 	jm.mutex.Lock()
 	defer jm.mutex.Unlock()
 	return jm.unput(path)
@@ -108,7 +107,7 @@ func (jm *JsonResourceMap) GetResource(path StandardizedPath) *JsonResource {
 	jm.mutex.Lock()
 	defer jm.mutex.Unlock()
 	if (path == "/links") {
-		if _,ok := jm.rmap["/links"]; !ok {
+		if _, ok := jm.rmap["/links"]; !ok {
 			var links = make(Links);
 			links[LinksMediaType] = []StandardizedPath{"/links"}
 			for path, jsonRes := range jm.rmap {
@@ -124,16 +123,13 @@ func (jm *JsonResourceMap) GetResource(path StandardizedPath) *JsonResource {
 	return res
 }
 
-
-
-
 func (jm *JsonResourceMap) GetAll() []*JsonResource {
 	var result = make([]*JsonResource, len(jm.rmap))
 	jm.mutex.Lock()
 	defer jm.mutex.Unlock()
 	var pos = 0
 	for _, res := range jm.rmap {
-		result[pos]	= res
+		result[pos] = res
 		res.EnsureReady()
 		pos++
 	}
@@ -141,7 +137,6 @@ func (jm *JsonResourceMap) GetAll() []*JsonResource {
 }
 
 // ----------------------------------------------------------------------------------------------
-
 
 //func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 //	sp := standardize(r.URL.Path)
@@ -159,5 +154,3 @@ func (jm *JsonResourceMap) GetAll() []*JsonResource {
 //		res.ServeHTTP(w, r)
 //	}
 //}
-
-

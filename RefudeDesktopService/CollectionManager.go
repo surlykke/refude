@@ -69,6 +69,9 @@ func Run() {
 			resources.RemoveAll("/mimetypes")
 			for _, mt := range update.mimetypes {
 				resources.Map(mt)
+				for _,alias := range mt.Aliases {
+					resources.MapTo(lib.Standardizef("/mimetypes/%s", alias), mt)
+				}
 			}
 		case le := <-launchEvents:
 			lastLaunched[le.id] = le.time
