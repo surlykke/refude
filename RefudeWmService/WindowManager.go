@@ -22,6 +22,7 @@ import (
 	"github.com/BurntSushi/xgb/randr"
 	"sync"
 	"sort"
+	"github.com/BurntSushi/xgb/composite"
 )
 
 const NET_WM_STATE_ABOVE = "_NET_WM_STATE_ABOVE"
@@ -31,7 +32,9 @@ var xgbConn *xgb.Conn
 var setup *xproto.SetupInfo
 var defaultScreen *xproto.ScreenInfo
 var display *Display
+var overlayWindow xproto.Window
 var screensLock sync.Mutex
+
 
 type Collection struct{}
 
@@ -43,9 +46,15 @@ func init() {
 		log.Fatal("No xgb conn", err)
 	} else if err := randr.Init(xgbConn); err != nil {
 		panic(err)
+	} else if err = composite.Init(xgbConn); err != nil {
+		panic(err)
+	} else if overlayWindow, err = getOverlayWindow(); err != nil {
+		panic(err)
 	}
-	setup = xproto.Setup(xgbConn)
-	defaultScreen = setup.DefaultScreen(xgbConn)
+
+	defaultScreen = xproto.Setup(xgbConn).DefaultScreen(xgbConn)
+
+	go maintainDisplay()
 }
 
 func maintainDisplay() {
@@ -102,6 +111,10 @@ func (c *Collection) GetResource(path lib.StandardizedPath) *lib.JsonResource {
 	var res *lib.JsonResource = nil
 	if path == "/links" {
 		res = lib.MakeJsonResource(c.GetLinks())
+	} else if path == "/highlight" {
+		if h := getHightlight(); h != nil {
+			res = lib.MakeJsonResource(h)
+		}
 	} else if path == "/display" {
 		if d := getDisplay(); d != nil {
 			res = lib.MakeJsonResource(d)
@@ -129,6 +142,9 @@ func (c *Collection) GetResource(path lib.StandardizedPath) *lib.JsonResource {
 
 func (c *Collection) GetAll() []*lib.JsonResource {
 	var allResources = []*lib.JsonResource{}
+	if h := getHightlight(); h != nil {
+		allResources = append(allResources, lib.MakeJsonResource(h))
+	}
 	if d := getDisplay(); d != nil {
 		allResources = append(allResources, lib.MakeJsonResource(d))
 	}
@@ -154,7 +170,9 @@ func (c *Collection) GetAll() []*lib.JsonResource {
 
 func (c *Collection) GetLinks() lib.Links {
 	var links = make(lib.Links)
-	links[DisplayMediaType] = []lib.StandardizedPath{"/display"} // Small race here
+	links[lib.LinksMediaType] = []lib.StandardizedPath{"/links"}
+	links[HighlightMediaType] = []lib.StandardizedPath{"/highlight"} // Small race here
+	links[DisplayMediaType] = []lib.StandardizedPath{"/display"}    // and here
 	if tmp, err := ewmh.ClientListStackingGet(xutil); err == nil && len(tmp) > 0 {
 		for _, wId := range tmp {
 			links[WindowMediaType] = append(links[WindowMediaType], lib.StandardizedPath(fmt.Sprintf("/windows/%d", wId)));
