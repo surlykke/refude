@@ -8,7 +8,7 @@ import React from 'react';
 import {render} from 'react-dom';
 import {doGet, doPost, doSearch} from '../common/http'
 import {PopUp} from "./popup";
-import {ItemList, linkItems} from "../common/itemlist"
+import {ItemList} from "../common/itemlist"
 import {WIN, watchWindowPositionAndSize, showWindowIfHidden, devtools} from "../common/nw";
 import {TitleBar} from "../common/titlebar";
 
@@ -26,7 +26,7 @@ class AppChooser extends React.Component {
         this.mimeMap = new Map();
         this.apps = [];
         this.state = {
-            items: []
+            items: new Map()
         };
         this.fetch([mimetypeId], 0);
         WIN.on('loaded', () => {
@@ -48,38 +48,34 @@ class AppChooser extends React.Component {
                 }
             )
         } else {
+            let appMap = new Map();
             doSearch("desktop-service", desktopapp, "r.Exec ~i '%f' or r.Exec ~i '%u'").then(
                 resp => {
+                    let foundMatches;
                     let apps = resp.json;
                     for (let [mimetypeId, mimetype] of this.mimeMap) {
-                        let remains = [];
-                        apps.forEach(app => {
+                        let group = `Applications that handle ${mimetype.Comment}`;
+                        appMap.set(group, []);
+                        apps = apps.filter(app => {
                             if (app.Mimetypes.includes(mimetypeId)) {
-                                app.__group = `Applications that handle ${mimetype.Comment}`
-                                this.apps.push(app);
+                                foundMatches = true;
+                                appMap.get(group).push(app);
+                                return false;
                             } else {
-                                remains.push(app);
+                                return true;
                             }
                         });
-                        apps = remains;
                     }
-                    let otherHeading = this.mimeMap.size > 0 ? "Other applications" : undefined
-                    apps.forEach(app => app.__group = otherHeading);
-                    this.apps.push(...apps);
-                    this.filter("");
+                    let other = foundMatches ? "Other applications" : "";
+                    appMap.set(other, []);
+                    apps.forEach(app => appMap.get(other).push(app));
+                    this.setState({items: appMap});
                 },
                 resp => {
                     console.log("error resp:", resp);
                 }
             )
         }
-    };
-
-    filter = (term) => {
-        term = term.toUpperCase();
-        let filteredApps = this.apps.filter(app => app.Name.toUpperCase().includes(term));
-        linkItems(filteredApps);
-        this.setState({items: filteredApps});
     };
 
     select = (item) => {
@@ -95,7 +91,7 @@ class AppChooser extends React.Component {
 
     dismiss = () => {
         gui.App.quit();
-    }
+    };
 
     launch = (app, always) => {
         if (always) {
@@ -155,8 +151,8 @@ class AppChooser extends React.Component {
             boxShadow: "1px 1px 1px #888888",
         }
 
-        return [
-            this.state.selected &&
+        return <div style={style}>
+            {this.state.selected &&
             <PopUp key="popup" dismiss={this.cancelOnEscape}>
                 Open files of type <b>{this.mimeMap.get(mimetypeId).Comment}</b><br/>
                 with <b>{this.state.selected.Name}</b>?
@@ -165,19 +161,19 @@ class AppChooser extends React.Component {
                     <button style={buttonStyle} onClick={() => this.launch(this.state.selected, true)}>Always</button>
                     <button style={buttonStyle} onClick={this.cancel}>Cancel</button>
                 </div>
-            </PopUp>
-            ,
-            <TitleBar key="titlebar"/>,
+            </PopUp>}
+
+            <TitleBar key="titlebar"/>
             <div key="heading" style={headingStyle}>
                 Open &nbsp;<b>{fileName}</b>&nbsp;with:
-            </div>,
-            <ItemList key="itemlist" items={this.state.items}
-                      onTermChange={this.filter}
+            </div>
+            <ItemList key="itemlist"
+                      items={this.state.items}
                       select={this.select}
                       execute={this.execute}
                       onDismiss={this.dismiss}
                       disabled={this.state.selected}/>
-        ];
+        </div>
     }
 }
 

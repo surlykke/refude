@@ -5,46 +5,51 @@
 // Please refer to the GPL2 file for a copy of the license.
 
 
-
 const http = require('http')
 import React from 'react'
 import {render} from 'react-dom'
 import {doSearch, doPost} from '../common/http'
 import {WIN, devtools, watchWindowPositionAndSize, showWindowIfHidden, hideWindow} from "../common/nw";
 import {TitleBar} from "../common/titlebar";
-import {linkItems, ItemList} from "../common/itemlist"
+import {ItemList} from "../common/itemlist"
 
 const searches = [
     {
-        minTermSize: 0,
+        group: "Open windows",
         service: "wm-service",
-        query: "r.Name ~i '@TERM@' and r.Name neq 'Refude Do' and r.Name neq 'refudeDo'",
-        group: "Open windows"
+        query: "r.Name neq 'Refude Do' and r.Name neq 'refudeDo'",
+        forWindows: true,
     },
     {
+        group: "Applications",
         minTermSize: 1,
-        service: "desktop-service",
-        query: "r.Name ~i '@TERM@'",
-        group: "Applications"
+        service: "desktop-service"
     },
     {
+        group: "Leave",
         minTermSize: 1,
-        service: "power-service",
-        query: "r.Name ~i '@TERM@'",
-        group: "Leave"
+        service: "power-service"
     }
 ];
 
 class Do extends React.Component {
     constructor(props) {
-        //devtools();
+//        devtools();
         super(props);
-        this.state = {items: []};
+        this.state = {items: new Map()};
         this.itemList = React.createRef();
         this.windows = [];
+
+        this.listenForUpDown();
+        this.handleBlurEvents();
+        this.fetchWindowsAndItems();
+
+        WIN.on('loaded', watchWindowPositionAndSize())
+    };
+
+    listenForUpDown = () => {
         let outerThis = this;
         http.createServer(function (req, res) {
-            console.log("Url:", "'" + req.url + "'");
             if (req.url === "/u") {
                 outerThis.showWin();
                 outerThis.itemList.current.move(true);
@@ -54,9 +59,9 @@ class Do extends React.Component {
             }
             res.end('')
         }).listen("/run/user/1000/org.refude.do");
+    }
 
-        this.initialize();
-
+    handleBlurEvents = () => {
         WIN.on('focus', () => this.hasfocus = true);
         WIN.on('blur', () => {
             this.hasfocus = false;
@@ -65,56 +70,62 @@ class Do extends React.Component {
                 if (!this.hasfocus) this.onDismiss();
             }, 100);
         });
-        WIN.on('loaded', watchWindowPositionAndSize())
+    }
+
+
+    fetchWindowsAndItems = () => {
+        doSearch("wm-service", "application/vnd.org.refude.wmwindow+json").then(resp => {
+            this.windows = {}
+            resp.json.forEach(win => this.windows[win._self] = win);
+            this.fetchItems();
+        }, resp => {
+            this.fetchItems();
+        });
+        showWindowIfHidden();
     };
 
-    fetch = (searchTerm, searchList, collected) => {
-        if (searchList.length > 0) {
-            let [head, ...tail] = searchList;
-            if (head.minTermSize <= searchTerm.length) {
-                let mimetype = "application/vnd.org.refude.action+json";
-                let query = head.query.replace("@TERM@", searchTerm);
-                doSearch(head.service, mimetype, query).then((resp) => {
-                    resp.json.forEach(item => {
-                        item.__group = head.group;
-                        collected.push(item);
-                    });
-                    this.fetch(searchTerm, tail, collected);
-                }, (resp) => {
-                    this.fetch(searchTerm, tail, collected);
-                }).catch(() => {
-                    this.fetch(searchTerm, tail, collected);
-                });
-            } else {
-                this.fetch(searchTerm, tail, collected);
-            }
-        } else {
-            linkItems(collected);
-            collected.forEach(item => {
-                if (item._relates && item._relates["application/vnd.org.refude.wmwindow+json"]) {
-                    item.__iconStyle = {
-                        WebkitFilter: "drop-shadow(5px 5px 3px grey)",
-                        overflow: "visible"
-                    };
-                    let win = this.windows["/wm-service" + item._relates["application/vnd.org.refude.wmwindow+json"]];
-                    if (win && win.States.includes("_NET_WM_STATE_HIDDEN")) {
-                        Object.assign(item.__iconStyle, {
-                            marginLeft: "10px",
-                            marginTop: "10px",
-                            width: "14px",
-                            height: "14px",
-                            opacity: "0.7"
-                        })
+    fetchItems = () => {
+        let items = new Map();
+        searches.forEach(search => items.set(search.group, [])); // For ordering
+        searches.forEach(search => {
+            doSearch(search.service, "application/vnd.org.refude.action+json", search.query).then((resp) => {
+                resp.json.forEach(item => {
+                    item.__minTermSize = search.minTermSize;
+                    if (search.forWindows) {
+                        item.__iconStyle = this.windowIconStyle(item)
                     }
-                }
+                });
+                items.set(search.group, resp.json);
+                this.setState({items: items});
+            }).catch(e => {
+                console.log(e);
             });
-            this.setState({items: collected});
-        }
+        });
     };
+
+    windowIconStyle = item => {
+        let style = {
+            WebkitFilter: "drop-shadow(5px 5px 3px grey)",
+            overflow: "visible"
+        };
+        let win = this.windows["/wm-service" + item._relates["application/vnd.org.refude.wmwindow+json"]];
+        if (win && win.States.includes("_NET_WM_STATE_HIDDEN")) {
+            Object.assign(style, {
+                marginLeft: "10px",
+                marginTop: "10px",
+                width: "14px",
+                height: "14px",
+                opacity: "0.7"
+            })
+        }
+
+        return style
+    }
+
 
     showWin = () => {
         if (this.needsInitialize) {
-            this.initialize();
+            this.fetchWindowsAndItems();
             this.needsInitialize = undefined;
         }
     };
@@ -135,34 +146,23 @@ class Do extends React.Component {
         hideWindow()
     };
 
-
-    initialize = () => {
-        doSearch("wm-service", "application/vnd.org.refude.wmwindow+json").then(resp => {
-            this.windows = {}
-            resp.json.forEach(win => this.windows[win._self] = win);
-            this.fetch("", searches, []);
-        }, resp => {
-            this.fetch("", searches, []);
-        });
-        showWindowIfHidden();
-    };
-
     render = () => {
-        return [
-            <TitleBar/>,
-            <ItemList key="itemlist"
-                         items={this.state.items}
-                         onTermChange={(term) => {
-                             console.log("termChange:", term);
-                             this.fetch(term, searches, []);
-                         }}
-                         select={this.select}
-                         execute={this.execute}
-                         onDismiss={this.onDismiss}
-                         ref={this.itemList} />
-            ]
-    }
-}
+        let style = {
+            display: "flex",
+            flexFlow: "column",
+            height: "100%"
+        };
 
+        return  <div style={style}>
+                    <TitleBar key="titlebar"/>
+                    <ItemList key="itemlist"
+                              items={this.state.items}
+                              select={this.select}
+                              execute={this.execute}
+                              onDismiss={this.onDismiss}
+                              ref={this.itemList}/>
+                </div>
+    };
+}
 
 render(<Do/>, document.getElementById('root'));

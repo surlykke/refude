@@ -7,30 +7,18 @@
 import React from 'react';
 import {Item} from './item.jsx'
 
-export let linkItems = (items) => {
-    if (items.length > 0) {
-        let prev = items[items.length - 1];
-        items.forEach(item => {
-            item.__prev = prev;
-            prev.__next = item;
-            prev = item;
-        });
-    }
-};
-
 export class ItemList extends React.Component {
 
     constructor(props) {
         super(props)
-        this.state = {};
-        this.searchBox = React.createRef();
+        this.state = {items: []};
     }
 
     componentDidUpdate = () => {
         document.getElementById("input").focus();
         // Scroll selected item into view
         if (this.state.selected) {
-            let selectedDiv = document.getElementById(this.state.selected._self)
+            let selectedDiv = document.getElementById(this.state.selected._self);
             if (selectedDiv) {
                 let listDiv = document.getElementById("itemListDiv");
                 let {top: listTop, bottom: listBottom} = listDiv.getBoundingClientRect();
@@ -41,18 +29,56 @@ export class ItemList extends React.Component {
         }
     };
 
-    componentWillReceiveProps = (newProps) => {
-        let newSelected = undefined;
-        if (this.state.selected) {
-            newSelected = newProps.items.find(item => item._self === this.state.selected._self);
+    componentWillReceiveProps = (props) => {
+        this.itemMap = props.items;
+        this.filterAndSort();
 
-        }
-        if (!newSelected) {
-            newSelected = newProps.items[0];
-        }
-
-        this.setState({selected: newSelected});
     };
+
+    filterAndSort = () => {
+        let items = [];
+        let term = document.getElementById("input").value.toUpperCase();
+        for (let [groupName, groupItems] of this.itemMap) {
+            groupItems.forEach(item => {
+                item.__group = groupName ? groupName : undefined;
+                if ((item.__minTermSize || 0) > term.length) {
+                    item.__weight = -1;
+                } else {
+                    item.__weight = item.Name.toUpperCase().indexOf(term);
+                    if (item.__weight < 0 && item.Comment) {
+                        item.__weight = item.Comment.toUpperCase().indexOf(term);
+                        if (item.__weight >= 0) {
+                            item.__weight += 100;
+                        }
+                    }
+                }
+            });
+            let tmp = groupItems.filter(item => item.__weight >= 0).sort((i1, i2) => i1.__weight - i2.__weight);
+            items.push(...tmp);
+        }
+
+        if (items.length > 0) {
+            let prev = items[items.length - 1];
+            items.forEach(item => {
+                item.__prev = prev;
+                prev.__next = item;
+                prev = item;
+            });
+        }
+
+        let selected = undefined;
+        if (this.state.selected) {
+            selected = items.find(item => item._self === this.state.selected._self);
+
+        }
+
+        if (!selected) {
+            selected = items[0];
+        }
+
+        this.setState({items: items, selected: selected});
+    };
+
 
     keyDown = (event) => {
         let {key, ctrlKey, shiftKey, altKey, metaKey} = event;
@@ -87,7 +113,7 @@ export class ItemList extends React.Component {
     };
 
     render = () => {
-        let {items, onTermChange, select} = this.props
+        let {select} = this.props;
         let outerStyle = {
             display: "flex",
             flexFlow: "column",
@@ -110,7 +136,6 @@ export class ItemList extends React.Component {
             outlineStyle: "none",
         };
 
-
         let innerStyle = {
             marginTop: "8px",
             overflowY: "scroll"
@@ -126,7 +151,7 @@ export class ItemList extends React.Component {
 
         let prevGroup;
         let content = [];
-        items.forEach(item => {
+        this.state.items.forEach(item => {
             if (item.__group !== prevGroup) {
                 content.push(<div key={item.__group} style={headingStyle}>{item.__group}</div>)
                 prevGroup = item.__group
@@ -136,14 +161,15 @@ export class ItemList extends React.Component {
                                selected={item === this.state.selected}
                                select={this.select}
                                execute={this.props.execute}/>)
-        })
+        });
+
         return (
             <div onKeyDown={this.keyDown} style={outerStyle}>
                 <div style={searchBoxStyle}>
                     <input id="input"
                            style={inputStyle}
                            type="search"
-                           onChange={(event) => {onTermChange(event.target.value);}}
+                           onChange={this.filterAndSort}
                            disabled={this.props.disabled}/>
                 </div>
                 <div id="itemListDiv" style={innerStyle}>
