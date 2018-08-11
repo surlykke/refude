@@ -76,7 +76,8 @@ export class ItemList extends React.Component {
             selected = items[0];
         }
 
-        this.setState({items: items, selected: selected});
+        this.setState({items: items});
+        this.select(selected);
     };
 
 
@@ -99,7 +100,7 @@ export class ItemList extends React.Component {
     move = (down) => {
         if (this.state.selected) {
             let newSelected = down ? this.state.selected.__next : this.state.selected.__prev;
-            this.setState({selected: newSelected});
+            this.select(newSelected);
         }
     };
 

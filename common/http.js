@@ -115,6 +115,28 @@ export let doPost = (resource, params) => {
     });
 };
 
+export let doPatch = (resource, body) => {
+    return new Promise((resolve, reject) => {
+        let req = http.request(opts(resource, "PATCH"), resp => {
+            let data = '';
+            resp.setEncoding('utf8');
+            resp.on('data', chunk => {
+                data += chunk
+            });
+            resp.on('end', () => {
+                if (resp.statusCode >= 300) {
+                    reject(new Error(`Request Failed.\n` + `Status Code: ${resp.statusCode}`));
+                } else {
+                    resolve(resp);
+                }
+            });
+        });
+        req.on('error', e => reject(e));
+        req.write(JSON.stringify(body));
+        req.end();
+    });
+};
+
 export let doDelete = (resource) => {
     return new Promise((resolve, reject) => {
         let req = http.request(opts(resource, "DELETE"), resp => {

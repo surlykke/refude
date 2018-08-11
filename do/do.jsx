@@ -8,7 +8,7 @@
 const http = require('http')
 import React from 'react'
 import {render} from 'react-dom'
-import {doSearch, doPost} from '../common/http'
+import {doSearch, doPost, doPatch} from '../common/http'
 import {WIN, devtools, watchWindowPositionAndSize, showWindowIfHidden, hideWindow} from "../common/nw";
 import {TitleBar} from "../common/titlebar";
 import {ItemList} from "../common/itemlist"
@@ -131,7 +131,20 @@ class Do extends React.Component {
     };
 
     select = item => {
-        console.log(item._self, "selected");
+        let id;
+
+        if (item && item._relates && item._relates["application/vnd.org.refude.wmwindow+json"]) {
+            let window = this.windows["/wm-service" + item._relates["application/vnd.org.refude.wmwindow+json"][0]];
+            if (window) {
+                id = window.Id
+            }
+        }
+
+        if (id) {
+            doPatch({_self: "/wm-service/highlight"}, {WindowId: id});
+        } else {
+            doPatch({_self: "/wm-service/highlight"}, {WindowId: 0});
+        }
     };
 
     execute = (item) => {
@@ -141,6 +154,7 @@ class Do extends React.Component {
     };
 
     onDismiss = () => {
+        this.select();
         this.itemList.current.clear();
         this.needsInitialize = true;
         hideWindow()
@@ -153,15 +167,15 @@ class Do extends React.Component {
             height: "100%"
         };
 
-        return  <div style={style}>
-                    <TitleBar key="titlebar"/>
-                    <ItemList key="itemlist"
-                              items={this.state.items}
-                              select={this.select}
-                              execute={this.execute}
-                              onDismiss={this.onDismiss}
-                              ref={this.itemList}/>
-                </div>
+        return <div style={style}>
+            <TitleBar key="titlebar"/>
+            <ItemList key="itemlist"
+                      items={this.state.items}
+                      select={this.select}
+                      execute={this.execute}
+                      onDismiss={this.onDismiss}
+                      ref={this.itemList}/>
+        </div>
     };
 }
 
