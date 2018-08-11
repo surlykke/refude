@@ -34,6 +34,12 @@ func Run() {
 		0,
 		"type='signal',interface='org.freedesktop.DBus.Properties',member='PropertiesChanged', sender='org.freedesktop.UPower'")
 
+	dbusConn.BusObject().Call(
+		"org.freedesktop.DBus.AddMatch",
+		0,
+		"type='signal',interface='org.freedesktop.login1.Manager',member='PrepareForSleep', sender='org.freedesktop.login1'")
+
+
 	if variant := getSingleProp(UPowPath, UPowerInterface, "LidIsPresent"); variant.Value().(bool) {
 		var open = !getSingleProp(UPowPath, UPowerInterface, "LidIsClosed").Value().(bool)
 		var lid = Lid{Open: open}
@@ -78,6 +84,15 @@ func Run() {
 			}
 			// TODO Handle device added/removed
 			// (need hardware to test)
+		} else if signal.Name == "org.freedesktop.login1.Manager.PrepareForSleep" {
+			if len(signal.Body) > 0 && !signal.Body[0].(bool) {
+				// Coming out of suspend/hibernation, update everything
+				for path, device := range devices {
+					var copy = *device
+					updateDevice(&copy, getProps(path, UPowerDeviceInterface))
+					resourceCollection.Map(&copy)
+				}
+			}
 		}
 	}
 }
@@ -101,7 +116,6 @@ func getSingleProp(path dbus.ObjectPath, dbusInterface string, propName string) 
 }
 
 func getProps(path dbus.ObjectPath, dbusInterface string) map[string]dbus.Variant {
-	fmt.Println("getProps, path:", path, ", interface: ", dbusInterface)
 	call := dbusConn.Object(UPowService, path).Call("org.freedesktop.DBus.Properties.GetAll", dbus.Flags(0), dbusInterface)
 	return call.Body[0].(map[string]dbus.Variant)
 }
