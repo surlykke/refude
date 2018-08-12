@@ -59,10 +59,10 @@ func (Highlight) PATCH(w http.ResponseWriter, r *http.Request) {
 }
 
 func setHightlight(winId xproto.Window) {
-	var hl = Highlight{ HighlightData{winId}, time.Now().Add(2*time.Second)}
+	var hl = Highlight{ HighlightData{winId}, time.Now().Add(500*time.Millisecond)}
 	highlightRequests <- hl.WindowId
 	if hl.WindowId > 0 {
-		time.AfterFunc(2020*time.Millisecond, reap)
+		time.AfterFunc(505*time.Millisecond, reap)
 	}
 	highlightMutex.Lock()
 	defer highlightMutex.Unlock()
