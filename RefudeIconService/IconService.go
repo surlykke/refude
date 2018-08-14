@@ -15,8 +15,18 @@ import (
 	"os"
 	"github.com/surlykke/RefudeServices/lib"
 	"github.com/fsnotify/fsnotify"
-	"strings"
+	"crypto/sha1"
+	"io/ioutil"
 )
+
+var convertedXpmsDir = lib.CacheHome + "/RefudeIconService/convertedXpms"
+
+func init() {
+	if err := os.MkdirAll(convertedXpmsDir, 0700); err != nil {
+		panic(err)
+	}
+}
+
 
 var mutex  sync.RWMutex
 var themes map[string]Theme
@@ -219,12 +229,19 @@ func collectIcons(icons map[string]Icon, iconDirPath string, iconDir IconDir) {
 		}
 
 		for _, imagePath := range imagePaths {
+			var iconName = filepath.Base(imagePath[0 : len(imagePath)-4])
+
+			if ending == "xpm" {
+				if tmp, err := getPathToConverted(imagePath); err != nil {
+					log.Println("Unable to convert", imagePath, ":", err)
+					continue
+				} else {
+					fmt.Println("Converting", imagePath, "to", tmp)
+					imagePath = tmp
+				}
+			}
 
 			var image = Image{iconDir.Context, iconDir.MinSize, iconDir.MaxSize, imagePath}
-			var iconName = filepath.Base(imagePath[0 : len(imagePath)-4])
-			if strings.HasPrefix(iconName, "vlc") {
-				fmt.Println("adding image:", imagePath)
-			}
 			var icon, ok = icons[iconName]
 
 			if !ok {
@@ -234,6 +251,26 @@ func collectIcons(icons map[string]Icon, iconDirPath string, iconDir IconDir) {
 			}
 			icons[iconName] = icon
 		}
+	}
+}
+
+
+func getPathToConverted(pathToXpm string) (string, error) {
+	if xpmBytes, err := ioutil.ReadFile(pathToXpm); err != nil {
+		return "", err
+	} else {
+		pngPath := fmt.Sprintf("%s/%x.png", convertedXpmsDir, sha1.Sum(xpmBytes))
+		if _, err := os.Stat(pngPath); os.IsNotExist(err) {
+			if pngBytes, err := lib.Xpm2png(xpmBytes); err != nil {
+				return "", err
+			} else if err = ioutil.WriteFile(pngPath, pngBytes, 0700); err != nil {
+				return "", err
+			}
+		} else if err != nil {
+			return "", err
+		}
+
+		return pngPath, nil
 	}
 }
 
