@@ -13,8 +13,51 @@ import (
 	"log"
 	"os"
 	"regexp"
-
 )
+
+
+var lcMessage = func() string {
+	if os.Getenv("LC_ALL") != "" {
+		return os.Getenv("LC_ALL")
+	} else if os.Getenv("LC_MESSAGE") != "" {
+		return os.Getenv("LC_MESSAGE")
+	} else {
+		return os.Getenv("LANG")
+	}
+}()
+
+var lcMessagePattern = regexp.MustCompile( `([^_.@]+)(_[^.@]+)?(\.[^@]+)?(@.*)?`) // 1: language, 2: country, 3: encoding, 4: modifier
+var lcMatchers = func() []string {
+	if m := lcMessagePattern.FindStringSubmatch(lcMessage); m != nil {
+		var lang = m[1]
+		var country = m[2]
+		var modifier = m[4]
+
+		if country != "" && modifier != "" {
+			return []string {
+				lang + country + modifier,
+				lang + country,
+				lang + modifier,
+				lang,
+			}
+		} else if country != "" {
+			return []string {
+				lang + country,
+				lang,
+			}
+		} else if modifier != "" {
+			return []string {
+				lang + modifier,
+				lang,
+			}
+		} else {
+			return []string{lang}
+		}
+	} else {
+		return []string{}
+	}
+}()
+
 
 type Group struct {
 	Name    string
@@ -72,7 +115,12 @@ func ReadIniFile(path string) (IniFile, error) {
 }
 
 func LocaleMatch(loc string) bool {
-	return false; // FIXME
+	for _,lm := range lcMatchers {
+		if loc == lm {
+			return true;
+		}
+	}
+	return false;
 }
 
 
