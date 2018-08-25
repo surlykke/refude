@@ -17,8 +17,6 @@ const UPowService = "org.freedesktop.UPower"
 const UPowPath = "/org/freedesktop/UPower"
 const UPowerInterface = "org.freedesktop.UPower"
 const DisplayDevicePath = "/org/freedesktop/UPower/devices/DisplayDevice"
-const IntrospectInterface = "org.freedesktop.DBus.Introspectable"
-const DBusPropertiesInterface = "org.freedesktop.DBus.Properties"
 const UPowerDeviceInterface = "org.freedesktop.UPower.Device"
 const login1Service = "org.freedesktop.login1"
 const login1Path = "/org/freedesktop/login1"
@@ -34,20 +32,6 @@ func Run() {
 		0,
 		"type='signal',interface='org.freedesktop.DBus.Properties',member='PropertiesChanged', sender='org.freedesktop.UPower'")
 
-	dbusConn.BusObject().Call(
-		"org.freedesktop.DBus.AddMatch",
-		0,
-		"type='signal',interface='org.freedesktop.login1.Manager',member='PrepareForSleep', sender='org.freedesktop.login1'")
-
-
-	if variant := getSingleProp(UPowPath, UPowerInterface, "LidIsPresent"); variant.Value().(bool) {
-		var open = !getSingleProp(UPowPath, UPowerInterface, "LidIsClosed").Value().(bool)
-		var lid = Lid{Open: open}
-		lid.Self = "/lid"
-		lid.Mt = LidMediaType
-		resourceCollection.Map(&lid)
-	}
-
 	MapPowerActions()
 
 	var devices = make(map[dbus.ObjectPath]*Device)
@@ -60,39 +44,21 @@ func Run() {
 		device.Self = lib.Standardizef("/devices%s", path[strings.LastIndex(string(path), "/"):])
 		device.Mt = DeviceMediaType
 		devices[path] = device
-		updateDevice(device, getProps(path, UPowerDeviceInterface))
+		updateDevice(device, lib.GetAllProps(dbusConn, UPowService, path, UPowerDeviceInterface))
 		resourceCollection.Map(device)
 	}
 
 	for signal := range signals {
+		fmt.Println("Signal: ", signal)
 		if signal.Name == "org.freedesktop.DBus.Properties.PropertiesChanged" {
-			props, ok := signal.Body[1].(map[string]dbus.Variant)
-			if !ok {
-				return
-			} else if signal.Path == UPowPath {
-				if prop, ok2 := props["LidIsClosed"]; ok2 {
-					var lid  Lid
-					lid.Self = "/lid"
-					lid.Mt = LidMediaType
-					lid.Open = !prop.Value().(bool)
-					resourceCollection.Map(&lid)
-				}
-			} else if device, ok := devices[signal.Path]; ok {
+			if device, ok := devices[signal.Path]; ok {
 				var copy = *device
-				updateDevice(&copy, props)
+				// Brute force here, we update all, as I've seen some problems with getting out of sync after suspend..
+				updateDevice(&copy, lib.GetAllProps(dbusConn, UPowService, signal.Path, UPowerDeviceInterface))
 				resourceCollection.Map(&copy)
 			}
 			// TODO Handle device added/removed
 			// (need hardware to test)
-		} else if signal.Name == "org.freedesktop.login1.Manager.PrepareForSleep" {
-			if len(signal.Body) > 0 && !signal.Body[0].(bool) {
-				// Coming out of suspend/hibernation, update everything
-				for path, device := range devices {
-					var copy = *device
-					updateDevice(&copy, getProps(path, UPowerDeviceInterface))
-					resourceCollection.Map(&copy)
-				}
-			}
 		}
 	}
 }
@@ -105,20 +71,6 @@ var dbusConn = func() *dbus.Conn {
 	}
 }()
 
-func devicePath(objectPath dbus.ObjectPath) string {
-	var path = string(objectPath)
-	return "/devices" + path[strings.LastIndex(path, "/"):]
-}
-
-func getSingleProp(path dbus.ObjectPath, dbusInterface string, propName string) dbus.Variant {
-	call := dbusConn.Object(UPowService, path).Call("org.freedesktop.DBus.Properties.Get", dbus.Flags(0), dbusInterface, propName)
-	return call.Body[0].(dbus.Variant)
-}
-
-func getProps(path dbus.ObjectPath, dbusInterface string) map[string]dbus.Variant {
-	call := dbusConn.Object(UPowService, path).Call("org.freedesktop.DBus.Properties.GetAll", dbus.Flags(0), dbusInterface)
-	return call.Body[0].(map[string]dbus.Variant)
-}
 
 var possibleActionValues = map[string][]string{
 	"PowerOff":{"Shutdown", "Power off the machine", "system-shutdown"},
