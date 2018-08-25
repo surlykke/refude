@@ -1,6 +1,6 @@
 #!/bin/bash
 cd $(dirname $0)
-DIRS="appchooser common connman do panel power"
+DIRS="appchooser common do panel"
 
 addHtmlHeader () {
 	cat ./license-header-template-html.txt $1 | sponge $1

@@ -1,7 +1,0 @@
-{
-  "name": "refudeConmanClient",
-  "main": "index.html",
-  "window" : {
-  	"id" : "org.refude.ConmanClient"
-  }
-}
