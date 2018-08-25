@@ -60,7 +60,7 @@ func monitorSignals() {
 	for signal := range dbusSignals {
 		if strings.HasPrefix(signal.Name, "org.kde.StatusNotifierItem.New") {
 			events <- Event{eventType: ItemUpdated, sender: signal.Sender, path: signal.Path}
-		} else if signal.Name == "com.canonical.dbusmenu.LayoutChanged" {
+		} else if signal.Name == "com.canonical.dbusmenu.LayoutUpdated" {
 			events <- Event{eventType: MenuUpdated, sender: signal.Sender, path: signal.Path}
 		}
 	}
