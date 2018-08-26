@@ -7,8 +7,9 @@
 import React from 'react';
 import {render} from 'react-dom';
 import {doGet, doPost, doSearch} from '../common/http'
-import {PopUp} from "./popup";
+import {T} from "../common/translate";
 import {ItemList} from "../common/itemlist"
+import {PopUp} from "./popup";
 import {WIN, watchWindowPositionAndSize, showWindowIfHidden, devtools} from "../common/nw";
 import {TitleBar} from "../common/titlebar";
 
@@ -54,7 +55,7 @@ class AppChooser extends React.Component {
                     let foundMatches;
                     let apps = resp.json;
                     for (let [mimetypeId, mimetype] of this.mimeMap) {
-                        let group = `Applications that handle ${mimetype.Comment}`;
+                        let group = T("Applications that handle %0", mimetype.Comment);
                         appMap.set(group, []);
                         apps = apps.filter(app => {
                             if (app.Mimetypes.includes(mimetypeId)) {
@@ -66,7 +67,7 @@ class AppChooser extends React.Component {
                             }
                         });
                     }
-                    let other = foundMatches ? "Other applications" : "";
+                    let other = foundMatches ? T("Other applications") : "";
                     appMap.set(other, []);
                     apps.forEach(app => appMap.get(other).push(app));
                     this.setState({items: appMap});
@@ -149,23 +150,25 @@ class AppChooser extends React.Component {
             marginLeft: "0.8em",
             height: "2em",
             boxShadow: "1px 1px 1px #888888",
-        }
+        };
+
 
         return <div style={style}>
             {this.state.selected &&
             <PopUp key="popup" dismiss={this.cancelOnEscape}>
-                Open files of type <b>{this.mimeMap.get(mimetypeId).Comment}</b><br/>
-                with <b>{this.state.selected.Name}</b>?
+                <span dangerouslySetInnerHTML={{__html: T("Open files of type <b>%0</b> with <b>%1</b>?",
+                                                          this.mimeMap.get(mimetypeId).Comment,
+                                                          this.state.selected.Name)}}/>
                 <div style={buttonBarStyle}>
-                    <button style={buttonStyle} onClick={() => this.launch(this.state.selected, false)} autoFocus>Just once</button>
-                    <button style={buttonStyle} onClick={() => this.launch(this.state.selected, true)}>Always</button>
-                    <button style={buttonStyle} onClick={this.cancel}>Cancel</button>
+                    <button style={buttonStyle} onClick={() => this.launch(this.state.selected, false)} autoFocus>{T("Just once")}</button>
+                    <button style={buttonStyle} onClick={() => this.launch(this.state.selected, true)}>{T("Always")}</button>
+                    <button style={buttonStyle} onClick={this.cancel}>{T("Cancel")}</button>
                 </div>
             </PopUp>}
 
             <TitleBar key="titlebar"/>
             <div key="heading" style={headingStyle}>
-                Open &nbsp;<b>{fileName}</b>&nbsp;with:
+                <span dangerouslySetInnerHTML={{__html: T("Open &nbsp;<b>%0</b>&nbsp;with:", fileName)}}/>
             </div>
             <ItemList key="itemlist"
                       items={this.state.items}

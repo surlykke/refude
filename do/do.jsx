@@ -12,21 +12,22 @@ import {doSearch, doPost, doPatch} from '../common/http'
 import {WIN, devtools, watchWindowPositionAndSize, showWindowIfHidden, hideWindow} from "../common/nw";
 import {TitleBar} from "../common/titlebar";
 import {ItemList} from "../common/itemlist"
+import {T} from "../common/translate";
 
 const searches = [
     {
-        group: "Open windows",
+        group: T("Open windows"),
         service: "wm-service",
         query: "r.Name neq 'Refude Do' and r.Name neq 'refudeDo'",
         forWindows: true,
     },
     {
-        group: "Applications",
+        group: T("Applications"),
         minTermSize: 1,
         service: "desktop-service"
     },
     {
-        group: "Leave",
+        group: T("Leave"),
         minTermSize: 1,
         service: "power-service"
     }
