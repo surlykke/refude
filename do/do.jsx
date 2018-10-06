@@ -35,7 +35,7 @@ const searches = [
 
 class Do extends React.Component {
     constructor(props) {
-//        devtools();
+        //devtools();
         super(props);
         this.state = {items: new Map()};
         this.itemList = React.createRef();
@@ -51,12 +51,12 @@ class Do extends React.Component {
     listenForUpDown = () => {
         let outerThis = this;
         http.createServer(function (req, res) {
-            if (req.url === "/u") {
+            if (req.url === "/up") {
+                outerThis.showWin();
+                outerThis.itemList.current.move(false);
+            } else {
                 outerThis.showWin();
                 outerThis.itemList.current.move(true);
-            } else if (req.url === "/d") {
-                this.showWin();
-                outerThis.itemList.current.move(false);
             }
             res.end('')
         }).listen("/run/user/1000/org.refude.do");
