@@ -35,7 +35,7 @@ class Battery extends React.Component {
     componentDidMount = () => {
         let update = () => {
             doGetIfNoneMatch("power-service", "/devices/DisplayDevice", this.etag).then(resp => {
-                this.etag = resp.etag
+                this.etag = resp.headers.etag
                 let charging = ["Charging", "Fully charged"].includes(resp.json.State)
                 this.setState({
                     data: {
@@ -47,7 +47,12 @@ class Battery extends React.Component {
                         percentage: Math.floor(resp.json.Percentage + 0.5),
                     }
                 });
-            }).catch(err => {console.log("err:", err); this.setState({data: errorData})}).then(setTimeout(update, 1000));
+            }).catch(err => {
+                if (err.status !== 304) {
+                    console.log("err:", err);
+                    this.setState({data: errorData})
+                }
+            }).then(setTimeout(update, 1000));
         };
         update();
     };
