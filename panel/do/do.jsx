@@ -172,7 +172,8 @@ class Do extends React.Component {
         let style = {
             display: this.state["shown"] ? "flex" : "none",
             flexFlow: "column",
-            height: "100%"
+            height: "100%",
+            width: "300px"
         };
 
         return <div style={style}>
