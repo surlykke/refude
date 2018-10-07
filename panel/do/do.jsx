@@ -1,4 +1,4 @@
-// Copyright (c) 2015, 2016, 2017 Christian Surlykke
+//Copyright (c) 2015, 2016, 2017 Christian Surlykke
 //
 // This file is part of the refude project.
 // It is distributed under the GPL v2 license.
@@ -8,11 +8,10 @@
 const http = require('http')
 import React from 'react'
 import {render} from 'react-dom'
-import {doSearch, doPost, doPatch} from '../common/http'
-import {WIN, devtools, watchWindowPositionAndSize, showWindowIfHidden, hideWindow} from "../common/nw";
-import {TitleBar} from "../common/titlebar";
-import {ItemList} from "../common/itemlist"
-import {T} from "../common/translate";
+import {doSearch, doPost, doPatch} from '../../common/http'
+import {WIN, devtools} from "../../common/nw";
+import {ItemList} from "../../common/itemlist"
+import {T} from "../../common/translate";
 
 const searches = [
     {
@@ -40,27 +39,30 @@ class Do extends React.Component {
         this.state = {items: new Map()};
         this.itemList = React.createRef();
         this.windows = [];
+        this.onUpdated = props.onUpdated;
 
         this.listenForUpDown();
         this.handleBlurEvents();
-        this.fetchWindowsAndItems();
 
-        WIN.on('loaded', watchWindowPositionAndSize())
+    };
+
+    componentDidUpdate = () => {
+        this.onUpdated();
     };
 
     listenForUpDown = () => {
-        let outerThis = this;
+        let that = this;
         http.createServer(function (req, res) {
+            console.log("updown:", new Date().getMilliseconds());
+            that.showWin();
             if (req.url === "/up") {
-                outerThis.showWin();
-                outerThis.itemList.current.move(false);
+                that.itemList.current.move(false);
             } else {
-                outerThis.showWin();
-                outerThis.itemList.current.move(true);
+                that.itemList.current.move(true);
             }
             res.end('')
-        }).listen("/run/user/1000/org.refude.do");
-    }
+        }).listen("/run/user/1000/org.refude.panel.do");
+    };
 
     handleBlurEvents = () => {
         WIN.on('focus', () => this.hasfocus = true);
@@ -75,6 +77,7 @@ class Do extends React.Component {
 
 
     fetchWindowsAndItems = () => {
+        console.log("enter fetchWindowsAndItems", new Date().getMilliseconds());
         doSearch("wm-service", "application/vnd.org.refude.wmwindow+json").then(resp => {
             this.windows = {}
             resp.json.forEach(win => this.windows[win._self] = win);
@@ -82,10 +85,10 @@ class Do extends React.Component {
         }, resp => {
             this.fetchItems();
         });
-        showWindowIfHidden();
     };
 
     fetchItems = () => {
+        console.log("enter fetchItems", new Date().getMilliseconds());
         let items = new Map();
         searches.forEach(search => items.set(search.group, [])); // For ordering
         searches.forEach(search => {
@@ -98,6 +101,7 @@ class Do extends React.Component {
                 });
                 items.set(search.group, resp.json);
                 this.setState({items: items});
+                console.log("fetchItems done", new Date().getMilliseconds());
             }).catch(e => {
                 console.log(e);
             });
@@ -125,10 +129,12 @@ class Do extends React.Component {
 
 
     showWin = () => {
-        if (this.needsInitialize) {
+        console.log("showWin:", new Date().getMilliseconds());
+        if (!this.state["shown"]) {
             this.fetchWindowsAndItems();
-            this.needsInitialize = undefined;
+            this.setState({"shown": true});
         }
+        console.log("leave showWin:", new Date().getMilliseconds());
     };
 
     select = item => {
@@ -158,18 +164,17 @@ class Do extends React.Component {
         this.select();
         this.itemList.current.clear();
         this.needsInitialize = true;
-        hideWindow()
+        this.setState({"shown": undefined});
     };
 
     render = () => {
         let style = {
-            display: "flex",
+            display: this.state["shown"] ? "flex" : "none",
             flexFlow: "column",
             height: "100%"
         };
 
         return <div style={style}>
-            <TitleBar key="titlebar"/>
             <ItemList key="itemlist"
                       items={this.state.items}
                       select={this.select}
@@ -180,4 +185,5 @@ class Do extends React.Component {
     };
 }
 
-render(<Do/>, document.getElementById('root'));
+//render(<Do/>, document.getElementById('root'));
+export {Do}

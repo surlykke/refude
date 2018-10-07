@@ -20,6 +20,7 @@ import {NotifierItems} from './notifieritems/notifieritems'
 import {HideButton} from './hidebutton/hidebutton'
 import {Notifications} from './notifications/notifications'
 import {DragField} from './dragfield/dragfield'
+import {Do} from './do/do'
 
 const Window = nw.Window.get();
 
@@ -74,6 +75,7 @@ class Panel extends React.Component {
                 <HideButton style={pluginStyle}/>
                 <DragField style={pluginStyle}/>
                 <Notifications style={pluginStyle} onUpdated={this.adjustSize}/>
+                <Do onUpdated={this.adjustSize}/>
             </div>
         </div>
 }

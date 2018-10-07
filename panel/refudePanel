@@ -1,3 +1,14 @@
 #!/usr/bin/env bash
+paneldir=$(dirname $(realpath $0))
+
+#Kill running panels
+runningPid=`ps -ef | grep "[n]w $paneldir" | awk '{print $2}'`
+if [[ -n "$runningPid" ]]; then
+   echo "kill $runningPid"
+   kill $runningPid
+fi
+unlink $XDG_RUNTIME_DIR/org.refude.panel.do
+
+
 nohup nw $(dirname $(realpath $0)) >/dev/null 2>/dev/null &
 

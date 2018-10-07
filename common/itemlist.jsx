@@ -171,7 +171,8 @@ export class ItemList extends React.Component {
                            style={inputStyle}
                            type="search"
                            onChange={this.filterAndSort}
-                           disabled={this.props.disabled}/>
+                           disabled={this.props.disabled}
+                           autoFocus />
                 </div>
                 <div id="itemListDiv" style={innerStyle}>
                     {content}

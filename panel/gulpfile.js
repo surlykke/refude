@@ -13,7 +13,7 @@ var gutil = require('gulp-util');
 
 gulp.task('assets', function() {
 	return gulp
-		.src(['**/*.html', '**/*.css', 'package.json', 'refudePanel', 'refudePanel.desktop'])
+		.src(['**/*.html', '**/*.css', 'package.json', 'refudePanel', 'refudePanel.desktop', 'refudeDo'])
 		.pipe(gulp.dest('../dist/panel'))
 })
 

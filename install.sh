@@ -7,16 +7,16 @@ rm -rf ${thisdir}/dist/*
 REFUDEDIR=${PREFIX}/share/refude
 mkdir -p ${REFUDEDIR}
 
-reactapps="panel/refudePanel do/refudeDo appchooser/refudeAppChooser"
-for app in $reactapps; do
-	appdir=$thisdir/`dirname $app`
+for appdir in panel appchooser; do
 	echo "building $appdir"
-	cd $appdir
+	cd $thisdir/$appdir
 	gulp || exit 1
-	cp -R $thisdir/dist/`dirname $app` ${PREFIX}/share/refude
-	ln -sf ${PREFIX}/share/refude/$app ${PREFIX}/bin
-    for desktopfile in ${PREFIX}/share/refude/`dirname $app`/*.desktop; do
-        ln -sf $desktopfile ${PREFIX}/share/applications
-    done
+	cp -R $thisdir/dist/$appdir ${PREFIX}/share/refude
+
 done
 
+for app in panel/refudePanel panel/refudeDo appchooser/refudeAppChooser; do
+	ln -sf ${PREFIX}/share/refude/$app ${PREFIX}/bin
+done
+
+ln -sf ${PREFIX}/share/refude/panel/refudePanel.desktop ${PREFIX}/share/applications

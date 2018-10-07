@@ -89,6 +89,7 @@ class Notifications extends React.Component {
     }
 
     componentDidUpdate = () => {
+        console.log("Notifications did update:", new Date().getMilliseconds());
         this.onUpdated()
     }
 
