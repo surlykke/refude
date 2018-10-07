@@ -134,6 +134,7 @@ class Do extends React.Component {
             this.fetchWindowsAndItems();
             this.setState({"shown": true});
         }
+        WIN.focus();
         console.log("leave showWin:", new Date().getMilliseconds());
     };
 

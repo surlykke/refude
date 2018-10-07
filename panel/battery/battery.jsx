@@ -53,7 +53,6 @@ class Battery extends React.Component {
     };
 
     componentDidUpdate() {
-        console.log("Battery did update", new Date().getMilliseconds());
         this.onUpdated();
     }
 
