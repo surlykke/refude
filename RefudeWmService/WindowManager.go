@@ -7,22 +7,22 @@
 package main
 
 import (
-	"time"
 	"fmt"
 	"github.com/BurntSushi/xgb"
+	"github.com/BurntSushi/xgb/composite"
+	"github.com/BurntSushi/xgb/randr"
 	"github.com/BurntSushi/xgb/xproto"
 	"github.com/BurntSushi/xgbutil"
 	"github.com/BurntSushi/xgbutil/ewmh"
 	"github.com/BurntSushi/xgbutil/xprop"
 	"github.com/BurntSushi/xgbutil/xwindow"
 	"github.com/surlykke/RefudeServices/lib"
-	"strings"
-	"strconv"
 	"log"
-	"github.com/BurntSushi/xgb/randr"
-	"sync"
 	"sort"
-	"github.com/BurntSushi/xgb/composite"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
 )
 
 const NET_WM_STATE_ABOVE = "_NET_WM_STATE_ABOVE"
@@ -32,7 +32,6 @@ var xgbConn *xgb.Conn
 var setup *xproto.SetupInfo
 var defaultScreen *xproto.ScreenInfo
 var display *Display
-var overlayWindow xproto.Window
 var screensLock sync.Mutex
 
 
@@ -47,8 +46,6 @@ func init() {
 	} else if err := randr.Init(xgbConn); err != nil {
 		panic(err)
 	} else if err = composite.Init(xgbConn); err != nil {
-		panic(err)
-	} else if overlayWindow, err = getOverlayWindow(); err != nil {
 		panic(err)
 	}
 
@@ -111,10 +108,6 @@ func (c *Collection) GetResource(path lib.StandardizedPath) *lib.JsonResource {
 	var res *lib.JsonResource = nil
 	if path == "/links" {
 		res = lib.MakeJsonResource(c.GetLinks())
-	} else if path == "/highlight" {
-		if h := getHightlight(); h != nil {
-			res = lib.MakeJsonResource(h)
-		}
 	} else if path == "/display" {
 		if d := getDisplay(); d != nil {
 			res = lib.MakeJsonResource(d)
@@ -142,9 +135,6 @@ func (c *Collection) GetResource(path lib.StandardizedPath) *lib.JsonResource {
 
 func (c *Collection) GetAll() []*lib.JsonResource {
 	var allResources = []*lib.JsonResource{}
-	if h := getHightlight(); h != nil {
-		allResources = append(allResources, lib.MakeJsonResource(h))
-	}
 	if d := getDisplay(); d != nil {
 		allResources = append(allResources, lib.MakeJsonResource(d))
 	}
@@ -171,7 +161,6 @@ func (c *Collection) GetAll() []*lib.JsonResource {
 func (c *Collection) GetLinks() lib.Links {
 	var links = make(lib.Links)
 	links[lib.LinksMediaType] = []lib.StandardizedPath{"/links"}
-	links[HighlightMediaType] = []lib.StandardizedPath{"/highlight"} // Small race here
 	links[DisplayMediaType] = []lib.StandardizedPath{"/display"}    // and here
 	if tmp, err := ewmh.ClientListStackingGet(xutil); err == nil && len(tmp) > 0 {
 		for _, wId := range tmp {

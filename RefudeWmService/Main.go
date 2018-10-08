@@ -9,6 +9,5 @@ package main
 import "github.com/surlykke/RefudeServices/lib"
 
 func main() {
-	setupHighlighting()
 	lib.Serve("org.refude.wm-service", &Collection{})
 }
