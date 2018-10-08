@@ -106,9 +106,9 @@ func (jm *JsonResourceMap) Unmap(path StandardizedPath) (Resource, bool) {
 func (jm *JsonResourceMap) GetResource(path StandardizedPath) *JsonResource {
 	jm.mutex.Lock()
 	defer jm.mutex.Unlock()
-	if (path == "/links") {
+	if path == "/links" {
 		if _, ok := jm.rmap["/links"]; !ok {
-			var links = make(Links);
+			var links = make(Links)
 			links[LinksMediaType] = []StandardizedPath{"/links"}
 			for path, jsonRes := range jm.rmap {
 				links[jsonRes.GetMt()] = append(links[jsonRes.GetMt()], path)
@@ -116,7 +116,7 @@ func (jm *JsonResourceMap) GetResource(path StandardizedPath) *JsonResource {
 			jm.rmap["/links"] = MakeJsonResource(links)
 		}
 	}
-	var res, ok = jm.rmap[path];
+	var res, ok = jm.rmap[path]
 	if ok {
 		res.EnsureReady()
 	}

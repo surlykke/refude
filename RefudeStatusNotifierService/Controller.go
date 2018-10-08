@@ -28,7 +28,7 @@ const ITEM_PATH = "/StatusNotifierItem"
 const ITEM_INTERFACE = "org.kde.StatusNotifierItem"
 const MENU_INTERFACE = "com.canonical.dbusmenu"
 
-var	conn *dbus.Conn
+var conn *dbus.Conn
 var watcherProperties *prop.Properties
 
 func senderAndPath(serviceName string, sender dbus.Sender) (string, dbus.ObjectPath) {
@@ -100,8 +100,8 @@ func getOnTheBus() {
 	// Put StatusNotifierWatcher object up
 	conn.ExportMethodTable(
 		map[string]interface{}{
-			"RegisterStatusNotifierItem": addItem,
-			"UnregisterStatusNotifierItem": func(string, dbus.Sender){}, // We dont care, see monitorItem
+			"RegisterStatusNotifierItem":   addItem,
+			"UnregisterStatusNotifierItem": func(string, dbus.Sender) {}, // We dont care, see monitorItem
 		},
 		WATCHER_PATH,
 		WATCHER_INTERFACE,
@@ -138,14 +138,14 @@ const (
 
 type Event struct {
 	eventType EventType
-	sender string
-	path   dbus.ObjectPath // Menupath if eventType is MenuUpdated, ItemPath otherwise
+	sender    string
+	path      dbus.ObjectPath // Menupath if eventType is MenuUpdated, ItemPath otherwise
 }
 
 var events = make(chan Event)
 
 func findByItemPath(sender string, itemPath dbus.ObjectPath) int {
-	for i,item := range items {
+	for i, item := range items {
 		if sender == item.sender && itemPath == item.itemPath {
 			return i
 		}
@@ -154,7 +154,7 @@ func findByItemPath(sender string, itemPath dbus.ObjectPath) int {
 }
 
 func findByMenuPath(sender string, menuPath dbus.ObjectPath) int {
-	for i,item := range items {
+	for i, item := range items {
 		if sender == item.sender && menuPath == item.menuPath {
 			return i
 		}
@@ -163,9 +163,9 @@ func findByMenuPath(sender string, menuPath dbus.ObjectPath) int {
 }
 
 func updateWatcherProperties() {
-	ids := make([]string,0, len(items))
-	for _,item := range items {
-		ids = append(ids, item.sender + ":" + string(item.itemPath))
+	ids := make([]string, 0, len(items))
+	for _, item := range items {
+		ids = append(ids, item.sender+":"+string(item.itemPath))
 	}
 	watcherProperties.Set(WATCHER_INTERFACE, "RegisteredStatusItems", dbus.MakeVariant(ids))
 }
@@ -195,7 +195,7 @@ func Controller() {
 		case ItemRemoved:
 			if index := findByItemPath(event.sender, event.path); index > -1 {
 				resourceCollection.Unmap(items[index].restPath())
-				items = append(items[0:index], items[index + 1:len(items)]...)
+				items = append(items[0:index], items[index+1:len(items)]...)
 				updateWatcherProperties()
 			}
 		case ItemUpdated:
@@ -377,7 +377,7 @@ func collectPixMap(m map[string]dbus.Variant, key string) string {
 			log.Println("Looking for [][]interface{} at"+key+", got:", reflect.TypeOf(variant.Value()))
 		} else {
 			res := make(lib.Icon, 0)
-			for _, arr := range (arrs) {
+			for _, arr := range arrs {
 				for len(arr) > 2 {
 					width := arr[0].(int32)
 					height := arr[1].(int32)
