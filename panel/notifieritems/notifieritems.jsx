@@ -87,7 +87,6 @@ class NotifierItems extends React.Component {
     };
 
     componentDidUpdate = () => {
-        console.log("NotifierItems did update", new Date().getMilliseconds());
         this.onUpdated();
     };
 

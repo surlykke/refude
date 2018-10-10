@@ -1,10 +1,14 @@
 {
   "name": "refudePanel",
   "main": "main.html",
-  "window" : {
-  	"id" : "org.refude.Panel",
-  	"frame": false,
+  "window": {
+    "id": "org.refude.Panel",
+    "frame": false,
     "always_on_top": true,
-	"transparent": true
+    "transparent": true
+  },
+  "dependencies": {
+    "event-stream": "^4.0.1",
+    "gulp-rename": "^1.4.0"
   }
 }

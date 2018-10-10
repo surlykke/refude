@@ -12,6 +12,7 @@ export class ItemList extends React.Component {
     constructor(props) {
         super(props)
         this.state = {items: []};
+        this.onUpdated = props.onUpdated
     }
 
     componentDidUpdate = () => {
@@ -27,6 +28,8 @@ export class ItemList extends React.Component {
                 else if (selectedBottom > listBottom) listDiv.scrollTop += (selectedBottom - listBottom + 10)
             }
         }
+
+        if (this.onUpdated) this.onUpdated()
     };
 
     componentWillReceiveProps = (props) => {

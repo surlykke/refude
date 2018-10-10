@@ -8,7 +8,7 @@ import {doGetIfNoneMatch} from "./http";
 // -------------------- NW stuff ---------------------
 export let NW = window.require('nw.gui');
 export let WIN = NW.Window.get();
-let SCREEN = NW.Screen;
+export let SCREEN = NW.Screen;
 SCREEN.Init();
 
 export let devtools = () => {

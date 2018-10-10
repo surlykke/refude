@@ -10,6 +10,8 @@ var browserify = require("browserify");
 var babelify = require("babelify");
 var source = require('vinyl-source-stream');
 var gutil = require('gulp-util');
+var es = require('event-stream');
+var rename = require('gulp-rename');
 
 gulp.task('assets', function() {
 	return gulp
@@ -18,19 +20,23 @@ gulp.task('assets', function() {
 })
 
 gulp.task('js', function() {
-	browserify({ entries: ["panel.jsx"], extensions: [".jsx", ".js"], node:true, debug: true })
-		.transform(babelify, {presets: ["react", "es2015", "stage-0"]})
-		.bundle()
-		.on('error',gutil.log)
-		.pipe(source('bundle.js'))
-    	.pipe(gulp.dest('../dist/panel'));
+    var files = ['panel.jsx', 'do/indicator.jsx'];
+    var tasks = files.map((entry) =>
+        browserify({entries: [entry], extensions: [".jsx", ".js"], node:true, debug: true })
+            .transform(babelify, {presets: ["react", "es2015", "stage-0"]})
+            .bundle()
+            .pipe(source(entry))
+            .pipe(rename({extname: '.bundle.js'}))
+            .pipe(gulp.dest('../dist/panel'))
+        );
+    return es.merge.apply(null, tasks);
 });
 
 gulp.task('default', ['assets', 'js']);
 
 gulp.task('watch',function() {
 	gulp.start('default')
-	gulp.watch(['./*', './*/*', '../common/*'],['default'])
+	gulp.watch(['./*', './do/*', '../common/*'],['default'])
 });
 
 gulp.task('run', ['default', 'watch'])

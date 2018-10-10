@@ -9,15 +9,15 @@ const http = require('http')
 import React from 'react'
 import {render} from 'react-dom'
 import {doSearch, doPost, doPatch} from '../../common/http'
-import {WIN, devtools} from "../../common/nw";
+import {NW, WIN, devtools} from "../../common/nw";
 import {ItemList} from "../../common/itemlist"
 import {T} from "../../common/translate";
+import {showSelectedWindow} from "./indicate";
 
 const searches = [
     {
         group: T("Open windows"),
         service: "wm-service",
-        query: "r.Name neq 'Refude Do' and r.Name neq 'refudeDo'",
         forWindows: true,
     },
     {
@@ -32,6 +32,7 @@ const searches = [
     }
 ];
 
+
 class Do extends React.Component {
     constructor(props) {
         //devtools();
@@ -43,7 +44,6 @@ class Do extends React.Component {
 
         this.listenForUpDown();
         this.handleBlurEvents();
-
     };
 
     componentDidUpdate = () => {
@@ -53,7 +53,6 @@ class Do extends React.Component {
     listenForUpDown = () => {
         let that = this;
         http.createServer(function (req, res) {
-            console.log("updown:", new Date().getMilliseconds());
             that.showWin();
             if (req.url === "/up") {
                 that.itemList.current.move(false);
@@ -77,7 +76,6 @@ class Do extends React.Component {
 
 
     fetchWindowsAndItems = () => {
-        console.log("enter fetchWindowsAndItems", new Date().getMilliseconds());
         doSearch("wm-service", "application/vnd.org.refude.wmwindow+json").then(resp => {
             this.windows = {}
             resp.json.forEach(win => this.windows[win._self] = win);
@@ -88,7 +86,6 @@ class Do extends React.Component {
     };
 
     fetchItems = () => {
-        console.log("enter fetchItems", new Date().getMilliseconds());
         let items = new Map();
         searches.forEach(search => items.set(search.group, [])); // For ordering
         searches.forEach(search => {
@@ -101,7 +98,6 @@ class Do extends React.Component {
                 });
                 items.set(search.group, resp.json);
                 this.setState({items: items});
-                console.log("fetchItems done", new Date().getMilliseconds());
             }).catch(e => {
                 console.log(e);
             });
@@ -129,29 +125,23 @@ class Do extends React.Component {
 
 
     showWin = () => {
-        console.log("showWin:", new Date().getMilliseconds());
         if (!this.state["shown"]) {
             this.fetchWindowsAndItems();
             this.setState({"shown": true});
         }
         WIN.focus();
-        console.log("leave showWin:", new Date().getMilliseconds());
     };
 
     select = item => {
-        let id;
-
+        let window;
         if (item && item._relates && item._relates["application/vnd.org.refude.wmwindow+json"]) {
-            let window = this.windows["/wm-service" + item._relates["application/vnd.org.refude.wmwindow+json"][0]];
-            if (window) {
-                id = window.Id
-            }
+            window = this.windows["/wm-service" + item._relates["application/vnd.org.refude.wmwindow+json"][0]];
         }
 
-        if (id) {
-            doPatch({_self: "/wm-service/highlight"}, {WindowId: id});
+        if (window) {
+            showSelectedWindow(window);
         } else {
-            doPatch({_self: "/wm-service/highlight"}, {WindowId: 0});
+            showSelectedWindow(null);
         }
     };
 
@@ -162,28 +152,34 @@ class Do extends React.Component {
     };
 
     onDismiss = () => {
-        this.select();
-        this.itemList.current.clear();
-        this.needsInitialize = true;
-        this.setState({"shown": undefined});
+        if (this.state.shown) {
+            this.select(false);
+            this.itemList.current.clear();
+            this.needsInitialize = true;
+            this.setState({"shown": undefined});
+        }
     };
 
     render = () => {
         let style = {
-            display: this.state["shown"] ? "flex" : "none",
             flexFlow: "column",
-            height: "100%",
+            maxHeight: "600px",
             width: "300px"
         };
 
-        return <div style={style}>
-            <ItemList key="itemlist"
-                      items={this.state.items}
-                      select={this.select}
-                      execute={this.execute}
-                      onDismiss={this.onDismiss}
-                      ref={this.itemList}/>
-        </div>
+
+        if (this.state.shown)
+            return <div style={style}>
+                <ItemList key="itemlist"
+                          items={this.state.items}
+                          select={this.select}
+                          execute={this.execute}
+                          onDismiss={this.onDismiss}
+                          onUpdated={this.onUpdated}
+                          ref={this.itemList}/>
+            </div>
+        else
+            return null
     };
 }
 
