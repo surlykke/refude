@@ -1,4 +1,4 @@
-import {NW, SCREEN} from "../../common/nw";
+import {NW, WIN, SCREEN} from "../../common/nw";
 
 let indicatorWindows;
 
@@ -13,22 +13,26 @@ export let showSelectedWindow = (win) => {
                     {"frame": false, "always_on_top": true, "transparent": true, "focus": false},
                     iWin => {
                         console.log("screen:", screen);
-                        let w = Math.round(screen.bounds.width/3);
-                        let h = Math.round(screen.bounds.height/3);
-                        console.log("moveTo:", screen.bounds.x + w, screen.bounds.y + h);
-                        iWin.moveTo(screen.bounds.x + w, screen.bounds.y + h);
-                        console.log("resizeTo:", w, h);
+                        iWin.moveTo(screen.bounds.x, screen.bounds.y);
+                        let w = Math.round(screen.bounds.width);
+                        let h = Math.round(screen.bounds.height);
                         iWin.resizeTo(w, h);
                         indicatorWindows.push(iWin);
+
                         let scaledBounds = [
                             Math.round(screen.scaleFactor*screen.bounds.x),
                             Math.round(screen.scaleFactor*screen.bounds.y),
                             Math.round(screen.scaleFactor*screen.bounds.width),
                             Math.round(screen.scaleFactor*screen.bounds.height)
                         ];
+
                         iWin.on('loaded', () => {
                             iWin.window.postMessage({screen: scaledBounds}, '*');
                             iWin.window.postMessage(highlightMsg, '*');
+                            WIN.focus()
+                        });
+                        iWin.window.addEventListener('focus', () => {
+                            WIN.focus()
                         });
                     });
             });
