@@ -7,6 +7,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"github.com/BurntSushi/xgb"
 	"github.com/BurntSushi/xgb/composite"
@@ -192,11 +193,9 @@ func buildWindowAndAction(wId xproto.Window) (*Window, *lib.Action, error) {
 func buildWindow(wId xproto.Window) (*Window, error) {
 	if rect, err := xwindow.New(xutil, wId).DecorGeometry(); err != nil {
 		return nil, err;
-	} else if name, err := ewmh.WmNameGet(xutil, wId); err != nil {
+	} else if name, err := getWindowName(wId); err != nil {
 		return nil, err;
 	} else if states, err := ewmh.WmStateGet(xutil, wId); err != nil {
-		return nil, err;
-	} else if iconArr, err := xprop.PropValNums(xprop.GetProperty(xutil, wId, "_NET_WM_ICON")); err != nil {
 		return nil, err;
 	} else {
 		var window Window
@@ -209,11 +208,39 @@ func buildWindow(wId xproto.Window) (*Window, error) {
 		window.Geometry.H = uint(rect.Height())
 		window.Geometry.W = uint(rect.Width())
 		window.States = states
-		argbIcon := extractARGBIcon(iconArr)
-		window.IconName = lib.SaveAsPngToSessionIconDir(argbIcon)
+		window.IconName = getIconName(wId)
 		return &window, nil
 	}
 }
+
+func getWindowName(wId xproto.Window) (string, error) {
+	if name, err := xprop.PropValStr(xprop.GetProperty(xutil, wId, "_NET_WM_VISIBLE_NAME")); err == nil {
+		return name, nil
+	} else if name, err = xprop.PropValStr(xprop.GetProperty(xutil, wId, "_NET_WM_NAME")); err == nil {
+		return name, nil;
+	}  else if name, err = xprop.PropValStr(xprop.GetProperty(xutil, wId, "WM_NAME")); err == nil {
+		return name, nil;
+	}  else {
+		return "", errors.New("Neither '_NET_WM_TITLE_NAME', '_NET_WM_NAME' nor 'WM_NAME' set")
+	}
+}
+
+func getIconName(wId xproto.Window) string {
+	/**
+	  This doesn't work. openbox seems to put window titles in _NET_WM_VISIBLE_ICON_NAME and _NET_WM_ICON_NAME ??
+	if name, err := xprop.PropValStr(xprop.GetProperty(xutil, wId, "_NET_WM_VISIBLE_ICON_NAME")); err == nil {
+		return name
+	} else if name, err := xprop.PropValStr(xprop.GetProperty(xutil, wId, "_NET_WM_ICON_NAME")); err == nil {
+		return name
+	} else */
+	if iconArr, err := xprop.PropValNums(xprop.GetProperty(xutil, wId, "_NET_WM_ICON")); err == nil {
+		name := lib.SaveAsPngToSessionIconDir(extractARGBIcon(iconArr))
+		return name
+	} else {
+		return ""
+	}
+}
+
 
 func getXConnection() (*xgbutil.XUtil, error) {
 	var err error
