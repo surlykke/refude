@@ -76,6 +76,7 @@ export let doSearch = (service, mimetype, query) => {
         path: path
     };
 
+    console.log("Searching with", options)
     return doGet(options);
 };
 

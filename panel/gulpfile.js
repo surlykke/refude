@@ -36,7 +36,7 @@ gulp.task('default', ['assets', 'js']);
 
 gulp.task('watch',function() {
 	gulp.start('default')
-	gulp.watch(['./*', './do/*', '../common/*'],['default'])
+	gulp.watch(['./**/*', '../common/*'],['default'])
 });
 
 gulp.task('run', ['default', 'watch'])

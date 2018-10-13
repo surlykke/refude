@@ -31,7 +31,7 @@ class Indicator extends React.Component {
                 fill: "blue",
                 fillOpacity: "0.1",
                 stroke: "black",
-                strokeWidth: strokeWidth,
+                strokeWidth: 2*strokeWidth,
                 strokeOpacity: "0.9"
             };
             return <div>

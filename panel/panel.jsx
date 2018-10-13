@@ -18,7 +18,7 @@ import {Clock} from './clock/clock'
 import {Battery} from './battery/battery'
 import {NotifierItems} from './notifieritems/notifieritems'
 import {HideButton} from './hidebutton/hidebutton'
-import {Notifications} from './notifications/notifications'
+import {Notificationalert} from "./notificationalert/notificationalert";
 import {DragField} from './dragfield/dragfield'
 import {Do} from './do/do'
 
@@ -71,10 +71,10 @@ class Panel extends React.Component {
             }}>
                 <Clock style={pluginStyle}/>
                 <Battery style={pluginStyle} onUpdated={this.adjustSize}/>
+                <Notificationalert style={pluginStyle} onUpdated={this.adjustSize}/>
                 <NotifierItems style={pluginStyle} onUpdated={this.adjustSize}/>
                 <HideButton style={pluginStyle}/>
                 <DragField style={pluginStyle}/>
-                <Notifications style={pluginStyle} onUpdated={this.adjustSize}/>
                 <Do onUpdated={this.adjustSize}/>
             </div>
         </div>

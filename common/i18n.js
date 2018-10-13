@@ -15,7 +15,8 @@ let strings = [
     "Cancel",
     "Open &nbsp;<b>%0</b>&nbsp;with:",
     "Applications that handle %0",
-    "Other applications"
+    "Other applications",
+    "No notifications"
 ];
 
 
@@ -34,7 +35,8 @@ translations["da"] = {
         (args) => `Åbn <b>${args[0]}</b> med:`,
     "Applications that handle %0":
         (args) => `Applikationer som håndterer ${args[0]}`,
-    "Other applications": "Andre applikationer"
+    "Other applications": "Andre applikationer",
+    "No notifications": "Ingen notifikationer"
 };
 
 

@@ -7,7 +7,7 @@ rm -rf ${thisdir}/dist/*
 REFUDEDIR=${PREFIX}/share/refude
 mkdir -p ${REFUDEDIR}
 
-for appdir in panel appchooser; do
+for appdir in panel appchooser notifications; do
 	echo "building $appdir"
 	cd $thisdir/$appdir
 	gulp || exit 1
@@ -15,8 +15,10 @@ for appdir in panel appchooser; do
 
 done
 
-for app in panel/refudePanel panel/refudeDo appchooser/refudeAppChooser; do
+for app in panel/refudePanel panel/refudeDo appchooser/refudeAppChooser notifications/refudeNotifications; do
 	ln -sf ${PREFIX}/share/refude/$app ${PREFIX}/bin
 done
 
-ln -sf ${PREFIX}/share/refude/panel/refudePanel.desktop ${PREFIX}/share/applications
+for desktopfile in panel/refudePanel.desktop notifications/refudeNotifications.desktop; do
+    ln -sf ${PREFIX}/share/refude/$desktopfile ${PREFIX}/share/applications
+done

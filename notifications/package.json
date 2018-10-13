@@ -1,0 +1,8 @@
+{
+  "name": "Refude Notifications",
+  "main": "main.html",
+  "version": "0.0.1",
+  "window": {
+    "id": "org.refude.notifications"
+  }
+}

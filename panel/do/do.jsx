@@ -16,6 +16,10 @@ import {showSelectedWindow} from "./indicate";
 
 const searches = [
     {
+        group: T("Notifications"),
+        service: "notifications-service",
+    },
+    {
         group: T("Open windows"),
         service: "wm-service",
         forWindows: true,

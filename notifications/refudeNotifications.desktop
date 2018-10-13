@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Name=Refude Notifications
+Name[da]=Refude Notifikationer
+Comment=Show actual desktop notifications
+Comment[da]=Vis aktuelle skrivebords notifikationer
+Exec=refudeNotifications
+Icon=
+Terminal=false
+Type=Application

@@ -41,8 +41,7 @@ class Battery extends React.Component {
                     data: {
                         style: {
                             color: (charging || resp.json.Percentage >= 20 ? 'black' : 'red'),
-                            fontWeight: charging ? 'bold' : 'normal',
-                            marginRight: '0.4em'
+                            fontWeight: charging ? 'bold' : 'normal'
                         },
                         percentage: Math.floor(resp.json.Percentage + 0.5),
                     }
