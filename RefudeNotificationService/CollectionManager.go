@@ -22,16 +22,14 @@ func Run() {
 	for {
 		select {
 		case notification := <-updates:
-			notifications[notification.Id] = notification
-			var actions = notification.getActions()
 			resourceCollection.Unmap(lib.Standardizef("/notifications/%d", notification.Id))
 			resourceCollection.RemoveAll(lib.Standardizef("/actions/%d", notification.Id))
-			for _, action := range actions {
+			notifications[notification.Id] = notification
+			for _,action := range notification.buildActions() {
 				lib.Relate(&action.AbstractResource, &notification.AbstractResource)
 				resourceCollection.Map(action)
 			}
 			resourceCollection.Map(notification)
-
 		case rem := <-removals:
 			fmt.Println("Got removal..")
 			if notification, ok := notifications[rem.id]; ok {
@@ -56,4 +54,3 @@ func (n *Notification) DELETE(w http.ResponseWriter, r *http.Request) {
 	removals <- removal{n.Id, 0, Dismissed}
 	w.WriteHeader(http.StatusAccepted)
 }
-

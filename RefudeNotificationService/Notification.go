@@ -7,9 +7,8 @@
 package main
 
 import (
-	"time"
-	"fmt"
 	"github.com/surlykke/RefudeServices/lib"
+	"time"
 )
 
 const NotificationMediaType lib.MediaType = "application/vnd.org.refude.desktopnotification+json"
@@ -30,33 +29,33 @@ func (n *Notification) removeAfter(duration time.Duration) {
 	time.AfterFunc(duration, func() { removals <- removal{n.Id, n.internalId, Expired} })
 }
 
-func (n *Notification) getActions() []*lib.Action {
-	var actions = make([]*lib.Action, 0, len(n.Actions))
+/**
+ * If the notification has a default action we build an action for that
+ * We always build a dissmiss action
+ */
+func (n *Notification) buildActions() []*lib.Action {
+	var res = make([]*lib.Action, 0, 2)
 
-	actions = append(actions,
-		lib.MakeAction(
-			lib.Standardizef("/actions/%d/a/dismiss", n.Id),
-			"Dismiss",
+	if _, ok := n.Actions["default"]; ok {
+		res = append(res, lib.MakeAction(
+			lib.Standardizef("/actions/%d", n.Id),
+			n.Actions["default"],
 			n.Subject,
-			"",
+			"", // FIXME
 			func() {
-				fmt.Println("Sending to removals..")
-				removals <- removal{n.Id, 0, Dismissed}
-				}))
-
-	for actionId, actionName := range n.Actions {
-		if actionId == "" {
-			continue
-		}
-		var actionIdCopy = actionId
-		actions = append(actions, lib.MakeAction(
-			lib.Standardizef("/actions/%d/b/%s", n.Id, actionId),
-			actionName,
-			n.Subject,
-			"",
-			func() { conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".ActionInvoked", n.Id, actionIdCopy) },
+				conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".ActionInvoked", n.Id, "default")
+			},
 		))
 	}
+	res = append(res, lib.MakeAction(
+		lib.Standardizef("/actions/%d", n.Id),
+		n.Subject,
+		"Dismiss",  // TODO i18n
+		"", // TODO
+		func() {
+			removals <- removal{n.Id, 0, Dismissed}
+		},
+	))
 
-	return actions
+	return res
 }
