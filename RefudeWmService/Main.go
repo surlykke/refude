@@ -8,6 +8,10 @@ package main
 
 import "github.com/surlykke/RefudeServices/lib"
 
+var resourceCollection = lib.MakeJsonResourceMap()
+
 func main() {
-	lib.Serve("org.refude.wm-service", &Collection{})
+	var wm WindowWatcher
+	go wm.Run()
+	lib.Serve("org.refude.wm-service", resourceCollection)
 }

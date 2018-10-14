@@ -9,6 +9,7 @@ package main
 import (
 	"github.com/BurntSushi/xgb/xproto"
 	"github.com/surlykke/RefudeServices/lib"
+
 )
 
 const WindowMediaType lib.MediaType = "application/vnd.org.refude.wmwindow+json"
@@ -22,6 +23,7 @@ type Rect struct {
 type Window struct {
 	lib.AbstractResource
 	Id            xproto.Window
+	parentId      xproto.Window
 	Geometry      Rect
 	Name          string
 	IconName      string `json:",omitempty"`

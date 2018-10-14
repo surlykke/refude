@@ -8,9 +8,7 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"github.com/BurntSushi/xgb"
-	"github.com/BurntSushi/xgb/composite"
 	"github.com/BurntSushi/xgb/randr"
 	"github.com/BurntSushi/xgb/xproto"
 	"github.com/BurntSushi/xgbutil"
@@ -20,187 +18,170 @@ import (
 	"github.com/surlykke/RefudeServices/lib"
 	"log"
 	"sort"
-	"strconv"
-	"strings"
-	"sync"
 	"time"
 )
 
 const NET_WM_STATE_ABOVE = "_NET_WM_STATE_ABOVE"
 
-var xutil *xgbutil.XUtil
-var xgbConn *xgb.Conn
-var setup *xproto.SetupInfo
-var defaultScreen *xproto.ScreenInfo
-var display *Display
-var screensLock sync.Mutex
+type WindowWatcher struct {
+	xutil         *xgbutil.XUtil
+	xgbConn       *xgb.Conn
+	defaultScreen *xproto.ScreenInfo
 
-
-type Collection struct{}
-
-func init() {
-	var err error
-	if xutil, err = getXConnection(); err != nil {
-		log.Fatal("No X connection", err)
-	} else if xgbConn, err = getXgbConnection(); err != nil {
-		log.Fatal("No xgb conn", err)
-	} else if err := randr.Init(xgbConn); err != nil {
-		panic(err)
-	} else if err = composite.Init(xgbConn); err != nil {
-		panic(err)
-	}
-
-	defaultScreen = xproto.Setup(xgbConn).DefaultScreen(xgbConn)
-
-	go maintainDisplay()
+	windowList []*Window
 }
 
-func maintainDisplay() {
+func (watcher *WindowWatcher) ConnectToX11() {
+	var err error
+	if watcher.xutil, err = getXConnection(); err != nil {
+		log.Fatal("No X connection", err)
+	} else if watcher.xgbConn, err = getXgbConnection(); err != nil {
+		log.Fatal("No xgb conn", err)
+	} else if err := randr.Init(watcher.xgbConn); err != nil {
+		panic(err)
+	}
+	watcher.defaultScreen = xproto.Setup(watcher.xgbConn).DefaultScreen(watcher.xgbConn)
+}
+
+func (w *WindowWatcher) Run() {
+	w.ConnectToX11()
+
+	var xEvents = make(chan xgb.Event)
+	var ticks = make(chan struct{})
+
+	go timer(ticks)
+	go monitorEvents(w.xutil, xEvents)
+	go w.watchDisplay()
+
+	ticks <- struct{}{}
+	var pending = true
+
+	for {
+		select {
+		case <-ticks:
+			w.GetAllWindowsAndActions()
+			pending = false
+		case e := <-xEvents:
+			if ! pending {
+				switch e.(type) {
+				case
+					xproto.CreateNotifyEvent,
+					xproto.DestroyNotifyEvent,
+					xproto.MapNotifyEvent,
+					xproto.UnmapNotifyEvent,
+					xproto.ConfigureNotifyEvent:
+					ticks <- struct{}{}
+					pending = true
+				}
+			}
+		}
+	}
+}
+
+func timer(ch chan struct{}) {
+	for {
+		<-ch
+		time.Sleep(time.Millisecond * 100)
+		ch <- struct{}{}
+	}
+}
+
+func (w *WindowWatcher) watchDisplay() {
 
 	var evtMask uint16 = randr.NotifyMaskScreenChange | randr.NotifyMaskCrtcChange | randr.NotifyMaskOutputChange | randr.NotifyMaskOutputProperty
-	if err := randr.SelectInputChecked(xgbConn, defaultScreen.Root, evtMask).Check(); err != nil {
+	if err := randr.SelectInputChecked(w.xgbConn, w.defaultScreen.Root, evtMask).Check(); err != nil {
 		panic(err)
 	}
 
 	for {
-		resources, err := randr.GetScreenResources(xgbConn, defaultScreen.Root).Reply();
+		resources, err := randr.GetScreenResources(w.xgbConn, w.defaultScreen.Root).Reply();
 		if err != nil {
 			panic(err)
 		}
-		var newDisplay Display
-		newDisplay.Self = "/display"
-		newDisplay.Mt = DisplayMediaType
+		var display Display
+		display.Self = "/display"
+		display.Mt = DisplayMediaType
 
-		var rg = xwindow.RootGeometry(xutil)
-		newDisplay.RootGeometry.X = rg.X()
-		newDisplay.RootGeometry.Y = rg.Y()
-		newDisplay.RootGeometry.W = uint(rg.Width())
-		newDisplay.RootGeometry.H = uint(rg.Height())
+		var rg = xwindow.RootGeometry(w.xutil)
+		display.RootGeometry.X = rg.X()
+		display.RootGeometry.Y = rg.Y()
+		display.RootGeometry.W = uint(rg.Width())
+		display.RootGeometry.H = uint(rg.Height())
 
 		for _, crtc := range resources.Crtcs {
-			if info, err := randr.GetCrtcInfo(xgbConn, crtc, 0).Reply(); err != nil {
+			if info, err := randr.GetCrtcInfo(w.xgbConn, crtc, 0).Reply(); err != nil {
 				log.Fatal(err)
 			} else if info.NumOutputs > 0 {
 				var screen = Screen{X: int(info.X), Y: int(info.Y), W: uint(info.Width), H: uint(info.Height)}
-				newDisplay.Screens = append(newDisplay.Screens, screen)
+				display.Screens = append(display.Screens, screen)
 			}
 		}
 
-		sort.Sort(newDisplay.Screens)
+		sort.Sort(display.Screens)
 
-		screensLock.Lock()
-		display = &newDisplay
-		screensLock.Unlock()
+		resourceCollection.Map(&display)
 
-		if _, err := xgbConn.WaitForEvent(); err != nil {
+		if _, err := w.xgbConn.WaitForEvent(); err != nil {
 			panic(err)
 		}
 	}
-
 }
 
-func getDisplay() *Display {
-	screensLock.Lock();
-	defer screensLock.Unlock()
-	return display
+func monitorEvents(xutil *xgbutil.XUtil, sink chan xgb.Event) {
+	xwindow.New(xutil, xutil.RootWin()).Listen(xproto.EventMaskSubstructureNotify)
+	for {
+		if evt, err := xutil.Conn().WaitForEvent(); err == nil {
+			sink <- evt
+		}
+	}
 }
 
-func (c *Collection) GetResource(path lib.StandardizedPath) *lib.JsonResource {
-	var res *lib.JsonResource = nil
-	if path == "/links" {
-		res = lib.MakeJsonResource(c.GetLinks())
-	} else if path == "/display" {
-		if d := getDisplay(); d != nil {
-			res = lib.MakeJsonResource(d)
-		}
-	} else if strings.HasPrefix(string(path), "/windows/") {
-		if u, err := strconv.ParseUint(string(path[9:]), 10, 32); err == nil {
-			if window, _, err := buildWindowAndAction(xproto.Window(u)); err == nil && window != nil {
-				res = lib.MakeJsonResource(window)
-			}
-		}
-	} else if strings.HasPrefix(string(path), "/actions/") {
-		if u, err := strconv.ParseUint(string(path[9:]), 10, 32); err == nil {
-			if _, action, err := buildWindowAndAction(xproto.Window(u)); err == nil && action != nil {
-				res = lib.MakeJsonResource(action)
-			}
-		}
-	}
+/**
+	Called, basically, whenever something happens. To paraphrase Ken Thomson: When you have no clue, use brute force.
 
-	if res != nil {
-		res.EnsureReady()
-	}
+ */
+func (w *WindowWatcher) GetAllWindowsAndActions() {
+	var newWindowList = make([]*Window, 0, 30)
+	var resourcesToMap = make([]lib.Resource, 0, 60)
+	if tmp, err := ewmh.ClientListStackingGet(w.xutil); err == nil {
 
-	return res
-}
-
-func (c *Collection) GetAll() []*lib.JsonResource {
-	var allResources = []*lib.JsonResource{}
-	if d := getDisplay(); d != nil {
-		allResources = append(allResources, lib.MakeJsonResource(d))
-	}
-	if tmp, err := ewmh.ClientListStackingGet(xutil); err == nil {
 		for _, wId := range tmp {
-			if window, action, err := buildWindowAndAction(wId); err == nil {
-				if window != nil {
-					allResources = append(allResources, lib.MakeJsonResource(window))
-				}
-				if action != nil {
-					allResources = append(allResources, lib.MakeJsonResource(action))
+			if window, err := buildWindow(w.xutil, w.xgbConn, wId); err == nil {
+				newWindowList = append(newWindowList, window)
+				resourcesToMap = append(resourcesToMap, window)
+				if (normal(window)) {
+					var action = lib.MakeAction(
+						lib.Standardizef("/window/%d/action", window.Id),
+						window.Name,
+						"Switch to this window",
+						window.IconName,
+						func() {
+							ewmh.ActiveWindowReq(w.xutil, xproto.Window(window.Id))
+						})
+					lib.Relate(&window.AbstractResource, &action.AbstractResource)
+					resourcesToMap = append(resourcesToMap, action)
 				}
 			}
+
 		}
+
 	}
 
-	for _, jsonRes := range allResources {
-		jsonRes.EnsureReady()
-	}
-
-	return allResources
+	w.windowList = newWindowList
+	resourceCollection.RemoveAndMap([]lib.StandardizedPath{"/window"}, resourcesToMap)
 }
 
-func (c *Collection) GetLinks() lib.Links {
-	var links = make(lib.Links)
-	links[lib.LinksMediaType] = []lib.StandardizedPath{"/links"}
-	links[DisplayMediaType] = []lib.StandardizedPath{"/display"}    // and here
-	if tmp, err := ewmh.ClientListStackingGet(xutil); err == nil && len(tmp) > 0 {
-		for _, wId := range tmp {
-			links[WindowMediaType] = append(links[WindowMediaType], lib.StandardizedPath(fmt.Sprintf("/windows/%d", wId)));
-			if normalById(wId) {
-				links[lib.ActionMediaType] = append(links[lib.ActionMediaType], lib.StandardizedPath(fmt.Sprintf("/actions/%d", wId)))
-			}
-		}
-	}
-
-	return links
-}
-
-func buildWindowAndAction(wId xproto.Window) (*Window, *lib.Action, error) {
-	if window, err := buildWindow(wId); err != nil {
-		return nil, nil, err
-	} else if normal(window) {
-		var action = lib.MakeAction(lib.Standardizef("/actions/%d", window.Id), window.Name, "Switch to this window", window.IconName, func() {
-			ewmh.ActiveWindowReq(xutil, xproto.Window(window.Id))
-		});
-		lib.Relate(&action.AbstractResource, &window.AbstractResource)
-		return window, action, nil
-	} else {
-		return window, nil, nil
-	}
-
-}
-
-func buildWindow(wId xproto.Window) (*Window, error) {
+func buildWindow(xutil *xgbutil.XUtil, xgbConn *xgb.Conn, wId xproto.Window) (*Window, error) {
 	if rect, err := xwindow.New(xutil, wId).DecorGeometry(); err != nil {
 		return nil, err;
-	} else if name, err := getWindowName(wId); err != nil {
+	} else if name, err := getWindowName(xutil, wId); err != nil {
 		return nil, err;
 	} else if states, err := ewmh.WmStateGet(xutil, wId); err != nil {
 		return nil, err;
 	} else {
 		var window Window
 		window.Id = wId
-		window.Self = lib.Standardizef("/windows/%d", wId)
+		window.Self = lib.Standardizef("/window/%d", wId)
 		window.Mt = WindowMediaType
 		window.Name = name
 		window.Geometry.X = rect.X()
@@ -208,31 +189,40 @@ func buildWindow(wId xproto.Window) (*Window, error) {
 		window.Geometry.H = uint(rect.Height())
 		window.Geometry.W = uint(rect.Width())
 		window.States = states
-		window.IconName = getIconName(wId)
+		window.IconName = getIconName(xutil, wId)
+
+		if tree, err := xproto.QueryTree(xgbConn, wId).Reply(); err == nil {
+			window.parentId = tree.Parent
+		}
+
 		return &window, nil
 	}
 }
 
-func getWindowName(wId xproto.Window) (string, error) {
+func getWindowName(xutil *xgbutil.XUtil, wId xproto.Window) (string, error) {
 	if name, err := xprop.PropValStr(xprop.GetProperty(xutil, wId, "_NET_WM_VISIBLE_NAME")); err == nil {
 		return name, nil
 	} else if name, err = xprop.PropValStr(xprop.GetProperty(xutil, wId, "_NET_WM_NAME")); err == nil {
 		return name, nil;
-	}  else if name, err = xprop.PropValStr(xprop.GetProperty(xutil, wId, "WM_NAME")); err == nil {
+	} else if name, err = xprop.PropValStr(xprop.GetProperty(xutil, wId, "WM_NAME")); err == nil {
 		return name, nil;
-	}  else {
+	} else {
 		return "", errors.New("Neither '_NET_WM_TITLE_NAME', '_NET_WM_NAME' nor 'WM_NAME' set")
 	}
 }
 
-func getIconName(wId xproto.Window) string {
+func getIconName(xutil *xgbutil.XUtil, wId xproto.Window) string {
 	/**
 	  This doesn't work. openbox seems to put window titles in _NET_WM_VISIBLE_ICON_NAME and _NET_WM_ICON_NAME ??
+
+
 	if name, err := xprop.PropValStr(xprop.GetProperty(xutil, wId, "_NET_WM_VISIBLE_ICON_NAME")); err == nil {
 		return name
 	} else if name, err := xprop.PropValStr(xprop.GetProperty(xutil, wId, "_NET_WM_ICON_NAME")); err == nil {
 		return name
-	} else */
+	} else
+	*/
+
 	if iconArr, err := xprop.PropValNums(xprop.GetProperty(xutil, wId, "_NET_WM_ICON")); err == nil {
 		name := lib.SaveAsPngToSessionIconDir(extractARGBIcon(iconArr))
 		return name
@@ -241,28 +231,8 @@ func getIconName(wId xproto.Window) string {
 	}
 }
 
-
-func getXConnection() (*xgbutil.XUtil, error) {
-	var err error
-	for i := 0; i < 5; i++ {
-		if x, err := xgbutil.NewConn(); err == nil {
-			return x, nil
-		}
-		time.Sleep(time.Second)
-	}
-	return nil, err
-}
-
-func normal(w *Window) bool {
-	return !lib.Contains(w.States, "_NET_WM_STATE_ABOVE")
-}
-
-func normalById(wId xproto.Window) bool {
-	if states, err := ewmh.WmStateGet(xutil, wId); err == nil {
-		return !lib.Contains(states, NET_WM_STATE_ABOVE)
-	} else {
-		return false
-	}
+func normal(window *Window) bool {
+	return !lib.Contains(window.States, "_NET_WM_STATE_ABOVE")
 }
 
 /**
@@ -293,6 +263,17 @@ func extractARGBIcon(uints []uint) lib.Icon {
 	}
 
 	return res
+}
+
+func getXConnection() (*xgbutil.XUtil, error) {
+	var err error
+	for i := 0; i < 5; i++ {
+		if x, err := xgbutil.NewConn(); err == nil {
+			return x, nil
+		}
+		time.Sleep(time.Second)
+	}
+	return nil, err
 }
 
 func getXgbConnection() (*xgb.Conn, error) {
