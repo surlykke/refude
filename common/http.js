@@ -90,7 +90,7 @@ export let doSearch = (service, mimetype, query) => {
 export let doPost = (resource, params) => {
     let options = opts(resource, "POST", params);
     return new Promise((resolve, reject) => {
-        let req = http.request(opts(resource, "POST", params), resp => {
+        let req = http.request(options, resp => {
             let data = '';
             resp.setEncoding('utf8');
             resp.on('data', chunk => {
@@ -171,7 +171,7 @@ let parseAndPostprocess = (service, data) => {
 }
 
 let opts = (res, method, params) => {
-    return {host: 'localhost', port: 7938, path: res._self + queryString(params), method: method}
+    return {host: 'localhost', port: 7938, path: encodeURI(res._self) + queryString(params), method: method}
 };
 
 let queryString = (params) => {
