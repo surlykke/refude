@@ -5,7 +5,6 @@
 // Please refer to the GPL2 file for a copy of the license.
 //
 import React from 'react'
-import {NotificationsActive, NotificationsNone} from '@material-ui/icons/Notifications'
 import {render} from 'react-dom'
 import {doGetIfNoneMatch, doPost, doDelete} from '../../common/http'
 import {monitorResources} from "../common/monitor";

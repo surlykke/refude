@@ -23,7 +23,7 @@ gulp.task('js', function() {
     var files = ['panel.jsx', 'do/indicator.jsx'];
     var tasks = files.map((entry) =>
         browserify({entries: [entry], extensions: [".jsx", ".js"], node:true, debug: true })
-            .transform(babelify, {presets: ["react", "es2015", "stage-0"]})
+            .transform(babelify, {presets: ["@babel/react", "@babel/env"], plugins:["@babel/plugin-proposal-class-properties"]})
             .bundle()
             .pipe(source(entry))
             .pipe(rename({extname: '.bundle.js'}))

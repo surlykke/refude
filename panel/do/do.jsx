@@ -137,7 +137,7 @@ class Do extends React.Component {
     };
 
     select = item => {
-        let window;
+        /*let window;
         if (item && item._relates && item._relates["application/vnd.org.refude.wmwindow+json"]) {
             window = this.windows["/wm-service" + item._relates["application/vnd.org.refude.wmwindow+json"][0]];
         }
@@ -146,7 +146,7 @@ class Do extends React.Component {
             showSelectedWindow(window);
         } else {
             showSelectedWindow(null);
-        }
+        }*/
     };
 
     execute = (item) => {
