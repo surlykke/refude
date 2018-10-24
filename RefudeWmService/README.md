@@ -7,8 +7,6 @@ It exposes information about the display and open windows (a small subset of EWM
 
 - [`/ping`](http://github.com/surlykke/RefudeServices#ping)
 - [`/doc`](http://github.com/surlykke/RefudeServices#doc) This document
-- [`/notify`](http://github.com/surlykke/RefudeServices#notify)
-- [`/display`](#display): Information about the display 
 - [`/windows/<id>`](): Information about open windows
 - [`/icons/<id>`](#icons): Window icons
 

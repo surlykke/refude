@@ -44,3 +44,11 @@ func notEmptyOr(primary string, secondary string) string {
 		return secondary
 	}
 }
+
+func DirOrFileExists(dir string) bool {
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		return false
+	} else {
+		return true
+	}
+}

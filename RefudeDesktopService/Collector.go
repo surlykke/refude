@@ -33,9 +33,15 @@ func CollectAndWatch(collected chan collection) {
 	}
 	for _, dataDir := range append(lib.DataDirs, lib.DataHome) {
 		appDir := dataDir + "/applications"
-		fmt.Println("Watching: " + appDir)
-		if _, err := unix.InotifyAddWatch(fd, appDir, unix.IN_CREATE|unix.IN_MODIFY|unix.IN_DELETE); err != nil {
-			panic(err)
+		if _, err := os.Stat(appDir); os.IsNotExist(err) {
+			// path/to/whatever does not exist
+		}
+
+		if lib.DirOrFileExists(appDir) {
+			fmt.Println("Watching: " + appDir)
+			if _, err := unix.InotifyAddWatch(fd, appDir, unix.IN_CREATE|unix.IN_MODIFY|unix.IN_DELETE); err != nil {
+				fmt.Println("Could not watch:", appDir, ":", err)
+			}
 		}
 	}
 
@@ -105,33 +111,34 @@ func (c *collection) removeApp(app *DesktopApplication) {
 }
 
 func (c *collection) collectApplications(appdir string) {
-	filepath.Walk(appdir, func(path string, info os.FileInfo, err error) error {
-		if !(info.IsDir() || !strings.HasSuffix(path, ".desktop")) {
-			app, err := readDesktopFile(path)
-			if err == nil {
-				app.Id = strings.Replace(path[len(appdir)+1:], "/", "-", -1)
-				app.Self = lib.Standardizef("/applications/%s", app.Id)
-				if oldApp, ok := c.applications[app.Id]; ok {
-					c.removeApp(oldApp)
-				}
-				if !(app.Hidden ||
-					(len(app.OnlyShowIn) > 0 && !lib.ElementsInCommon(lib.CurrentDesktop, app.OnlyShowIn)) ||
-					(len(app.NotShowIn) > 0 && lib.ElementsInCommon(lib.CurrentDesktop, app.NotShowIn))) {
-					delete(c.applications, app.Id)
-					c.applications[app.Id] = app
-					for _, mimetypeId := range app.Mimetypes {
-						if mimetype := c.getOrAdd(mimetypeId); mimetype != nil {
-							mimetype.AssociatedApplications = lib.AppendIfNotThere(mimetype.AssociatedApplications, app.Id)
+	if lib.DirOrFileExists(appdir) {
+		filepath.Walk(appdir, func(path string, info os.FileInfo, err error) error {
+			if !(info.IsDir() || !strings.HasSuffix(path, ".desktop")) {
+				app, err := readDesktopFile(path)
+				if err == nil {
+					app.Id = strings.Replace(path[len(appdir)+1:], "/", "-", -1)
+					app.Self = lib.Standardizef("/applications/%s", app.Id)
+					if oldApp, ok := c.applications[app.Id]; ok {
+						c.removeApp(oldApp)
+					}
+					if !(app.Hidden ||
+						(len(app.OnlyShowIn) > 0 && !lib.ElementsInCommon(lib.CurrentDesktop, app.OnlyShowIn)) ||
+						(len(app.NotShowIn) > 0 && lib.ElementsInCommon(lib.CurrentDesktop, app.NotShowIn))) {
+						delete(c.applications, app.Id)
+						c.applications[app.Id] = app
+						for _, mimetypeId := range app.Mimetypes {
+							if mimetype := c.getOrAdd(mimetypeId); mimetype != nil {
+								mimetype.AssociatedApplications = lib.AppendIfNotThere(mimetype.AssociatedApplications, app.Id)
+							}
 						}
 					}
+				} else {
+					log.Println("Error processing ", path, ":\n\t", err)
 				}
-			} else {
-				log.Println("Error processing ", path, ":\n\t", err)
 			}
-		}
-		return nil
-	})
-
+			return nil
+		})
+	}
 }
 
 func (c *collection) getOrAdd(mimetypeId string) *Mimetype {

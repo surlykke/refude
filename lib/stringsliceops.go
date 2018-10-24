@@ -112,3 +112,12 @@ func PrependEach(sl []string, prefix string) []string {
 		return prefix + s
 	})
 }
+
+func Uint32SliceContains(slice []uint32, val uint32) bool {
+	for _, s := range slice {
+		if s == val {
+			return true
+		}
+	}
+	return false
+}

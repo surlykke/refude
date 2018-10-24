@@ -11,7 +11,7 @@ import "github.com/surlykke/RefudeServices/lib"
 var resourceCollection = lib.MakeJsonResourceMap()
 
 func main() {
-	var wm WindowWatcher
-	go wm.Run()
+	var manager = MakeManager()
+	go manager.Run()
 	lib.Serve("org.refude.wm-service", resourceCollection)
 }
