@@ -109,6 +109,28 @@ export let doPost = (resource, params) => {
     });
 };
 
+export let doPostPath = (path, params) => {
+    return new Promise((resolve, reject) => {
+        console.log("Posting against: ", "http://localhost:7938" + path + queryString(params))
+        let req = http.request("http://localhost:7938" + path + queryString(params), {method: "POST"}, resp => {
+            let data = '';
+            resp.setEncoding('utf8');
+            resp.on('data', chunk => {
+                data += chunk
+            });
+            resp.on('end', () => {
+                if (resp.statusCode >= 300) {
+                    reject(new Error(`Request Failed.\n` + `Status Code: ${resp.statusCode}`));
+                } else {
+                    resolve(resp);
+                }
+            });
+        });
+        req.on('error', e => reject(e));
+        req.end();
+    });
+};
+
 export let doPatch = (resource, body) => {
     return new Promise((resolve, reject) => {
         let req = http.request(opts(resource, "PATCH"), resp => {

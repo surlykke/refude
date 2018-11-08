@@ -8,42 +8,54 @@
 const http = require('http')
 import React from 'react'
 import {render} from 'react-dom'
-import {doSearch, doPost, doPatch} from '../../common/http'
+import {doSearch, doPostPath, doGet} from '../../common/http'
 import {NW, WIN, devtools} from "../../common/nw";
 import {ItemList} from "../../common/itemlist"
 import {T} from "../../common/translate";
-import {showSelectedWindow} from "./indicate";
 
-const searches = [
-    {
-        group: T("Notifications"),
-        service: "notifications-service",
-    },
-    {
-        group: T("Open windows"),
-        service: "wm-service",
-        forWindows: true,
-    },
-    {
-        group: T("Applications"),
-        minTermSize: 1,
-        service: "desktop-service"
-    },
-    {
-        group: T("Leave"),
-        minTermSize: 1,
-        service: "power-service"
+
+let rankApplication = (app, lowercaseTerm) => {
+    if (lowercaseTerm !== "") {
+        let tmp = app.Name.toLowerCase().indexOf(lowercaseTerm);
+        if (tmp > -1) {
+            return -tmp
+        }
+        if (app.Comment) {
+            tmp = app.Comment.toLowerCase().indexOf(lowercaseTerm);
+            if (tmp > -1) {
+                return -tmp - 100
+            }
+        }
     }
-];
+    return 1;
+};
 
+let windowIconStyle = w => {
+    let style = {
+        WebkitFilter: "drop-shadow(5px 5px 3px grey)",
+        overflow: "visible"
+    };
+    if (w.States.includes("_NET_WM_STATE_HIDDEN")) {
+        Object.assign(style, {
+            marginLeft: "10px",
+            marginTop: "10px",
+            width: "14px",
+            height: "14px",
+            opacity: "0.7"
+        })
+    }
+
+    return style
+};
 
 class Do extends React.Component {
     constructor(props) {
         //devtools();
         super(props);
-        this.state = {items: new Map()};
+        this.resources = {windows: [], applications: []};
+        this.term = ""
+        this.state = {items: []};
         this.itemList = React.createRef();
-        this.windows = [];
         this.onUpdated = props.onUpdated;
 
         this.listenForUpDown();
@@ -79,109 +91,105 @@ class Do extends React.Component {
     }
 
 
-    fetchWindowsAndItems = () => {
-        doSearch("wm-service", "application/vnd.org.refude.wmwindow+json").then(resp => {
-            this.windows = {}
-            resp.json.forEach(win => this.windows[win._self] = win);
-            this.fetchItems();
-        }, resp => {
-            this.fetchItems();
+    getResources(service, mimetype, resourceKey) {
+        this.resources[resourceKey] = [];
+        doSearch(service, mimetype, "").then(resp => {
+            this.resources[resourceKey] = resp.json;
+            this.filterAndSort()
         });
-    };
-
-    fetchItems = () => {
-        let items = new Map();
-        searches.forEach(search => items.set(search.group, [])); // For ordering
-        searches.forEach(search => {
-            doSearch(search.service, "application/vnd.org.refude.action+json", search.query).then((resp) => {
-                resp.json.forEach(item => {
-                    item.__minTermSize = search.minTermSize;
-                    if (search.forWindows) {
-                        item.__iconStyle = this.windowIconStyle(item)
-                    }
-                });
-                items.set(search.group, resp.json);
-                this.setState({items: items});
-            }).catch(e => {
-                console.log(e);
-            });
-        });
-    };
-
-    windowIconStyle = item => {
-        let style = {
-            WebkitFilter: "drop-shadow(5px 5px 3px grey)",
-            overflow: "visible"
-        };
-        let win = this.windows["/wm-service" + item._relates["application/vnd.org.refude.wmwindow+json"]];
-        if (win && win.States.includes("_NET_WM_STATE_HIDDEN")) {
-            Object.assign(style, {
-                marginLeft: "10px",
-                marginTop: "10px",
-                width: "14px",
-                height: "14px",
-                opacity: "0.7"
-            })
-        }
-
-        return style
     }
 
+    filterAndSort = () => {
+        let term = this.term.toLowerCase();
+
+        let items = [];
+        this.resources.windows
+            .filter(w => w.States.indexOf("_NET_WM_STATE_ABOVE") < 0)
+            .filter(w => w.Name.toLowerCase().indexOf(term) > -1)
+            .sort((w1, w2) => w1.StackOrder - w2.StackOrder)
+            .forEach(w => {
+                items.push({
+                    Group: T("Open windows"),
+                    Self: w._self,
+                    Name: w.Name,
+                    Actions: w._actions,
+                    IconUrl: w.IconUrl,
+                    IconStyle: windowIconStyle(w)
+                });
+            });
+
+        this.resources.applications.forEach(a => a.__rank = rankApplication(a, term));
+        this.resources.applications
+            .filter(a => a.__rank < 1)
+            .sort((a1, a2) => (a2.__rank - a1.__rank))
+            .forEach(a => {
+                items.push({
+                    Group: T("Applications"),
+                    Self: a._self,
+                    Name: a.Name + ' - ' + a.Comment,
+                    Actions: a._actions,
+                    IconUrl: a.IconUrl
+                })
+            });
+        if (term.length > 0 && this.session && this.session._actions["default"].Description.toLowerCase().indexOf(term) > -1) {
+           items.push({
+                Group: T("Leave"),
+                Self: this.session._self,
+                Name: "Leave",
+                Actions: this.session._actions,
+                IconUrl: `http://localhost:7938/icon-service/icon?name=${this.session._actions['default'].IconName}`
+            });
+        }
+        this.setState({items: items});
+    };
 
     showWin = () => {
         if (!this.state["shown"]) {
-            this.fetchWindowsAndItems();
+            this.getResources("wm-service", "application/vnd.org.refude.wmwindow+json", "windows")
+            this.getResources("desktop-service", "application/vnd.org.refude.desktopapplication+json", "applications")
+            doGet({service: "power-service", path: "/session"}).then(resp => {
+                console.log("setting session:", resp.json);
+                this.session = resp.json;
+                this.filterAndSort();
+            })
             this.setState({"shown": true});
         }
         WIN.focus();
     };
 
-    select = item => {
-        /*let window;
-        if (item && item._relates && item._relates["application/vnd.org.refude.wmwindow+json"]) {
-            window = this.windows["/wm-service" + item._relates["application/vnd.org.refude.wmwindow+json"][0]];
-        }
-
-        if (window) {
-            showSelectedWindow(window);
-        } else {
-            showSelectedWindow(null);
-        }*/
-    };
+    termChange = term => {
+        console.log("termChange:", term);
+        this.term = term;
+        this.filterAndSort();
+    }
 
     execute = (item) => {
-        doPost(item).then(response => {
+        console.log("execute: ", item);
+        doPostPath(item.Self).then(response => {
             this.onDismiss();
         })
     };
 
     onDismiss = () => {
         if (this.state.shown) {
-            this.select(false);
-            this.itemList.current.clear();
-            this.needsInitialize = true;
+            this.resources = {};
+            this.term = "";
+            this.setState({items: []});
             this.setState({"shown": undefined});
         }
     };
 
     render = () => {
-        let style = {
-            flexFlow: "column",
-            maxHeight: "600px",
-            width: "300px"
-        };
-
-
+        let itemListStyle = {maxWidth: "300px", maxHeight: "300px"};
         if (this.state.shown)
-            return <div style={style}>
-                <ItemList key="itemlist"
-                          items={this.state.items}
-                          select={this.select}
-                          execute={this.execute}
-                          onDismiss={this.onDismiss}
-                          onUpdated={this.onUpdated}
-                          ref={this.itemList}/>
-            </div>
+            return <ItemList key="itemlist"
+                             style={itemListStyle}
+                             items={this.state.items}
+                             onTermChange={this.termChange}
+                             execute={this.execute}
+                             onDismiss={this.onDismiss}
+                             onUpdated={this.onUpdated}
+                             ref={this.itemList}/>
         else
             return null
     };

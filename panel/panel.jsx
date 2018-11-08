@@ -13,19 +13,19 @@
  */
 import React from 'react'
 import {render} from 'react-dom'
-import {WIN, watchWindowPositionAndSize, watchScreenChanges, showWindowIfHidden, devtools} from '../common/nw'
+import {WIN, watchScreenChanges, devtools, loadPosition} from '../common/nw'
 import {Clock} from './clock/clock'
 import {Battery} from './battery/battery'
 import {NotifierItems} from './notifieritems/notifieritems'
 import {HideButton} from './hidebutton/hidebutton'
 import {Notificationalert} from "./notificationalert/notificationalert";
 import {DragField} from './dragfield/dragfield'
+import {Pinfield} from "./pinfield/pinfield";
 import {Do} from './do/do'
 
 const Window = nw.Window.get();
 
 const style = {
-    display: "inline-block",
     margin: "0px",
     padding: "2px",
     width: "fit-content",
@@ -48,10 +48,9 @@ class Panel extends React.Component {
         //devtools();
         super(props)
         WIN.on('loaded', () => {
-            watchWindowPositionAndSize();
+            loadPosition();
             watchScreenChanges();
-            showWindowIfHidden();
-        })
+        });
     }
 
     adjustSize = () => {
@@ -62,19 +61,18 @@ class Panel extends React.Component {
             },
             10
         )
-    }
+    };
 
     render = () =>
-        <div style={{height: "100%", width: "500px"}}>
-            <div style={style} id="content" ref={div => {
-                this.content = div
-            }}>
+        <div style={{width: "500px"}}>
+            <div style={style} id="content" ref={div => { this.content = div }}>
                 <Clock style={pluginStyle}/>
                 <Battery style={pluginStyle} onUpdated={this.adjustSize}/>
                 <Notificationalert style={pluginStyle} onUpdated={this.adjustSize}/>
                 <NotifierItems style={pluginStyle} onUpdated={this.adjustSize}/>
                 <HideButton style={pluginStyle}/>
                 <DragField style={pluginStyle}/>
+                <Pinfield style={pluginStyle}/>
                 <Do onUpdated={this.adjustSize}/>
             </div>
         </div>

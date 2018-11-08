@@ -11,15 +11,16 @@ export class ItemList extends React.Component {
 
     constructor(props) {
         super(props)
-        this.state = {items: []};
+        this.state = {items: [], selected: 0};
         this.onUpdated = props.onUpdated
     }
 
     componentDidUpdate = () => {
         document.getElementById("input").focus();
         // Scroll selected item into view
-        if (this.state.selected) {
-            let selectedDiv = document.getElementById(this.state.selected._self);
+        let selected = this.state.items[this.state.selected];
+        if (selected) {
+            let selectedDiv = document.getElementById(selected.Self);
             if (selectedDiv) {
                 let listDiv = document.getElementById("itemListDiv");
                 let {top: listTop, bottom: listBottom} = listDiv.getBoundingClientRect();
@@ -28,61 +29,14 @@ export class ItemList extends React.Component {
                 else if (selectedBottom > listBottom) listDiv.scrollTop += (selectedBottom - listBottom + 10)
             }
         }
-
         if (this.onUpdated) this.onUpdated()
     };
 
     componentWillReceiveProps = (props) => {
-        this.itemMap = props.items;
-        this.filterAndSort();
-
-    };
-
-    filterAndSort = () => {
-        let items = [];
-        let term = document.getElementById("input").value.toUpperCase();
-        for (let [groupName, groupItems] of this.itemMap) {
-            groupItems.forEach(item => {
-                item.__group = groupName ? groupName : undefined;
-                if ((item.__minTermSize || 0) > term.length) {
-                    item.__weight = -1;
-                } else {
-                    item.__weight = item.Name.toUpperCase().indexOf(term);
-                    if (item.__weight < 0 && item.Comment) {
-                        item.__weight = item.Comment.toUpperCase().indexOf(term);
-                        if (item.__weight >= 0) {
-                            item.__weight += 100;
-                        }
-                    }
-                }
-            });
-            let tmp = groupItems.filter(item => item.__weight >= 0).sort((i1, i2) => i1.__weight - i2.__weight);
-            items.push(...tmp);
-        }
-
-        if (items.length > 0) {
-            let prev = items[items.length - 1];
-            items.forEach(item => {
-                item.__prev = prev;
-                prev.__next = item;
-                prev = item;
-            });
-        }
-
-        let selected = undefined;
-        if (this.state.selected) {
-            selected = items.find(item => item._self === this.state.selected._self);
-
-        }
-
-        if (!selected) {
-            selected = items[0];
-        }
-
-        this.setState({items: items});
-        this.select(selected);
-    };
-
+        let selectedSelf = this.state.items[this.state.selected] && this.state.items[this.state.selected].Self;
+        let newSelected = this.state.items.findIndex(i => i.Self === selectedSelf);
+        this.setState({items: props.items, selected: newSelected > 0 ? newSelected : 0})
+    }
 
     keyDown = (event) => {
         let {key, ctrlKey, shiftKey, altKey, metaKey} = event;
@@ -91,8 +45,8 @@ export class ItemList extends React.Component {
         else if (key === "Tab" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.move(true);
         else if (key === "ArrowUp" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.move(false);
         else if (key === "ArrowDown" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.move(true);
-        else if (key === "Enter" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.props.execute(this.state.selected);
-        else if (key === " " && !ctrlKey && !shiftKey && !altKey && !metaKey) this.props.execute(this.state.selected);
+        else if (key === "Enter" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.props.execute(this.state.items[this.state.selected]);
+        else if (key === " " && !ctrlKey && !shiftKey && !altKey && !metaKey) this.props.execute(this.state.items[this.state.selected]);
         else if (key === "Escape" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.props.onDismiss();
         else {
             return;
@@ -101,30 +55,24 @@ export class ItemList extends React.Component {
     };
 
     move = (down) => {
-        if (this.state.selected) {
-            let newSelected = down ? this.state.selected.__next : this.state.selected.__prev;
-            this.select(newSelected);
-        }
+        this.setState({selected: (this.state.selected + this.state.items.length + (down ? 1 : -1)) % this.state.items.length})
     };
+
+
 
     select = (item) => {
-        this.setState({selected: item});
-        this.props.select(item);
-    };
-
-    clear = () => {
-        document.getElementById("input").value = "";
+        let index = this.state.items.indexOf(item);
+        this.setState({selected: index > - 1 ? index : 0});
     };
 
     render = () => {
         let {select} = this.props;
-        let outerStyle = {
+        let outerStyle = Object.assign({
             display: "flex",
             flexFlow: "column",
-            height: "100%",
             paddingTop: "0.3em",
             paddingLeft: "0.3em",
-        };
+        }, this.props.style);
 
         let searchBoxStyle = {
             boxSizing: "border-box",
@@ -156,13 +104,13 @@ export class ItemList extends React.Component {
         let prevGroup;
         let content = [];
         this.state.items.forEach(item => {
-            if (item.__group !== prevGroup) {
-                content.push(<div key={item.__group} style={headingStyle}>{item.__group}</div>)
-                prevGroup = item.__group
+            if (item.Group !== prevGroup) {
+                content.push(<div key={item.Group} style={headingStyle}>{item.Group}</div>)
+                prevGroup = item.Group
             }
-            content.push(<Item key={item._self}
+            content.push(<Item key={item.Self}
                                item={item}
-                               selected={item === this.state.selected}
+                               selected={item === this.state.items[this.state.selected]}
                                select={this.select}
                                execute={this.props.execute}/>)
         });
@@ -173,7 +121,7 @@ export class ItemList extends React.Component {
                     <input id="input"
                            style={inputStyle}
                            type="search"
-                           onChange={this.filterAndSort}
+                           onChange={event => this.props.onTermChange(event.target.value)}
                            disabled={this.props.disabled} />
                 </div>
                 <div id="itemListDiv" style={innerStyle}>

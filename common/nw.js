@@ -15,74 +15,56 @@ export let devtools = () => {
     WIN.showDevTools();
 };
 
-let displayEtag, storingSceduled, windowIsShown;
-
-let load = () => {
-    let [x, y, w, h] = [
-        parseInt(localStorage.getItem(displayEtag + ".x")),
-        parseInt(localStorage.getItem(displayEtag + ".y")),
-        parseInt(localStorage.getItem(displayEtag + ".w")),
-        parseInt(localStorage.getItem(displayEtag + ".h"))
-    ];
-    if (!isNaN(x) && !isNaN(y) && !isNaN(w) && !isNaN(h)) {
-        [WIN.x, WIN.y, WIN.width, WIN.height] = [x, y, w, h];
-    }
+export let screenId = () => {
+    let id = "geometry"
+    SCREEN.screens.forEach(screen => {
+        id = id + '-' + screen.id + '-' + screen.bounds.x + '-' + screen.bounds.y + '-' + screen.bounds.width + '-' + screen.bounds.height
+    });
+    return id;
 };
 
-let sceduleStoring = () => {
-    if (!storingSceduled) {
-        storingSceduled = true;
-        setTimeout(() => {
-            if (displayEtag) {
-                localStorage.setItem(displayEtag + ".x", WIN.x);
-                localStorage.setItem(displayEtag + ".y", WIN.y);
-                localStorage.setItem(displayEtag + ".w", WIN.width);
-                localStorage.setItem(displayEtag + ".h", WIN.height);
+export let loadPosition = () => {
+    let id = screenId();
+    let str = localStorage.getItem(id);
+    if (str) {
+        let geometry = JSON.parse(str);
+
+        if (geometry) {
+            let [x, y, w, h] = [
+                parseInt(geometry.x),
+                parseInt(geometry.y),
+                parseInt(geometry.w),
+                parseInt(geometry.h)
+            ];
+            if (!isNaN(x) && !isNaN(y) && !isNaN(w) && !isNaN(h)) {
+                [WIN.x, WIN.y] = [x, y];
             }
-            storingSceduled = undefined;
-        }, 1000);
+        }
     }
 };
 
-export let watchWindowPositionAndSize = () => {
-    WIN.on('move', () => {
-        sceduleStoring();
-    });
-
-    WIN.on('resize', () => {
-        sceduleStoring();
-    });
+export let storePosition = () => {
+    let id = screenId();
+    let value = JSON.stringify({x: WIN.x, y: WIN.y, w: WIN.width, h: WIN.height})
+    localStorage.setItem(id, value);
 };
 
+
+let aboutToLoad
 export let watchScreenChanges = () => {
     SCREEN.on("displayBoundsChanged", () => {
-        setTimeout(() => doGetIfNoneMatch("wm-service", "/display", displayEtag).then((resp) => {
-            displayEtag = resp.headers.etag;
-            load();
-        }), 1000);
+        if (!aboutToLoad) {
+            aboutToLoad = true;
+            setTimeout(() => {
+                    loadPosition();
+                    aboutToLoad = undefined;
+                },
+                1000
+            );
+        }
+        ;
     });
-};
-
-
-export let showWindowIfHidden = () => {
-    if (!windowIsShown) {
-        windowIsShown = true;
-        doGetIfNoneMatch("wm-service", "/display", displayEtag).then(
-            (resp) => {
-                displayEtag = resp.headers.etag;
-                load();
-                WIN.show();
-            },
-            (resp) => {
-                WIN.show();
-            });
-    }
-};
-
-export let hideWindow = () => {
-    windowIsShown = undefined;
-    WIN.hide();
-};
+}
 
 
 

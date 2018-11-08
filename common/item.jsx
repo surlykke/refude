@@ -31,7 +31,7 @@ let Item = props => {
         marginRight: "6px"
     };
 
-    Object.assign(iconStyle, item.__iconStyle)
+    Object.assign(iconStyle, item.IconStyle)
 
     let nameStyle = {
         overflow: "hidden",
@@ -44,7 +44,7 @@ let Item = props => {
     };
 
     return (
-        <div id={props.item._self} style={style} onClick={() => select(item)} onDoubleClick={() => execute(item)}>
+        <div id={props.item.Self} style={style} onClick={() => select(item)} onDoubleClick={() => execute(item)}>
             <img width="24px" height="24px" style={iconStyle} src={item.IconUrl} alt=""/>
             <div style={nameStyle}>{item.Name}</div>
             <div style={commentStyle}>{item.Comment}</div>
