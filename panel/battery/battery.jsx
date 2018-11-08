@@ -63,18 +63,19 @@ export class Battery extends React.Component {
         let archEndY = -50 * Math.sin((0.5 + pct * 0.02) * Math.PI);
         let bigArchFlag = pct >= 50 ? 1 : 0;
         console.log("archEndX, archEndY:", archEndX, archEndY);
-        let color = state === "Charging" || state === "Fully charged" ? "grey" : "lightgrey";
-        let dotFill = state === "Fully charged" ? "black" : "white";
+        let color = ["Charging", "Fully charged"].includes(state) ? "rgb(100,100,100)" : "rgb(140, 160, 160)";
+        let dotColor =  state === "Fully charged" ? "black" : "white";
 
         let alert = state === "Unknown" || pct < 5;
         let alertText = state === "Unknown" ? '?' : '!';
         let title = state + " " + Math.round(pct) + "%";
 
         return <div title={title} style={this.props.style}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="-55 -55 110 110">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="-60 -60 120 120">
+                <circle cx="0" cy="0" r="60" stroke="none" fill="white"/>
                 <path d={`M 0 0 v -50 A 50 50 0 ${bigArchFlag} 0 ${archEndX} ${archEndY} L 0 0`} fill={color} stroke={color} strokeWidth="4"/>
-                <circle cx="0" cy="0" r="20" stroke="none" fill={dotFill}/>
-                {alert && <circle cx="0" cy="0" r="50" stroke="red" strokeWidth="10" fill={dotFill}/>}
+                <circle cx="0" cy="0" r="20" stroke="none" fill={dotColor}/>
+                {alert && <circle cx="0" cy="0" r="50" stroke="red" strokeWidth="10"/>}
                 {alert && <text textAnchor="middle" x="0" y="30" style={{fontWeight: "bold", fontSize: "90px", fill: "red"}}>{alertText}</text>}
             </svg>
         </div>

@@ -6,7 +6,7 @@
 //
 import React from 'react'
 
-import {storePosition} from "../../common/nw";
+import {storePosition} from "../../common/utils";
 
 class Pinfield extends React.Component {
 

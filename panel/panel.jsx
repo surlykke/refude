@@ -13,7 +13,7 @@
  */
 import React from 'react'
 import {render} from 'react-dom'
-import {WIN, watchScreenChanges, devtools, loadPosition} from '../common/nw'
+import {WIN, watchScreenChanges, devtools, loadPosition} from '../common/utils'
 import {Clock} from './clock/clock'
 import {Battery} from './battery/battery'
 import {NotifierItems} from './notifieritems/notifieritems'

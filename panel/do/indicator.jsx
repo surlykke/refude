@@ -1,6 +1,6 @@
 import React from 'react';
 import {render} from 'react-dom'
-import {NW, WIN, devtools} from "../../common/nw";
+import {Utils, WIN, devtools} from "../../common/utils";
 
 class Indicator extends React.Component {
 

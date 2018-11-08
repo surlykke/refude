@@ -47,13 +47,13 @@ export let Notification = (props) => {
             <div style={notificationHeadingStyle}>{notification.Subject}</div>
             <div style={notificationBodyStyle} dangerouslySetInnerHTML={{__html: notification.Body}}/>
 
-            {Object.keys(notification.Actions).filter(k => k !== "default").map(k => {
+            {Object.keys(notification._actions).filter(k => k !== "default").map(k => {
                 let buttonClicked = (event) => {
                     doPost(props.notification, {action: k}, "POST")
                     event.stopPropagation()
                 }
 
-                return <input type="submit" value={notification.Actions[k]} onClick={buttonClicked}/>
+                return <input type="submit" value={notification._actions[k].Description} onClick={buttonClicked}/>
             })}
 
             <div style={crossStyle} onClick={dismiss}>

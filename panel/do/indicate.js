@@ -1,4 +1,4 @@
-import {NW, WIN, SCREEN} from "../../common/nw";
+import {Utils, WIN, SCREEN} from "../../common/utils";
 
 let indicatorWindows;
 
@@ -8,7 +8,7 @@ export let showSelectedWindow = (win) => {
         if (!indicatorWindows) {
             indicatorWindows = [];
             SCREEN.screens.forEach(screen => {
-                NW.Window.open(
+                Utils.Window.open(
                     "do/indicator.html",
                     {"frame": false, "always_on_top": true, "transparent": true, "focus": false},
                     iWin => {

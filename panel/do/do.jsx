@@ -9,26 +9,11 @@ const http = require('http')
 import React from 'react'
 import {render} from 'react-dom'
 import {doSearch, doPostPath, doGet} from '../../common/http'
-import {NW, WIN, devtools} from "../../common/nw";
+import {Utils, WIN, devtools, applicationRank} from "../../common/utils";
 import {ItemList} from "../../common/itemlist"
 import {T} from "../../common/translate";
 
 
-let rankApplication = (app, lowercaseTerm) => {
-    if (lowercaseTerm !== "") {
-        let tmp = app.Name.toLowerCase().indexOf(lowercaseTerm);
-        if (tmp > -1) {
-            return -tmp
-        }
-        if (app.Comment) {
-            tmp = app.Comment.toLowerCase().indexOf(lowercaseTerm);
-            if (tmp > -1) {
-                return -tmp - 100
-            }
-        }
-    }
-    return 1;
-};
 
 let windowIconStyle = w => {
     let style = {
@@ -53,7 +38,7 @@ class Do extends React.Component {
         //devtools();
         super(props);
         this.resources = {windows: [], applications: []};
-        this.term = ""
+        this.term = "";
         this.state = {items: []};
         this.itemList = React.createRef();
         this.onUpdated = props.onUpdated;
@@ -99,6 +84,12 @@ class Do extends React.Component {
         });
     }
 
+    getResource(service, path, resourceKey) {
+        doGet({service: service, path: path}).then(resp => {
+            this.resources[resourceKey] = resp.json;
+        });
+    }
+
     filterAndSort = () => {
         let term = this.term.toLowerCase();
 
@@ -109,37 +100,46 @@ class Do extends React.Component {
             .sort((w1, w2) => w1.StackOrder - w2.StackOrder)
             .forEach(w => {
                 items.push({
-                    Group: T("Open windows"),
-                    Self: w._self,
-                    Name: w.Name,
-                    Actions: w._actions,
-                    IconUrl: w.IconUrl,
-                    IconStyle: windowIconStyle(w)
+                    group: T("Open windows"),
+                    url: w._self,
+                    description: w.Name,
+                    iconName: w._actions['default'].IconName,
+                    iconStyle: windowIconStyle(w)
                 });
             });
 
-        this.resources.applications.forEach(a => a.__rank = rankApplication(a, term));
-        this.resources.applications
-            .filter(a => a.__rank < 1)
-            .sort((a1, a2) => (a2.__rank - a1.__rank))
-            .forEach(a => {
-                items.push({
-                    Group: T("Applications"),
-                    Self: a._self,
-                    Name: a.Name + ' - ' + a.Comment,
-                    Actions: a._actions,
-                    IconUrl: a.IconUrl
-                })
-            });
-        if (term.length > 0 && this.session && this.session._actions["default"].Description.toLowerCase().indexOf(term) > -1) {
-           items.push({
-                Group: T("Leave"),
-                Self: this.session._self,
-                Name: "Leave",
-                Actions: this.session._actions,
-                IconUrl: `http://localhost:7938/icon-service/icon?name=${this.session._actions['default'].IconName}`
-            });
+        if (term.length > 0) {
+            this.resources.applications.forEach(a => a.__rank = applicationRank(a, term));
+            this.resources.applications
+                .filter(a => a.__rank < 1)
+                .sort((a1, a2) => (a2.__rank - a1.__rank))
+                .forEach(a => {
+                    items.push({
+                        group: T("Applications"),
+                        url: a._self,
+                        description: a.Name + (a.Comment ? ' - ' + a.Comment : ''),
+                        iconName: a.IconName,
+                    })
+                });
         }
+
+        if (term.length > 0 && this.resources.session) {
+            console.log("session:", this.resources.session);
+            for (let [id, a] of Object.entries(this.resources.session._actions)) {
+                console.log("Consider", id, a.Description);
+                if (a.Description.toLowerCase().indexOf(term) > -1) {
+                    let item = {
+                        group: T("Leave"),
+                        url: this.resources.session._self + "?action=" + id,
+                        description: a.Description,
+                        iconName: a.IconName
+                    };
+                    console.log("Adding", item)
+                    items.push(item);
+                }
+            }
+        }
+
         this.setState({items: items});
     };
 
@@ -147,11 +147,7 @@ class Do extends React.Component {
         if (!this.state["shown"]) {
             this.getResources("wm-service", "application/vnd.org.refude.wmwindow+json", "windows")
             this.getResources("desktop-service", "application/vnd.org.refude.desktopapplication+json", "applications")
-            doGet({service: "power-service", path: "/session"}).then(resp => {
-                console.log("setting session:", resp.json);
-                this.session = resp.json;
-                this.filterAndSort();
-            })
+            this.getResource("power-service", "/session", "session");
             this.setState({"shown": true});
         }
         WIN.focus();
@@ -161,11 +157,11 @@ class Do extends React.Component {
         console.log("termChange:", term);
         this.term = term;
         this.filterAndSort();
-    }
+    };
 
     execute = (item) => {
         console.log("execute: ", item);
-        doPostPath(item.Self).then(response => {
+        doPostPath(item.url).then(response => {
             this.onDismiss();
         })
     };

@@ -1,9 +1,0 @@
-{
-  "name": "Refude AppChooser",
-  "main": "main.html",
-  "version": "0.0.1",
-  "window": {
-    "frame": false,
-    "show": false
-  }
-}

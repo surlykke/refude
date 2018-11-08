@@ -6,9 +6,9 @@
 //
 import {doGetIfNoneMatch} from "./http";
 // -------------------- NW stuff ---------------------
-export let NW = window.require('nw.gui');
-export let WIN = NW.Window.get();
-export let SCREEN = NW.Screen;
+export let Utils = window.require('nw.gui');
+export let WIN = Utils.Window.get();
+export let SCREEN = Utils.Screen;
 SCREEN.Init();
 
 export let devtools = () => {
@@ -62,10 +62,19 @@ export let watchScreenChanges = () => {
                 1000
             );
         }
-        ;
     });
-}
+};
 
+export let applicationRank = (app, lowercaseTerm) => {
+    let tmp;
+    if ((tmp = app.Name.toLowerCase().indexOf(lowercaseTerm)) > -1) {
+        return -tmp;
+    } else if (app.Comment && (tmp = app.Comment.toLowerCase().indexOf(lowercaseTerm)) > -1) {
+        return -tmp - 100;
+    } else {
+        return 1;
+    }
+};
 
 
 

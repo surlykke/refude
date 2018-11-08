@@ -20,7 +20,7 @@ export class ItemList extends React.Component {
         // Scroll selected item into view
         let selected = this.state.items[this.state.selected];
         if (selected) {
-            let selectedDiv = document.getElementById(selected.Self);
+            let selectedDiv = document.getElementById(selected.url);
             if (selectedDiv) {
                 let listDiv = document.getElementById("itemListDiv");
                 let {top: listTop, bottom: listBottom} = listDiv.getBoundingClientRect();
@@ -33,8 +33,8 @@ export class ItemList extends React.Component {
     };
 
     componentWillReceiveProps = (props) => {
-        let selectedSelf = this.state.items[this.state.selected] && this.state.items[this.state.selected].Self;
-        let newSelected = this.state.items.findIndex(i => i.Self === selectedSelf);
+        let selectedUrl = this.state.items[this.state.selected] && this.state.items[this.state.selected].url;
+        let newSelected = this.state.items.findIndex(i => i.url === selectedUrl);
         this.setState({items: props.items, selected: newSelected > 0 ? newSelected : 0})
     }
 
@@ -104,11 +104,11 @@ export class ItemList extends React.Component {
         let prevGroup;
         let content = [];
         this.state.items.forEach(item => {
-            if (item.Group !== prevGroup) {
-                content.push(<div key={item.Group} style={headingStyle}>{item.Group}</div>)
-                prevGroup = item.Group
+            if (item.group !== prevGroup) {
+                content.push(<div key={item.group} style={headingStyle}>{item.group}</div>)
+                prevGroup = item.group
             }
-            content.push(<Item key={item.Self}
+            content.push(<Item key={item.url}
                                item={item}
                                selected={item === this.state.items[this.state.selected]}
                                select={this.select}

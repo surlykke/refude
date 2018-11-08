@@ -7,6 +7,7 @@
 import React from 'react';
 import {render} from 'react-dom';
 import {doSearch} from '../common/http'
+import {devtools} from "../common/utils";
 import {Notification} from "./notification";
 import {monitorResources} from "../panel/common/monitor";
 import {T} from "../common/translate";
