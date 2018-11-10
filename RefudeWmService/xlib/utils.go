@@ -1,9 +1,14 @@
-package xlibutils
+package xlib
+
+/**
+ * All communication with xlib (and X) happens through this package
+ */
 
 /*
 #cgo LDFLAGS: -lX11
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 #include <X11/Xlib.h>
 // Cant use 'type' in Go, hence...
 inline int getType(XEvent* e) { return e->type; }
@@ -38,11 +43,15 @@ XEvent createClientMessage32(Window window, Atom message_type, long l0, long l1,
 	return event;
 }
 
-
-
+int forgiving_X_error_handler(Display *d, XErrorEvent *e)
+{
+	char errorMsg[80];
+	XGetErrorText(d, e->error_code, errorMsg, 80);
+	printf("Got error: %s\n", errorMsg);
+	return 0;
+}
 */
 import "C"
-
 import (
 	"errors"
 	"fmt"
@@ -50,7 +59,15 @@ import (
 	"unsafe"
 )
 
-type XConnection struct {
+func init() {
+	C.XSetErrorHandler(C.XErrorHandler(C.forgiving_X_error_handler))
+}
+
+/**
+ * Wrapper around connections to X11. Not threadsafe, so users must make sure only
+ * one go-routine at a time uses an instance of this.
+ */
+type Connection struct {
 	display    *C.Display
 	rootWindow 	C.Window
 
@@ -65,8 +82,8 @@ type Event struct {
 	X,Y,W,H  int
 }
 
-func MakeConnection() *XConnection {
-	var conn = XConnection{}
+func MakeConnection() *Connection {
+	var conn = Connection{}
 	conn.display = C.XOpenDisplay(nil)
 	var defaultScreen = C.ds(conn.display)
 	conn.rootWindow = C.rw(conn.display, defaultScreen)
@@ -75,7 +92,7 @@ func MakeConnection() *XConnection {
 	return &conn
 }
 
-func (c *XConnection) Listen(window uint32) {
+func (c *Connection) Listen(window uint32) {
 	if window == 0 {
 		C.XSelectInput(c.display, c.rootWindow, C.SubstructureNotifyMask|C.PropertyChangeMask)
 	} else {
@@ -85,7 +102,7 @@ func (c *XConnection) Listen(window uint32) {
 
 
 // Will hang until either a property change or a configure event happens
-func (c *XConnection)NextEvent() (Event, error) {
+func (c *Connection)NextEvent() (Event, error) {
 	var event C.XEvent
 	for {
 		if err := CheckError(C.XNextEvent(c.display, &event)); err != nil {
@@ -105,7 +122,7 @@ func (c *XConnection)NextEvent() (Event, error) {
 }
 
 
-func (c *XConnection) atom(name string) C.Atom {
+func (c *Connection) atom(name string) C.Atom {
 	if val, ok := c.atomCache[name]; ok {
 		return val
 	} else {
@@ -122,7 +139,7 @@ func (c *XConnection) atom(name string) C.Atom {
 }
 
 
-func (c *XConnection) atomName(atom C.Atom) string {
+func (c *Connection) atomName(atom C.Atom) string {
 	if name, ok := c.atomNameCache[atom]; ok {
 		return name
 	} else {
@@ -134,7 +151,7 @@ func (c *XConnection) atomName(atom C.Atom) string {
 }
 
 
-func (c *XConnection) GetBytes(window uint32, property string) ([]byte, error) {
+func (c *Connection) GetBytes(window uint32, property string) ([]byte, error) {
 	var ulong_window = C.ulong(window)
 	if ulong_window == 0 {
 		ulong_window = c.rootWindow
@@ -185,12 +202,12 @@ func (c *XConnection) GetBytes(window uint32, property string) ([]byte, error) {
 	}
 }
 
-func (c *XConnection) GetPropStr(wId uint32, property string) (string, error) {
+func (c *Connection) GetPropStr(wId uint32, property string) (string, error) {
 	bytes, err := c.GetBytes(wId, property)
 	return string(bytes), err
 }
 
-func (c *XConnection) GetUint32s(window uint32, property string) ([]uint32, error) {
+func (c *Connection) GetUint32s(window uint32, property string) ([]uint32, error) {
 	var ulong_window = C.ulong(window)
 	if ulong_window == 0 {
 		ulong_window = c.rootWindow
@@ -242,7 +259,7 @@ func (c *XConnection) GetUint32s(window uint32, property string) ([]uint32, erro
 	}
 }
 
-func (c *XConnection) GetAtoms(wId uint32, property string) ([]string, error) {
+func (c *Connection) GetAtoms(wId uint32, property string) ([]string, error) {
 	if atoms, err := c.GetUint32s(wId, property); err != nil {
 		return nil, err
 	} else {
@@ -255,7 +272,7 @@ func (c *XConnection) GetAtoms(wId uint32, property string) ([]string, error) {
 }
 
 
-func (c *XConnection) GetParent(wId uint32) (uint32, error) {
+func (c *Connection) GetParent(wId uint32) (uint32, error) {
 	var root_return C.ulong
 	var parent_return C.ulong
 	var children_return *C.ulong
@@ -276,7 +293,7 @@ func (c *XConnection) GetParent(wId uint32) (uint32, error) {
 	}
 }
 
-func (c *XConnection) GetGeometry(wId uint32) (int, int, int, int, error) {
+func (c *Connection) GetGeometry(wId uint32) (int, int, int, int, error) {
 	return 0, 0, 0, 0, nil
 }
 
@@ -299,7 +316,7 @@ func CheckError(error C.int) error {
 }
 
 
-func (c *XConnection) RaiseAndFocusWindow(wId uint32) {
+func (c *Connection) RaiseAndFocusWindow(wId uint32) {
 	var event = C.createClientMessage32(C.Window(wId), c.atom("_NET_ACTIVE_WINDOW"), 2, 0, 0, 0, 0);
 	var mask C.long = C.SubstructureRedirectMask | C.SubstructureNotifyMask
 	C.XSendEvent(c.display, c.rootWindow, 0, mask, &event);

@@ -4,9 +4,14 @@
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
 //
-package lib
+package resource
 
 import (
+	"encoding/json"
+	"fmt"
+	"github.com/surlykke/RefudeServices/lib/parser"
+	"github.com/surlykke/RefudeServices/lib/requests"
+	"net/http"
 	"strings"
 	"sync"
 )
@@ -14,10 +19,12 @@ import (
 type JsonResourceMap struct {
 	mutex sync.Mutex
 	rmap  map[StandardizedPath]*JsonResource
+	links *JsonResource
 }
 
 func MakeJsonResourceMap() *JsonResourceMap {
-	return &JsonResourceMap{rmap: make(map[StandardizedPath]*JsonResource)}
+	var m = &JsonResourceMap{mutex: sync.Mutex{}, rmap: make(map[StandardizedPath]*JsonResource), links: nil}
+	return m
 }
 
 var reservedPaths = map[StandardizedPath]bool{
@@ -33,7 +40,7 @@ func (jm *JsonResourceMap) put(sp StandardizedPath, res Resource) {
 	}
 	var jsonResource = MakeJsonResource(res)
 	jm.rmap[sp] = jsonResource
-	delete(jm.rmap, "/links")
+	jm.links = nil
 }
 
 func (jm *JsonResourceMap) unput(sp StandardizedPath) (Resource, bool) {
@@ -43,7 +50,7 @@ func (jm *JsonResourceMap) unput(sp StandardizedPath) (Resource, bool) {
 
 	if jsonRes, ok := jm.rmap[sp]; ok {
 		delete(jm.rmap, sp)
-		delete(jm.rmap, "/links")
+		jm.links = nil
 		return jsonRes.GetRes(), true
 	} else {
 		return nil, false
@@ -106,16 +113,7 @@ func (jm *JsonResourceMap) Unmap(path StandardizedPath) (Resource, bool) {
 func (jm *JsonResourceMap) GetResource(path StandardizedPath) *JsonResource {
 	jm.mutex.Lock()
 	defer jm.mutex.Unlock()
-	if path == "/links" {
-		if _, ok := jm.rmap["/links"]; !ok {
-			var links = make(Links)
-			links[LinksMediaType] = []StandardizedPath{"/links"}
-			for path, jsonRes := range jm.rmap {
-				links[jsonRes.GetMt()] = append(links[jsonRes.GetMt()], path)
-			}
-			jm.rmap["/links"] = MakeJsonResource(links)
-		}
-	}
+
 	var res, ok = jm.rmap[path]
 	if ok {
 		res.EnsureReady()
@@ -136,21 +134,82 @@ func (jm *JsonResourceMap) GetAll() []*JsonResource {
 	return result
 }
 
+func (jm *JsonResourceMap) ensureLinksUpdated() {
+	jm.mutex.Lock()
+	defer jm.mutex.Unlock()
+
+	if jm.links == nil {
+		var mtMap = make(Links)
+		mtMap["application/json"] = []StandardizedPath{"/links", "/search"}
+		for sp, res := range jm.rmap {
+			mtMap[res.GetMt()] = append(mtMap[res.GetMt()], sp)
+		}
+
+		jm.links = MakeJsonResource(&mtMap)
+		jm.links.EnsureReady()
+	}
+}
+
 // ----------------------------------------------------------------------------------------------
 
-//func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-//	sp := standardize(r.URL.Path)
-//	if sp == "/search" {
-//		if r.Method == "GET" {
-//			Search(w, r)
-//		} else {
-//			w.WriteHeader(http.StatusMethodNotAllowed)
-//		}
-//	} else if sp == "/links" {
-//		links.ServeHTTP(w,r)
-//	} else if res, ok := findForServing(sp); !ok {
-//		w.WriteHeader(http.StatusNotFound)
-//	} else {
-//		res.ServeHTTP(w, r)
-//	}
-//}
+func (jm *JsonResourceMap) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	sp := Standardize(r.URL.Path)
+	if sp == "/links" {
+		if r.Method != "GET" {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+		} else {
+			jm.ensureLinksUpdated()
+			jm.links.ServeHTTP(w, r)
+		}
+	} else if sp == "/search" {
+		if r.Method != "GET" {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+		} else if flatParams, err := requests.GetSingleParams(r, "type", "q"); err != nil {
+			requests.ReportUnprocessableEntity(w, err)
+		} else if resources, err := jm.findResources(MediaType(flatParams["type"]), flatParams["q"]); err != nil {
+			requests.ReportUnprocessableEntity(w, err)
+		} else if bytes, err := json.Marshal(resources); err != nil {
+			panic(fmt.Sprintln("Unable to marshall search result", err))
+		} else {
+			w.Header().Set("Content-Type", "application/json")
+			w.Write(bytes)
+		}
+	} else {
+		if res := jm.GetResource(sp); res != nil {
+			res.ServeHTTP(w, r)
+		} else {
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}
+}
+
+func (jm *JsonResourceMap) findResources(mt MediaType, query string) ([]*JsonResource, error) {
+	var tmp = jm.GetAll()
+	var found = 0;
+	if mt != "" {
+		for i := 0; i < len(tmp); i++ {
+			if MediaTypeMatch(MediaType(mt), tmp[i].GetMt()) {
+				tmp[found] = tmp[i]
+				found++
+			}
+		}
+		tmp = tmp[:found]
+	}
+
+	if query != "" {
+		if matcher, err := parser.Parse(query); err != nil {
+			return nil, err
+		} else {
+			found = 0;
+			for i := 0; i < len(tmp); i++ {
+				if matcher(tmp[i].GetRes()) {
+					tmp[found] = tmp[i]
+					found++
+				}
+			}
+			tmp = tmp[:found]
+		}
+	}
+
+	return tmp, nil
+}

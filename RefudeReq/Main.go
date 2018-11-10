@@ -7,14 +7,16 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"fmt"
+	"github.com/surlykke/RefudeServices/lib/slice"
+	"github.com/surlykke/RefudeServices/lib/xdg"
+	"io/ioutil"
 	"net"
 	"net/http"
-	"github.com/surlykke/RefudeServices/lib"
-	"fmt"
 	"os"
-	"io/ioutil"
-	"bytes"
 	"strings"
 )
 
@@ -35,15 +37,15 @@ func main() {
 	var client = http.Client{
 		Transport: &http.Transport{
 			DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
-				return net.Dial("unix", lib.RuntimeDir+"/org.refude." + service)
+				return net.Dial("unix", xdg.RuntimeDir+"/org.refude." + service)
 			},
 		},
 	}
 	var url = "http://localhost" + path
 
-	if !lib.Contains([]string{"GET", "POST", "PATCH", "DELETE"}, method) {
+	if !slice.Contains([]string{"GET", "POST", "PATCH", "DELETE"}, method) {
 		fail("Method " + method + " not supported")
-	} else if lib.Contains([]string{"GET", "DELETE"}, method) && body.Len() > 0 {
+	} else if slice.Contains([]string{"GET", "DELETE"}, method) && body.Len() > 0 {
 		panic("No body allowed")
 	} else if method == "PATCH" && body.Len() == 0 {
 		panic("Body mandatory")
@@ -57,12 +59,23 @@ func main() {
 		fail(err.Error())
 	} else {
 		fmt.Fprint(os.Stderr, response.Proto, " ", response.Status, "\r\n")
+		var isJson bool
 		for name, values := range response.Header {
 			for _,val := range values {
 				fmt.Fprint(os.Stderr, name, ":", val, "\r\n")
+				if (name == "Content-Type" && (val == "application/json" || strings.HasSuffix(val, "+json"))) {
+					isJson = true
+				}
 			}
 		}
 		fmt.Fprint(os.Stderr, "\r\n")
-		fmt.Print(string(body))
+		if isJson {
+			var buf bytes.Buffer
+			if json.Indent(&buf, body, "", "    "); err == nil {
+				body = buf.Bytes()
+			}
+		}
+
+		fmt.Println(string(body))
 	}
 }

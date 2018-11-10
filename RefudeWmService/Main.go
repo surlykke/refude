@@ -6,9 +6,12 @@
 //
 package main
 
-import "github.com/surlykke/RefudeServices/lib"
+import (
+	"github.com/surlykke/RefudeServices/lib"
+	"github.com/surlykke/RefudeServices/lib/resource"
+)
 
-var resourceCollection = lib.MakeJsonResourceMap()
+var resourceCollection = resource.MakeJsonResourceMap()
 
 func main() {
 	var manager = MakeManager()

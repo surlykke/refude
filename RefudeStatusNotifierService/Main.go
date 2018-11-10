@@ -8,9 +8,10 @@ package main
 
 import (
 	"github.com/surlykke/RefudeServices/lib"
+	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
-var resourceCollection = lib.MakeJsonResourceMap()
+var resourceCollection = resource.MakeJsonResourceMap()
 
 func main() {
 	go Controller()

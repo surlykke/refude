@@ -8,13 +8,12 @@ package main
 
 import (
 	"context"
+	"github.com/surlykke/RefudeServices/lib/xdg"
 	"net"
 	"net/http"
 	"net/http/httputil"
 	"strings"
 	"time"
-
-	"github.com/surlykke/RefudeServices/lib"
 )
 
 var prefixes = []string{
@@ -27,7 +26,7 @@ var prefixes = []string{
 }
 
 func dialContext(ctx context.Context, network, addr string) (net.Conn, error) {
-	socketAddr := lib.RuntimeDir + "/org.refude." + addr[0:len(addr)-3] // Strip trailing ':80'
+	socketAddr := xdg.RuntimeDir + "/org.refude." + addr[0:len(addr)-3] // Strip trailing ':80'
 	return net.Dial("unix", socketAddr)
 }
 

@@ -8,10 +8,11 @@ package main
 
 import (
 	"fmt"
+	"github.com/surlykke/RefudeServices/lib/slice"
+	"github.com/surlykke/RefudeServices/lib/xdg"
 	"log"
 	"os"
 	"strconv"
-	"github.com/surlykke/RefudeServices/lib"
 	"strings"
 )
 
@@ -40,7 +41,7 @@ var searchDirectories []string = getSearchDirectories()
 
 func readIndexTheme(themeId string, indexThemeFilePath string) (Theme, error) {
 	fmt.Println("readIndexTheme, path:", indexThemeFilePath)
-	iniFile, err := lib.ReadIniFile(indexThemeFilePath)
+	iniFile, err := xdg.ReadIniFile(indexThemeFilePath)
 	if err != nil {
 		log.Println("Error reading theme:", err)
 		return Theme{}, err
@@ -56,12 +57,12 @@ func readIndexTheme(themeId string, indexThemeFilePath string) (Theme, error) {
 	theme.Id = themeId
 	theme.Name = themeGroup.Entries["Name"]
 	theme.Comment = themeGroup.Entries["Comment"]
-	theme.Inherits = lib.Split(themeGroup.Entries["Inherits"], ",")
+	theme.Inherits = slice.Split(themeGroup.Entries["Inherits"], ",")
 	theme.IconDirs = []IconDir{}
-	directories := lib.Split(themeGroup.Entries["Directories"], ",")
+	directories := slice.Split(themeGroup.Entries["Directories"], ",")
 	for _, iniGroup := range iniFile[1:] {
 
-		if !lib.Contains(directories, iniGroup.Name) {
+		if !slice.Contains(directories, iniGroup.Name) {
 			fmt.Fprintln(os.Stderr, iniGroup.Name, " not found in Directories")
 			continue
 		}
@@ -105,8 +106,8 @@ func readIndexTheme(themeId string, indexThemeFilePath string) (Theme, error) {
 
 func getAncestors(themeId string, visited []string, themeMap map[string]Theme) []string {
 	ancestors := make([]string, 0)
-	if themeId != "hicolor" && !lib.Contains(visited, themeId) {
-		lib.AppendIfNotThere(visited, themeId)
+	if themeId != "hicolor" && !slice.Contains(visited, themeId) {
+		slice.AppendIfNotThere(visited, themeId)
 		if theme, ok := themeMap[themeId]; ok {
 			ancestors = append(ancestors, themeId)
 			for _, parentId := range theme.Inherits {

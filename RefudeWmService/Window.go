@@ -7,13 +7,13 @@
 package main
 
 import (
-	"github.com/surlykke/RefudeServices/lib"
+	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
-const WindowMediaType lib.MediaType = "application/vnd.org.refude.wmwindow+json"
+const WindowMediaType resource.MediaType = "application/vnd.org.refude.wmwindow+json"
 
 type Window struct {
-	lib.AbstractResource
+	resource.AbstractResource
 	Id            uint32
 	Parent        uint32
 	StackOrder    int
@@ -21,7 +21,5 @@ type Window struct {
 	Name          string
 	IconName      string `json:",omitempty"`
 	States        []string
-	Actions       map[string]*lib.Action2
-	action        *lib.Action
 }
 

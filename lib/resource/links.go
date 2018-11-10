@@ -4,22 +4,17 @@
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
 //
-package lib
+package resource
 
 const LinksMediaType MediaType = "application/vnd.org.refude.links+json"
 
-type JsonCollection interface {
-	GetResource(path StandardizedPath) *JsonResource
-	GetAll() []*JsonResource
-}
-
 type Links map[MediaType][]StandardizedPath
 
-func (Links) GetSelf() StandardizedPath {
+func (l *Links) GetSelf() StandardizedPath {
 	return "/links"
 }
 
-func (Links) GetMt() MediaType {
+func (l *Links) GetMt() MediaType {
 	return LinksMediaType
 }
 

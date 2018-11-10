@@ -7,14 +7,14 @@
 package main
 
 import (
-	"github.com/surlykke/RefudeServices/lib"
+	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
-const DeviceMediaType lib.MediaType = "application/vnd.org.refude.upowerdevice+json"
+const DeviceMediaType resource.MediaType = "application/vnd.org.refude.upowerdevice+json"
 
 
 type Device struct {
-	lib.AbstractResource
+	resource.AbstractResource
 	NativePath       string
 	Vendor           string
 	Model            string

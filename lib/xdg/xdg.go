@@ -4,10 +4,14 @@
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
 //
-package lib
+package xdg
 
 import (
+	"fmt"
+	"github.com/surlykke/RefudeServices/lib/slice"
+	"log"
 	"os"
+	"os/exec"
 	"strings"
 )
 
@@ -24,18 +28,39 @@ var Locale string
 func init() {
 	Home = os.Getenv("HOME")
 	ConfigHome = notEmptyOr(os.Getenv("XDG_CONFIG_HOME"), Home+"/.config")
-	ConfigDirs = Split(notEmptyOr(os.Getenv("XDG_CONFIG_DIRS"), "/etc/xdg"), ":")
+	ConfigDirs = slice.Split(notEmptyOr(os.Getenv("XDG_CONFIG_DIRS"), "/etc/xdg"), ":")
 	CacheHome = notEmptyOr(os.Getenv("XDG_CACHE_HOME"), Home+"/.cache")
 	DataHome = notEmptyOr(os.Getenv("XDG_DATA_HOME"), Home+"/.local/share")
-	DataDirs = Split(notEmptyOr(os.Getenv("XDG_DATA_DIRS"), "/usr/share:/usr/local/share"), ":")
-	DataDirs = Remove(DataDirs, DataHome)
+	DataDirs = slice.Split(notEmptyOr(os.Getenv("XDG_DATA_DIRS"), "/usr/share:/usr/local/share"), ":")
+	DataDirs = slice.Remove(DataDirs, DataHome)
 	RuntimeDir = notEmptyOr(os.Getenv("XDG_RUNTIME_DIR"), "/tmp")
-	CurrentDesktop = Split(notEmptyOr(os.Getenv("XDG_CURRENT_DESKTOP"), ""), ":")
+	CurrentDesktop = slice.Split(notEmptyOr(os.Getenv("XDG_CURRENT_DESKTOP"), ""), ":")
 	Locale = notEmptyOr(os.Getenv("LANG"), "") // TODO Look at other env variables too
 	if index := strings.Index(Locale, "."); index > -1 { // Strip away encoding part (ie. '.UTF-8')
 		Locale = Locale[0:index]
 	}
 }
+
+
+func RunCmd(argv []string) {
+	fmt.Println("runCmd")
+	for i := 0; i < len(argv); i++ {
+		fmt.Println(i, ":", argv[i])
+	}
+	var cmd = exec.Command(argv[0], argv[1:]...)
+
+	cmd.Dir = Home
+	cmd.Stdout = nil
+	cmd.Stderr = nil
+
+	if err := cmd.Start(); err != nil {
+		log.Println(err.Error())
+		return
+	}
+
+	go cmd.Wait() // TODO Transfer parenthood to proc 1
+}
+
 
 func notEmptyOr(primary string, secondary string) string {
 	if primary != "" {

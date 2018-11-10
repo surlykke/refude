@@ -13,5 +13,5 @@ import (
 
 func main() {
 	go run()
-	lib.ServeWith("org.refude.icon-service", http.HandlerFunc(ServeHTTP))
+	lib.Serve("org.refude.icon-service", http.HandlerFunc(ServeHTTP))
 }

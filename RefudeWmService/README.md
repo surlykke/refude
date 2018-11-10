@@ -53,7 +53,7 @@ RefudeGET wm-service /windows/
     "Actions": {
         "_default": {
             "Name": "Vim",
-            "Comment": "Raise and focus",
+            "Comment": "Raise and focus"
         }
     },
     "RelevanceHint": -3

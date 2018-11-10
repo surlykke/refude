@@ -3,7 +3,7 @@
  *	I'm not sure what the license is.
  *	Names have been lowercased, as case seems to be insignificant, at least in XPM3
  */
-package lib
+package image
 
 import "image/color"
 

@@ -7,10 +7,11 @@
 package main
 
 import (
-	"github.com/godbus/dbus"
-	"strings"
 	"fmt"
-	"github.com/surlykke/RefudeServices/lib"
+	"github.com/godbus/dbus"
+	"github.com/surlykke/RefudeServices/lib/dbusutils"
+	"github.com/surlykke/RefudeServices/lib/resource"
+	"strings"
 )
 
 const UPowService = "org.freedesktop.UPower"
@@ -41,11 +42,11 @@ func Run() {
 	for _, path := range devicePaths {
 		var device = &Device{}
 
-		device.Self = lib.Standardizef("/devices%s", path[strings.LastIndex(string(path), "/"):])
+		device.Self = resource.Standardizef("/devices%s", path[strings.LastIndex(string(path), "/"):])
 		device.Mt = DeviceMediaType
 		devices[path] = device
-		updateDevice(device, lib.GetAllProps(dbusConn, UPowService, path, UPowerDeviceInterface))
-		resourceCollection.Map(device)
+		updateDevice(device, dbuscall.GetAllProps(dbusConn, UPowService, path, UPowerDeviceInterface))
+		resourceMap.Map(device)
 	}
 
 	for signal := range signals {
@@ -54,8 +55,8 @@ func Run() {
 			if device, ok := devices[signal.Path]; ok {
 				var copy = *device
 				// Brute force here, we update all, as I've seen some problems with getting out of sync after suspend..
-				updateDevice(&copy, lib.GetAllProps(dbusConn, UPowService, signal.Path, UPowerDeviceInterface))
-				resourceCollection.Map(&copy)
+				updateDevice(&copy, dbuscall.GetAllProps(dbusConn, UPowService, signal.Path, UPowerDeviceInterface))
+				resourceMap.Map(&copy)
 			}
 			// TODO Handle device added/removed
 			// (need hardware to test)
@@ -80,6 +81,10 @@ var possibleActionValues = map[string][]string{
 	"HybridSleep": {"HybridSleep", "Put the machine into hybrid sleep", "system-suspend-hibernate"}}
 
 func MapPowerActions() {
+	var session Session
+	session.Self = "/session"
+	session.Mt = SessionMediaType
+
 	for id, pv := range possibleActionValues {
 		if "yes" == dbusConn.Object(login1Service, login1Path).Call(managerInterface+".Can" + id, dbus.Flags(0)).Body[0].(string) {
 			var dbusEndPoint = managerInterface + "." + id
@@ -87,10 +92,11 @@ func MapPowerActions() {
 				fmt.Println("Calling", login1Service, login1Path, managerInterface+"." + id)
 				dbusConn.Object(login1Service, login1Path).Call(dbusEndPoint, dbus.Flags(0), false)
 			}
-			var act = lib.MakeAction(lib.Standardizef("/actions/%s", id), pv[0], pv[1], pv[2], executer)
-			resourceCollection.Map(act)
+			session.AddAction(id, pv[1], pv[2], executer)
 		}
 	}
+
+	resourceMap.Map(&session)
 }
 
 func updateDevice(d *Device, m map[string]dbus.Variant) {

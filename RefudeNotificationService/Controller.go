@@ -7,13 +7,13 @@
 package main
 
 import (
-	"github.com/godbus/dbus"
 	"errors"
 	"fmt"
+	"github.com/godbus/dbus"
 	"github.com/godbus/dbus/introspect"
-	"time"
+	"github.com/surlykke/RefudeServices/lib/resource"
 	"strings"
-	"github.com/surlykke/RefudeServices/lib"
+	"time"
 )
 
 const NOTIFICATIONS_SERVICE = "org.freedesktop.Notifications"
@@ -97,7 +97,7 @@ const (
 )
 
 type removal struct {
-	id     	   uint32
+	id         uint32
 	internalId uint32
 	reason     uint32
 }
@@ -143,30 +143,42 @@ func makeNotifyFunction(notifications chan *Notification) interface{} {
 
 		notification := &Notification{
 			Id:         id,
-			internalId: <- ids,
+			internalId: <-ids,
 			Sender:     app_name,
 			Subject:    sanitize(summary, []string{}, []string{}),
 			Body:       sanitize(body, allowedTags, allowedEscapes),
-			Actions:    map[string]string{},
 		}
 
-		notification.Self = lib.Standardizef("/notifications/%d", id)
+		notification.Self = resource.Standardizef("/notifications/%d", id)
 		notification.Mt = NotificationMediaType
 
 		if expire_timeout == 0 {
 			expire_timeout = 2000
 		}
 
-
 		if expire_timeout > 0 {
-			var timeToExpire = time.Millisecond*time.Duration(expire_timeout)
+			var timeToExpire = time.Millisecond * time.Duration(expire_timeout)
 			var expires = time.Now().Add(timeToExpire)
 			notification.Expires = &expires
 			notification.removeAfter(timeToExpire)
 		}
 
-		for i := 0; i+1 < len(actions); i = i + 2 {
-			notification.Actions[actions[i]] = actions[i+1]
+		{
+			// Add a dismiss action
+			var notificationId = notification.Id
+			notification.AddAction("dismiss", "Dismiss", "", func() {
+				removals <- removal{notificationId, 0, Dismissed}
+			})
+
+			// Add actions given in notification (We are aware that one of these may overwrite the dismiss action added above)
+			for i := 0; i+1 < len(actions); i = i + 2 {
+				var notificationId = notification.Id
+				var actionId = actions[i]
+				var actionDescription = actions[i+1]
+				notification.AddAction(actionId, actionDescription, "", func() {
+					conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".ActionInvoked", notificationId, actionId)
+				})
+			}
 		}
 
 		notifications <- notification

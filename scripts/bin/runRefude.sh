@@ -4,7 +4,7 @@
 # are needed by the services.
 #
 
-REFUDESERVICES="RefudeDesktopService RefudeIconService RefudePowerService RefudeWmService RefudeStatusNotifierService RefudeNotificationService RefudeActionService RefudeProxy"
+REFUDESERVICES="RefudeDesktopService RefudeIconService RefudePowerService RefudeWmService RefudeStatusNotifierService RefudeNotificationService RefudeProxy"
 
 if [[ "--restart" == "$1" ]]; then
     for app in $REFUDESERVICES; do

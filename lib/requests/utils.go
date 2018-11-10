@@ -4,15 +4,14 @@
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
 //
-package lib
+package requests
 
 import (
-	"net/http"
-	"github.com/pkg/errors"
-	//	"github.com/surlykke/RefudeServices/lib/resource"
-	"regexp"
-	"fmt"
 	"encoding/json"
+	"fmt"
+	"github.com/pkg/errors"
+	"net/http"
+	"regexp"
 )
 
 func GetSingleQueryParameter(r *http.Request, parameterName string, fallbackValue string) string {
@@ -55,6 +54,8 @@ func GetSingleParams(r *http.Request, paramNames ...string) (map[string]string, 
 
 	return result, nil
 }
+
+
 
 func ReportUnprocessableEntity(w http.ResponseWriter, err error) {
 	fmt.Println("unp: err: ", err)

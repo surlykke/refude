@@ -7,17 +7,20 @@
 package main
 
 import (
-	"github.com/godbus/dbus"
 	"errors"
 	"fmt"
+	"github.com/godbus/dbus"
 	"github.com/godbus/dbus/introspect"
-	"strings"
 	"github.com/godbus/dbus/prop"
-	"regexp"
-	"time"
-	"github.com/surlykke/RefudeServices/lib"
+	"github.com/surlykke/RefudeServices/lib/dbusutils"
+	"github.com/surlykke/RefudeServices/lib/image"
+	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib/slice"
 	"log"
 	"reflect"
+	"regexp"
+	"strings"
+	"time"
 )
 
 const WATCHER_SERVICE = "org.kde.StatusNotifierWatcher"
@@ -70,7 +73,7 @@ func monitorSignals() {
 func monitorItem(sender string, itemPath dbus.ObjectPath) {
 	fmt.Println("itemWatcher: ", sender, itemPath)
 	for {
-		if _, ok := lib.GetSingleProp(conn, sender, itemPath, ITEM_INTERFACE, "Status"); !ok {
+		if _, ok := dbuscall.GetSingleProp(conn, sender, itemPath, ITEM_INTERFACE, "Status"); !ok {
 			break
 		}
 		time.Sleep(time.Second)
@@ -108,7 +111,7 @@ func getOnTheBus() {
 	)
 
 	// Add Introspectable interface
-	conn.Export(introspect.Introspectable(INTROSPECT_XML), WATCHER_PATH, lib.INTROSPECT_INTERFACE)
+	conn.Export(introspect.Introspectable(INTROSPECT_XML), WATCHER_PATH, dbuscall.INTROSPECT_INTERFACE)
 
 	// Add properties interface
 	watcherProperties = prop.New(
@@ -217,7 +220,7 @@ func Controller() {
 }
 
 func updateItem(item *Item) {
-	props := lib.GetAllProps(conn, item.sender, item.itemPath, ITEM_INTERFACE)
+	props := dbuscall.GetAllProps(conn, item.sender, item.itemPath, ITEM_INTERFACE)
 
 	item.Id = getStringOr(props, "ID", "")
 	item.Category = getStringOr(props, "Category", "")
@@ -233,12 +236,12 @@ func updateItem(item *Item) {
 	if item.IconName == "" {
 		item.IconName = collectPixMap(props, "IconPixmap")
 	} else if item.iconThemePath != "" {
-		lib.CopyIcons(item.IconName, item.iconThemePath)
+		image.CopyIcons(item.IconName, item.iconThemePath)
 	}
 	if item.AttentionIconName == "" {
 		item.AttentionIconName = collectPixMap(props, "AttentionIconPixmap")
 	} else if item.iconThemePath != "" {
-		lib.CopyIcons(item.AttentionIconName, item.iconThemePath)
+		image.CopyIcons(item.AttentionIconName, item.iconThemePath)
 	}
 }
 
@@ -256,7 +259,7 @@ func fetchMenu(item *Item) {
 	} else if menu, menuIds, err := parseMenu(interfaces); err != nil {
 		log.Println("Error retrieving menu", err)
 	} else if len(menu.SubMenus) > 0 {
-		item.Menu, item.menuIds = menu.SubMenus, lib.Remove(menuIds, menu.Id)
+		item.Menu, item.menuIds = menu.SubMenus, slice.Remove(menuIds, menu.Id)
 	} else {
 		item.Menu, item.menuIds = []MenuItem{menu}, menuIds
 	}
@@ -329,7 +332,7 @@ func parseMenu(value []interface{}) (MenuItem, []string, error) {
 	menuItem.Id = fmt.Sprintf("%d", id)
 
 	if menuItem.Type = getStringOr(m, "type", "standard");
-		!lib.Among(menuItem.Type, "standard", "separator") {
+		!slice.Among(menuItem.Type, "standard", "separator") {
 		return MenuItem{}, []string{}, errors.New("Illegal menuitem type: " + menuItem.Type)
 	}
 	menuItem.Label = getStringOr(m, "label", "")
@@ -338,7 +341,7 @@ func parseMenu(value []interface{}) (MenuItem, []string, error) {
 	if menuItem.IconName = getStringOr(m, "icon-name", ""); menuItem.IconName == "" {
 		// FIXME: Look for pixmap
 	}
-	if menuItem.ToggleType = getStringOr(m, "toggle-type", ""); !lib.Among(menuItem.ToggleType, "checkmark", "radio", "") {
+	if menuItem.ToggleType = getStringOr(m, "toggle-type", ""); !slice.Among(menuItem.ToggleType, "checkmark", "radio", "") {
 		return MenuItem{}, []string{}, errors.New("Illegal toggle-type: " + menuItem.ToggleType)
 	}
 
@@ -365,9 +368,9 @@ func parseMenu(value []interface{}) (MenuItem, []string, error) {
 }
 
 
-func (item *Item) restPath() lib.StandardizedPath {
+func (item *Item) restPath() resource.StandardizedPath {
 	var tmp = strings.Replace(item.sender[1:]+string(item.itemPath), "/", "-", -1)
-	return lib.Standardizef("/items/%s", tmp)
+	return resource.Standardizef("/items/%s", tmp)
 
 }
 
@@ -376,17 +379,17 @@ func collectPixMap(m map[string]dbus.Variant, key string) string {
 		if arrs, ok := variant.Value().([][]interface{}); !ok {
 			log.Println("Looking for [][]interface{} at"+key+", got:", reflect.TypeOf(variant.Value()))
 		} else {
-			res := make(lib.Icon, 0)
+			res := make(image.Icon, 0)
 			for _, arr := range arrs {
 				for len(arr) > 2 {
 					width := arr[0].(int32)
 					height := arr[1].(int32)
 					pixels := arr[2].([]byte)
-					res = append(res, lib.Img{Width: width, Height: height, Pixels: pixels})
+					res = append(res, image.Img{Width: width, Height: height, Pixels: pixels})
 					arr = arr[3:]
 				}
 			}
-			return lib.SaveAsPngToSessionIconDir(res)
+			return image.SaveAsPngToSessionIconDir(res)
 		}
 	}
 	return ""

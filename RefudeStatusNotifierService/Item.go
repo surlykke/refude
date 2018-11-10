@@ -7,19 +7,21 @@
 package main
 
 import (
-	"net/http"
-	"github.com/godbus/dbus"
-	"log"
-	"strconv"
 	"fmt"
-	"github.com/surlykke/RefudeServices/lib"
+	"github.com/godbus/dbus"
+	"github.com/surlykke/RefudeServices/lib/requests"
+	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib/slice"
+	"log"
+	"net/http"
+	"strconv"
 	time2 "time"
 )
 
-const ItemMediaType lib.MediaType = "application/vnd.org.refude.statusnotifieritem+json"
+const ItemMediaType resource.MediaType = "application/vnd.org.refude.statusnotifieritem+json"
 
 type Item struct {
-	lib.AbstractResource
+	resource.AbstractResource
 	Id                      string
 	Category                string
 	Status                  string
@@ -54,19 +56,19 @@ type MenuItem struct {
 
 func (item *Item) POST(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("POST: ", r.URL)
-	action := lib.GetSingleQueryParameter(r, "action", "left")
-	x, _ := strconv.Atoi(lib.GetSingleQueryParameter(r, "x", "0"))
-	y, _ := strconv.Atoi(lib.GetSingleQueryParameter(r, "y", "0"))
-	id := lib.GetSingleQueryParameter(r, "id", "")
+	action := requests.GetSingleQueryParameter(r, "action", "left")
+	x, _ := strconv.Atoi(requests.GetSingleQueryParameter(r, "x", "0"))
+	y, _ := strconv.Atoi(requests.GetSingleQueryParameter(r, "y", "0"))
+	id := requests.GetSingleQueryParameter(r, "id", "")
 
 	fmt.Println("action: ", action, ", known ids: ", item.menuIds)
 	var call *dbus.Call
-	if lib.Among(action, "left", "middle", "right") {
+	if slice.Among(action, "left", "middle", "right") {
 		action2method := map[string]string{"left": "Activate", "middle": "SecondaryActivate", "right": "ContextMenu"}
 		fmt.Println("Calling: ", "org.kde.StatusNotifierItem."+action2method[action], dbus.Flags(0), x, y)
 		dbusObj := conn.Object(item.sender, item.itemPath)
 		call = dbusObj.Call("org.kde.StatusNotifierItem."+action2method[action], dbus.Flags(0), x, y);
-	} else if action == "menu" && lib.Among(id, item.menuIds...) {
+	} else if action == "menu" && slice.Among(id, item.menuIds...) {
 		idAsInt, _ := strconv.Atoi(id)
 		data := dbus.MakeVariant("")
 		time := uint32(time2.Now().Unix())

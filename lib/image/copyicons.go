@@ -4,9 +4,10 @@
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
 //
-package lib
+package image
 
 import (
+	"github.com/surlykke/RefudeServices/lib/xdg"
 	"io"
 	"log"
 	"os"
@@ -22,7 +23,7 @@ func CopyIconToSessionIconDir(iconPath string) (string, error) {
 	}
 	var fileName = filepath.Base(iconPath)
 	var iconName = fileName[:len(fileName) - len(ext)]
-	var sessionIconDir = RuntimeDir + "/org.refude.icon-service-session-icons/"
+	var sessionIconDir = xdg.RuntimeDir + "/org.refude.icon-service-session-icons/"
 	var destPath =  sessionIconDir + fileName
 
 	r, err := os.Open(iconPath)
@@ -58,7 +59,7 @@ func CopyIcons(iconName string, iconThemePath string) {
 	var xpmName = iconName + ".xpm"
 	var svgName = iconName + ".svg"
 
-	var sessionIconDir = RuntimeDir + "/org.refude.icon-service-session-icons/"
+	var sessionIconDir = xdg.RuntimeDir + "/org.refude.icon-service-session-icons/"
 	if !strings.HasSuffix(iconThemePath, "/") {
 		iconThemePath = iconThemePath + "/"
 	}
