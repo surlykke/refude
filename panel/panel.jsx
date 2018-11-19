@@ -13,7 +13,7 @@
  */
 import React from 'react'
 import {render} from 'react-dom'
-import {WIN, watchScreenChanges, devtools, loadPosition} from '../common/utils'
+import {WIN, watchScreenChanges, devtools, loadPosition, subscribe} from '../common/utils'
 import {Clock} from './clock/clock'
 import {Battery} from './battery/battery'
 import {NotifierItems} from './notifieritems/notifieritems'
@@ -53,6 +53,11 @@ class Panel extends React.Component {
         });
     }
 
+    componentDidMount = () => {
+        subscribe("componentUpdated", this.adjustSize);
+    };
+
+
     adjustSize = () => {
         setTimeout(
             () => {
@@ -67,13 +72,13 @@ class Panel extends React.Component {
         <div style={{width: "500px"}}>
             <div style={style} id="content" ref={div => { this.content = div }}>
                 <Clock style={pluginStyle}/>
-                <Battery style={pluginStyle} onUpdated={this.adjustSize}/>
-                <Notificationalert style={pluginStyle} onUpdated={this.adjustSize}/>
-                <NotifierItems style={pluginStyle} onUpdated={this.adjustSize}/>
+                <Battery style={pluginStyle}/>
+                <Notificationalert style={pluginStyle}/>
+                <NotifierItems style={pluginStyle}/>
                 <HideButton style={pluginStyle}/>
                 <DragField style={pluginStyle}/>
                 <Pinfield style={pluginStyle}/>
-                <Do onUpdated={this.adjustSize}/>
+                <Do/>
             </div>
         </div>
 }

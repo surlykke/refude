@@ -8,6 +8,7 @@ import React from 'react'
 import {render} from 'react-dom'
 import {doGetIfNoneMatch, doPost} from '../../common/http'
 import {monitorResources} from "../common/monitor";
+import {publish} from "../../common/utils";
 
 let NotifierItem = (props) => {
 
@@ -77,7 +78,6 @@ class NotifierItems extends React.Component {
     constructor(props) {
 		super(props)
 		this.state = {items : []}
-		this.onUpdated = props.onUpdated
 		this.style = Object.assign({}, props.style)
 		this.style.margin = "0px"
     }
@@ -87,7 +87,7 @@ class NotifierItems extends React.Component {
     };
 
     componentDidUpdate = () => {
-        this.onUpdated();
+        publish("componentUpdated");
     };
 
     render = () =>

@@ -13,6 +13,7 @@
  */
 import React from 'react'
 import {doGetIfNoneMatch} from '../../common/http'
+import {publish} from "../../common/utils";
 
 const errorData = {
     style: {
@@ -37,7 +38,6 @@ export class Battery extends React.Component {
 
     constructor(props) {
         super(props);
-        this.onUpdated = props.onUpdated;
         this.state = {pct: -1, state: "Unknown"};
         this.etag = undefined;
     }
@@ -61,7 +61,7 @@ export class Battery extends React.Component {
     };
 
     componentDidUpdate() {
-        this.onUpdated();
+        publish("componentUpdated");
     }
 
     /**
@@ -76,15 +76,19 @@ export class Battery extends React.Component {
         let startY = -segmentRadius * Math.sin(3*Math.PI/2 - angle/2);
         let bigArchFlag = angle > Math.PI ? 1 : 0;
 
-        let fillColor = "Fully charged" === state ? "black" : "Charging" === state ? "grey" :"lightgrey";
+        let fillColor = ["Fully charged", "Charging"].includes(state) ? "grey" :"lightgrey";
         let strokeColor =  state === "Unknown" || (state !== "Charging" && pct < 10) ? "red" : "black";
         let alertText = state === "Unknown" ? '?' : (state !== "Charging" && pct < 10) ? '!' : "";
         let title = state + " " + Math.round(pct) + "%";
 
+        let marker = Math.round(pct) === 100 ?
+            <circle cx="0" cy="0" r="46" fill={fillColor} stroke="none"/> :
+            <path d={`M ${startX} ${startY} A ${segmentRadius} ${segmentRadius} 0 ${bigArchFlag} 0 ${-startX} ${startY}`} fill={fillColor} stroke="none"/>;
+
         return <div title={title} style={this.props.style}>
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="-60 -65 120 125">
                 <circle cx="0" cy="0" r="52" fill="white" stroke={strokeColor} strokeWidth="12"/>
-                <path d={`M ${startX} ${startY} A ${segmentRadius} ${segmentRadius} 0 ${bigArchFlag} 0 ${-startX} ${startY}`} fill={fillColor} stroke="none"/>
+                {marker}
                 <text textAnchor="middle" x="0" y="30" style={{fontWeight: "bold", fontSize: "90px", fill: "red"}}>{alertText}</text>
            </svg>
         </div>

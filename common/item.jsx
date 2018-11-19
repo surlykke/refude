@@ -5,6 +5,7 @@
 // Please refer to the GPL2 file for a copy of the license.
 //
 import React from 'react';
+import {publish} from "./utils";
 
 let Item = props => {
 
@@ -43,8 +44,11 @@ let Item = props => {
         fontSize: "0.8em",
     };
 
+    let onClick = () => publish("itemSelected", item);
+    let onDoubleClick = () => publish("itemLaunched", item);
+
     return (
-        <div id={props.item.url} style={style} onClick={() => select(item)} onDoubleClick={() => execute(item)}>
+        <div id={props.item.url} style={style} onClick={() => publish("click", props.item)} onDoubleClick={() => publish("doubleclick", props.item)}>
             <img width="24px" height="24px" style={iconStyle} src={`http://localhost:7938/icon-service/icon?name=${item.iconName}`} alt=""/>
             <div style={nameStyle}>{item.description}</div>
             <div style={commentStyle}>{item.Comment}</div>

@@ -6,21 +6,27 @@
 //
 import React from 'react';
 import {Item} from './item.jsx'
+import {publish, subscribe} from "./utils";
 
 export class ItemList extends React.Component {
 
     constructor(props) {
         super(props)
-        this.state = {items: [], selected: 0};
-        this.onUpdated = props.onUpdated
+        this.state = {items: [], selectedUrl: null};
     }
+
+    componentDidMount = () => {
+        console.log("Itemlist did mount");
+        subscribe("moveRequested", this.move);
+        subscribe("click", this.setSelected);
+        subscribe("doubleclick", item => publish("itemLaunched", item));
+    };
 
     componentDidUpdate = () => {
         document.getElementById("input").focus();
         // Scroll selected item into view
-        let selected = this.state.items[this.state.selected];
-        if (selected) {
-            let selectedDiv = document.getElementById(selected.url);
+        if (this.state.selectedUrl) {
+            let selectedDiv = document.getElementById(this.state.selectedUrl);
             if (selectedDiv) {
                 let listDiv = document.getElementById("itemListDiv");
                 let {top: listTop, bottom: listBottom} = listDiv.getBoundingClientRect();
@@ -29,14 +35,16 @@ export class ItemList extends React.Component {
                 else if (selectedBottom > listBottom) listDiv.scrollTop += (selectedBottom - listBottom + 10)
             }
         }
-        if (this.onUpdated) this.onUpdated()
+        publish("componentUpdated");
     };
 
     componentWillReceiveProps = (props) => {
-        let selectedUrl = this.state.items[this.state.selected] && this.state.items[this.state.selected].url;
-        let newSelected = this.state.items.findIndex(i => i.url === selectedUrl);
-        this.setState({items: props.items, selected: newSelected > 0 ? newSelected : 0})
-    }
+        console.log("Itemlist will receive props");
+        if (!(this.state.selectedUrl && props.items.findIndex(i => this.state.selectedUrl === i.url) > -1)) {
+            this.setSelected(props.items[0]);
+        }
+        this.setState({items: props.items});
+    };
 
     keyDown = (event) => {
         let {key, ctrlKey, shiftKey, altKey, metaKey} = event;
@@ -45,9 +53,9 @@ export class ItemList extends React.Component {
         else if (key === "Tab" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.move(true);
         else if (key === "ArrowUp" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.move(false);
         else if (key === "ArrowDown" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.move(true);
-        else if (key === "Enter" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.props.execute(this.state.items[this.state.selected]);
-        else if (key === " " && !ctrlKey && !shiftKey && !altKey && !metaKey) this.props.execute(this.state.items[this.state.selected]);
-        else if (key === "Escape" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.props.onDismiss();
+        else if (key === "Enter" && !ctrlKey && !shiftKey && !altKey && !metaKey) publish("itemLaunched", this.getSelected());
+        else if (key === " " && !ctrlKey && !shiftKey && !altKey && !metaKey) publish("itemLaunched", this.getSelected());
+        else if (key === "Escape" && !ctrlKey && !shiftKey && !altKey && !metaKey) publish("dismiss");
         else {
             return;
         }
@@ -55,18 +63,26 @@ export class ItemList extends React.Component {
     };
 
     move = (down) => {
-        this.setState({selected: (this.state.selected + this.state.items.length + (down ? 1 : -1)) % this.state.items.length})
+        if (this.state.selectedUrl) {
+            let index = this.state.items.findIndex(i => this.state.selectedUrl === i.url);
+            if (index > -1) {
+                let numItems = this.state.items.length;
+                index = (index + numItems + (down ? 1 : -1)) % numItems;
+                this.setSelected(this.state.items[index]);
+            }
+        }
     };
 
-
-
-    select = (item) => {
-        let index = this.state.items.indexOf(item);
-        this.setState({selected: index > - 1 ? index : 0});
+    setSelected = (item) => {
+        this.setState({selectedUrl: item ? item.url : undefined});
+        publish("boundsBecame", item ? item.bounds : undefined);
     };
+
+    getSelected = () => {
+        return this.state.items.find(i => i.url === this.state.selectedUrl);
+    }
 
     render = () => {
-        let {select} = this.props;
         let outerStyle = Object.assign({
             display: "flex",
             flexFlow: "column",
@@ -105,24 +121,18 @@ export class ItemList extends React.Component {
         let content = [];
         this.state.items.forEach(item => {
             if (item.group !== prevGroup) {
-                content.push(<div key={item.group} style={headingStyle}>{item.group}</div>)
-                prevGroup = item.group
+                content.push(<div key={item.group} style={headingStyle}>{item.group}</div>);
+                prevGroup = item.group;
             }
-            content.push(<Item key={item.url}
-                               item={item}
-                               selected={item === this.state.items[this.state.selected]}
-                               select={this.select}
-                               execute={this.props.execute}/>)
+            content.push(<Item key={item.url} item={item} selected={item.url === this.state.selectedUrl}/>);
         });
+
+        let onTermChange = (event) => publish("termChanged", event.target.value);
 
         return (
             <div onKeyDown={this.keyDown} style={outerStyle}>
                 <div style={searchBoxStyle}>
-                    <input id="input"
-                           style={inputStyle}
-                           type="search"
-                           onChange={event => this.props.onTermChange(event.target.value)}
-                           disabled={this.props.disabled} />
+                    <input id="input" style={inputStyle} type="search" onChange={onTermChange} disabled={this.props.disabled} />
                 </div>
                 <div id="itemListDiv" style={innerStyle}>
                     {content}

@@ -5,14 +5,14 @@
 // Please refer to the GPL2 file for a copy of the license.
 
 
-const http = require('http')
+const http = require('http');
 import React from 'react'
 import {render} from 'react-dom'
 import {doSearch, doPostPath, doGet} from '../../common/http'
-import {Utils, WIN, devtools, applicationRank} from "../../common/utils";
+import {Utils, WIN, devtools, applicationRank, SCREEN, publish, subscribe} from "../../common/utils";
 import {ItemList} from "../../common/itemlist"
+import {Indicator} from "./indicator";
 import {T} from "../../common/translate";
-
 
 
 let windowIconStyle = w => {
@@ -40,15 +40,20 @@ class Do extends React.Component {
         this.resources = {windows: [], applications: []};
         this.term = "";
         this.state = {items: []};
-        this.itemList = React.createRef();
-        this.onUpdated = props.onUpdated;
+        this.display = {x: 0, y: 0, w: 100, h: 100};
 
         this.listenForUpDown();
         this.handleBlurEvents();
     };
 
+    componentDidMount =  () => {
+        subscribe("termChanged", this.termChange);
+        subscribe("itemLaunched", this.execute);
+        subscribe("dismiss", this.onDismiss);
+    };
+
     componentDidUpdate = () => {
-        this.onUpdated();
+        publish("componentUpdated");
     };
 
     listenForUpDown = () => {
@@ -56,9 +61,9 @@ class Do extends React.Component {
         http.createServer(function (req, res) {
             that.showWin();
             if (req.url === "/up") {
-                that.itemList.current.move(false);
+                publish("moveRequested", false);
             } else {
-                that.itemList.current.move(true);
+                publish("moveRequested", true);
             }
             res.end('')
         }).listen("/run/user/1000/org.refude.panel.do");
@@ -70,7 +75,7 @@ class Do extends React.Component {
             this.hasfocus = false;
             // TAB momentarily unfocuses window - so we wait a bit to see if it's for real
             setTimeout(() => {
-                if (!this.hasfocus) this.onDismiss();
+                if (!this.hasfocus) publish("dismiss");
             }, 100);
         });
     }
@@ -104,7 +109,8 @@ class Do extends React.Component {
                     url: w._self,
                     description: w.Name,
                     iconName: w._actions['default'].IconName,
-                    iconStyle: windowIconStyle(w)
+                    iconStyle: windowIconStyle(w),
+                    bounds: {X: w.X, Y: w.Y, W: w.W, H: w.H}
                 });
             });
 
@@ -124,9 +130,7 @@ class Do extends React.Component {
         }
 
         if (term.length > 0 && this.resources.session) {
-            console.log("session:", this.resources.session);
             for (let [id, a] of Object.entries(this.resources.session._actions)) {
-                console.log("Consider", id, a.Description);
                 if (a.Description.toLowerCase().indexOf(term) > -1) {
                     let item = {
                         group: T("Leave"),
@@ -134,7 +138,6 @@ class Do extends React.Component {
                         description: a.Description,
                         iconName: a.IconName
                     };
-                    console.log("Adding", item)
                     items.push(item);
                 }
             }
@@ -153,14 +156,14 @@ class Do extends React.Component {
         WIN.focus();
     };
 
+
+
     termChange = term => {
-        console.log("termChange:", term);
         this.term = term;
         this.filterAndSort();
     };
 
     execute = (item) => {
-        console.log("execute: ", item);
         doPostPath(item.url).then(response => {
             this.onDismiss();
         })
@@ -177,15 +180,16 @@ class Do extends React.Component {
 
     render = () => {
         let itemListStyle = {maxWidth: "300px", maxHeight: "300px"};
+        let {bounds} = this.state;
         if (this.state.shown)
-            return <ItemList key="itemlist"
-                             style={itemListStyle}
-                             items={this.state.items}
-                             onTermChange={this.termChange}
-                             execute={this.execute}
-                             onDismiss={this.onDismiss}
-                             onUpdated={this.onUpdated}
-                             ref={this.itemList}/>
+            return [
+                <ItemList key="itemlist"
+                          style={itemListStyle}
+                          items={this.state.items}
+                          ref={this.itemList}/>,
+                <Indicator key="indicator"/>
+
+            ]
         else
             return null
     };

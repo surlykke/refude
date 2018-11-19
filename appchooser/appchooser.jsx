@@ -9,7 +9,7 @@ import {render} from 'react-dom';
 import {doGet, doPost, doSearch} from '../common/http'
 import {T} from "../common/translate";
 import {ItemList} from "../common/itemlist"
-import {WIN, devtools, applicationRank} from "../common/utils";
+import {WIN, devtools, applicationRank, subscribe} from "../common/utils";
 
 let gui = window.require('nw.gui');
 let filePath = gui.App.argv[0];
@@ -28,6 +28,15 @@ class AppChooser extends React.Component {
         this.state = {items: []};
         this.term = ""
         this.fetchMimetypes(0);
+    }
+
+    componentDidMount = () => {
+        subscribe("dismiss", () => gui.App.quit());
+        subscribe("termChanged", (term) => {
+            this.term = term.toLowerCase();
+            this.filterAndSort();
+        });
+        subscribe("itemLaunched", (item) => this.setState({selected: item.app}));
     }
 
     fetchMimetypes = (pos) => {
@@ -77,7 +86,7 @@ class AppChooser extends React.Component {
             this.appMap[mimetypeId].filter(app => app.__rank < 1).sort((a1, a2) => a1.__rank - a2.__rank).forEach(app => {
                 items.push({
                     group: mimetypeId === 'other' ? T("Other applications") : T("Applications that handle " + this.mimetypeComment[mimetypeId]),
-                    id: app._self,
+                    url: app._self,
                     description: app.Name + (app.Comment ? ' - ' + app.Comment : ''),
                     iconName: app.IconName,
                     app: app
@@ -86,21 +95,6 @@ class AppChooser extends React.Component {
         }
         console.log("Set items:", items);
         this.setState({items: items});
-    };
-
-    termChange = term => {
-        console.log("termChange:", term);
-        this.term = term.toLowerCase();
-        this.filterAndSort();
-    };
-
-
-    execute = (item) => {
-        this.setState({selected: item.app});
-    };
-
-    dismiss = () => {
-        gui.App.quit();
     };
 
     launch = (app, always) => {
@@ -202,13 +196,7 @@ class AppChooser extends React.Component {
             <div key="heading" style={headingStyle}>
                 <span dangerouslySetInnerHTML={{__html: T("Open &nbsp;<b>%0</b>&nbsp;with:", fileName)}}/>
             </div>
-            <ItemList key="itemlist"
-                      items={this.state.items}
-                      onTermChange={this.termChange}
-                      select={this.select}
-                      execute={this.execute}
-                      onDismiss={this.dismiss}
-                      disabled={this.state.selected}/>
+            <ItemList key="itemlist" items={this.state.items} disabled={this.state.selected}/>
         </div>
     }
 }

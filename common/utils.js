@@ -76,5 +76,20 @@ export let applicationRank = (app, lowercaseTerm) => {
     }
 };
 
+const PUBSUB = (() => {
+    let subscriptions = {}
+    return {
+        subscribe: (topic, fn) => {
+            subscriptions[topic] = subscriptions[topic] || [];
+            subscriptions[topic].push(fn);
+        },
+        publish: (topic, obj) => {
+            let subscribers = subscriptions[topic] ||  [];
+            subscribers.forEach(fn => fn(obj));
+        }
+    };
+})();
 
+export let publish = (topic, data) => PUBSUB.publish(topic, data);
+export let subscribe = (topic, fn) => PUBSUB.subscribe(topic, fn);
 

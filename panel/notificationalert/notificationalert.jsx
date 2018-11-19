@@ -8,6 +8,7 @@ import React from 'react'
 import {render} from 'react-dom'
 import {doGetIfNoneMatch, doPost, doDelete} from '../../common/http'
 import {monitorResources} from "../common/monitor";
+import {publish} from "../../common/utils";
 
 
 
@@ -15,7 +16,6 @@ class Notificationalert extends React.Component {
     constructor(props) {
         super(props)
         this.state = {items: []}
-        this.onUpdated = props.onUpdated
     }
 
     componentDidMount = () => {
@@ -27,7 +27,7 @@ class Notificationalert extends React.Component {
 
     componentDidUpdate = () => {
         console.log("Notifications did update:", new Date().getMilliseconds());
-        this.onUpdated()
+        publish("componentUpdated");
     }
 
     render = () => {
