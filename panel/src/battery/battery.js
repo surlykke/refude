@@ -12,17 +12,8 @@
  * Please refer to the LICENSE file for a copy of the license.
  */
 import React from 'react'
-import {doGetIfNoneMatch} from '../../common/http'
-import {publish} from "../../common/utils";
-
-const errorData = {
-    style: {
-        color: 'red',
-        fontWeight: 'normal',
-        marginRight: '0.4em'
-    },
-    percentage: '?'
-};
+import {doGetIfNoneMatch} from '../common/http'
+import {publish} from "../common/utils";
 
 /**
  * We represent charge by a circle segment (cf https://en.wikipedia.org/wiki/Circular_segment)

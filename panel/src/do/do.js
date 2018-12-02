@@ -5,15 +5,14 @@
 // Please refer to the GPL2 file for a copy of the license.
 
 
-const http = require('http');
 import React from 'react'
-import {render} from 'react-dom'
-import {doSearch, doPostPath, doGet} from '../../common/http'
-import {Utils, WIN, devtools, applicationRank, SCREEN, publish, subscribe} from "../../common/utils";
-import {ItemList} from "../../common/itemlist"
+import {doSearch, doPostPath, doGet} from '../common/http'
+import {WIN, applicationRank, publish, subscribe} from "../common/utils";
+import {ItemList} from "../common/itemlist"
 import {Indicator} from "./indicator";
-import {T} from "../../common/translate";
+import {T} from "../common/translate";
 
+const http = require('http');
 
 let windowIconStyle = w => {
     let style = {
@@ -180,7 +179,6 @@ class Do extends React.Component {
 
     render = () => {
         let itemListStyle = {maxWidth: "300px", maxHeight: "300px"};
-        let {bounds} = this.state;
         if (this.state.shown)
             return [
                 <ItemList key="itemlist"

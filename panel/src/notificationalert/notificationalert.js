@@ -5,10 +5,8 @@
 // Please refer to the GPL2 file for a copy of the license.
 //
 import React from 'react'
-import {render} from 'react-dom'
-import {doGetIfNoneMatch, doPost, doDelete} from '../../common/http'
 import {monitorResources} from "../common/monitor";
-import {publish} from "../../common/utils";
+import {publish} from "../common/utils";
 
 
 
@@ -21,7 +19,6 @@ class Notificationalert extends React.Component {
     componentDidMount = () => {
         monitorResources("notifications-service", "application/vnd.org.refude.desktopnotification+json", items => {
             this.setState({items: items})
-            this.onUpdated();
         });
     }
 
@@ -34,7 +31,7 @@ class Notificationalert extends React.Component {
         // The two svg snippets are downloads of material icons 'notifications_active' and 'notifications_none'.
         // See https://material.io/tools/icons/?style=baseline
         return (
-            <div title="hej&#010;med&#010;dig" style={this.props.style}>
+            <div style={this.props.style}>
                 {this.state.items.length > 0 ?
                     <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                         <path d="M0 0h24v24H0z" fill="none"/>

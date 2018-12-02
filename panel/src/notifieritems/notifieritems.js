@@ -5,10 +5,9 @@
 // Please refer to the GPL2 file for a copy of the license.
 //
 import React from 'react'
-import {render} from 'react-dom'
-import {doGetIfNoneMatch, doPost} from '../../common/http'
+import {doPost} from '../common/http'
 import {monitorResources} from "../common/monitor";
-import {publish} from "../../common/utils";
+import {publish} from "../common/utils";
 
 let NotifierItem = (props) => {
 
@@ -38,7 +37,7 @@ let NotifierItem = (props) => {
         };
 
         buildMenu(props.item.Menu).popup(event.clientX, event.clientY)
-    }
+    };
 
     let getXY = (event) => {
         return {
@@ -60,6 +59,7 @@ let NotifierItem = (props) => {
 
     let onRightClick = (event) => {
         event.persist()
+        let {x, y} = getXY(event)
         if (props.item.Menu) {
             showMenu(event)
         } else {
@@ -69,7 +69,7 @@ let NotifierItem = (props) => {
     }
 
 
-    return (<img src={props.item.IconUrl} height="18px" width="18px"
+    return (<img src={props.item.IconUrl} alt="" height="18px" width="18px"
                  style={{paddingRight: "5px"}} onClick={onClick} onContextMenu={onRightClick}/>)
 }
 

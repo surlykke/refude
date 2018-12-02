@@ -1,6 +1,5 @@
 import React from 'react';
-import {render} from 'react-dom'
-import {Utils, WIN, devtools, subscribe, SCREEN} from "../../common/utils";
+import {subscribe, SCREEN} from "../common/utils";
 
 export class Indicator extends React.Component {
 

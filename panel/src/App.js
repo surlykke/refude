@@ -12,22 +12,23 @@
  * Please refer to the LICENSE file for a copy of the license.
  */
 import React from 'react'
-import {render} from 'react-dom'
-import {WIN, watchScreenChanges, devtools, loadPosition, subscribe} from '../common/utils'
+import {WIN, watchScreenChanges, /*devtools,*/ loadPosition, subscribe} from './common/utils'
 import {Clock} from './clock/clock'
 import {Battery} from './battery/battery'
 import {NotifierItems} from './notifieritems/notifieritems'
-import {HideButton} from './hidebutton/hidebutton'
 import {Notificationalert} from "./notificationalert/notificationalert";
 import {DragField} from './dragfield/dragfield'
-import {Pinfield} from "./pinfield/pinfield";
+import {CloseButton} from "./closebutton/closebutton";
 import {Do} from './do/do'
 
 const Window = nw.Window.get();
 
 const style = {
     margin: "0px",
-    padding: "2px",
+    paddingLeft: "6px",
+    paddingRight: "6px",
+    paddingTop: "2px",
+    paddingBottom: "2px",
     width: "fit-content",
     backgroundColor: "rgba(255,255,255,0.8)"
 }
@@ -42,7 +43,7 @@ const pluginStyle = {
     verticalAlign: "middle"
 }
 
-class Panel extends React.Component {
+export default class App extends React.Component {
 
     constructor(props) {
         //devtools();
@@ -55,6 +56,7 @@ class Panel extends React.Component {
 
     componentDidMount = () => {
         subscribe("componentUpdated", this.adjustSize);
+        this.adjustSize();
     };
 
 
@@ -72,21 +74,14 @@ class Panel extends React.Component {
         <div style={{width: "500px"}}>
             <div style={style} id="content" ref={div => { this.content = div }}>
                 <Clock style={pluginStyle}/>
-                <Battery style={pluginStyle}/>
                 <Notificationalert style={pluginStyle}/>
                 <NotifierItems style={pluginStyle}/>
-                <HideButton style={pluginStyle}/>
+                <Battery style={pluginStyle}/>
                 <DragField style={pluginStyle}/>
-                <Pinfield style={pluginStyle}/>
+                <CloseButton style={pluginStyle}/>
                 <Do/>
             </div>
         </div>
 }
-
-
-render(
-    <Panel/>,
-    document.getElementById('root')
-);
 
 
