@@ -5,20 +5,19 @@
 // Please refer to the GPL2 file for a copy of the license.
 //
 import React from 'react';
-import {render} from 'react-dom';
-import {doGet, doPost, doSearch} from '../common/http'
-import {T} from "../common/translate";
-import {ItemList} from "../common/itemlist"
-import {WIN, devtools, applicationRank, subscribe} from "../common/utils";
+import {doGet, doPost, doSearch} from './common/http'
+import {T} from "./common/translate";
+import {ItemList} from "./common/itemlist"
+import {applicationRank, subscribe} from "./common/utils";
 
 let gui = window.require('nw.gui');
 let filePath = gui.App.argv[0];
 let fileName = filePath.substring(filePath.lastIndexOf('/') + 1);
 let mimetypeId = gui.App.argv[1];
-let isUrl = mimetypeId.startsWith("x-scheme-handler");
+
 const desktopapp = "application/vnd.org.refude.desktopapplication+json";
 
-class AppChooser extends React.Component {
+export default class AppChooser extends React.Component {
     constructor(props) {
         //devtools();
         super(props);
@@ -61,7 +60,6 @@ class AppChooser extends React.Component {
     fetchApps = () => {
         doSearch("desktop-service", desktopapp, "r.Exec ~i '%f' or r.Exec ~i '%u'").then(
             resp => {
-                let items = [];
                 let foundApps = [];
                 for (let mimetypeId of this.mimetypeIdList) {
                     this.appMap[mimetypeId] = resp.json.filter(app => !foundApps.includes(app) && (mimetypeId === 'other' || app.Mimetypes.includes(mimetypeId)))
@@ -200,5 +198,3 @@ class AppChooser extends React.Component {
         </div>
     }
 }
-
-render(<AppChooser/>, document.getElementById('root'));
