@@ -7,17 +7,17 @@ rm -rf ${thisdir}/dist/*
 REFUDEDIR=${PREFIX}/share/refude
 mkdir -p ${REFUDEDIR}
 
-for appdir in panel appchooser ; do
+for appdir in panel appchooser notifications ; do
 	echo "building $appdir"
 	cd $thisdir/$appdir
 	npm run build || exit 1
 	cp -R $thisdir/$appdir/build ${PREFIX}/share/refude/$appdir
 done
 
-for app in panel/refudePanel panel/refudeDo appchooser/refudeAppChooser ;  do
+for app in panel/refudePanel panel/refudeDo appchooser/refudeAppChooser notifications/refudeNotifications;  do
 	ln -sf ${PREFIX}/share/refude/$app ${PREFIX}/bin
 done
 
-for desktopfile in panel/refudePanel.desktop ; do
+for desktopfile in panel/refudePanel.desktop notifications/refudeNotifications.desktop; do
     ln -sf ${PREFIX}/share/refude/$desktopfile ${PREFIX}/share/applications
 done

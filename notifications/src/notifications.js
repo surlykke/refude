@@ -5,18 +5,14 @@
 // Please refer to the GPL2 file for a copy of the license.
 //
 import React from 'react';
-import {render} from 'react-dom';
-import {doSearch} from '../common/http'
-import {devtools} from "../common/utils";
 import {Notification} from "./notification";
-import {monitorResources} from "../panel/common/monitor";
-import {T} from "../common/translate";
+import {monitorResources} from "./common/monitor";
+import {T} from "./common/translate";
 
 let gui = window.require('nw.gui');
 
-class Notifications extends React.Component {
+export default class Notifications extends React.Component {
     constructor(props) {
-        //devtools();
         super(props);
         this.state = {notifications: []}
         monitorResources(
@@ -68,5 +64,3 @@ class Notifications extends React.Component {
 
     }
 }
-
-render(<Notifications/>, document.getElementById('root'));

@@ -1,5 +1,5 @@
 import React from 'react'
-import {doDelete, doPost} from "../common/http";
+import {doDelete, doPost} from "./common/http";
 
 const notificationStyle = {
     position: "relative",
@@ -67,4 +67,5 @@ export let Notification = (props) => {
             <hr/>
         </div>
     )
-}
+};
+
