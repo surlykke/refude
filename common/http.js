@@ -14,7 +14,7 @@ let iconServiceUrl = (iconNames, size) => {
     return "http://localhost:7938/icon-service/icon" +
         "?name=" + iconNames.map(name => encodeURIComponent(name)).join("&name=") +
         "&size=" + (size || 32);
-}
+};
 
 export let doGet = options => {
     Object.assign(options, {method: "GET", host: "localhost", port: 7938, path: '/' + options.service + options.path});
@@ -98,7 +98,7 @@ export let doPost = (resource, params) => {
             });
             resp.on('end', () => {
                 if (resp.statusCode >= 300) {
-                    reject(new Error(`Request Failed.\n` + `Status Code: ${resp.statusCode}`));
+                    reject(new Error(`Request Failed.\nStatus Code: ${resp.statusCode}`));
                 } else {
                     resolve(resp);
                 }
@@ -120,7 +120,7 @@ export let doPostPath = (path, params) => {
             });
             resp.on('end', () => {
                 if (resp.statusCode >= 300) {
-                    reject(new Error(`Request Failed.\n` + `Status Code: ${resp.statusCode}`));
+                    reject(new Error(`Request Failed.\nStatus Code: ${resp.statusCode}`));
                 } else {
                     resolve(resp);
                 }
@@ -141,7 +141,7 @@ export let doPatch = (resource, body) => {
             });
             resp.on('end', () => {
                 if (resp.statusCode >= 300) {
-                    reject(new Error(`Request Failed.\n` + `Status Code: ${resp.statusCode}`));
+                    reject(new Error(`Request Failed.\nStatus Code: ${resp.statusCode}`));
                 } else {
                     resolve(resp);
                 }
@@ -158,7 +158,7 @@ export let doDelete = (resource) => {
         let req = http.request(opts(resource, "DELETE"), resp => {
             resp.on('end', () => {
                 if (resp.statusCode >= 300) {
-                    reject(new Error(`Request Failed.\n` + `Status Code: ${resp.statusCode}`));
+                    reject(new Error(`Request Failed.\nStatus Code: ${resp.statusCode}`));
                 } else {
                     resolve(resp)
                 }

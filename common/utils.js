@@ -4,7 +4,7 @@
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
 //
-import {doGetIfNoneMatch} from "./http";
+
 // -------------------- NW stuff ---------------------
 export let Utils = window.require('nw.gui');
 export let WIN = Utils.Window.get();
@@ -84,6 +84,7 @@ const PUBSUB = (() => {
             subscriptions[topic].push(fn);
         },
         publish: (topic, obj) => {
+            console.log("Publish", topic);
             let subscribers = subscriptions[topic] ||  [];
             subscribers.forEach(fn => fn(obj));
         }

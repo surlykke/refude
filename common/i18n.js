@@ -5,7 +5,7 @@
 // Please refer to the GPL2 file for a copy of the license.
 export let translations = {};
 
-let strings = [
+/*let strings = [
     "Open windows",
     "Applications",
     "Leave",
@@ -17,7 +17,7 @@ let strings = [
     "Applications that handle %0",
     "Other applications",
     "No notifications"
-];
+];*/
 
 
 // ---- per country -------------
