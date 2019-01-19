@@ -11,27 +11,27 @@ import (
 	"log"
 )
 
-func Run(updateStream chan<- resource.Update) {
+func Run(resourceMap *resource.JsonResourceMap) {
 	var collected = make(chan collection)
 
 	go CollectAndWatch(collected)
 
 	for applicationsAndMimetypes := range collected {
-		var update = resource.Update{PrefixesToRemove: []resource.StandardizedPath{"/applications", "/mimetypes"}}
+		var mappings = []resource.Mapping{}
 
 		for _, app := range applicationsAndMimetypes.applications {
-			update.Mappings = append(update.Mappings, resource.Mapping{app.GetSelf(), app})
+			mappings = append(mappings, resource.Mapping{app.GetSelf(), app})
 		}
 
 		for _, mt := range applicationsAndMimetypes.mimetypes {
-			update.Mappings = append(update.Mappings, resource.Mapping{mt.GetSelf(), mt})
+			mappings = append(mappings, resource.Mapping{mt.GetSelf(), mt})
 			for _, alias := range mt.Aliases {
 				var altPath = resource.Standardizef("/mimetypes/%s", alias)
-				update.Mappings = append(update.Mappings, resource.Mapping{altPath, mt})
+				mappings = append(mappings, resource.Mapping{altPath, mt})
 			}
 		}
 
-		updateStream <- update
+		resourceMap.Update([]resource.StandardizedPath{"/mimetypes", "/applications"}, mappings)
 	}
 }
 

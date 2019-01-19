@@ -23,15 +23,15 @@ type Manager struct {
 	out           *xlib.Connection // Used send data to X (events or through setters). Protected by a mutex (outLock)
 	outLock       sync.Mutex
 	mappedWindows []*Window
-	updateStream  chan<- resource.Update
+	resourceMap   resource.JsonResourceMap
 }
 
-func Run(updateStream chan<- resource.Update) {
+func Run(resourceMap *resource.JsonResourceMap) {
 	var manager = Manager{
 		in:            xlib.MakeConnection(),
 		out:           xlib.MakeConnection(),
 		mappedWindows: []*Window{},
-		updateStream:  updateStream,
+		resourceMap:   *resourceMap,
 	}
 	manager.Run()
 }
@@ -100,10 +100,7 @@ func (m *Manager) updateWindows() {
 		}
 
 		m.mappedWindows = newMappedWindows
-		m.updateStream <- resource.Update{
-			PrefixesToRemove: []resource.StandardizedPath{"/windows"},
-			Mappings:         resourcesToMap,
-		}
+		m.resourceMap.Update([]resource.StandardizedPath{"/windows"}, resourcesToMap)
 	}
 }
 
@@ -129,7 +126,7 @@ func (m *Manager) Run() {
 					var copy = *(m.mappedWindows[index])
 					copy.X, copy.Y, copy.W, copy.H = event.X, event.Y, event.W, event.H
 					m.mappedWindows[index] = &copy
-					m.updateStream <- resource.Update{Mappings: []resource.Mapping{{copy.GetSelf(), &copy}}}
+					m.resourceMap.Map(&copy)
 				}
 			case NET_CLIENT_LIST_STACKING:
 				m.updateWindows()
@@ -140,7 +137,7 @@ func (m *Manager) Run() {
 						log.Println("Error getting copy name:", err)
 					} else {
 						m.mappedWindows[index] = &copy
-						m.updateStream <- resource.Update{Mappings: []resource.Mapping{{copy.GetSelf(), &copy}}}
+						m.resourceMap.Map(&copy)
 					}
 				}
 			case NET_WM_ICON:
@@ -150,7 +147,7 @@ func (m *Manager) Run() {
 						log.Println("Error getting window iconname:", err)
 					} else {
 						m.mappedWindows[index] = &copy
-						m.updateStream <- resource.Update{Mappings: []resource.Mapping{{copy.GetSelf(), &copy}}}
+						m.resourceMap.Map(&copy)
 					}
 				}
 			case NET_WM_STATE:
@@ -160,7 +157,7 @@ func (m *Manager) Run() {
 						log.Println("Error get window states:", err)
 					} else {
 						m.mappedWindows[index] = &copy
-						m.updateStream <- resource.Update{Mappings: []resource.Mapping{{copy.GetSelf(), &copy}}}
+						m.resourceMap.Map(&copy)
 					}
 				}
 			}

@@ -8,6 +8,7 @@ package main
 
 import (
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/applications"
+	"github.com/surlykke/RefudeServices/RefudeDesktopService/notifications"
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/power"
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/windows"
 	"github.com/surlykke/RefudeServices/lib"
@@ -16,14 +17,12 @@ import (
 
 
 func main() {
-	var updateStream = make(chan resource.Update)
 	var resourceMap = resource.MakeJsonResourceMap()
 
-	go applications.Run(updateStream)
-	go windows.Run(updateStream)
-	go power.Run(updateStream);
-
-	go resourceMap.Run(updateStream)
+	go applications.Run(resourceMap)
+	go windows.Run(resourceMap)
+	go power.Run(resourceMap);
+	go notifications.Run(resourceMap);
 
 	lib.Serve("org.refude.desktop-service", resourceMap)
 }

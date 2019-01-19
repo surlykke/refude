@@ -23,7 +23,7 @@ const login1Service = "org.freedesktop.login1"
 const login1Path = "/org/freedesktop/login1"
 const managerInterface = "org.freedesktop.login1.Manager"
 
-func Run(updateStream chan <- resource.Update) {
+func Run(resourceMap *resource.JsonResourceMap) {
 
 	// Get on the bus
 	signals := make(chan *dbus.Signal, 100)
@@ -33,7 +33,7 @@ func Run(updateStream chan <- resource.Update) {
 		0,
 		"type='signal',interface='org.freedesktop.DBus.Properties',member='PropertiesChanged', sender='org.freedesktop.UPower'")
 
-	updateStream <- resource.Update{Mappings: []resource.Mapping{{"/session", MapPowerActions()}}}
+	resourceMap.Map(MapPowerActions())
 
 	var devices = make(map[dbus.ObjectPath]*Device)
 
@@ -45,7 +45,7 @@ func Run(updateStream chan <- resource.Update) {
 		device.AbstractResource = resource.MakeAbstractResource(resource.Standardizef("/devices%s", path[strings.LastIndex(string(path), "/"):]), DeviceMediaType)
 		devices[path] = device
 		updateDevice(device, dbuscall.GetAllProps(dbusConn, UPowService, path, UPowerDeviceInterface))
-		updateStream <- resource.Update{Mappings: []resource.Mapping{{device.GetSelf(), device}}}
+		resourceMap.Map(device);
 	}
 
 	for signal := range signals {
@@ -55,7 +55,7 @@ func Run(updateStream chan <- resource.Update) {
 				var copy = *device
 				// Brute force here, we update all, as I've seen some problems with getting out of sync after suspend..
 				updateDevice(&copy, dbuscall.GetAllProps(dbusConn, UPowService, signal.Path, UPowerDeviceInterface))
-				updateStream <- resource.Update{Mappings: []resource.Mapping{{copy.GetSelf(), &copy}}}
+				resourceMap.Map(&copy)
 			}
 			// TODO Handle device added/removed
 			// (need hardware to test)

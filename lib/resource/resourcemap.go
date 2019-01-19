@@ -27,6 +27,11 @@ func MakeJsonResourceMap() *JsonResourceMap {
 	return m
 }
 
+type Mapping struct {
+	Path     StandardizedPath
+	Resource Resource
+}
+
 var reservedPaths = map[StandardizedPath]bool{
 	"/links":  true,
 	"/search": true,
@@ -102,40 +107,12 @@ func (jm *JsonResourceMap) MapTo(path StandardizedPath, res Resource) {
 	jm.put(path, res)
 }
 
-func (jm *JsonResourceMap) Unmap(path StandardizedPath) (Resource, bool) {
-	jm.mutex.Lock()
-	defer jm.mutex.Unlock()
-	return jm.unput(path)
-}
-
-// --------------------------- New api ----------------------------------------------------------
-
-type Mapping struct {
-	Path     StandardizedPath
-	Resource Resource
-}
-
-type Update struct {
-	PathsToRemove    []StandardizedPath
-	PrefixesToRemove []StandardizedPath
-	Mappings         []Mapping
-}
-
-func (jm *JsonResourceMap) Run(updateStream <- chan Update) {
-	for update := range updateStream {
-		jm.doUpdate(update)
-	}
-}
-
-func (jm *JsonResourceMap) doUpdate(update Update) {
+func (jm *JsonResourceMap) Update(prefixesToRemove []StandardizedPath, mappings []Mapping) {
 	jm.mutex.Lock()
 	defer jm.mutex.Unlock()
 
-	for _, pathToRemove := range update.PathsToRemove {
-		jm.unput(pathToRemove)
-	}
 
-	for _, prefixToRemove := range update.PrefixesToRemove {
+	for _, prefixToRemove := range prefixesToRemove {
 		for path, _ := range jm.rmap {
 			if strings.HasPrefix(string(path), string(prefixToRemove)) {
 				jm.unput(path)
@@ -143,10 +120,19 @@ func (jm *JsonResourceMap) doUpdate(update Update) {
 		}
 	}
 
-	for _,mapping := range update.Mappings {
+	for _,mapping := range mappings {
 		jm.put(mapping.Path, mapping.Resource)
 	}
 }
+
+func (jm *JsonResourceMap) Unmap(path StandardizedPath) (Resource, bool) {
+	jm.mutex.Lock()
+	defer jm.mutex.Unlock()
+	return jm.unput(path)
+}
+
+
+
 
 // --------------------------- Implement JsonCollection -----------------------------------------
 
