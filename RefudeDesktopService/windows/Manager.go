@@ -19,25 +19,21 @@ const (
 )
 
 type Manager struct {
-	in             *xlib.Connection // Used to retrive data from X. Events, getProperty.. All access to this originates in the Run method
-	out            *xlib.Connection // Used send data to X (events or through setters). Protected by a mutex (outLock)
-	outLock        sync.Mutex
-	mappedWindows  []*Window
-	mappingsStream chan<- resource.Mappings
+	in            *xlib.Connection // Used to retrive data from X. Events, getProperty.. All access to this originates in the Run method
+	out           *xlib.Connection // Used send data to X (events or through setters). Protected by a mutex (outLock)
+	outLock       sync.Mutex
+	mappedWindows []*Window
+	updateStream  chan<- resource.Update
 }
 
-func Run(mappingsStream chan<- resource.Mappings) {
+func Run(updateStream chan<- resource.Update) {
 	var manager = Manager{
-		in:             xlib.MakeConnection(),
-		out:            xlib.MakeConnection(),
-		mappedWindows:  []*Window{},
-		mappingsStream: mappingsStream,
+		in:            xlib.MakeConnection(),
+		out:           xlib.MakeConnection(),
+		mappedWindows: []*Window{},
+		updateStream:  updateStream,
 	}
 	manager.Run()
-}
-
-func (m *Manager) mapSingle(res resource.Resource) {
-	m.mappingsStream <- resource.Mappings{ResourcesToMap: map[resource.StandardizedPath]resource.Resource{res.GetSelf(): res}}
 }
 
 func (m *Manager) findIndexById(wId uint32) (int, bool) {
@@ -64,7 +60,7 @@ func (m *Manager) updateWindows() {
 		log.Fatal("Unable to get client list stacking", err)
 	} else {
 		var newMappedWindows = make([]*Window, len(wIds))
-		var resourcesToMap = make(map[resource.StandardizedPath]resource.Resource)
+		var resourcesToMap = []resource.Mapping{}
 		for i, wId := range wIds {
 			var stackOrder = len(wIds) - i
 			if index, ok := m.findIndexById(wId); ok {
@@ -100,13 +96,13 @@ func (m *Manager) updateWindows() {
 				m.in.Listen(window.Id)
 				newMappedWindows[i] = window
 			}
-			resourcesToMap[newMappedWindows[i].GetSelf()] = newMappedWindows[i]
+			resourcesToMap = append(resourcesToMap, resource.Mapping{newMappedWindows[i].GetSelf(), newMappedWindows[i]})
 		}
 
 		m.mappedWindows = newMappedWindows
-		m.mappingsStream <- resource.Mappings{
+		m.updateStream <- resource.Update{
 			PrefixesToRemove: []resource.StandardizedPath{"/windows"},
-			ResourcesToMap:   resourcesToMap,
+			Mappings:         resourcesToMap,
 		}
 	}
 }
@@ -133,7 +129,7 @@ func (m *Manager) Run() {
 					var copy = *(m.mappedWindows[index])
 					copy.X, copy.Y, copy.W, copy.H = event.X, event.Y, event.W, event.H
 					m.mappedWindows[index] = &copy
-					m.mapSingle(&copy)
+					m.updateStream <- resource.Update{Mappings: []resource.Mapping{{copy.GetSelf(), &copy}}}
 				}
 			case NET_CLIENT_LIST_STACKING:
 				m.updateWindows()
@@ -144,7 +140,7 @@ func (m *Manager) Run() {
 						log.Println("Error getting copy name:", err)
 					} else {
 						m.mappedWindows[index] = &copy
-						m.mapSingle(&copy)
+						m.updateStream <- resource.Update{Mappings: []resource.Mapping{{copy.GetSelf(), &copy}}}
 					}
 				}
 			case NET_WM_ICON:
@@ -154,7 +150,7 @@ func (m *Manager) Run() {
 						log.Println("Error getting window iconname:", err)
 					} else {
 						m.mappedWindows[index] = &copy
-						m.mapSingle(&copy)
+						m.updateStream <- resource.Update{Mappings: []resource.Mapping{{copy.GetSelf(), &copy}}}
 					}
 				}
 			case NET_WM_STATE:
@@ -164,7 +160,7 @@ func (m *Manager) Run() {
 						log.Println("Error get window states:", err)
 					} else {
 						m.mappedWindows[index] = &copy
-						m.mapSingle(&copy)
+						m.updateStream <- resource.Update{Mappings: []resource.Mapping{{copy.GetSelf(), &copy}}}
 					}
 				}
 			}

@@ -11,29 +11,27 @@ import (
 	"log"
 )
 
-func Run(mappingsStream chan<- resource.Mappings) {
+func Run(updateStream chan<- resource.Update) {
 	var collected = make(chan collection)
 
 	go CollectAndWatch(collected)
 
-	for update := range collected {
-		var mappings = resource.Mappings{
-			PathsToRemove: []resource.StandardizedPath{},
-			PrefixesToRemove: []resource.StandardizedPath{"/applications", "/mimetypes"},
-			ResourcesToMap: make(map[resource.StandardizedPath]resource.Resource)}
+	for applicationsAndMimetypes := range collected {
+		var update = resource.Update{PrefixesToRemove: []resource.StandardizedPath{"/applications", "/mimetypes"}}
 
-		for _, app := range update.applications {
-			mappings.ResourcesToMap[app.GetSelf()] = app
+		for _, app := range applicationsAndMimetypes.applications {
+			update.Mappings = append(update.Mappings, resource.Mapping{app.GetSelf(), app})
 		}
 
-		for _, mt := range update.mimetypes {
-			mappings.ResourcesToMap[mt.GetSelf()] = mt
+		for _, mt := range applicationsAndMimetypes.mimetypes {
+			update.Mappings = append(update.Mappings, resource.Mapping{mt.GetSelf(), mt})
 			for _, alias := range mt.Aliases {
-				mappings.ResourcesToMap[resource.Standardizef("/mimetypes/%s", alias)] = mt
+				var altPath = resource.Standardizef("/mimetypes/%s", alias)
+				update.Mappings = append(update.Mappings, resource.Mapping{altPath, mt})
 			}
 		}
 
-		mappingsStream <- mappings
+		updateStream <- update
 	}
 }
 
