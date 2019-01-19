@@ -7,7 +7,8 @@
 package main
 
 import (
-	"github.com/surlykke/RefudeServices/RefudeDesktopService/desktop"
+	"github.com/surlykke/RefudeServices/RefudeDesktopService/applications"
+	"github.com/surlykke/RefudeServices/RefudeDesktopService/windows"
 	"github.com/surlykke/RefudeServices/lib"
 	"github.com/surlykke/RefudeServices/lib/resource"
 )
@@ -17,7 +18,8 @@ func main() {
 	var mappingsStream = make(chan resource.Mappings)
 	var resourceMap = resource.MakeJsonResourceMap()
 
-	go desktop.Run(mappingsStream)
+	go applications.Run(mappingsStream)
+	go windows.Run(mappingsStream)
 
 	go resourceMap.Run(mappingsStream)
 

@@ -27,7 +27,7 @@ curl http://localhost:7938/desktop-service/applications/firefox.desktop
 The services are (all sockets reside in $XDG_RUNTIME_DIR):
 
 * [RefudeDesktopService](RefudeDesktopService/README.md) on org.refude.desktop-services: Installed applications and mimetypes.
-* [RefudeWmService](RefudeWmService/README.md) on org.refude.wm-service: Window manager functionality.
+* [RefudeWmService](RefudeDesktopService/windows/README.md) on org.refude.wm-service: Window manager functionality.
 * [RefudeIconService](RefudeIconService/README.md) on org.refude.icon-service: Installed icons and themes.
 * [RefudePowerService](RefudePowerService/README.md) on org.refude.power-service: Battery status and session control.
 * [RefudeNotificationService](RefudeNotificationService/README.md) on org.refude.notifications-service: Desktop notifications.
