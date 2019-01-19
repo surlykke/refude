@@ -4,7 +4,7 @@
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
 //
-package main
+package desktop
 
 import (
 	"encoding/xml"
@@ -32,11 +32,13 @@ type collection struct {
 
 func CollectAndWatch(collected chan collection) {
 	fd, err := unix.InotifyInit()
-	defer unix.Close(fd)
 
 	if err != nil {
 		panic(err)
 	}
+
+	defer unix.Close(fd)
+
 	for _, dataDir := range append(xdg.DataDirs, xdg.DataHome) {
 		appDir := dataDir + "/applications"
 		if _, err := os.Stat(appDir); os.IsNotExist(err) {

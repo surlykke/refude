@@ -7,13 +7,19 @@
 package main
 
 import (
+	"github.com/surlykke/RefudeServices/RefudeDesktopService/desktop"
 	"github.com/surlykke/RefudeServices/lib"
 	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
-var resourceHandler = resource.MakeJsonResourceMap()
 
 func main() {
-	go Run()
-	lib.Serve("org.refude.desktop-service", resourceHandler)
+	var mappingsStream = make(chan resource.Mappings)
+	var resourceMap = resource.MakeJsonResourceMap()
+
+	go desktop.Run(mappingsStream)
+
+	go resourceMap.Run(mappingsStream)
+
+	lib.Serve("org.refude.desktop-service", resourceMap)
 }

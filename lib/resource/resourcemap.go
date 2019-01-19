@@ -108,6 +108,41 @@ func (jm *JsonResourceMap) Unmap(path StandardizedPath) (Resource, bool) {
 	return jm.unput(path)
 }
 
+// --------------------------- New api ----------------------------------------------------------
+
+type Mappings struct {
+	PathsToRemove    []StandardizedPath
+	PrefixesToRemove []StandardizedPath
+	ResourcesToMap   map[StandardizedPath]Resource
+}
+
+func (jm *JsonResourceMap) Run(mappingsStream <- chan Mappings) {
+	for mappings := range mappingsStream {
+		jm.doMappings(mappings)
+	}
+}
+
+func (jm *JsonResourceMap) doMappings(mappings Mappings) {
+	jm.mutex.Lock()
+	defer jm.mutex.Unlock()
+
+	for _, pathToRemove := range mappings.PathsToRemove {
+		jm.unput(pathToRemove)
+	}
+
+	for _, prefixToRemove := range mappings.PrefixesToRemove {
+		for path, _ := range jm.rmap {
+			if strings.HasPrefix(string(path), string(prefixToRemove)) {
+				jm.unput(path)
+			}
+		}
+	}
+
+	for _,res := range mappings.ResourcesToMap {
+		jm.put(res.GetSelf(), res)
+	}
+}
+
 // --------------------------- Implement JsonCollection -----------------------------------------
 
 func (jm *JsonResourceMap) GetResource(path StandardizedPath) *JsonResource {
