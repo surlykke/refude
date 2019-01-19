@@ -184,8 +184,7 @@ func Controller() {
 		case ItemCreated:
 			if findByItemPath(event.sender, event.path) == -1 {
 				item := &Item{sender: event.sender, itemPath: event.path}
-				item.Self = item.restPath()
-				item.Mt = ItemMediaType
+				item.AbstractResource = resource.MakeAbstractResource(item.restPath(), ItemMediaType)
 				updateItem(item)
 				if item.menuPath != "" {
 					fetchMenu(item)

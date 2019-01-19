@@ -66,8 +66,6 @@ func CollectAndWatch(collected chan collection) {
 	}
 }
 
-
-
 func Collect(collected chan collection) {
 	var c collection
 	c.mimetypes = CollectMimeTypes()
@@ -109,19 +107,18 @@ func Collect(collected chan collection) {
 
 func (c *collection) removeApp(app *DesktopApplication) {
 	delete(c.applications, app.Id)
-	for _,mimetypeId := range app.Mimetypes {
-		if mimetype,ok := c.mimetypes[mimetypeId]; ok {
+	for _, mimetypeId := range app.Mimetypes {
+		if mimetype, ok := c.mimetypes[mimetypeId]; ok {
 			mimetype.AssociatedApplications = slice.Remove(mimetype.AssociatedApplications, app.Id)
 		}
 	}
 }
 
-
 func CollectMimeTypes() map[string]*Mimetype {
 	xmlCollector := struct {
-		XMLName xml.Name `xml:"mime-info"`
+		XMLName   xml.Name `xml:"mime-info"`
 		MimeTypes []struct {
-			Type string `xml:"type,attr"`
+			Type    string `xml:"type,attr"`
 			Comment []struct {
 				Lang string `xml:"lang,attr"`
 				Text string `xml:",chardata"`
@@ -183,7 +180,7 @@ func CollectMimeTypes() map[string]*Mimetype {
 		}
 
 		for _, tmpExpandedAcronym := range tmp.ExpandedAcronym {
-			if (xdg.LocaleMatch(tmpExpandedAcronym.Lang) || tmpExpandedAcronym.Lang == "" && mimeType.Acronym == "") {
+			if xdg.LocaleMatch(tmpExpandedAcronym.Lang) || tmpExpandedAcronym.Lang == "" && mimeType.Acronym == "" {
 				mimeType.ExpandedAcronym = tmpExpandedAcronym.Text
 			}
 		}
@@ -218,7 +215,7 @@ func CollectMimeTypes() map[string]*Mimetype {
 			tags = append(tags, language.Make(locale))
 		}
 
-	    res[mimeType.Id] = mimeType
+		res[mimeType.Id] = mimeType
 	}
 
 	return res
@@ -226,16 +223,30 @@ func CollectMimeTypes() map[string]*Mimetype {
 
 func (c *collection) collectApplications(appdir string) {
 	if xdg.DirOrFileExists(appdir) {
-		filepath.Walk(appdir, func(path string, info os.FileInfo, err error) error {
+		_ = filepath.Walk(appdir, func(path string, info os.FileInfo, err error) error {
 			if !(info.IsDir() || !strings.HasSuffix(path, ".desktop")) {
 				app, err := readDesktopFile(path)
 				if err == nil {
 					app.Id = strings.Replace(path[len(appdir)+1:], "/", "-", -1)
-					app.Self = resource.Standardizef("/applications/%s", app.Id)
+					app.AbstractResource = resource.MakeAbstractResource(resource.Standardizef("/applications/%s", app.Id), DesktopApplicationMediaType)
+					var exec = app.Exec
+					var inTerminal = app.Terminal
+					app.ResourceActions["default"] = resource.ResourceAction{
+						Description: "Launch", IconName: app.IconName, Executer: func() { launch(exec, inTerminal) },
+					}
+					for id, action := range app.DesktopActions {
+						var exec = action.Exec
+						var inTerminal = app.Terminal
+						app.ResourceActions[id] = resource.ResourceAction{
+							Description: action.Name, IconName: action.IconName, Executer: func() { launch(exec, inTerminal) },
+						}
+					}
+
 					if oldApp, ok := c.applications[app.Id]; ok {
 						c.removeApp(oldApp)
 					}
 					if !(app.Hidden ||
+						app.NoDisplay ||
 						(len(app.OnlyShowIn) > 0 && !slice.ElementsInCommon(xdg.CurrentDesktop, app.OnlyShowIn)) ||
 						(len(app.NotShowIn) > 0 && slice.ElementsInCommon(xdg.CurrentDesktop, app.NotShowIn))) {
 						delete(c.applications, app.Id)
@@ -244,6 +255,9 @@ func (c *collection) collectApplications(appdir string) {
 							if mimetype := c.getOrAdd(mimetypeId); mimetype != nil {
 								mimetype.AssociatedApplications = slice.AppendIfNotThere(mimetype.AssociatedApplications, app.Id)
 							}
+						}
+						if (app.Id == "firefox.desktop") {
+							fmt.Println("Firefox resourceactions:", app.ResourceActions)
 						}
 					}
 				} else {
@@ -312,7 +326,6 @@ func (c *collection) readMimeappsList(path string) {
 	}
 }
 
-
 func readDesktopFile(path string) (*DesktopApplication, error) {
 	if iniFile, err := xdg.ReadIniFile(path); err != nil {
 		return nil, err
@@ -320,8 +333,7 @@ func readDesktopFile(path string) (*DesktopApplication, error) {
 		return nil, errors.New("File must start with '[Desktop Entry]'")
 	} else {
 		var da = DesktopApplication{}
-		da.Mt = DesktopApplicationMediaType
-		da.Actions = make(map[string]*Action)
+		da.DesktopActions = make(map[string]*DesktopAction)
 		var actionNames = []string{}
 		group := iniFile[0]
 
@@ -362,18 +374,14 @@ func readDesktopFile(path string) (*DesktopApplication, error) {
 		da.StartupNotify = group.Entries["StartupNotify"] == "true"
 		da.StartupWmClass = group.Entries["StartupWMClass"]
 		da.Url = group.Entries["URL"]
-		{
-			var exec = da.Exec
-			var inTerminal = da.Terminal
-			da.AddAction("default", "Launch", da.IconName, func() { launch(exec, inTerminal)})
-		}
+
 		for _, actionGroup := range iniFile[1:] {
 			if !strings.HasPrefix(actionGroup.Name, "Desktop Action ") {
 				log.Print(path, ", ", "Unknown group type: ", actionGroup.Name, " - ignoring\n")
 			} else if currentAction := actionGroup.Name[15:]; !slice.Contains(actionNames, currentAction) {
 				log.Print(path, ", undeclared action: ", currentAction, " - ignoring\n")
 			} else {
-				var action Action
+				var action DesktopAction
 				if action.Name = actionGroup.Entries["Name"]; action.Name == "" {
 					return nil, errors.New("Desktop file invalid, action " + actionGroup.Name + " has no default 'Name'")
 				}
@@ -391,16 +399,10 @@ func readDesktopFile(path string) (*DesktopApplication, error) {
 					action.IconName = da.IconName
 				}
 				action.Exec = actionGroup.Entries["Exec"]
-				da.Actions[currentAction] = &action
-				{
-					var exec = action.Exec
-					var inTerminal = da.Terminal
-					da.AddAction(currentAction, action.Name, action.IconName, func() { launch(exec, inTerminal)})
-				}
+				da.DesktopActions[currentAction] = &action
 			}
 		}
 
 		return &da, nil
 	}
 }
-

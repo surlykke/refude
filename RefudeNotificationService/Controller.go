@@ -149,8 +149,7 @@ func makeNotifyFunction(notifications chan *Notification) interface{} {
 			Body:       sanitize(body, allowedTags, allowedEscapes),
 		}
 
-		notification.Self = resource.Standardizef("/notifications/%d", id)
-		notification.Mt = NotificationMediaType
+		notification.AbstractResource = resource.MakeAbstractResource(resource.Standardizef("/notifications/%d", id), NotificationMediaType)
 
 		if expire_timeout == 0 {
 			expire_timeout = 2000
@@ -163,21 +162,19 @@ func makeNotifyFunction(notifications chan *Notification) interface{} {
 			notification.removeAfter(timeToExpire)
 		}
 
-		{
-			// Add a dismiss action
-			var notificationId = notification.Id
-			notification.AddAction("dismiss", "Dismiss", "", func() {
-				removals <- removal{notificationId, 0, Dismissed}
-			})
+		// Add a dismiss action
+		var notificationId = notification.Id
+		notification.ResourceActions["dismiss"] = resource.ResourceAction{
+			Description: "Dismiss", IconName: "", Executer: func() { removals <- removal{notificationId, 0, Dismissed} },
+		}
 
-			// Add actions given in notification (We are aware that one of these may overwrite the dismiss action added above)
-			for i := 0; i+1 < len(actions); i = i + 2 {
-				var notificationId = notification.Id
-				var actionId = actions[i]
-				var actionDescription = actions[i+1]
-				notification.AddAction(actionId, actionDescription, "", func() {
-					conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".ActionInvoked", notificationId, actionId)
-				})
+		// Add actions given in notification (We are aware that one of these may overwrite the dismiss action added above)
+		for i := 0; i+1 < len(actions); i = i + 2 {
+			var notificationId = notification.Id
+			var actionId = actions[i]
+			var actionDescription = actions[i+1]
+			notification.ResourceActions[actionId] = resource.ResourceAction{
+				Description: actionDescription, IconName: "", Executer: func() { conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".ActionInvoked", notificationId, actionId) },
 			}
 		}
 

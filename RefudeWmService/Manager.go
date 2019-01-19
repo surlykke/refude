@@ -70,7 +70,7 @@ func (m *Manager) updateWindows() {
 				window := &Window{}
 				window.Id = wId;
 				window.StackOrder = stackOrder
-				window.AbstractResource = resource.AbstractResource{Self: resource.Standardizef("/window/%d", wId), Mt: WindowMediaType}
+				window.AbstractResource = resource.MakeAbstractResource(resource.Standardizef("/window/%d", wId), WindowMediaType)
 				if window.Parent, err = m.in.GetParent(wId); err != nil {
 					log.Println("No parent:", err)
 					continue
@@ -91,7 +91,7 @@ func (m *Manager) updateWindows() {
 				}
 
 				var executer = m.makeRaiser(wId)
-				window.AddAction("default", "Raise and focus", window.IconName, executer)
+				window.ResourceActions["default"] = resource.ResourceAction{Description: "Raise and focus", IconName: window.IconName, Executer: executer}
 				m.in.Listen(window.Id)
 				newMappedWindows[i] = window
 			}

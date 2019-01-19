@@ -44,13 +44,12 @@ type DesktopApplication struct {
 	StartupNotify   bool
 	StartupWmClass  string `json:",omitempty"`
 	Url             string `json:",omitempty"`
-	Actions         map[string]*Action
+	DesktopActions  map[string]*DesktopAction
 	Id              string
-	RelevanceHint   int64
 	languages       language.Matcher
 }
 
-type Action struct {
+type DesktopAction struct {
 	Name     string
 	Exec     string
 	IconName string
@@ -63,7 +62,7 @@ func (da *DesktopApplication) POST(w http.ResponseWriter, r *http.Request) {
 	var exec string
 	if actionName == "" {
 		exec = da.Exec
-	} else if action, ok := da.Actions[actionName]; !ok {
+	} else if action, ok := da.DesktopActions[actionName]; !ok {
 		w.WriteHeader(http.StatusUnprocessableEntity)
 	} else {
 		exec = action.Exec

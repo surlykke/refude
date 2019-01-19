@@ -8,31 +8,52 @@ package resource
 
 import (
 	"github.com/surlykke/RefudeServices/lib/requests"
-	"log"
 	"net/http"
 )
 
 
-type Action2 struct {
+type ResourceAction struct {
 	Description   string
 	IconName  	  string
 	Executer      Executer `json:"-"`
 }
 
 
-func (a *Action2) POST(w http.ResponseWriter, r *http.Request) {
+func (a *ResourceAction) POST(w http.ResponseWriter, r *http.Request) {
 	if a.Executer != nil {
 		a.Executer()
 	}
 }
 
+type Relation string
 
+
+const (
+	Self Relation = "self"
+	Related = "related"
+)
 
 type AbstractResource struct {
-	Self StandardizedPath `json:"_self,omitempty"`
-	Relates map[MediaType][]StandardizedPath `json:"_relates,omitempty"`
-	Mt MediaType `json:"-"`
-	Actions map[string]Action2 `json:"_actions,omitempty"`
+	Self            StandardizedPath          `json:"_self,omitempty"`
+	Links           []Link                    `json:"_links"`
+	Mt              MediaType                 `json:"-"`
+	ResourceActions map[string]ResourceAction `json:"_actions, omitempty"`
+}
+
+type Link struct {
+	Href  StandardizedPath `json:"href"`
+	Rel   Relation         `json:"rel"` // We never have more than one relation on a link - we'll make a new link with same href
+	Type  MediaType        `json:",omitempty"`
+	Title string           `json:",omitempty"`
+}
+
+func MakeAbstractResource(SelfLink StandardizedPath, mt MediaType) AbstractResource {
+	return AbstractResource{
+		Self:  SelfLink,
+		Links: []Link{Link{Href: SelfLink, Rel: Self}},
+		Mt:    mt,
+		ResourceActions: make(map[string]ResourceAction),
+	}
 }
 
 func (ar *AbstractResource) GetSelf() StandardizedPath {
@@ -43,32 +64,13 @@ func (ar *AbstractResource) GetMt() MediaType {
 	return ar.Mt
 }
 
-func Relate(r1, r2 *AbstractResource) {
-	if r1.Self == "" || r2.Self == "" {
-		log.Fatal("Relating resources with empty 'self'")
-	}
-
-	if r1.Relates == nil {
-		r1.Relates = make(map[MediaType][]StandardizedPath)
-	}
-	if r2.Relates == nil {
-		r2.Relates = make(map[MediaType][]StandardizedPath)
-	}
-
-	r1.Relates[r2.Mt] = append(r1.Relates[r2.Mt], r2.Self)
-	r2.Relates[r1.Mt] = append(r2.Relates[r1.Mt], r1.Self)
-}
-
-func (ar *AbstractResource) AddAction(id string, description string, iconName string, executer Executer) {
-	if ar.Actions == nil {
-		ar.Actions = make(map[string]Action2)
-	}
-	ar.Actions[id] = Action2{description, iconName, executer}
+func (r *AbstractResource) LinkTo(target StandardizedPath, relation Relation) {
+	r.Links = append(r.Links, Link{Href: target, Rel: relation})
 }
 
 func (ar *AbstractResource) POST(w http.ResponseWriter, r *http.Request) {
 	var actionId = requests.GetSingleQueryParameter(r, "action", "default")
-	if action, ok := ar.Actions[actionId]; ok {
+	if action, ok := ar.ResourceActions[actionId]; ok {
 		action.Executer()
 		w.WriteHeader(http.StatusAccepted)
 	} else {

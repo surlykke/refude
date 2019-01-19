@@ -42,8 +42,7 @@ func Run() {
 	for _, path := range devicePaths {
 		var device = &Device{}
 
-		device.Self = resource.Standardizef("/devices%s", path[strings.LastIndex(string(path), "/"):])
-		device.Mt = DeviceMediaType
+		device.AbstractResource = resource.MakeAbstractResource(resource.Standardizef("/devices%s", path[strings.LastIndex(string(path), "/"):]), DeviceMediaType)
 		devices[path] = device
 		updateDevice(device, dbuscall.GetAllProps(dbusConn, UPowService, path, UPowerDeviceInterface))
 		resourceMap.Map(device)
@@ -72,27 +71,25 @@ var dbusConn = func() *dbus.Conn {
 	}
 }()
 
-
 var possibleActionValues = map[string][]string{
-	"PowerOff":{"Shutdown", "Power off the machine", "system-shutdown"},
-	"Reboot": {"Reboot", "Reboot the machine", "system-reboot"},
-	"Suspend": {"Suspend", "Suspend the machine", "system-suspend"},
-	"Hibernate": {"Hibernate", "Put the machine into hibernation", "system-suspend-hibernate"},
+	"PowerOff":    {"Shutdown", "Power off the machine", "system-shutdown"},
+	"Reboot":      {"Reboot", "Reboot the machine", "system-reboot"},
+	"Suspend":     {"Suspend", "Suspend the machine", "system-suspend"},
+	"Hibernate":   {"Hibernate", "Put the machine into hibernation", "system-suspend-hibernate"},
 	"HybridSleep": {"HybridSleep", "Put the machine into hybrid sleep", "system-suspend-hibernate"}}
 
 func MapPowerActions() {
 	var session Session
-	session.Self = "/session"
-	session.Mt = SessionMediaType
+	session.AbstractResource = resource.MakeAbstractResource("/session", SessionMediaType);
 
 	for id, pv := range possibleActionValues {
-		if "yes" == dbusConn.Object(login1Service, login1Path).Call(managerInterface+".Can" + id, dbus.Flags(0)).Body[0].(string) {
+		if "yes" == dbusConn.Object(login1Service, login1Path).Call(managerInterface+".Can"+id, dbus.Flags(0)).Body[0].(string) {
 			var dbusEndPoint = managerInterface + "." + id
 			var executer = func() {
-				fmt.Println("Calling", login1Service, login1Path, managerInterface+"." + id)
+				fmt.Println("Calling", login1Service, login1Path, managerInterface+"."+id)
 				dbusConn.Object(login1Service, login1Path).Call(dbusEndPoint, dbus.Flags(0), false)
 			}
-			session.AddAction(id, pv[1], pv[2], executer)
+			session.ResourceActions[id] = resource.ResourceAction{Description: pv[1], IconName: pv[2], Executer: executer}
 		}
 	}
 

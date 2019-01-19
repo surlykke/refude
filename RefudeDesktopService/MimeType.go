@@ -53,9 +53,7 @@ func NewMimetype(id string) (*Mimetype, error) {
 			IconName:     "unknown",
 			GenericIcon:  "unknown",
 		}
-		mt.Self = resource.Standardizef("/mimetypes/%s", id)
-		mt.Mt = MimetypeMediaType
-
+		mt.AbstractResource = resource.MakeAbstractResource(resource.Standardizef("/mimetypes/%s", id), MimetypeMediaType)
 
 		if strings.HasPrefix(id, "x-scheme-handler/") {
 			mt.Comment = id[len("x-scheme-handler/"):] + " url"
