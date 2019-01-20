@@ -11,7 +11,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
-var resourceCollection = resource.MakeJsonResourceMap()
+//var resourceCollection = resource.MakeJsonResourceMap()
 
 func main() {
 	go Controller()

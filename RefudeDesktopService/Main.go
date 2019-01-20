@@ -8,7 +8,6 @@ package main
 
 import (
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/applications"
-	"github.com/surlykke/RefudeServices/RefudeDesktopService/notifications"
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/power"
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/windows"
 	"github.com/surlykke/RefudeServices/lib"
@@ -22,7 +21,8 @@ func main() {
 	go applications.Run(resourceMap)
 	go windows.Run(resourceMap)
 	go power.Run(resourceMap);
-	go notifications.Run(resourceMap);
+	//go notifications.Run(resourceMap);
+	//go statusnotifications.Run(resourceMap)
 
 	lib.Serve("org.refude.desktop-service", resourceMap)
 }
