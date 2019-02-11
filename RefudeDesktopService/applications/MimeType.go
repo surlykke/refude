@@ -11,6 +11,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/slice"
 	"github.com/surlykke/RefudeServices/lib/xdg"
+	"log"
 	"net/http"
 	"os"
 	"regexp"
@@ -25,17 +26,15 @@ const MimetypeMediaType resource.MediaType = "application/vnd.org.refude.mimetyp
 
 type Mimetype struct {
 	resource.AbstractResource
-	Id                     string
-	Comment                string
-	Acronym                string `json:",omitempty"`
-	ExpandedAcronym        string `json:",omitempty"`
-	Aliases                []string
-	Globs                  []string
-	SubClassOf             []string
-	IconName               string
-	GenericIcon            string
-	AssociatedApplications []string
-	DefaultApplication     string `json:",omitempty"`
+	Id              string
+	Comment         string
+	Acronym         string `json:",omitempty"`
+	ExpandedAcronym string `json:",omitempty"`
+	Aliases         []string
+	Globs           []string
+	SubClassOf      []string
+	IconName        string
+	GenericIcon     string
 }
 
 var mimetypePattern = regexp.MustCompile(`^([^/]+)/([^/]+)$`)
@@ -46,12 +45,12 @@ func NewMimetype(id string) (*Mimetype, error) {
 		return nil, errors.New("Incomprehensible mimetype: " + id)
 	} else {
 		mt := &Mimetype{
-			Id:           id,
-			Aliases:      []string{},
-			Globs:        []string{},
-			SubClassOf:   []string{},
-			IconName:     "unknown",
-			GenericIcon:  "unknown",
+			Id:          id,
+			Aliases:     []string{},
+			Globs:       []string{},
+			SubClassOf:  []string{},
+			IconName:    "unknown",
+			GenericIcon: "unknown",
 		}
 		mt.AbstractResource = resource.MakeAbstractResource(resource.Standardizef("/mimetypes/%s", id), MimetypeMediaType)
 
@@ -79,7 +78,7 @@ func setDefaultApp(mimetypeId string, appId string) {
 	path := xdg.ConfigHome + "/mimeapps.list"
 
 	if iniFile, err := xdg.ReadIniFile(path); err != nil && !os.IsNotExist(err) {
-		reportError(fmt.Sprint(err))
+		log.Println(fmt.Sprint(err))
 	} else {
 		var defaultGroup = iniFile.FindGroup("Default Applications")
 		if defaultGroup == nil {
@@ -92,8 +91,28 @@ func setDefaultApp(mimetypeId string, appId string) {
 		defaultAppsS = strings.Join(defaultApps, ";")
 		defaultGroup.Entries[mimetypeId] = defaultAppsS
 		if err = xdg.WriteIniFile(path, iniFile); err != nil {
-			reportError(fmt.Sprint(err))
+			log.Println(fmt.Sprint(err))
 		}
 	}
 }
 
+type MimetypeCollection map[string]*Mimetype
+
+func (mtc MimetypeCollection) GetResource(r *http.Request) (interface{}, error) {
+	var path = r.URL.Path
+	if path == "/mimetypes" {
+		var mimetypes = make([]*Mimetype, 0, len(mtc))
+		for _, mt := range mtc {
+			mimetypes = append(mimetypes, mt)
+		}
+
+		// FIXME if query then filter
+
+		return mimetypes, nil
+	} else if strings.HasPrefix(path, "/mimetype/") {
+		return mtc[path[len("/mimetype/"):]], nil
+	} else {
+		return nil, nil
+	}
+
+}

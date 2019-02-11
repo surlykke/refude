@@ -7,10 +7,10 @@
 package parser
 
 import (
-	"strings"
+	"github.com/pkg/errors"
 	"reflect"
 	"strconv"
-	"github.com/pkg/errors"
+	"strings"
 )
 
 /**
@@ -35,6 +35,7 @@ import (
  */
 
 type Matcher func(res interface{}) bool
+
 
 type pathElementKind int
 

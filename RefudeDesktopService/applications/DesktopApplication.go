@@ -8,10 +8,12 @@ package applications
 
 import (
 	"fmt"
+	"github.com/surlykke/RefudeServices/lib/parser"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 	"golang.org/x/text/language"
+	"log"
 	"net/http"
 	"os"
 	"regexp"
@@ -37,7 +39,6 @@ type DesktopApplication struct {
 	Exec            string `json:",omitempty"`
 	Path            string `json:",omitempty"`
 	Terminal        bool
-	Mimetypes       []string
 	Categories      []string
 	Implements      []string
 	Keywords        []string
@@ -77,7 +78,6 @@ func (da *DesktopApplication) POST(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-
 func launch(exec string, inTerminal bool) {
 	launchWithArgs(exec, []string{}, inTerminal)
 }
@@ -88,7 +88,7 @@ func launchWithArgs(exec string, args []string, inTerminal bool) {
 	if inTerminal {
 		var terminal, ok = os.LookupEnv("TERMINAL")
 		if !ok {
-			reportError(fmt.Sprintf("Trying to run %s in terminal, but env variable TERMINAL not set", exec))
+			log.Println(fmt.Sprintf("Trying to run %s in terminal, but env variable TERMINAL not set", exec))
 			return
 		}
 		var arglist = []string{}
@@ -111,4 +111,37 @@ func launchWithArgs(exec string, args []string, inTerminal bool) {
 	}
 
 	xdg.RunCmd(argv)
+}
+
+type DesktopApplicationCollection map[string]*DesktopApplication
+
+func (dac DesktopApplicationCollection) GetResource(r *http.Request) (interface{}, error) {
+	var path = r.URL.Path
+	if path == "/applications" {
+		var allApps = make([]*DesktopApplication, 0, len(dac))
+		for _, app := range dac {
+			allApps = append(allApps, app)
+		}
+
+		if params, err := requests.GetSingleParams(r, "q"); err != nil {
+			return nil, err
+		} else if matcher, err :=  parser.Parse(params["q"]); err != nil {
+			return nil, err
+		} else {
+			var tmp = make([]*DesktopApplication, 0, len(allApps))
+			for _, da := range allApps{
+				if matcher(da) {
+					tmp = append(tmp, da)
+				}
+			}
+			allApps = tmp
+		}
+
+		return allApps, nil
+	} else if strings.HasPrefix(path, "/application/") {
+		return dac[path[len("/application/"):]], nil
+	} else {
+		return nil, nil
+	}
+
 }

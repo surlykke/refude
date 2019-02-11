@@ -7,10 +7,6 @@
 package resource
 
 import (
-	"encoding/json"
-	"fmt"
-	"github.com/surlykke/RefudeServices/lib/parser"
-	"github.com/surlykke/RefudeServices/lib/requests"
 	"net/http"
 	"strings"
 	"sync"
@@ -18,12 +14,12 @@ import (
 
 type JsonResourceMap struct {
 	mutex sync.Mutex
-	rmap  map[StandardizedPath]*JsonResource
+	rmap  map[StandardizedPath]http.Handler
 	links *JsonResource
 }
 
 func MakeJsonResourceMap() *JsonResourceMap {
-	var m = &JsonResourceMap{mutex: sync.Mutex{}, rmap: make(map[StandardizedPath]*JsonResource), links: nil}
+	var m = &JsonResourceMap{mutex: sync.Mutex{}, rmap: make(map[StandardizedPath]http.Handler), links: nil}
 	return m
 }
 
@@ -48,17 +44,14 @@ func (jm *JsonResourceMap) put(sp StandardizedPath, res Resource) {
 	jm.links = nil
 }
 
-func (jm *JsonResourceMap) unput(sp StandardizedPath) (Resource, bool) {
+func (jm *JsonResourceMap) unput(sp StandardizedPath) {
 	if reservedPaths[sp] {
 		panic("Attempt to unmap reserved path: " + sp)
 	}
 
-	if jsonRes, ok := jm.rmap[sp]; ok {
+	if _, ok := jm.rmap[sp]; ok {
 		delete(jm.rmap, sp)
 		jm.links = nil
-		return jsonRes.GetRes(), true
-	} else {
-		return nil, false
 	}
 }
 
@@ -111,7 +104,6 @@ func (jm *JsonResourceMap) Update(prefixesToRemove []StandardizedPath, mappings 
 	jm.mutex.Lock()
 	defer jm.mutex.Unlock()
 
-
 	for _, prefixToRemove := range prefixesToRemove {
 		for path, _ := range jm.rmap {
 			if strings.HasPrefix(string(path), string(prefixToRemove)) {
@@ -120,60 +112,35 @@ func (jm *JsonResourceMap) Update(prefixesToRemove []StandardizedPath, mappings 
 		}
 	}
 
-	for _,mapping := range mappings {
+	for _, mapping := range mappings {
 		jm.put(mapping.Path, mapping.Resource)
 	}
 }
 
-func (jm *JsonResourceMap) Unmap(path StandardizedPath) (Resource, bool) {
+func (jm *JsonResourceMap) Unmap(path StandardizedPath) {
 	jm.mutex.Lock()
 	defer jm.mutex.Unlock()
-	return jm.unput(path)
+	jm.unput(path)
 }
-
-
-
 
 // --------------------------- Implement JsonCollection -----------------------------------------
 
-func (jm *JsonResourceMap) GetResource(path StandardizedPath) *JsonResource {
+func (jm *JsonResourceMap) GetResource(path StandardizedPath) http.Handler {
 	jm.mutex.Lock()
 	defer jm.mutex.Unlock()
-
-	var res, ok = jm.rmap[path]
-	if ok {
-		res.EnsureReady()
-	}
-	return res
+	return jm.rmap[path]
 }
 
-func (jm *JsonResourceMap) GetAll() []*JsonResource {
-	var result = make([]*JsonResource, len(jm.rmap))
+func (jm *JsonResourceMap) GetAll() []http.Handler {
+	var result = make([]http.Handler, len(jm.rmap))
 	jm.mutex.Lock()
 	defer jm.mutex.Unlock()
 	var pos = 0
 	for _, res := range jm.rmap {
 		result[pos] = res
-		res.EnsureReady()
 		pos++
 	}
 	return result
-}
-
-func (jm *JsonResourceMap) ensureLinksUpdated() {
-	jm.mutex.Lock()
-	defer jm.mutex.Unlock()
-
-	if jm.links == nil {
-		var mtMap = make(Links)
-		mtMap["application/json"] = []StandardizedPath{"/links", "/search"}
-		for sp, res := range jm.rmap {
-			mtMap[res.GetMt()] = append(mtMap[res.GetMt()], sp)
-		}
-
-		jm.links = MakeJsonResource(&mtMap)
-		jm.links.EnsureReady()
-	}
 }
 
 // ----------------------------------------------------------------------------------------------
@@ -184,10 +151,9 @@ func (jm *JsonResourceMap) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 		} else {
-			jm.ensureLinksUpdated()
 			jm.links.ServeHTTP(w, r)
 		}
-	} else if sp == "/search" {
+	} else /*if sp == "/search" {
 		if r.Method != "GET" {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 		} else if flatParams, err := requests.GetSingleParams(r, "type", "q"); err != nil {
@@ -200,7 +166,7 @@ func (jm *JsonResourceMap) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.Write(bytes)
 		}
-	} else {
+	} else */{
 		if res := jm.GetResource(sp); res != nil {
 			res.ServeHTTP(w, r)
 		} else {
@@ -209,7 +175,7 @@ func (jm *JsonResourceMap) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (jm *JsonResourceMap) findResources(mt MediaType, query string) ([]*JsonResource, error) {
+/*func (jm *JsonResourceMap) findResources(mt MediaType, query string) ([]*JsonResource, error) {
 	var tmp = jm.GetAll()
 	var found = 0;
 	if mt != "" {
@@ -238,4 +204,4 @@ func (jm *JsonResourceMap) findResources(mt MediaType, query string) ([]*JsonRes
 	}
 
 	return tmp, nil
-}
+}*/

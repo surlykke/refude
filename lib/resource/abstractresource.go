@@ -31,6 +31,8 @@ type Relation string
 const (
 	Self Relation = "self"
 	Related = "related"
+	Associated = "http://relations.refude.org/associated"
+	DefaultApplication = "http://relations.refude.org/default_application"
 )
 
 type AbstractResource struct {

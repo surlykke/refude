@@ -21,58 +21,21 @@ import (
 
 	"errors"
 	"fmt"
-	"golang.org/x/sys/unix"
 )
 
 type collection struct {
 	mimetypes    map[string]*Mimetype           // Maps from mimetypeid to mimetype
 	applications map[string]*DesktopApplication // Maps from applicationid to application
-	defaultApps  map[string][]string            // Maps from mimetypeid to list of app ids
+	associations map[string][]string            // Maps from mimetypeid to a list of app ids
+	defaultApps  map[string][]string            // Maps from mimetypeid to a list of app ids
 }
 
-func CollectAndWatch(collected chan collection) {
-	fd, err := unix.InotifyInit()
-
-	if err != nil {
-		panic(err)
-	}
-
-	defer unix.Close(fd)
-
-	for _, dataDir := range append(xdg.DataDirs, xdg.DataHome) {
-		appDir := dataDir + "/applications"
-		if _, err := os.Stat(appDir); os.IsNotExist(err) {
-			// path/to/whatever does not exist
-		}
-
-		if xdg.DirOrFileExists(appDir) {
-			fmt.Println("Watching: " + appDir)
-			if _, err := unix.InotifyAddWatch(fd, appDir, unix.IN_CREATE|unix.IN_MODIFY|unix.IN_DELETE); err != nil {
-				fmt.Println("Could not watch:", appDir, ":", err)
-			}
-		}
-	}
-
-	if _, err := unix.InotifyAddWatch(fd, xdg.ConfigHome+"/mimeapps.list", unix.IN_CLOSE_WRITE); err != nil {
-		panic(err)
-	}
-
-	Collect(collected)
-	dummy := make([]byte, 100)
-	for {
-		if _, err := unix.Read(fd, dummy); err != nil {
-			panic(err)
-		}
-		fmt.Println("Something happened...")
-		Collect(collected)
-	}
-}
-
-func Collect(collected chan collection) {
+func Collect() (MimetypeCollection, DesktopApplicationCollection) {
 	var c collection
 	c.mimetypes = CollectMimeTypes()
 	c.applications = make(map[string]*DesktopApplication)
-	c.defaultApps = make(map[string][]string)
+	c.associations = make(map[string][]string) // Map a mimetypeid to a list of desktopapplication ids
+	c.defaultApps = make(map[string][]string)  // Do
 
 	for _, dir := range xdg.DataDirs {
 		c.collectApplications(dir + "/applications")
@@ -85,10 +48,13 @@ func Collect(collected chan collection) {
 		c.readMimeappsList(dir + "/mimeapps.list")
 	}
 
-	for appId, app := range c.applications {
-		for _, mimetypeId := range app.Mimetypes {
-			if mimetype, ok := c.mimetypes[mimetypeId]; ok {
-				slice.AppendIfNotThere(mimetype.AssociatedApplications, appId)
+	for mimetypeId, appIds := range c.associations {
+		if mimetype, ok := c.mimetypes[mimetypeId]; ok {
+			for _, appId := range appIds {
+				if application, ok := c.applications[appId]; ok {
+					mimetype.LinkTo(resource.StandardizedPath("/application/" + appId), resource.Associated)
+					application.LinkTo(resource.StandardizedPath("/mimetype/" + mimetypeId), resource.Associated)
+				}
 			}
 		}
 	}
@@ -97,22 +63,20 @@ func Collect(collected chan collection) {
 		if mimetype, ok := c.mimetypes[mimetypeId]; ok {
 			for _, appId := range appIds {
 				if _, ok := c.applications[appId]; ok {
-					mimetype.DefaultApplication = appId
-					break
+					mimetype.LinkTo(resource.StandardizedPath("/application/" + appId), resource.DefaultApplication)
 				}
 			}
 		}
 	}
-	fmt.Println("Sending", len(c.mimetypes), len(c.applications))
-	collected <- c
+
+
+	fmt.Println("Collected ", len(c.mimetypes), "mimetypes and", len(c.applications), "applications")
+	return MimetypeCollection(c.mimetypes), DesktopApplicationCollection(c.applications)
 }
 
-func (c *collection) removeApp(app *DesktopApplication) {
-	delete(c.applications, app.Id)
-	for _, mimetypeId := range app.Mimetypes {
-		if mimetype, ok := c.mimetypes[mimetypeId]; ok {
-			mimetype.AssociatedApplications = slice.Remove(mimetype.AssociatedApplications, app.Id)
-		}
+func (c *collection) removeAssociations(app *DesktopApplication) {
+	for mimetypeId, appIds := range c.associations {
+		c.associations[mimetypeId] = slice.Remove(appIds, app.Id)
 	}
 }
 
@@ -162,62 +126,61 @@ func CollectMimeTypes() map[string]*Mimetype {
 
 	res := make(map[string]*Mimetype)
 	for _, tmp := range xmlCollector.MimeTypes {
-		mimeType, err := NewMimetype(tmp.Type)
-		var collectedLocales = make(map[string]bool)
-		if err != nil {
+		if mimeType, err := NewMimetype(tmp.Type); err != nil {
 			fmt.Println(err)
-			continue
-		}
-
-		for _, tmpComment := range tmp.Comment {
-			if xdg.LocaleMatch(tmpComment.Lang) || (tmpComment.Lang == "" && mimeType.Comment == "") {
-				mimeType.Comment = tmpComment.Text
-			}
-		}
-
-		for _, tmpAcronym := range tmp.Acronym {
-			if xdg.LocaleMatch(tmpAcronym.Lang) || (tmpAcronym.Lang == "" && mimeType.Acronym == "") {
-				mimeType.Acronym = tmpAcronym.Text
-			}
-		}
-
-		for _, tmpExpandedAcronym := range tmp.ExpandedAcronym {
-			if xdg.LocaleMatch(tmpExpandedAcronym.Lang) || tmpExpandedAcronym.Lang == "" && mimeType.Acronym == "" {
-				mimeType.ExpandedAcronym = tmpExpandedAcronym.Text
-			}
-		}
-
-		if tmp.Icon.Name != "" {
-			mimeType.IconName = tmp.Icon.Name
 		} else {
-			mimeType.IconName = strings.Replace(mimeType.Id, "/", "-", -1)
-		}
+			var collectedLocales= make(map[string]bool)
 
-		for _, aliasStruct := range tmp.Alias {
-			mimeType.Aliases = slice.AppendIfNotThere(mimeType.Aliases, aliasStruct.Type)
-		}
+			for _, tmpComment := range tmp.Comment {
+				if xdg.LocaleMatch(tmpComment.Lang) || (tmpComment.Lang == "" && mimeType.Comment == "") {
+					mimeType.Comment = tmpComment.Text
+				}
+			}
 
-		for _, tmpGlob := range tmp.Glob {
-			mimeType.Globs = slice.AppendIfNotThere(mimeType.Globs, tmpGlob.Pattern)
-		}
+			for _, tmpAcronym := range tmp.Acronym {
+				if xdg.LocaleMatch(tmpAcronym.Lang) || (tmpAcronym.Lang == "" && mimeType.Acronym == "") {
+					mimeType.Acronym = tmpAcronym.Text
+				}
+			}
 
-		for _, tmpSubClassOf := range tmp.SubClassOf {
-			mimeType.SubClassOf = slice.AppendIfNotThere(mimeType.SubClassOf, tmpSubClassOf.Type)
-		}
+			for _, tmpExpandedAcronym := range tmp.ExpandedAcronym {
+				if xdg.LocaleMatch(tmpExpandedAcronym.Lang) || tmpExpandedAcronym.Lang == "" && mimeType.Acronym == "" {
+					mimeType.ExpandedAcronym = tmpExpandedAcronym.Text
+				}
+			}
 
-		if tmp.GenericIcon.Name != "" {
-			mimeType.GenericIcon = tmp.GenericIcon.Name
-		} else {
-			slashPos := strings.Index(mimeType.Id, "/")
-			mimeType.GenericIcon = mimeType.Id[:slashPos] + "-x-generic"
-		}
+			if tmp.Icon.Name != "" {
+				mimeType.IconName = tmp.Icon.Name
+			} else {
+				mimeType.IconName = strings.Replace(mimeType.Id, "/", "-", -1)
+			}
 
-		var tags = make([]language.Tag, len(collectedLocales))
-		for locale, _ := range collectedLocales {
-			tags = append(tags, language.Make(locale))
-		}
+			for _, aliasStruct := range tmp.Alias {
+				mimeType.Aliases = slice.AppendIfNotThere(mimeType.Aliases, aliasStruct.Type)
+			}
 
-		res[mimeType.Id] = mimeType
+			for _, tmpGlob := range tmp.Glob {
+				mimeType.Globs = slice.AppendIfNotThere(mimeType.Globs, tmpGlob.Pattern)
+			}
+
+			for _, tmpSubClassOf := range tmp.SubClassOf {
+				mimeType.SubClassOf = slice.AppendIfNotThere(mimeType.SubClassOf, tmpSubClassOf.Type)
+			}
+
+			if tmp.GenericIcon.Name != "" {
+				mimeType.GenericIcon = tmp.GenericIcon.Name
+			} else {
+				slashPos := strings.Index(mimeType.Id, "/")
+				mimeType.GenericIcon = mimeType.Id[:slashPos] + "-x-generic"
+			}
+
+			var tags= make([]language.Tag, len(collectedLocales))
+			for locale, _ := range collectedLocales {
+				tags = append(tags, language.Make(locale))
+			}
+
+			res[mimeType.Id] = mimeType
+		}
 	}
 
 	return res
@@ -226,8 +189,8 @@ func CollectMimeTypes() map[string]*Mimetype {
 func (c *collection) collectApplications(appdir string) {
 	if xdg.DirOrFileExists(appdir) {
 		_ = filepath.Walk(appdir, func(path string, info os.FileInfo, err error) error {
-			if !(info.IsDir() || !strings.HasSuffix(path, ".desktop")) {
-				app, err := readDesktopFile(path)
+			if strings.HasSuffix(path, ".desktop") && !info.IsDir() {
+				app, mimetypes, err := readDesktopFile(path)
 				if err == nil {
 					app.Id = strings.Replace(path[len(appdir)+1:], "/", "-", -1)
 					app.AbstractResource = resource.MakeAbstractResource(resource.Standardizef("/applications/%s", app.Id), DesktopApplicationMediaType)
@@ -244,24 +207,12 @@ func (c *collection) collectApplications(appdir string) {
 						}
 					}
 
-					if oldApp, ok := c.applications[app.Id]; ok {
-						c.removeApp(oldApp)
+					c.applications[app.Id] = app
+
+					for _, mimetype := range mimetypes {
+						c.associations[mimetype] = slice.AppendIfNotThere(c.associations[mimetype], app.Id)
 					}
-					if !(app.Hidden ||
-						app.NoDisplay ||
-						(len(app.OnlyShowIn) > 0 && !slice.ElementsInCommon(xdg.CurrentDesktop, app.OnlyShowIn)) ||
-						(len(app.NotShowIn) > 0 && slice.ElementsInCommon(xdg.CurrentDesktop, app.NotShowIn))) {
-						delete(c.applications, app.Id)
-						c.applications[app.Id] = app
-						for _, mimetypeId := range app.Mimetypes {
-							if mimetype := c.getOrAdd(mimetypeId); mimetype != nil {
-								mimetype.AssociatedApplications = slice.AppendIfNotThere(mimetype.AssociatedApplications, app.Id)
-							}
-						}
-						if (app.Id == "firefox.desktop") {
-							fmt.Println("Firefox resourceactions:", app.ResourceActions)
-						}
-					}
+
 				} else {
 					log.Println("Error processing ", path, ":\n\t", err)
 				}
@@ -287,64 +238,50 @@ func (c *collection) readMimeappsList(path string) {
 	if iniFile, err := xdg.ReadIniFile(path); err == nil {
 		if addedAssociations := iniFile.FindGroup("Added Associations"); addedAssociations != nil {
 			for mimetypeId, appIds := range addedAssociations.Entries {
-				if mimetype := c.getOrAdd(mimetypeId); mimetype != nil {
-					for _, appId := range slice.Split(appIds, ";") {
-						if app, ok := c.applications[appId]; ok {
-							app.Mimetypes = slice.AppendIfNotThere(app.Mimetypes, mimetypeId)
-							mimetype.AssociatedApplications = slice.AppendIfNotThere(mimetype.AssociatedApplications, appId)
-						}
-					}
+				for _, appId := range slice.Split(appIds, ";") {
+					c.associations[mimetypeId] = slice.AppendIfNotThere(c.associations[mimetypeId], appId)
 				}
-
 			}
 		}
 
 		if removedAssociations := iniFile.FindGroup("Removed Associations"); removedAssociations != nil {
 			for mimetypeId, appIds := range removedAssociations.Entries {
-				if mimetype := c.getOrAdd(mimetypeId); mimetype != nil {
-					for _, appId := range slice.Split(appIds, ";") {
-						if app, ok := c.applications[appId]; ok {
-							app.Mimetypes = slice.Remove(app.Mimetypes, mimetypeId)
-							mimetype.AssociatedApplications = slice.Remove(mimetype.AssociatedApplications, appId)
-						}
-					}
+				for _, appId := range slice.Split(appIds, ";") {
+					c.associations[mimetypeId] = slice.Remove(c.associations[mimetypeId], appId)
 				}
-
 			}
 		}
 
 		if defaultApplications := iniFile.FindGroup("Default Applications"); defaultApplications != nil {
 			for mimetypeId, appIds := range defaultApplications.Entries {
-				if mimetype := c.getOrAdd(mimetypeId); mimetype != nil {
-					var apps = slice.Split(appIds, ";")
-					list, ok := c.defaultApps[mimetypeId]
-					if !ok {
-						list = make([]string, 0)
-					}
-					c.defaultApps[mimetypeId] = append(apps, list...)
+				var tmp = c.defaultApps[mimetypeId]
+				c.defaultApps[mimetypeId] = []string{}
+				for _, appId := range append(slice.Split(appIds, ";"), tmp...) {
+					c.defaultApps[mimetypeId] = slice.AppendIfNotThere(c.defaultApps[mimetypeId], appId)
 				}
 			}
 		}
 	}
 }
 
-func readDesktopFile(path string) (*DesktopApplication, error) {
+func readDesktopFile(path string) (*DesktopApplication, []string, error) {
 	if iniFile, err := xdg.ReadIniFile(path); err != nil {
-		return nil, err
+		return nil, nil, err
 	} else if len(iniFile) == 0 || iniFile[0].Name != "Desktop Entry" {
-		return nil, errors.New("File must start with '[Desktop Entry]'")
+		return nil, nil, errors.New("File must start with '[Desktop Entry]'")
 	} else {
 		var da = DesktopApplication{}
+		var mimetypes = []string{}
 		da.DesktopActions = make(map[string]*DesktopAction)
 		var actionNames = []string{}
 		group := iniFile[0]
 
 		if da.Type = group.Entries["Type"]; da.Type == "" {
-			return nil, errors.New("Desktop file invalid, no 'Type' given")
+			return nil, nil, errors.New("Desktop file invalid, no 'Type' given")
 		}
 		da.Version = group.Entries["Version"]
 		if da.Name = group.Entries["Name"]; da.Name == "" {
-			return nil, errors.New("Desktop file invalid, no 'Name' given")
+			return nil, nil, errors.New("Desktop file invalid, no 'Name' given")
 		}
 
 		da.GenericName = group.Entries["GenericName"]
@@ -369,7 +306,6 @@ func readDesktopFile(path string) (*DesktopApplication, error) {
 		da.Path = group.Entries["Path"]
 		da.Terminal = group.Entries["Terminal"] == "true"
 		actionNames = slice.Split(group.Entries["Actions"], ";")
-		da.Mimetypes = slice.Split(group.Entries["MimeType"], ";")
 		da.Categories = slice.Split(group.Entries["Categories"], ";")
 		da.Implements = slice.Split(group.Entries["Implements"], ";")
 		// FIXMEda.Keywords[tag] = utils.Split(group[""], ";")
@@ -385,7 +321,7 @@ func readDesktopFile(path string) (*DesktopApplication, error) {
 			} else {
 				var action DesktopAction
 				if action.Name = actionGroup.Entries["Name"]; action.Name == "" {
-					return nil, errors.New("Desktop file invalid, action " + actionGroup.Name + " has no default 'Name'")
+					return nil, nil, errors.New("Desktop file invalid, action " + actionGroup.Name + " has no default 'Name'")
 				}
 				icon = actionGroup.Entries["Icon"]
 				if strings.HasPrefix(icon, "/") {
@@ -405,6 +341,8 @@ func readDesktopFile(path string) (*DesktopApplication, error) {
 			}
 		}
 
-		return &da, nil
+		mimetypes = slice.Split(group.Entries["MimeType"], ";")
+
+		return &da, mimetypes, nil
 	}
 }

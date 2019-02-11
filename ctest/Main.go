@@ -1,50 +1,29 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
-	"math"
 )
 
-const precision = 0.01
+type Data interface{}
 
-func angle2area(angle float64) float64 {
-	return (angle - math.Sin(angle))/2
+type outer struct {
+	A string
+	B int
+	Inner
 }
 
-func area2angle(area float64) float64 {
-	var min = float64(0)
-	var max  = 2*math.Pi;
-
-	for {
-		var minval = angle2area(min)
-		var maxval = angle2area(max)
-
-		if minval > area || maxval < area {
-			panic(fmt.Sprintf("minval: %f, maxval: %f, area: %f", minval, maxval, area))
-		}
-
-		var midpoint = (min + max)/2
-		if (minval > maxval - precision) {
-			return midpoint
-		}
-		var midval = angle2area(midpoint)
-
-		if midval > area {
-			max = midpoint
-		} else {
-			min = midpoint
-		}
-	}
-
+type Inner struct {
+	D string
 }
 
 func main() {
-	var angles = make([]float64, 101)
-	angles[0] = 0
-	for i := 1;  i < 100 ; i++ {
-		var area = math.Pi*float64(i)/100.0
-		angles[i] = area2angle(area)
+	var o = outer{A: "A", B: 7}
+	var i = Inner{D: "D"}
+	o.Inner = i
+	if bytes, err := json.Marshal(o); err == nil {
+		fmt.Println(string(bytes))
+	} else {
+		fmt.Println(err)
 	}
-	angles[100] = 2*math.Pi
-	fmt.Println(angles)
 }
