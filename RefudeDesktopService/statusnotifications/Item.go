@@ -11,10 +11,13 @@ import (
 	"github.com/godbus/dbus"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib/server"
 	"github.com/surlykke/RefudeServices/lib/slice"
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
+	"sync"
 	time2 "time"
 )
 
@@ -22,6 +25,7 @@ const ItemMediaType resource.MediaType = "application/vnd.org.refude.statusnotif
 
 type Item struct {
 	resource.AbstractResource
+	key                     string
 	Id                      string
 	Category                string
 	Status                  string
@@ -52,6 +56,10 @@ type MenuItem struct {
 	ToggleType  string     `json:",omitempty"`
 	ToggleState int32
 	SubMenus    []MenuItem `json:",omitempty"`
+}
+
+func MakeItem(sender string, path dbus.ObjectPath) *Item {
+	return &Item{key: sender + string(path), sender: sender, itemPath: path}
 }
 
 func (item *Item) POST(w http.ResponseWriter, r *http.Request) {
@@ -88,3 +96,53 @@ func (item *Item) POST(w http.ResponseWriter, r *http.Request) {
 }
 
 
+type ItemCollection struct {
+	sync.Mutex
+	server.JsonResponseCache
+	items map[string]*Item
+}
+
+func MakeItemCollection() *ItemCollection {
+	var itemCollection = &ItemCollection{}
+	itemCollection.JsonResponseCache = server.MakeJsonResponseCache(itemCollection)
+	itemCollection.items = make(map[string]*Item)
+	return itemCollection
+}
+
+func (ic *ItemCollection) findByMenuPath(sender string, menuPath dbus.ObjectPath) *Item {
+	for _, item := range ic.items {
+		if sender == item.sender && menuPath == item.menuPath {
+			return item
+		}
+	}
+	return nil
+}
+
+
+func (ic *ItemCollection) GetResource(r *http.Request) (interface{}, error) {
+	var path = r.URL.Path
+	if path == "/items" {
+		var items = make([]*Item, 0, len(ic.items))
+
+		var matcher, err = requests.GetMatcher(r);
+		if err != nil {
+			return nil, err
+		}
+
+		for _, item := range ic.items {
+			if matcher(item) {
+				items = append(items, item)
+			}
+		}
+
+		return items, nil
+	} else if strings.HasPrefix(path, "/item/") {
+		if item, ok := ic.items[path[len("/item/"):]]; ok {
+			return item, nil
+		} else {
+			return nil, nil
+		}
+	} else {
+		return nil, nil
+	}
+}

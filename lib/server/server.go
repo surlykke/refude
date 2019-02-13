@@ -1,4 +1,4 @@
-package applications
+package server
 
 import (
 	"crypto/sha1"
@@ -6,6 +6,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"net/http"
+	"strings"
 	"sync"
 )
 
@@ -28,11 +29,10 @@ func MakeJsonResponse(res interface{}, ContentType resource.MediaType, error err
 	return jsonResponse
 }
 
-func (jr *JsonResponse) GET(w http.ResponseWriter) {
-
-}
 
 type ResourceCollection interface {
+	sync.Locker
+	GetJsonResponse(r *http.Request) *JsonResponse
 	GetResource(r *http.Request) (interface{}, error)
 }
 
@@ -64,38 +64,37 @@ func (jrc JsonResponseCache) GetJsonResponse(r *http.Request) *JsonResponse {
 	return jsonResponse
 }
 
-
-type Server struct {
-	resources ResourceCollection
-	cache JsonResponseCache
-	lock sync.Mutex
-}
-
-func MakeServer(resources ResourceCollection) *Server {
-	return &Server{
-		resources: resources,
-		cache: MakeJsonResponseCache(resources),
+func (jrc JsonResponseCache) ClearByPrefixes(prefixes ...string) {
+	for path, _ := range jrc.jsonResponses {
+		for _, prefix := range prefixes {
+			if strings.HasPrefix(path, prefix) {
+				delete(jrc.jsonResponses, path)
+				break
+			}
+		}
 	}
 }
 
-func (s *Server) getJsonResponse(r *http.Request) *JsonResponse {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	return s.cache.GetJsonResponse(r)
+func (jrc JsonResponseCache) Clear() {
+	jrc.jsonResponses = make(map[string]*JsonResponse)
 }
 
-func (s *Server) getResource(r *http.Request) (interface{}, error) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
 
-	return s.resources.GetResource(r)
+type Server struct {
+	resources ResourceCollection
 }
 
+func MakeServer(resources ResourceCollection) Server {
+	return Server{resources}
+}
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if "GET" == r.Method {
-		if jsonResponse := s.getJsonResponse(r); jsonResponse == nil {
+		s.resources.Lock()
+		var jsonResponse = s.resources.GetJsonResponse(r)
+		s.resources.Unlock()
+
+		if jsonResponse == nil {
 			w.WriteHeader(http.StatusNotFound)
 		} else if jsonResponse.error != nil {
 			requests.ReportUnprocessableEntity(w, jsonResponse.error)
@@ -105,7 +104,11 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			w.Write(jsonResponse.Data)
 		}
 	} else {
-		if res, err := s.getResource(r); err != nil {
+		s.resources.Lock()
+		res, err := s.resources.GetResource(r)
+		s.resources.Unlock()
+
+		if err != nil {
 			requests.ReportUnprocessableEntity(w, err)
 		} else if res == nil {
 			w.WriteHeader(http.StatusNotFound)
@@ -122,13 +125,4 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 }
-
-func (s *Server) setResources(resources ResourceCollection) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	s.resources = resources
-	s.cache = MakeJsonResponseCache(resources)
-}
-
 

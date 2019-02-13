@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/pkg/errors"
+	"github.com/surlykke/RefudeServices/lib/parser"
 	"net/http"
 	"regexp"
 )
@@ -96,3 +97,16 @@ func EtagMatch(etag string, etagList string) bool {
 		}
 	}
 }
+
+func matchAny(interface{}) bool {
+	return true
+}
+
+func GetMatcher(r *http.Request) (parser.Matcher, error) {
+	if q, ok := r.URL.Query()["q"]; ok && len(q) > 0 {
+		return parser.Parse(q[0])
+	} else {
+		return matchAny, nil
+	}
+}
+

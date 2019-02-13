@@ -15,6 +15,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/dbusutils"
 	"github.com/surlykke/RefudeServices/lib/image"
 	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib/server"
 	"github.com/surlykke/RefudeServices/lib/slice"
 	"log"
 	"reflect"
@@ -22,6 +23,70 @@ import (
 	"strings"
 	"time"
 )
+
+var itemCollection = MakeItemCollection()
+var ItemServer = server.MakeServer(itemCollection)
+
+func Run() {
+	getOnTheBus()
+	go monitorSignals()
+
+	for event := range events {
+		fmt.Println("Got event: ", event)
+		var key = event.sender + string(event.path)
+		switch event.eventType {
+		case ItemCreated:
+			item := MakeItem(event.sender, event.path)
+			item.AbstractResource = resource.MakeAbstractResource(resource.StandardizedPath("/item/" + item.key), ItemMediaType)
+			updateItem(item)
+			if item.menuPath != "" {
+				fetchMenu(item)
+			}
+			itemCollection.Lock()
+			itemCollection.items[key] = item
+			updateWatcherProperties()
+			itemCollection.JsonResponseCache.ClearByPrefixes("/item/" + key, "/items")
+			itemCollection.Unlock()
+			go monitorItem(event.sender, event.path)
+		case ItemRemoved:
+			itemCollection.Lock()
+			delete(itemCollection.items, key)
+			updateWatcherProperties()
+			itemCollection.JsonResponseCache.ClearByPrefixes("/item/" + key, "/items")
+			itemCollection.Unlock()
+		case ItemUpdated:
+			itemCollection.Lock()
+			if item, ok := itemCollection.items[key]; ok {
+
+				itemCollection.Unlock()
+				var copy = *item
+				updateItem(&copy)
+				itemCollection.Lock()
+
+				itemCollection.items[key] = &copy
+				itemCollection.JsonResponseCache.ClearByPrefixes("/item/" + key, "/items")
+			}
+			itemCollection.Unlock()
+		case MenuUpdated:
+			itemCollection.Lock()
+			var item = itemCollection.findByMenuPath(event.sender, event.path);
+			if item != nil {
+				itemCollection.Unlock()
+				var copy = *item
+				fetchMenu(&copy)
+				itemCollection.Lock()
+
+				itemCollection.items[copy.key] = &copy
+				itemCollection.JsonResponseCache.ClearByPrefixes("/item/" + copy.key, "/items")
+			}
+			itemCollection.Unlock()
+		}
+	}
+}
+
+
+
+
 
 const WATCHER_SERVICE = "org.kde.StatusNotifierWatcher"
 const WATCHER_PATH = "/StatusNotifierWatcher"
@@ -128,8 +193,6 @@ func getOnTheBus() {
 }
 
 
-var items = []*Item{}
-
 type EventType int
 
 const (
@@ -147,27 +210,11 @@ type Event struct {
 
 var events = make(chan Event)
 
-func findByItemPath(sender string, itemPath dbus.ObjectPath) int {
-	for i, item := range items {
-		if sender == item.sender && itemPath == item.itemPath {
-			return i
-		}
-	}
-	return -1
-}
 
-func findByMenuPath(sender string, menuPath dbus.ObjectPath) int {
-	for i, item := range items {
-		if sender == item.sender && menuPath == item.menuPath {
-			return i
-		}
-	}
-	return -1
-}
 
 func updateWatcherProperties() {
-	ids := make([]string, 0, len(items))
-	for _, item := range items {
+	ids := make([]string, 0, len(itemCollection.items))
+	for _, item := range itemCollection.items {
 		ids = append(ids, item.sender+":"+string(item.itemPath))
 	}
 	watcherProperties.Set(WATCHER_INTERFACE, "RegisteredStatusItems", dbus.MakeVariant(ids))
@@ -175,48 +222,7 @@ func updateWatcherProperties() {
 
 
 
-func Run(resourceMap *resource.JsonResourceMap) {
-	getOnTheBus()
-	go monitorSignals()
 
-	for event := range events {
-		switch event.eventType {
-		case ItemCreated:
-			if findByItemPath(event.sender, event.path) == -1 {
-				item := &Item{sender: event.sender, itemPath: event.path}
-				item.AbstractResource = resource.MakeAbstractResource(item.restPath(), ItemMediaType)
-				updateItem(item)
-				if item.menuPath != "" {
-					fetchMenu(item)
-				}
-				items = append(items, item)
-				resourceMap.Map(item)
-				updateWatcherProperties()
-				go monitorItem(event.sender, event.path)
-			}
-		case ItemRemoved:
-			if index := findByItemPath(event.sender, event.path); index > -1 {
-				resourceMap.Unmap(items[index].restPath())
-				items = append(items[0:index], items[index+1:len(items)]...)
-				updateWatcherProperties()
-			}
-		case ItemUpdated:
-			if index := findByItemPath(event.sender, event.path); index > -1 {
-				var copy = *items[index]
-				updateItem(&copy)
-				items[index] = &copy
-				resourceMap.Map(items[index])
-			}
-		case MenuUpdated:
-			if index := findByMenuPath(event.sender, event.path); index > -1 {
-				var copy = *items[index]
-				fetchMenu(&copy)
-				items[index] = &copy
-				resourceMap.Map(items[index])
-			}
-		}
-	}main
-}
 
 func updateItem(item *Item) {
 	props := dbuscall.GetAllProps(conn, item.sender, item.itemPath, ITEM_INTERFACE)
@@ -367,11 +373,6 @@ func parseMenu(value []interface{}) (MenuItem, []string, error) {
 }
 
 
-func (item *Item) restPath() resource.StandardizedPath {
-	var tmp = strings.Replace(item.sender[1:]+string(item.itemPath), "/", "-", -1)
-	return resource.Standardizef("/items/%s", tmp)
-
-}
 
 func collectPixMap(m map[string]dbus.Variant, key string) string {
 	if variant, ok := m[key]; ok {

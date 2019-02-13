@@ -11,7 +11,8 @@ import (
 	"github.com/godbus/dbus"
 	"github.com/surlykke/RefudeServices/lib/dbusutils"
 	"github.com/surlykke/RefudeServices/lib/resource"
-	"strings"
+	"github.com/surlykke/RefudeServices/lib/server"
+	"net/url"
 )
 
 const UPowService = "org.freedesktop.UPower"
@@ -23,7 +24,10 @@ const login1Service = "org.freedesktop.login1"
 const login1Path = "/org/freedesktop/login1"
 const managerInterface = "org.freedesktop.login1.Manager"
 
-func Run(resourceMap *resource.JsonResourceMap) {
+var devicesCollection = MakeDevicesCollection()
+var DevicesServer = server.MakeServer(devicesCollection)
+
+func Run() {
 
 	// Get on the bus
 	signals := make(chan *dbus.Signal, 100)
@@ -33,30 +37,35 @@ func Run(resourceMap *resource.JsonResourceMap) {
 		0,
 		"type='signal',interface='org.freedesktop.DBus.Properties',member='PropertiesChanged', sender='org.freedesktop.UPower'")
 
-	resourceMap.Map(MapPowerActions())
+	//resourceMap.Map(MapPowerActions())
 
-	var devices = make(map[dbus.ObjectPath]*Device)
 
 	enumCall := dbusConn.Object(UPowService, UPowPath).Call(UPowerInterface+".EnumerateDevices", dbus.Flags(0))
 	devicePaths := append(enumCall.Body[0].([]dbus.ObjectPath), DisplayDevicePath)
 	for _, path := range devicePaths {
 		var device = &Device{}
-
-		device.AbstractResource = resource.MakeAbstractResource(resource.Standardizef("/devices%s", path[strings.LastIndex(string(path), "/"):]), DeviceMediaType)
-		devices[path] = device
+		device.DisplayDevice = path == "/org/freedesktop/UPower/devices/DisplayDevice"
+		device.Id = url.PathEscape(string(path))
+		device.AbstractResource = resource.MakeAbstractResource(resource.Standardizef("/device/%s", device.Id), DeviceMediaType)
 		updateDevice(device, dbuscall.GetAllProps(dbusConn, UPowService, path, UPowerDeviceInterface))
-		resourceMap.Map(device);
+		devicesCollection.Lock()
+		devicesCollection.devices[device.Id] = device
+		devicesCollection.Unlock()
 	}
 
 	for signal := range signals {
 		fmt.Println("Signal: ", signal)
 		if signal.Name == "org.freedesktop.DBus.Properties.PropertiesChanged" {
-			if device, ok := devices[signal.Path]; ok {
+			devicesCollection.Lock()
+			if device, ok := devicesCollection.devices[string(signal.Path)]; ok {
 				var copy = *device
 				// Brute force here, we update all, as I've seen some problems with getting out of sync after suspend..
 				updateDevice(&copy, dbuscall.GetAllProps(dbusConn, UPowService, signal.Path, UPowerDeviceInterface))
-				resourceMap.Map(&copy)
+				devicesCollection.devices[copy.Id] = &copy
+				devicesCollection.JsonResponseCache.ClearByPrefixes("/device/" + copy.Id, "/devices")
 			}
+			devicesCollection.Unlock()
+
 			// TODO Handle device added/removed
 			// (need hardware to test)
 		}

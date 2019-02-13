@@ -41,7 +41,7 @@ func Run() {
 	devicePaths := append(enumCall.Body[0].([]dbus.ObjectPath), DisplayDevicePath)
 	for _, path := range devicePaths {
 		var device = &Device{}
-
+		device.DisplayDevice = path == "/org/freedesktop/UPower/devices/DisplayDevice"
 		device.AbstractResource = resource.MakeAbstractResource(resource.Standardizef("/devices%s", path[strings.LastIndex(string(path), "/"):]), DeviceMediaType)
 		devices[path] = device
 		updateDevice(device, dbuscall.GetAllProps(dbusConn, UPowService, path, UPowerDeviceInterface))

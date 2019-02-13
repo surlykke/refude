@@ -9,17 +9,27 @@ package main
 import (
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/applications"
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/notifications"
+	"github.com/surlykke/RefudeServices/RefudeDesktopService/power"
+	"github.com/surlykke/RefudeServices/RefudeDesktopService/statusnotifications"
+	"github.com/surlykke/RefudeServices/RefudeDesktopService/windows"
 	"github.com/surlykke/RefudeServices/lib"
 	"net/http"
 	"strings"
 )
 
-
 func server(w http.ResponseWriter, r *http.Request) {
 	if strings.HasPrefix(r.URL.Path, "/application") {
-		applications.ApplicationsServer.ServeHTTP(w,r)
+		applications.ApplicationsServer.ServeHTTP(w, r)
 	} else if strings.HasPrefix(r.URL.Path, "/mimetype") {
 		applications.MimetypesServer.ServeHTTP(w, r)
+	} else if strings.HasPrefix(r.URL.Path, "/notification") {
+		notifications.NotificationsServer.ServeHTTP(w, r)
+	} else if strings.HasPrefix(r.URL.Path, "/device") {
+		power.DevicesServer.ServeHTTP(w, r)
+	} else if strings.HasPrefix(r.URL.Path, "/window") {
+		windows.WindowsServer.ServeHTTP(w, r)
+	} else if strings.HasPrefix(r.URL.Path, "/item") {
+		statusnotifications.ItemServer.ServeHTTP(w, r)
 	} else {
 		w.WriteHeader(http.StatusNotFound)
 	}
@@ -31,8 +41,12 @@ func main() {
 	/*go applications.Run(resourceMap)
 	go windows.Run(resourceMap)
 	go power.Run(resourceMap)*/
-	go notifications.Run(resourceMap);
+	go notifications.Run();
 	//go statusnotifications.Run(resourceMap)
 	go applications.Run()
+	go power.Run()
+	go windows.Run()
+	go statusnotifications.Run()
+
 	lib.Serve("org.refude.desktop-service", http.HandlerFunc(server))
 }

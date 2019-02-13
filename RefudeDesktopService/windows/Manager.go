@@ -5,9 +5,13 @@ import (
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/windows/xlib"
 	"github.com/surlykke/RefudeServices/lib/image"
 	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib/server"
 	"log"
 	"sync"
 )
+
+var windowCollection = MakeWindowCollection()
+var WindowsServer = server.MakeServer(windowCollection)
 
 const (
 	NET_WM_VISIBLE_NAME      = "_NET_WM_VISIBLE_NAME"
@@ -19,54 +23,93 @@ const (
 )
 
 type Manager struct {
-	in            *xlib.Connection // Used to retrive data from X. Events, getProperty.. All access to this originates in the Run method
-	out           *xlib.Connection // Used send data to X (events or through setters). Protected by a mutex (outLock)
-	outLock       sync.Mutex
-	mappedWindows []*Window
-	resourceMap   resource.JsonResourceMap
+	in      *xlib.Connection // Used to retrive data from X. Events, getProperty.. All access to this originates in the Run method
+	out     *xlib.Connection // Used send data to X (events or through setters). Protected by a mutex (outLock)
+	outLock sync.Mutex
 }
 
-func Run(resourceMap *resource.JsonResourceMap) {
+func Run() {
 	var manager = Manager{
-		in:            xlib.MakeConnection(),
-		out:           xlib.MakeConnection(),
-		mappedWindows: []*Window{},
-		resourceMap:   *resourceMap,
+		in:  xlib.MakeConnection(),
+		out: xlib.MakeConnection(),
 	}
 	manager.Run()
 }
 
-func (m *Manager) findIndexById(wId uint32) (int, bool) {
-	for i := 0; i < len(m.mappedWindows); i++ {
-		if m.mappedWindows[i].Id == wId {
-			return i, true
+func (m *Manager) Run() {
+	m.in.Listen(0)
+	m.updateWindows()
+
+	for {
+		if event, err := m.in.NextEvent(); err != nil {
+			log.Println("Error retrieving next event:", err)
+		} else {
+			m.handle(event)
 		}
 	}
-
-	return -1, false;
 }
 
-func (m *Manager) findIndexByParentId(parentId uint32) (int, bool) {
-	for i := 0; i < len(m.mappedWindows); i++ {
-		if m.mappedWindows[i].Parent == parentId {
-			return i, true
+func (m *Manager) handle(event xlib.Event) {
+	switch event.Property {
+	case NET_CLIENT_LIST_STACKING:
+		m.updateWindows()
+	case "": // Means it's a ConfigureEvent
+		windowCollection.Lock()
+		defer windowCollection.Unlock()
+		if copy := windowCollection.getCopyByParent(event.Window); copy != nil {
+			copy.X, copy.Y, copy.W, copy.H = event.X, event.Y, event.W, event.H
+			windowCollection.windows[copy.Id] = copy
+		}
+	case NET_WM_VISIBLE_NAME, NET_WM_NAME, WM_NAME:
+		if name, err := m.GetName(event.Window); err != nil {
+			log.Println("Error getting window name:", err)
+		} else {
+			windowCollection.Lock()
+			defer windowCollection.Unlock()
+			if copy := windowCollection.getCopy(event.Window); copy != nil {
+				copy.Name = name
+				windowCollection.windows[copy.Id] = copy
+			}
+		}
+	case NET_WM_ICON:
+		if iconName, err := m.GetIconName(event.Window); err != nil {
+			log.Println("Error getting window iconname:", err)
+		} else {
+			windowCollection.Lock()
+			defer windowCollection.Unlock()
+			if copy := windowCollection.getCopy(event.Window); copy != nil {
+				copy.IconName = iconName
+				windowCollection.windows[copy.Id] = copy
+			}
+		}
+	case NET_WM_STATE:
+		if states, err := m.in.GetAtoms(event.Window, NET_WM_STATE); err != nil {
+			log.Println("Error get window states:", err)
+		} else {
+			windowCollection.Lock()
+			defer windowCollection.Unlock()
+			if copy := windowCollection.getCopy(event.Window); copy != nil {
+				copy.States = states
+				windowCollection.windows[copy.Id] = copy
+			}
 		}
 	}
-	return -1, false
 }
 
 func (m *Manager) updateWindows() {
 	if wIds, err := m.in.GetUint32s(0, NET_CLIENT_LIST_STACKING); err != nil {
 		log.Fatal("Unable to get client list stacking", err)
 	} else {
-		var newMappedWindows = make([]*Window, len(wIds))
-		var resourcesToMap = []resource.Mapping{}
+		windowCollection.Lock()
+		defer windowCollection.Unlock()
+
+		var windows = make(map[uint32]*Window)
 		for i, wId := range wIds {
 			var stackOrder = len(wIds) - i
-			if index, ok := m.findIndexById(wId); ok {
-				var copy = *(m.mappedWindows[index])
+			if window, ok := windowCollection.windows[wId]; ok {
+				var copy = *window
 				copy.StackOrder = stackOrder
-				newMappedWindows[i] = &copy
+				windows[copy.Id] = &copy
 			} else {
 				window := &Window{}
 				window.Id = wId;
@@ -91,78 +134,21 @@ func (m *Manager) updateWindows() {
 					log.Println("No states: ", err)
 				}
 
-				var executer = m.makeRaiser(wId)
+				var wIdCopy = wId
+				var executer = func() {
+					m.outLock.Lock();
+					defer m.outLock.Unlock()
+					m.out.RaiseAndFocusWindow(wIdCopy)
+				}
+
 				window.ResourceActions["default"] = resource.ResourceAction{Description: "Raise and focus", IconName: window.IconName, Executer: executer}
 				m.in.Listen(window.Id)
-				newMappedWindows[i] = window
-			}
-			resourcesToMap = append(resourcesToMap, resource.Mapping{newMappedWindows[i].GetSelf(), newMappedWindows[i]})
-		}
-
-		m.mappedWindows = newMappedWindows
-		m.resourceMap.Update([]resource.StandardizedPath{"/windows"}, resourcesToMap)
-	}
-}
-
-func (m *Manager) makeRaiser(wId uint32) resource.Executer {
-	return func() {
-		m.outLock.Lock();
-		defer m.outLock.Unlock()
-		m.out.RaiseAndFocusWindow(wId)
-	}
-}
-
-func (m *Manager) Run() {
-	m.in.Listen(0)
-	m.updateWindows()
-
-	for {
-		if event, err := m.in.NextEvent(); err != nil {
-			log.Println("Error retrieving next event:", err)
-		} else {
-			switch event.Property {
-			case "": // Means it's a ConfigureEvent
-				if index, ok := m.findIndexByParentId(event.Window); ok {
-					var copy = *(m.mappedWindows[index])
-					copy.X, copy.Y, copy.W, copy.H = event.X, event.Y, event.W, event.H
-					m.mappedWindows[index] = &copy
-					m.resourceMap.Map(&copy)
-				}
-			case NET_CLIENT_LIST_STACKING:
-				m.updateWindows()
-			case NET_WM_VISIBLE_NAME, NET_WM_NAME, WM_NAME:
-				if index, ok := m.findIndexById(event.Window); ok {
-					var copy = *(m.mappedWindows[index])
-					if copy.Name, err = m.GetName(copy.Id); err != nil {
-						log.Println("Error getting copy name:", err)
-					} else {
-						m.mappedWindows[index] = &copy
-						m.resourceMap.Map(&copy)
-					}
-				}
-			case NET_WM_ICON:
-				if index, ok := m.findIndexById(event.Window); ok {
-					var copy = *(m.mappedWindows[index])
-					if copy.Name, err = m.GetIconName(copy.Id); err != nil {
-						log.Println("Error getting window iconname:", err)
-					} else {
-						m.mappedWindows[index] = &copy
-						m.resourceMap.Map(&copy)
-					}
-				}
-			case NET_WM_STATE:
-				if index, ok := m.findIndexById(event.Window); ok {
-					var copy = *(m.mappedWindows[index])
-					if copy.States, err = m.in.GetAtoms(copy.Id, NET_WM_STATE); err != nil {
-						log.Println("Error get window states:", err)
-					} else {
-						m.mappedWindows[index] = &copy
-						m.resourceMap.Map(&copy)
-					}
-				}
+				windows[window.Id] = window
 			}
 		}
+		windowCollection.windows = windows
 	}
+
 }
 
 func (m *Manager) GetName(wId uint32) (string, error) {

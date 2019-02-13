@@ -8,7 +8,9 @@ package applications
 
 import (
 	"fmt"
+	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib/server"
 	"github.com/surlykke/RefudeServices/lib/slice"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 	"log"
@@ -16,6 +18,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/pkg/errors"
 )
@@ -96,21 +99,43 @@ func setDefaultApp(mimetypeId string, appId string) {
 	}
 }
 
-type MimetypeCollection map[string]*Mimetype
+type MimetypeCollection struct {
+	sync.Mutex
+	server.JsonResponseCache
+	mimetypes map[string]*Mimetype
+}
 
-func (mtc MimetypeCollection) GetResource(r *http.Request) (interface{}, error) {
+func MakeMimetypecollection() *MimetypeCollection {
+	var mc = &MimetypeCollection{}
+	mc.JsonResponseCache = server.MakeJsonResponseCache(mc)
+	mc.mimetypes = make(map[string]*Mimetype)
+	return mc
+}
+
+
+func (mc MimetypeCollection) GetResource(r *http.Request) (interface{}, error) {
 	var path = r.URL.Path
 	if path == "/mimetypes" {
-		var mimetypes = make([]*Mimetype, 0, len(mtc))
-		for _, mt := range mtc {
-			mimetypes = append(mimetypes, mt)
+		var mimetypes = make([]*Mimetype, 0, len(mc.mimetypes))
+
+		var matcher, err = requests.GetMatcher(r);
+		if err != nil {
+			return nil, err
 		}
 
-		// FIXME if query then filter
+		for _, mimetype := range mc.mimetypes {
+			if matcher(mimetype) {
+				mimetypes = append(mimetypes, mimetype)
+			}
+		}
 
 		return mimetypes, nil
 	} else if strings.HasPrefix(path, "/mimetype/") {
-		return mtc[path[len("/mimetype/"):]], nil
+		if mimetype, ok := mc.mimetypes[path[len("/mimetype/"):]]; ok {
+			return mimetype, nil
+		} else {
+			return nil, nil
+		}
 	} else {
 		return nil, nil
 	}

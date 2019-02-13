@@ -8,9 +8,9 @@ package applications
 
 import (
 	"fmt"
-	"github.com/surlykke/RefudeServices/lib/parser"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib/server"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 	"golang.org/x/text/language"
 	"log"
@@ -18,6 +18,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"sync"
 )
 
 const DesktopApplicationMediaType resource.MediaType = "application/vnd.org.refude.desktopapplication+json"
@@ -113,33 +114,43 @@ func launchWithArgs(exec string, args []string, inTerminal bool) {
 	xdg.RunCmd(argv)
 }
 
-type DesktopApplicationCollection map[string]*DesktopApplication
+type DesktopApplicationCollection struct {
+	sync.Mutex
+	server.JsonResponseCache
+	apps map[string]*DesktopApplication
+}
+
+func MakeDesktopApplicationCollection() *DesktopApplicationCollection {
+	var dac = &DesktopApplicationCollection{}
+	dac.JsonResponseCache = server.MakeJsonResponseCache(dac)
+	dac.apps = make(map[string]*DesktopApplication)
+
+	return dac
+}
 
 func (dac DesktopApplicationCollection) GetResource(r *http.Request) (interface{}, error) {
 	var path = r.URL.Path
 	if path == "/applications" {
-		var allApps = make([]*DesktopApplication, 0, len(dac))
-		for _, app := range dac {
-			allApps = append(allApps, app)
+		var apps = make([]*DesktopApplication, 0, len(dac.apps))
+
+		var matcher, err = requests.GetMatcher(r);
+		if err != nil {
+			return nil, err
 		}
 
-		if params, err := requests.GetSingleParams(r, "q"); err != nil {
-			return nil, err
-		} else if matcher, err :=  parser.Parse(params["q"]); err != nil {
-			return nil, err
-		} else {
-			var tmp = make([]*DesktopApplication, 0, len(allApps))
-			for _, da := range allApps{
-				if matcher(da) {
-					tmp = append(tmp, da)
-				}
+		for _, app := range dac.apps {
+			if matcher(app) {
+				apps = append(apps, app)
 			}
-			allApps = tmp
 		}
 
-		return allApps, nil
+		return apps, nil
 	} else if strings.HasPrefix(path, "/application/") {
-		return dac[path[len("/application/"):]], nil
+		if app, ok := dac.apps[path[len("/application/"):]]; ok {
+			return app, nil
+		} else {
+			return nil, nil
+		}
 	} else {
 		return nil, nil
 	}

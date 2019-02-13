@@ -30,7 +30,7 @@ type collection struct {
 	defaultApps  map[string][]string            // Maps from mimetypeid to a list of app ids
 }
 
-func Collect() (MimetypeCollection, DesktopApplicationCollection) {
+func Collect() (map[string]*Mimetype, map[string]*DesktopApplication) {
 	var c collection
 	c.mimetypes = CollectMimeTypes()
 	c.applications = make(map[string]*DesktopApplication)
@@ -71,7 +71,7 @@ func Collect() (MimetypeCollection, DesktopApplicationCollection) {
 
 
 	fmt.Println("Collected ", len(c.mimetypes), "mimetypes and", len(c.applications), "applications")
-	return MimetypeCollection(c.mimetypes), DesktopApplicationCollection(c.applications)
+	return c.mimetypes, c.applications
 }
 
 func (c *collection) removeAssociations(app *DesktopApplication) {

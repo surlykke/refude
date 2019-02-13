@@ -249,7 +249,7 @@ func DoDBus(notifications chan *Notification, removals chan removal) {
 	go generate(ids)
 
 	// Put StatusNotifierWatcher object up
-	conn.ExportMethodTable(
+	_ = conn.ExportMethodTable(
 		map[string]interface{}{
 			"GetCapabilities":      GetCapabilities,
 			"Notify":               makeNotifyFunction(notifications),
@@ -259,5 +259,5 @@ func DoDBus(notifications chan *Notification, removals chan removal) {
 		NOTIFICATIONS_PATH,
 		NOTIFICATIONS_INTERFACE,
 	)
-	conn.Export(introspect.Introspectable(INTROSPECT_XML), NOTIFICATIONS_PATH, INTROSPECT_INTERFACE)
+	_ = conn.Export(introspect.Introspectable(INTROSPECT_XML), NOTIFICATIONS_PATH, INTROSPECT_INTERFACE)
 }

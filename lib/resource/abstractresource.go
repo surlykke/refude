@@ -52,7 +52,7 @@ type Link struct {
 func MakeAbstractResource(SelfLink StandardizedPath, mt MediaType) AbstractResource {
 	return AbstractResource{
 		Self:  SelfLink,
-		Links: []Link{Link{Href: SelfLink, Rel: Self}},
+		Links: []Link{{Href: SelfLink, Rel: Self}},
 		Mt:    mt,
 		ResourceActions: make(map[string]ResourceAction),
 	}
