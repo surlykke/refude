@@ -7,6 +7,7 @@
 package power
 
 import (
+	"fmt"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/server"
@@ -72,31 +73,41 @@ func deviceTecnology(index uint32) string {
 	return devTecnology[index]
 }
 
-type DevicesCollection struct {
-	sync.Mutex
-	server.JsonResponseCache
+type PowerCollection struct {
+	mutex sync.Mutex
 	devices map[string]*Device
+	session *Session
+	server.JsonResponseCache2
+	server.PatchNotAllowed
+	server.DeleteNotAllowed
 }
 
 
-func MakeDevicesCollection() *DevicesCollection {
-	var dc = &DevicesCollection{}
-	dc.JsonResponseCache = server.MakeJsonResponseCache(dc)
+func (*PowerCollection) HandledPrefixes() []string {
+	return []string{"/device", "/session"}
+}
+
+func MakeDevicesCollection() *PowerCollection {
+	var dc = &PowerCollection{}
+	dc.JsonResponseCache2 = server.MakeJsonResponseCache2(dc)
 	dc.devices = make(map[string]*Device)
 	return dc
 }
 
-func (dac DevicesCollection) GetResource(r *http.Request) (interface{}, error) {
+func (pc *PowerCollection) GetResource(r *http.Request) (interface{}, error) {
+	pc.mutex.Lock()
+	defer pc.mutex.Unlock()
+
 	var path = r.URL.Path
 	if path == "/devices" {
-		var devices = make([]*Device, 0, len(dac.devices))
+		var devices = make([]*Device, 0, len(pc.devices))
 
 		var matcher, err = requests.GetMatcher(r);
 		if err != nil {
 			return nil, err
 		}
 
-		for _, device := range dac.devices {
+		for _, device := range pc.devices {
 			if matcher(device) {
 				devices = append(devices, device)
 			}
@@ -104,13 +115,37 @@ func (dac DevicesCollection) GetResource(r *http.Request) (interface{}, error) {
 
 		return devices, nil
 	} else if strings.HasPrefix(path, "/device/") {
-		if device, ok := dac.devices[path[len("/device/"):]]; ok {
+		fmt.Println("Getting", path[len("/device"):])
+		if device, ok := pc.devices[path[len("/device"):]]; ok {
 			return device, nil
 		} else {
 			return nil, nil
 		}
+	} else if path == "/session" && pc.session != nil {
+		return pc.session, nil
 	} else {
 		return nil, nil
 	}
 
 }
+
+func (pc *PowerCollection) POST(w http.ResponseWriter, r *http.Request) {
+	if res, err := pc.GetResource(r); err != nil {
+		requests.ReportUnprocessableEntity(w, err)
+	} else if res == nil {
+		w.WriteHeader(http.StatusNotFound)
+	} else if session, ok := res.(*Session); !ok {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	} else {
+		var actionId = requests.GetSingleQueryParameter(r, "action", "Suspend")
+		if action, ok := session.ResourceActions[actionId]; ok {
+			action.Executer()
+			w.WriteHeader(http.StatusAccepted)
+		} else {
+			w.WriteHeader(http.StatusUnprocessableEntity)
+		}
+	}
+}
+
+
+

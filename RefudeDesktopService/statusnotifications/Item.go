@@ -18,7 +18,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	time2 "time"
 )
 
 const ItemMediaType resource.MediaType = "application/vnd.org.refude.statusnotifieritem+json"
@@ -26,6 +25,9 @@ const ItemMediaType resource.MediaType = "application/vnd.org.refude.statusnotif
 type Item struct {
 	resource.AbstractResource
 	key                     string
+	sender                  string
+	itemPath                dbus.ObjectPath
+	menuPath                dbus.ObjectPath
 	Id                      string
 	Category                string
 	Status                  string
@@ -36,90 +38,84 @@ type Item struct {
 	Title                   string
 	Menu                    []MenuItem `json:",omitempty"`
 
-	sender   string
-	itemPath dbus.ObjectPath
-	menuPath dbus.ObjectPath
-
 	iconThemePath string
-	path          string
-	menuIds       []string
-}
-
-type MenuItem struct {
-	Id          string
-	Type        string
-	Label       string
-	Enabled     bool
-	Visible     bool
-	IconName    string
-	Shortcuts   [][]string `json:",omitempty"`
-	ToggleType  string     `json:",omitempty"`
-	ToggleState int32
-	SubMenus    []MenuItem `json:",omitempty"`
 }
 
 func MakeItem(sender string, path dbus.ObjectPath) *Item {
 	return &Item{key: sender + string(path), sender: sender, itemPath: path}
 }
 
-func (item *Item) POST(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("POST: ", r.URL)
-	action := requests.GetSingleQueryParameter(r, "action", "left")
-	x, _ := strconv.Atoi(requests.GetSingleQueryParameter(r, "x", "0"))
-	y, _ := strconv.Atoi(requests.GetSingleQueryParameter(r, "y", "0"))
-	id := requests.GetSingleQueryParameter(r, "id", "")
-
-	fmt.Println("action: ", action, ", known ids: ", item.menuIds)
-	var call *dbus.Call
-	if slice.Among(action, "left", "middle", "right") {
-		action2method := map[string]string{"left": "Activate", "middle": "SecondaryActivate", "right": "ContextMenu"}
-		fmt.Println("Calling: ", "org.kde.StatusNotifierItem."+action2method[action], dbus.Flags(0), x, y)
-		dbusObj := conn.Object(item.sender, item.itemPath)
-		call = dbusObj.Call("org.kde.StatusNotifierItem."+action2method[action], dbus.Flags(0), x, y);
-	} else if action == "menu" && slice.Among(id, item.menuIds...) {
-		idAsInt, _ := strconv.Atoi(id)
-		data := dbus.MakeVariant("")
-		time := uint32(time2.Now().Unix())
-		fmt.Println("Calling: ", "com.canonical.dbusmenu.Event", dbus.Flags(0), idAsInt, "clicked", data, time)
-		dbusObj := conn.Object(item.sender, item.menuPath)
-		call = dbusObj.Call("com.canonical.dbusmenu.Event", dbus.Flags(0), idAsInt, "clicked", data, time)
-	} else {
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		return
-	}
-	if call.Err != nil {
-		log.Println(call.Err)
-		w.WriteHeader(http.StatusInternalServerError)
-	} else {
-		w.WriteHeader(http.StatusAccepted)
-	}
+type ItemCollection struct {
+	mutex sync.Mutex
+	items map[string]*Item
+	server.JsonResponseCache2
+	server.PostNotAllowed
+	server.PatchNotAllowed
+	server.DeleteNotAllowed
 }
 
-
-type ItemCollection struct {
-	sync.Mutex
-	server.JsonResponseCache
-	items map[string]*Item
+func (ic *ItemCollection) HandledPrefixes() []string {
+	return []string{"/item/", "/items"}
 }
 
 func MakeItemCollection() *ItemCollection {
 	var itemCollection = &ItemCollection{}
-	itemCollection.JsonResponseCache = server.MakeJsonResponseCache(itemCollection)
+	itemCollection.JsonResponseCache2 = server.MakeJsonResponseCache2(itemCollection)
 	itemCollection.items = make(map[string]*Item)
 	return itemCollection
 }
 
-func (ic *ItemCollection) findByMenuPath(sender string, menuPath dbus.ObjectPath) *Item {
+func (ic *ItemCollection) POST(w http.ResponseWriter, r *http.Request) {
+	if res, err := ic.GetResource(r); err != nil {
+		requests.ReportUnprocessableEntity(w, err)
+	} else if res == nil {
+		w.WriteHeader(http.StatusNotFound)
+	} else if notification, ok := res.(*Item); !ok {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	} else {
+		action := requests.GetSingleQueryParameter(r, "action", "left")
+		x, _ := strconv.Atoi(requests.GetSingleQueryParameter(r, "x", "0"))
+		y, _ := strconv.Atoi(requests.GetSingleQueryParameter(r, "y", "0"))
+
+		fmt.Printf("action: '%s', x: %d, y: %d", action, x, y)
+		if slice.Among(action, "left", "middle", "right") {
+			action2method := map[string]string{"left": "Activate", "middle": "SecondaryActivate", "right": "ContextMenu"}
+			fmt.Println("Calling: ", "org.kde.StatusNotifierItem."+action2method[action], dbus.Flags(0), x, y)
+			dbusObj := conn.Object(notification.sender, notification.itemPath)
+			call := dbusObj.Call("org.kde.StatusNotifierItem."+action2method[action], dbus.Flags(0), x, y);
+			if call.Err != nil {
+				log.Println(call.Err)
+				w.WriteHeader(http.StatusInternalServerError)
+			} else {
+				w.WriteHeader(http.StatusAccepted)
+			}
+
+		} else {
+			w.WriteHeader(http.StatusUnprocessableEntity)
+			return
+		}
+
+	}
+}
+
+func (ic *ItemCollection) findByMenupath(menupath string) *Item {
+	ic.mutex.Lock()
+	defer ic.mutex.Unlock()
+
 	for _, item := range ic.items {
-		if sender == item.sender && menuPath == item.menuPath {
-			return item
+		for _, link := range item.Links {
+			if resource.SNI_MENU == link.Rel && menupath == string(link.Href) {
+				return item
+			}
 		}
 	}
 	return nil
 }
 
-
 func (ic *ItemCollection) GetResource(r *http.Request) (interface{}, error) {
+	ic.mutex.Lock()
+	defer ic.mutex.Unlock()
+
 	var path = r.URL.Path
 	if path == "/items" {
 		var items = make([]*Item, 0, len(ic.items))

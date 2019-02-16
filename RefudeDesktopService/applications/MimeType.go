@@ -100,20 +100,30 @@ func setDefaultApp(mimetypeId string, appId string) {
 }
 
 type MimetypeCollection struct {
-	sync.Mutex
-	server.JsonResponseCache
+	mutex sync.Mutex
 	mimetypes map[string]*Mimetype
+	server.JsonResponseCache2
+	server.PostNotAllowed
+	server.PatchNotAllowed // FIXME
+	server.DeleteNotAllowed
+}
+
+func (*MimetypeCollection) HandledPrefixes() []string {
+	return []string{"/mimetype"}
 }
 
 func MakeMimetypecollection() *MimetypeCollection {
 	var mc = &MimetypeCollection{}
-	mc.JsonResponseCache = server.MakeJsonResponseCache(mc)
 	mc.mimetypes = make(map[string]*Mimetype)
+	mc.JsonResponseCache2 = server.MakeJsonResponseCache2(mc)
 	return mc
 }
 
 
-func (mc MimetypeCollection) GetResource(r *http.Request) (interface{}, error) {
+func (mc *MimetypeCollection) GetResource(r *http.Request) (interface{}, error) {
+	mc.mutex.Lock()
+	defer mc.mutex.Unlock()
+
 	var path = r.URL.Path
 	if path == "/mimetypes" {
 		var mimetypes = make([]*Mimetype, 0, len(mc.mimetypes))

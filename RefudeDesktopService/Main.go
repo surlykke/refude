@@ -13,40 +13,69 @@ import (
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/statusnotifications"
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/windows"
 	"github.com/surlykke/RefudeServices/lib"
+	"github.com/surlykke/RefudeServices/lib/server"
 	"net/http"
 	"strings"
 )
 
-func server(w http.ResponseWriter, r *http.Request) {
-	if strings.HasPrefix(r.URL.Path, "/application") {
-		applications.ApplicationsServer.ServeHTTP(w, r)
-	} else if strings.HasPrefix(r.URL.Path, "/mimetype") {
-		applications.MimetypesServer.ServeHTTP(w, r)
-	} else if strings.HasPrefix(r.URL.Path, "/notification") {
-		notifications.NotificationsServer.ServeHTTP(w, r)
-	} else if strings.HasPrefix(r.URL.Path, "/device") {
-		power.DevicesServer.ServeHTTP(w, r)
-	} else if strings.HasPrefix(r.URL.Path, "/window") {
-		windows.WindowsServer.ServeHTTP(w, r)
-	} else if strings.HasPrefix(r.URL.Path, "/item") {
-		statusnotifications.ItemServer.ServeHTTP(w, r)
-	} else {
-		w.WriteHeader(http.StatusNotFound)
+var resourceServers []server.ResourceServer
+
+func serveHttp(w http.ResponseWriter, r *http.Request) {
+	for _, resourceServer := range resourceServers {
+		for _, handledPrefix := range resourceServer.HandledPrefixes() {
+			if strings.HasPrefix(r.URL.Path, handledPrefix) {
+				switch r.Method {
+				case "GET":
+					resourceServer.GET(w, r)
+				case "POST":
+					resourceServer.POST(w, r)
+				case "PATCH":
+					resourceServer.PATCH(w, r)
+				case "DELETE":
+					resourceServer.DELETE(w, r)
+				default: w.WriteHeader(http.StatusMethodNotAllowed)
+				}
+
+				return
+			}
+		}
 	}
+
+	w.WriteHeader(http.StatusNotFound)
 }
 
-func main() {
-	//var resourceMap = resource.MakeJsonResourceMap()
 
-	/*go applications.Run(resourceMap)
+
+func main() {
+	/*//var resourceMap = resource.MakeJsonResourceMap()
+
+	go applications.Run(resourceMap)
 	go windows.Run(resourceMap)
-	go power.Run(resourceMap)*/
+	go power.Run(resourceMap)
 	go notifications.Run();
 	//go statusnotifications.Run(resourceMap)
 	go applications.Run()
 	go power.Run()
 	go windows.Run()
-	go statusnotifications.Run()
+	go statusnotifications.Run()*/
+	var applicationsCollection = applications.MakeDesktopApplicationCollection()
+	var mimetypeCollection = applications.MakeMimetypecollection()
+	go applications.Run(applicationsCollection, mimetypeCollection)
 
-	lib.Serve("org.refude.desktop-service", http.HandlerFunc(server))
+	var windowCollection = windows.MakeWindowCollection()
+	go windows.Run(windowCollection)
+
+	var notificationCollection = notifications.MakeNotificationsCollection()
+	go notifications.Run(notificationCollection)
+
+	var devicesCollection = power.MakeDevicesCollection()
+	go power.Run(devicesCollection)
+
+	var itemCollection = statusnotifications.MakeItemCollection()
+	var menuCollection = statusnotifications.MakeMenuCollection(itemCollection)
+	go statusnotifications.Run(itemCollection)
+
+	resourceServers = []server.ResourceServer{applicationsCollection, mimetypeCollection, windowCollection, notificationCollection, devicesCollection, itemCollection, menuCollection}
+
+	lib.Serve("org.refude.desktop-service", http.HandlerFunc(serveHttp))
 }

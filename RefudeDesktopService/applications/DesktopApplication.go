@@ -115,14 +115,55 @@ func launchWithArgs(exec string, args []string, inTerminal bool) {
 }
 
 type DesktopApplicationCollection struct {
-	sync.Mutex
-	server.JsonResponseCache
-	apps map[string]*DesktopApplication
+	mutex sync.Mutex
+	apps  map[string]*DesktopApplication
+	server.JsonResponseCache2
+	server.PatchNotAllowed
+	server.DeleteNotAllowed
+}
+
+func (*DesktopApplicationCollection) HandledPrefixes() []string {
+	return []string{"/application"}
+}
+
+func (dac *DesktopApplicationCollection) POST(w http.ResponseWriter, r *http.Request) {
+	if "/applications" == r.URL.Path {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	} else if ! strings.HasPrefix(r.URL.Path, "/application/") {
+		w.WriteHeader(http.StatusNotFound)
+	} else {
+		if intf, _ := dac.GetResource(r); intf == nil {
+			w.WriteHeader(http.StatusNotFound)
+		} else {
+			da := intf.(*DesktopApplication)
+			fmt.Println("In post")
+			var actionName = requests.GetSingleQueryParameter(r, "action", "")
+			var args = r.URL.Query()["arg"]
+			var exec string
+			if actionName == "" {
+				exec = da.Exec
+			} else if action, ok := da.DesktopActions[actionName]; !ok {
+				w.WriteHeader(http.StatusUnprocessableEntity)
+			} else {
+				exec = action.Exec
+			}
+
+			var onlySingleArg = !(strings.Contains(exec, "%F") || strings.Contains(exec, "%U"))
+			if onlySingleArg && len(args) > 1 {
+				w.WriteHeader(http.StatusUnprocessableEntity)
+			} else {
+				launchWithArgs(da.Exec, args, da.Terminal)
+				w.WriteHeader(http.StatusAccepted)
+			}
+		}
+
+	}
+
 }
 
 func MakeDesktopApplicationCollection() *DesktopApplicationCollection {
 	var dac = &DesktopApplicationCollection{}
-	dac.JsonResponseCache = server.MakeJsonResponseCache(dac)
+	dac.JsonResponseCache2 = server.MakeJsonResponseCache2(dac)
 	dac.apps = make(map[string]*DesktopApplication)
 
 	return dac
@@ -130,6 +171,9 @@ func MakeDesktopApplicationCollection() *DesktopApplicationCollection {
 
 func (dac DesktopApplicationCollection) GetResource(r *http.Request) (interface{}, error) {
 	var path = r.URL.Path
+	dac.mutex.Lock()
+	defer dac.mutex.Unlock()
+
 	if path == "/applications" {
 		var apps = make([]*DesktopApplication, 0, len(dac.apps))
 
@@ -143,7 +187,7 @@ func (dac DesktopApplicationCollection) GetResource(r *http.Request) (interface{
 				apps = append(apps, app)
 			}
 		}
-
+		fmt.Println("Returning", len(apps), "applications")
 		return apps, nil
 	} else if strings.HasPrefix(path, "/application/") {
 		if app, ok := dac.apps[path[len("/application/"):]]; ok {

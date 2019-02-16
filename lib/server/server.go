@@ -36,10 +36,117 @@ type ResourceCollection interface {
 	GetResource(r *http.Request) (interface{}, error)
 }
 
+type ResourceCollection2 interface {
+	GetResource(r *http.Request) (interface{}, error)
+}
+
+type ResourceServer interface {
+	resource.GetHandler
+	resource.PostHandler
+	resource.PatchHandler
+	resource.DeleteHandler
+	HandledPrefixes() []string
+}
+
+type PostNotAllowed struct {}
+
+func (PostNotAllowed) POST(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusMethodNotAllowed)
+}
+
+type PatchNotAllowed struct {}
+
+func (PatchNotAllowed) PATCH(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusMethodNotAllowed)
+}
+
+type DeleteNotAllowed struct {}
+
+func (DeleteNotAllowed) DELETE(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusMethodNotAllowed)
+}
+
+
+
+
 type JsonResponseCache struct {
 	jsonResponses map[string]*JsonResponse
 	resources ResourceCollection
 }
+
+type JsonResponseCache2 struct {
+	cachedResponses map[string]*JsonResponse
+	mutex sync.Mutex
+	resources ResourceCollection2
+}
+
+
+func MakeJsonResponseCache2(resources ResourceCollection2) JsonResponseCache2 {
+	return JsonResponseCache2{cachedResponses: make(map[string]*JsonResponse), resources: resources}
+}
+
+func (jrc *JsonResponseCache2) getCachedResponse(path string) (*JsonResponse, bool) {
+	jrc.mutex.Lock()
+	defer jrc.mutex.Unlock()
+	resp, ok := jrc.cachedResponses[path]
+	return resp,ok
+}
+
+func (jrc *JsonResponseCache2) setCachedResponse(path string, response *JsonResponse) {
+	jrc.mutex.Lock()
+	defer jrc.mutex.Unlock()
+	jrc.cachedResponses[path] = response
+}
+
+
+func (jrc JsonResponseCache2) ClearByPrefixes(prefixes ...string) {
+	jrc.mutex.Lock()
+	defer jrc.mutex.Unlock()
+
+	for path, _ := range jrc.cachedResponses {
+		for _, prefix := range prefixes {
+			if strings.HasPrefix(path, prefix) {
+				delete(jrc.cachedResponses, path)
+				break
+			}
+		}
+	}
+}
+
+func (jrc JsonResponseCache2) Clear() {
+	jrc.mutex.Lock()
+	defer jrc.mutex.Unlock()
+
+	jrc.cachedResponses = make(map[string]*JsonResponse)
+}
+
+
+func (jrc *JsonResponseCache2) GET(w http.ResponseWriter, r *http.Request) {
+	response, ok := jrc.getCachedResponse(r.URL.RequestURI());
+
+	if (!ok) {
+		if res, err := jrc.resources.GetResource(r); err != nil {
+			response = MakeJsonResponse(nil, "", err)
+		} else if res != nil {
+			response = MakeJsonResponse(res, "application/json", nil)
+		}
+
+		jrc.setCachedResponse(r.URL.RequestURI(), response)
+	}
+
+	if response == nil {
+		w.WriteHeader(http.StatusNotFound)
+	} else if response.error != nil {
+		requests.ReportUnprocessableEntity(w, response.error)
+	} else {
+		w.Header().Set("Content-Type", string(response.ContentType))
+		w.Header().Set("ETag", response.Etag)
+		w.Write(response.Data)
+
+	}
+}
+
+
 
 func MakeJsonResponseCache(resources ResourceCollection) JsonResponseCache {
 	return JsonResponseCache{

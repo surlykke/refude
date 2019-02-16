@@ -14,8 +14,6 @@ import (
 	"github.com/godbus/dbus/prop"
 	"github.com/surlykke/RefudeServices/lib/dbusutils"
 	"github.com/surlykke/RefudeServices/lib/image"
-	"github.com/surlykke/RefudeServices/lib/resource"
-	"github.com/surlykke/RefudeServices/lib/server"
 	"github.com/surlykke/RefudeServices/lib/slice"
 	"log"
 	"reflect"
@@ -23,69 +21,6 @@ import (
 	"strings"
 	"time"
 )
-
-var itemCollection = MakeItemCollection()
-var ItemServer = server.MakeServer(itemCollection)
-
-func Run() {
-	getOnTheBus()
-	go monitorSignals()
-
-	for event := range events {
-		fmt.Println("Got event: ", event)
-		var key = event.sender + string(event.path)
-		switch event.eventType {
-		case ItemCreated:
-			item := MakeItem(event.sender, event.path)
-			item.AbstractResource = resource.MakeAbstractResource(resource.StandardizedPath("/item/" + item.key), ItemMediaType)
-			updateItem(item)
-			if item.menuPath != "" {
-				fetchMenu(item)
-			}
-			itemCollection.Lock()
-			itemCollection.items[key] = item
-			updateWatcherProperties()
-			itemCollection.JsonResponseCache.ClearByPrefixes("/item/" + key, "/items")
-			itemCollection.Unlock()
-			go monitorItem(event.sender, event.path)
-		case ItemRemoved:
-			itemCollection.Lock()
-			delete(itemCollection.items, key)
-			updateWatcherProperties()
-			itemCollection.JsonResponseCache.ClearByPrefixes("/item/" + key, "/items")
-			itemCollection.Unlock()
-		case ItemUpdated:
-			itemCollection.Lock()
-			if item, ok := itemCollection.items[key]; ok {
-
-				itemCollection.Unlock()
-				var copy = *item
-				updateItem(&copy)
-				itemCollection.Lock()
-
-				itemCollection.items[key] = &copy
-				itemCollection.JsonResponseCache.ClearByPrefixes("/item/" + key, "/items")
-			}
-			itemCollection.Unlock()
-		case MenuUpdated:
-			itemCollection.Lock()
-			var item = itemCollection.findByMenuPath(event.sender, event.path);
-			if item != nil {
-				itemCollection.Unlock()
-				var copy = *item
-				fetchMenu(&copy)
-				itemCollection.Lock()
-
-				itemCollection.items[copy.key] = &copy
-				itemCollection.JsonResponseCache.ClearByPrefixes("/item/" + copy.key, "/items")
-			}
-			itemCollection.Unlock()
-		}
-	}
-}
-
-
-
 
 
 const WATCHER_SERVICE = "org.kde.StatusNotifierWatcher"
@@ -123,13 +58,11 @@ func monitorSignals() {
 	conn.Signal(dbusSignals)
 	addMatch := "org.freedesktop.DBus.AddMatch"
 	conn.BusObject().Call(addMatch, 0, "type='signal', interface='org.kde.StatusNotifierItem'")
-	conn.BusObject().Call(addMatch, 0, "type='signal', interface='com.canonical.dbusmenu'")
 
 	for signal := range dbusSignals {
+		//fmt.Println("signal:", signal)
 		if strings.HasPrefix(signal.Name, "org.kde.StatusNotifierItem.New") {
 			events <- Event{eventType: ItemUpdated, sender: signal.Sender, path: signal.Path}
-		} else if signal.Name == "com.canonical.dbusmenu.LayoutUpdated" {
-			events <- Event{eventType: MenuUpdated, sender: signal.Sender, path: signal.Path}
 		}
 	}
 }
@@ -199,29 +132,25 @@ const (
 	ItemCreated EventType = iota
 	ItemRemoved
 	ItemUpdated
-	MenuUpdated
 )
 
 type Event struct {
 	eventType EventType
 	sender    string
-	path      dbus.ObjectPath // Menupath if eventType is MenuUpdated, ItemPath otherwise
+	path      dbus.ObjectPath
 }
 
 var events = make(chan Event)
 
 
 
-func updateWatcherProperties() {
+func updateWatcherProperties(itemCollection *ItemCollection) {
 	ids := make([]string, 0, len(itemCollection.items))
 	for _, item := range itemCollection.items {
 		ids = append(ids, item.sender+":"+string(item.itemPath))
 	}
 	watcherProperties.Set(WATCHER_INTERFACE, "RegisteredStatusItems", dbus.MakeVariant(ids))
 }
-
-
-
 
 
 func updateItem(item *Item) {
@@ -247,26 +176,6 @@ func updateItem(item *Item) {
 		item.AttentionIconName = collectPixMap(props, "AttentionIconPixmap")
 	} else if item.iconThemePath != "" {
 		image.CopyIcons(item.AttentionIconName, item.iconThemePath)
-	}
-}
-
-func fetchMenu(item *Item) {
-	item.Menu, item.menuIds = []MenuItem{}, []string{}
-	obj := conn.Object(item.sender, item.menuPath)
-	if call := obj.Call(MENU_INTERFACE+".GetLayout", dbus.Flags(0), 0, -1, []string{}); call.Err != nil {
-		log.Println(call.Err)
-	} else if len(call.Body) < 2 {
-		log.Println("Retrieved", len(call.Body), "arguments, expected 2")
-	} else if _, ok := call.Body[0].(uint32); !ok {
-		log.Println("Expected uint32 as first return argument, got:", reflect.TypeOf(call.Body[0]))
-	} else if interfaces, ok := call.Body[1].([]interface{}); !ok {
-		log.Println("Expected []interface{} as second return argument, got:", reflect.TypeOf(call.Body[1]))
-	} else if menu, menuIds, err := parseMenu(interfaces); err != nil {
-		log.Println("Error retrieving menu", err)
-	} else if len(menu.SubMenus) > 0 {
-		item.Menu, item.menuIds = menu.SubMenus, slice.Remove(menuIds, menu.Id)
-	} else {
-		item.Menu, item.menuIds = []MenuItem{menu}, menuIds
 	}
 }
 
@@ -317,7 +226,8 @@ func getDbusPath(m map[string]dbus.Variant, key string) dbus.ObjectPath {
 	return ""
 }
 
-func parseMenu(value []interface{}) (MenuItem, []string, error) {
+func parseMenu(value []interface{}) (MenuItem, error) {
+	fmt.Println("Into parseMenu")
 	var menuItem = MenuItem{}
 	var id int32
 	var ok bool
@@ -325,20 +235,20 @@ func parseMenu(value []interface{}) (MenuItem, []string, error) {
 	var s []dbus.Variant
 
 	if len(value) < 3 {
-		return MenuItem{}, []string{}, errors.New("Wrong length")
+		return MenuItem{}, errors.New("Wrong length")
 	} else if id, ok = value[0].(int32); !ok {
-		return MenuItem{}, []string{}, errors.New("Expected int32, got: " + reflect.TypeOf(value[0]).String())
+		return MenuItem{}, errors.New("Expected int32, got: " + reflect.TypeOf(value[0]).String())
 	} else if m, ok = value[1].(map[string]dbus.Variant); !ok {
-		return MenuItem{}, []string{}, errors.New("Excpected dbus.Variant, got: " + reflect.TypeOf(value[1]).String())
+		return MenuItem{}, errors.New("Excpected dbus.Variant, got: " + reflect.TypeOf(value[1]).String())
 	} else if s, ok = value[2].([]dbus.Variant); !ok {
-		return MenuItem{}, []string{}, errors.New("expected []dbus.Variant, got: " + reflect.TypeOf(value[2]).String())
+		return MenuItem{}, errors.New("expected []dbus.Variant, got: " + reflect.TypeOf(value[2]).String())
 	}
 
 	menuItem.Id = fmt.Sprintf("%d", id)
 
 	if menuItem.Type = getStringOr(m, "type", "standard");
 		!slice.Among(menuItem.Type, "standard", "separator") {
-		return MenuItem{}, []string{}, errors.New("Illegal menuitem type: " + menuItem.Type)
+		return MenuItem{}, errors.New("Illegal menuitem type: " + menuItem.Type)
 	}
 	menuItem.Label = getStringOr(m, "label", "")
 	menuItem.Enabled = getBoolOr(m, "enabled", true)
@@ -347,20 +257,18 @@ func parseMenu(value []interface{}) (MenuItem, []string, error) {
 		// FIXME: Look for pixmap
 	}
 	if menuItem.ToggleType = getStringOr(m, "toggle-type", ""); !slice.Among(menuItem.ToggleType, "checkmark", "radio", "") {
-		return MenuItem{}, []string{}, errors.New("Illegal toggle-type: " + menuItem.ToggleType)
+		return MenuItem{}, errors.New("Illegal toggle-type: " + menuItem.ToggleType)
 	}
 
 	menuItem.ToggleState = getInt32Or(m, "toggle-state", -1)
-	var menuIds = []string{menuItem.Id}
 	if childrenDisplay := getStringOr(m, "children-display", ""); childrenDisplay == "submenu" {
 		for _, variant := range s {
 			if interfaces, ok := variant.Value().([]interface{}); !ok {
-				return MenuItem{}, []string{}, errors.New("Submenu item not of type []interface")
+				return MenuItem{}, errors.New("Submenu item not of type []interface")
 			} else {
-				if submenuItem, subIds, err := parseMenu(interfaces); err != nil {
-					return MenuItem{}, []string{}, err
+				if submenuItem, err := parseMenu(interfaces); err != nil {
+					return MenuItem{}, err
 				} else {
-					menuIds = append(menuIds, subIds...)
 					menuItem.SubMenus = append(menuItem.SubMenus, submenuItem)
 				}
 			}
@@ -369,7 +277,7 @@ func parseMenu(value []interface{}) (MenuItem, []string, error) {
 		log.Println("warning: ignoring unknown children-display type:", childrenDisplay)
 	}
 
-	return menuItem, menuIds, nil
+	return menuItem, nil
 }
 
 

@@ -35,19 +35,47 @@ func (n *Notification) removeAfter(duration time.Duration) {
 }
 
 type NotificationsCollection struct {
-	sync.Mutex
-	server.JsonResponseCache
+	mutex sync.Mutex
 	notifications map[uint32]*Notification
+	server.JsonResponseCache2
+	server.PatchNotAllowed
+	server.DeleteNotAllowed
+}
+
+
+func (*NotificationsCollection) HandledPrefixes() []string {
+	return []string{"/notification"}
 }
 
 func MakeNotificationsCollection() *NotificationsCollection {
 	var nc = &NotificationsCollection{}
-	nc.JsonResponseCache = server.MakeJsonResponseCache(nc)
+	nc.JsonResponseCache2 = server.MakeJsonResponseCache2(nc)
 	nc.notifications = make(map[uint32]*Notification)
 	return nc
 }
 
-func (dac NotificationsCollection) GetResource(r *http.Request) (interface{}, error) {
+func (pc *NotificationsCollection) POST(w http.ResponseWriter, r *http.Request) {
+	if res, err := pc.GetResource(r); err != nil {
+		requests.ReportUnprocessableEntity(w, err)
+	} else if res == nil {
+		w.WriteHeader(http.StatusNotFound)
+	} else if notification, ok := res.(*Notification); !ok {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	} else {
+		var actionId = requests.GetSingleQueryParameter(r, "action", "")
+		if action, ok := notification.ResourceActions[actionId]; ok {
+			action.Executer()
+			w.WriteHeader(http.StatusAccepted)
+		} else {
+			w.WriteHeader(http.StatusUnprocessableEntity)
+		}
+	}
+}
+
+func (dac *NotificationsCollection) GetResource(r *http.Request) (interface{}, error) {
+	dac.mutex.Lock()
+	defer dac.mutex.Unlock()
+
 	var path = r.URL.Path
 	if path == "/notifications" {
 		var notifications = make([]*Notification, 0, len(dac.notifications))

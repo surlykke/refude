@@ -5,13 +5,9 @@ import (
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/windows/xlib"
 	"github.com/surlykke/RefudeServices/lib/image"
 	"github.com/surlykke/RefudeServices/lib/resource"
-	"github.com/surlykke/RefudeServices/lib/server"
 	"log"
 	"sync"
 )
-
-var windowCollection = MakeWindowCollection()
-var WindowsServer = server.MakeServer(windowCollection)
 
 const (
 	NET_WM_VISIBLE_NAME      = "_NET_WM_VISIBLE_NAME"
@@ -28,31 +24,31 @@ type Manager struct {
 	outLock sync.Mutex
 }
 
-func Run() {
+func Run(windowCollection *WindowCollection) {
 	var manager = Manager{
 		in:  xlib.MakeConnection(),
 		out: xlib.MakeConnection(),
 	}
-	manager.Run()
+	manager.Run(windowCollection)
 }
 
-func (m *Manager) Run() {
+func (m *Manager) Run(windowCollection *WindowCollection) {
 	m.in.Listen(0)
-	m.updateWindows()
+	m.updateWindows(windowCollection)
 
 	for {
 		if event, err := m.in.NextEvent(); err != nil {
 			log.Println("Error retrieving next event:", err)
 		} else {
-			m.handle(event)
+			m.handle(windowCollection, event)
 		}
 	}
 }
 
-func (m *Manager) handle(event xlib.Event) {
+func (m *Manager) handle(windowCollection *WindowCollection, event xlib.Event) {
 	switch event.Property {
 	case NET_CLIENT_LIST_STACKING:
-		m.updateWindows()
+		m.updateWindows(windowCollection)
 	case "": // Means it's a ConfigureEvent
 		windowCollection.Lock()
 		defer windowCollection.Unlock()
@@ -96,7 +92,7 @@ func (m *Manager) handle(event xlib.Event) {
 	}
 }
 
-func (m *Manager) updateWindows() {
+func (m *Manager) updateWindows(windowCollection *WindowCollection) {
 	if wIds, err := m.in.GetUint32s(0, NET_CLIENT_LIST_STACKING); err != nil {
 		log.Fatal("Unable to get client list stacking", err)
 	} else {

@@ -20,24 +20,48 @@ const WindowMediaType resource.MediaType = "application/vnd.org.refude.wmwindow+
 
 type Window struct {
 	resource.AbstractResource
-	Id            uint32
-	Parent        uint32
-	StackOrder    int
-	X,Y,W,H       int
-	Name          string
-	IconName      string `json:",omitempty"`
-	States        []string
+	Id         uint32
+	Parent     uint32
+	StackOrder int
+	X, Y, W, H int
+	Name       string
+	IconName   string `json:",omitempty"`
+	States     []string
 }
 
 type WindowCollection struct {
 	sync.Mutex
-	server.JsonResponseCache
 	windows map[uint32]*Window
+	server.JsonResponseCache2
+	server.PatchNotAllowed
+	server.DeleteNotAllowed
+}
+
+func (wc *WindowCollection) POST(w http.ResponseWriter, r *http.Request) {
+	if res, err := wc.GetResource(r); err != nil {
+		requests.ReportUnprocessableEntity(w, err)
+	} else if res == nil {
+		w.WriteHeader(http.StatusNotFound)
+	} else if notification, ok := res.(*Window); !ok {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	} else {
+		var actionId = requests.GetSingleQueryParameter(r, "action", "default")
+		if action, ok := notification.ResourceActions[actionId]; ok {
+			action.Executer()
+			w.WriteHeader(http.StatusAccepted)
+		} else {
+			w.WriteHeader(http.StatusUnprocessableEntity)
+		}
+	}
+}
+
+func (*WindowCollection) HandledPrefixes() []string {
+	return []string{"/window"}
 }
 
 func MakeWindowCollection() *WindowCollection {
 	var wc = &WindowCollection{}
-	wc.JsonResponseCache = server.MakeJsonResponseCache(wc)
+	wc.JsonResponseCache2 = server.MakeJsonResponseCache2(wc)
 	wc.windows = make(map[uint32]*Window)
 	return wc
 }
@@ -64,6 +88,7 @@ func (wc *WindowCollection) getCopyByParent(parent uint32) *Window {
 }
 
 func (dac *WindowCollection) GetResource(r *http.Request) (interface{}, error) {
+
 	var path = r.URL.Path
 	if path == "/windows" {
 		var windows = make([]*Window, 0, len(dac.windows))
@@ -93,5 +118,3 @@ func (dac *WindowCollection) GetResource(r *http.Request) (interface{}, error) {
 	}
 
 }
-
-

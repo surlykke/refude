@@ -11,8 +11,6 @@ import (
 	"github.com/godbus/dbus"
 	"github.com/surlykke/RefudeServices/lib/dbusutils"
 	"github.com/surlykke/RefudeServices/lib/resource"
-	"github.com/surlykke/RefudeServices/lib/server"
-	"net/url"
 )
 
 const UPowService = "org.freedesktop.UPower"
@@ -24,20 +22,48 @@ const login1Service = "org.freedesktop.login1"
 const login1Path = "/org/freedesktop/login1"
 const managerInterface = "org.freedesktop.login1.Manager"
 
-var devicesCollection = MakeDevicesCollection()
-var DevicesServer = server.MakeServer(devicesCollection)
 
-func Run() {
+func Run(powerCollection *PowerCollection) {
+	fmt.Println("power.Run")
+	var signals = setup(powerCollection)
+	fmt.Println("looking for signals")
 
-	// Get on the bus
-	signals := make(chan *dbus.Signal, 100)
+	for signal := range signals {
+		//fmt.Println("Signal: ", signal)
+		if signal.Name == "org.freedesktop.DBus.Properties.PropertiesChanged" {
+
+			powerCollection.mutex.Lock()
+			var device, ok = powerCollection.devices[string(signal.Path)]
+			powerCollection.mutex.Unlock()
+
+			if ok {
+				var copy = *device
+				// Brute force here, we update all, as I've seen some problems with getting out of sync after suspend..
+				updateDevice(&copy, dbuscall.GetAllProps(dbusConn, UPowService, signal.Path, UPowerDeviceInterface))
+				powerCollection.mutex.Lock()
+				powerCollection.devices[copy.Id] = &copy
+				powerCollection.JsonResponseCache2.ClearByPrefixes("/device/" + copy.Id, "/devices")
+				powerCollection.mutex.Unlock()
+			}
+
+			// TODO Handle device added/removed
+			// (need hardware to test)
+		}
+	}
+}
+
+func setup(powerCollection *PowerCollection) chan *dbus.Signal {
+	var signals = make(chan *dbus.Signal, 100)
+	powerCollection.mutex.Lock()
+	defer powerCollection.mutex.Unlock()
+
 	dbusConn.Signal(signals)
 	dbusConn.BusObject().Call(
 		"org.freedesktop.DBus.AddMatch",
 		0,
 		"type='signal',interface='org.freedesktop.DBus.Properties',member='PropertiesChanged', sender='org.freedesktop.UPower'")
 
-	//resourceMap.Map(MapPowerActions())
+
 
 
 	enumCall := dbusConn.Object(UPowService, UPowPath).Call(UPowerInterface+".EnumerateDevices", dbus.Flags(0))
@@ -45,31 +71,17 @@ func Run() {
 	for _, path := range devicePaths {
 		var device = &Device{}
 		device.DisplayDevice = path == "/org/freedesktop/UPower/devices/DisplayDevice"
-		device.Id = url.PathEscape(string(path))
+		device.Id = string(path)
 		device.AbstractResource = resource.MakeAbstractResource(resource.Standardizef("/device/%s", device.Id), DeviceMediaType)
 		updateDevice(device, dbuscall.GetAllProps(dbusConn, UPowService, path, UPowerDeviceInterface))
-		devicesCollection.Lock()
-		devicesCollection.devices[device.Id] = device
-		devicesCollection.Unlock()
+		fmt.Println("Setting", device.Id)
+		powerCollection.devices[device.Id] = device
 	}
 
-	for signal := range signals {
-		fmt.Println("Signal: ", signal)
-		if signal.Name == "org.freedesktop.DBus.Properties.PropertiesChanged" {
-			devicesCollection.Lock()
-			if device, ok := devicesCollection.devices[string(signal.Path)]; ok {
-				var copy = *device
-				// Brute force here, we update all, as I've seen some problems with getting out of sync after suspend..
-				updateDevice(&copy, dbuscall.GetAllProps(dbusConn, UPowService, signal.Path, UPowerDeviceInterface))
-				devicesCollection.devices[copy.Id] = &copy
-				devicesCollection.JsonResponseCache.ClearByPrefixes("/device/" + copy.Id, "/devices")
-			}
-			devicesCollection.Unlock()
+	powerCollection.session	= buildSessionResource()
+	powerCollection.JsonResponseCache2.Clear()
 
-			// TODO Handle device added/removed
-			// (need hardware to test)
-		}
-	}
+	return signals
 }
 
 var dbusConn = func() *dbus.Conn {
@@ -87,7 +99,7 @@ var possibleActionValues = map[string][]string{
 	"Hibernate":   {"Hibernate", "Put the machine into hibernation", "system-suspend-hibernate"},
 	"HybridSleep": {"HybridSleep", "Put the machine into hybrid sleep", "system-suspend-hibernate"}}
 
-func MapPowerActions() *Session {
+func buildSessionResource() *Session {
 	var session Session
 	session.AbstractResource = resource.MakeAbstractResource("/session", SessionMediaType);
 

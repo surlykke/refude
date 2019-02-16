@@ -2,19 +2,12 @@ package applications
 
 import (
 	"fmt"
-	"github.com/surlykke/RefudeServices/lib/server"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 	"golang.org/x/sys/unix"
 	"os"
 )
 
-var applicationsCollection = MakeDesktopApplicationCollection()
-var ApplicationsServer = server.MakeServer(applicationsCollection)
-
-var mimetypesCollection = MakeMimetypecollection()
-var MimetypesServer = server.MakeServer(mimetypesCollection)
-
-func Run() {
+func Run(applicationsCollection *DesktopApplicationCollection, mimetypesCollection *MimetypeCollection) {
 	fd, err := unix.InotifyInit()
 
 	if err != nil {
@@ -46,15 +39,15 @@ func Run() {
 		fmt.Println("Collecting...")
 		var mtc, apps = Collect();
 
-		mimetypesCollection.Lock()
+		mimetypesCollection.mutex.Lock()
 		mimetypesCollection.mimetypes = mtc
-		mimetypesCollection.JsonResponseCache.Clear()
-		mimetypesCollection.Unlock()
+		mimetypesCollection.JsonResponseCache2.Clear()
+		mimetypesCollection.mutex.Unlock()
 
-		applicationsCollection.Lock()
+		applicationsCollection.mutex.Lock()
 		applicationsCollection.apps = apps
-		applicationsCollection.JsonResponseCache.Clear()
-		applicationsCollection.Unlock()
+		applicationsCollection.JsonResponseCache2.Clear()
+		applicationsCollection.mutex.Unlock()
 
 
 		if _, err := unix.Read(fd, dummy); err != nil {

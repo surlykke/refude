@@ -104,8 +104,10 @@ func matchAny(interface{}) bool {
 
 func GetMatcher(r *http.Request) (parser.Matcher, error) {
 	if q, ok := r.URL.Query()["q"]; ok && len(q) > 0 {
+		fmt.Println("query:", q, "returning parsed matcher")
 		return parser.Parse(q[0])
 	} else {
+		fmt.Println("No query, returning matchAny")
 		return matchAny, nil
 	}
 }

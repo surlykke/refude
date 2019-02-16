@@ -33,6 +33,7 @@ const (
 	Related = "related"
 	Associated = "http://relations.refude.org/associated"
 	DefaultApplication = "http://relations.refude.org/default_application"
+	SNI_MENU = "http://relations.refude.org/sni_menu"
 )
 
 type AbstractResource struct {
