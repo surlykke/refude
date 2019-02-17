@@ -2,6 +2,7 @@ package server
 
 import (
 	"crypto/sha1"
+	"encoding/json"
 	"fmt"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
@@ -17,10 +18,19 @@ type JsonResponse struct {
 	error       error
 }
 
+func ToJSon(res interface{}) []byte {
+	if bytes, err := json.Marshal(res); err != nil {
+		panic(fmt.Sprintln(err))
+		return nil
+	} else {
+		return bytes
+	}
+}
+
 func MakeJsonResponse(res interface{}, ContentType resource.MediaType, error error) *JsonResponse {
 	var jsonResponse = &JsonResponse{}
 	if error == nil {
-		jsonResponse.Data = resource.ToJSon(res)
+		jsonResponse.Data = ToJSon(res)
 		jsonResponse.Etag = fmt.Sprintf("\"%x\"", sha1.Sum(jsonResponse.Data))
 		jsonResponse.ContentType = ContentType
 	} else {
@@ -29,15 +39,9 @@ func MakeJsonResponse(res interface{}, ContentType resource.MediaType, error err
 	return jsonResponse
 }
 
-
 type ResourceCollection interface {
-	sync.Locker
-	GetJsonResponse(r *http.Request) *JsonResponse
-	GetResource(r *http.Request) (interface{}, error)
-}
-
-type ResourceCollection2 interface {
-	GetResource(r *http.Request) (interface{}, error)
+	GetSingle(r *http.Request) interface{}       // nil means not found
+	GetCollection(r *http.Request) []interface{} // nil means not found, empty slice means found (but, well, empty)
 }
 
 type ResourceServer interface {
@@ -48,58 +52,87 @@ type ResourceServer interface {
 	HandledPrefixes() []string
 }
 
-type PostNotAllowed struct {}
+type PostNotAllowed struct{}
 
 func (PostNotAllowed) POST(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusMethodNotAllowed)
 }
 
-type PatchNotAllowed struct {}
+type PatchNotAllowed struct{}
 
 func (PatchNotAllowed) PATCH(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusMethodNotAllowed)
 }
 
-type DeleteNotAllowed struct {}
+type DeleteNotAllowed struct{}
 
 func (DeleteNotAllowed) DELETE(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusMethodNotAllowed)
 }
 
-
-
-
-type JsonResponseCache struct {
-	jsonResponses map[string]*JsonResponse
-	resources ResourceCollection
-}
-
-type JsonResponseCache2 struct {
+type CachingJsonGetter struct {
 	cachedResponses map[string]*JsonResponse
-	mutex sync.Mutex
-	resources ResourceCollection2
+	mutex           sync.Mutex
+	resources       ResourceCollection
 }
 
-
-func MakeJsonResponseCache2(resources ResourceCollection2) JsonResponseCache2 {
-	return JsonResponseCache2{cachedResponses: make(map[string]*JsonResponse), resources: resources}
+func MakeCachingJsonGetter(resources ResourceCollection) CachingJsonGetter {
+	return CachingJsonGetter{cachedResponses: make(map[string]*JsonResponse), resources: resources}
 }
 
-func (jrc *JsonResponseCache2) getCachedResponse(path string) (*JsonResponse, bool) {
-	jrc.mutex.Lock()
-	defer jrc.mutex.Unlock()
-	resp, ok := jrc.cachedResponses[path]
-	return resp,ok
+func (cjg *CachingJsonGetter) GET(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("CachingJsonGetter GET")
+	cjg.mutex.Lock()
+	var response, ok = cjg.cachedResponses[r.RequestURI]
+	cjg.mutex.Unlock()
+
+	if !ok {
+		fmt.Println("Not in cache")
+		if collection := cjg.resources.GetCollection(r); collection != nil {
+			fmt.Println("collection")
+			var matcher, err = requests.GetMatcher2(r);
+			if err != nil {
+				response = MakeJsonResponse(nil, "", err)
+			} else if matcher != nil {
+				fmt.Println("Filter")
+				var tmp = make([]interface{}, 0, len(collection))
+				for _, res := range collection {
+					if matcher(res) {
+						tmp = append(tmp, res)
+					}
+				}
+				collection = tmp
+			}
+			response = MakeJsonResponse(collection, "application/json", nil)
+		} else if res := cjg.resources.GetSingle(r); res != nil {
+			fmt.Println("Single")
+			response = MakeJsonResponse(res, "application/json", nil)
+		} else {
+			fmt.Println("nil")
+			response = nil
+		}
+
+		cjg.mutex.Lock()
+		cjg.cachedResponses[r.RequestURI] = response
+		cjg.mutex.Unlock()
+	} else {
+		fmt.Println("In cache")
+	}
+
+	if response == nil {
+		w.WriteHeader(http.StatusNotFound)
+	} else if response.error != nil {
+		requests.ReportUnprocessableEntity(w, response.error)
+	} else {
+		w.Header().Set("Content-Type", string(response.ContentType))
+		w.Header().Set("ETag", response.Etag)
+		_,_ = w.Write(response.Data)
+
+	}
+
 }
 
-func (jrc *JsonResponseCache2) setCachedResponse(path string, response *JsonResponse) {
-	jrc.mutex.Lock()
-	defer jrc.mutex.Unlock()
-	jrc.cachedResponses[path] = response
-}
-
-
-func (jrc JsonResponseCache2) ClearByPrefixes(prefixes ...string) {
+func (jrc CachingJsonGetter) ClearByPrefixes(prefixes ...string) {
 	jrc.mutex.Lock()
 	defer jrc.mutex.Unlock()
 
@@ -113,7 +146,7 @@ func (jrc JsonResponseCache2) ClearByPrefixes(prefixes ...string) {
 	}
 }
 
-func (jrc JsonResponseCache2) Clear() {
+func (jrc CachingJsonGetter) Clear() {
 	jrc.mutex.Lock()
 	defer jrc.mutex.Unlock()
 
@@ -121,115 +154,4 @@ func (jrc JsonResponseCache2) Clear() {
 }
 
 
-func (jrc *JsonResponseCache2) GET(w http.ResponseWriter, r *http.Request) {
-	response, ok := jrc.getCachedResponse(r.URL.RequestURI());
-
-	if (!ok) {
-		if res, err := jrc.resources.GetResource(r); err != nil {
-			response = MakeJsonResponse(nil, "", err)
-		} else if res != nil {
-			response = MakeJsonResponse(res, "application/json", nil)
-		}
-
-		jrc.setCachedResponse(r.URL.RequestURI(), response)
-	}
-
-	if response == nil {
-		w.WriteHeader(http.StatusNotFound)
-	} else if response.error != nil {
-		requests.ReportUnprocessableEntity(w, response.error)
-	} else {
-		w.Header().Set("Content-Type", string(response.ContentType))
-		w.Header().Set("ETag", response.Etag)
-		w.Write(response.Data)
-
-	}
-}
-
-
-
-func MakeJsonResponseCache(resources ResourceCollection) JsonResponseCache {
-	return JsonResponseCache{
-		make(map[string]*JsonResponse),
-		resources,
-	}
-}
-
-func (jrc JsonResponseCache) GetJsonResponse(r *http.Request) *JsonResponse {
-	jsonResponse, ok := jrc.jsonResponses[r.RequestURI]
-
-	if (!ok) {
-		if res, err := jrc.resources.GetResource(r); err != nil {
-			jsonResponse = MakeJsonResponse(nil, "", err)
-		} else if res != nil {
-			jsonResponse = MakeJsonResponse(res, "application/json", nil)
-		}
-
-		jrc.jsonResponses[r.RequestURI] = jsonResponse
-	}
-
-	return jsonResponse
-}
-
-func (jrc JsonResponseCache) ClearByPrefixes(prefixes ...string) {
-	for path, _ := range jrc.jsonResponses {
-		for _, prefix := range prefixes {
-			if strings.HasPrefix(path, prefix) {
-				delete(jrc.jsonResponses, path)
-				break
-			}
-		}
-	}
-}
-
-func (jrc JsonResponseCache) Clear() {
-	jrc.jsonResponses = make(map[string]*JsonResponse)
-}
-
-
-type Server struct {
-	resources ResourceCollection
-}
-
-func MakeServer(resources ResourceCollection) Server {
-	return Server{resources}
-}
-
-func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if "GET" == r.Method {
-		s.resources.Lock()
-		var jsonResponse = s.resources.GetJsonResponse(r)
-		s.resources.Unlock()
-
-		if jsonResponse == nil {
-			w.WriteHeader(http.StatusNotFound)
-		} else if jsonResponse.error != nil {
-			requests.ReportUnprocessableEntity(w, jsonResponse.error)
-		} else {
-			w.Header().Set("Content-Type", string(jsonResponse.ContentType))
-			w.Header().Set("ETag", jsonResponse.Etag)
-			w.Write(jsonResponse.Data)
-		}
-	} else {
-		s.resources.Lock()
-		res, err := s.resources.GetResource(r)
-		s.resources.Unlock()
-
-		if err != nil {
-			requests.ReportUnprocessableEntity(w, err)
-		} else if res == nil {
-			w.WriteHeader(http.StatusNotFound)
-		} else {
-			if postHandler, ok := res.(resource.PostHandler); ok && "POST" == r.Method {
-				postHandler.POST(w, r)
-			} else if patchHandler, ok := res.(resource.PatchHandler); ok && "PATCH" == r.Method {
-				patchHandler.PATCH(w, r)
-			} else if deleteHandler, ok := res.(resource.DeleteHandler); ok && "DELETE" == r.Method {
-				deleteHandler.DELETE(w, r)
-			} else {
-				w.WriteHeader(http.StatusMethodNotAllowed);
-			}
-		}
-	}
-}
 

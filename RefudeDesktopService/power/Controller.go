@@ -42,7 +42,7 @@ func Run(powerCollection *PowerCollection) {
 				updateDevice(&copy, dbuscall.GetAllProps(dbusConn, UPowService, signal.Path, UPowerDeviceInterface))
 				powerCollection.mutex.Lock()
 				powerCollection.devices[copy.Id] = &copy
-				powerCollection.JsonResponseCache2.ClearByPrefixes("/device/" + copy.Id, "/devices")
+				powerCollection.CachingJsonGetter.ClearByPrefixes("/device/" + copy.Id, "/devices")
 				powerCollection.mutex.Unlock()
 			}
 
@@ -79,7 +79,7 @@ func setup(powerCollection *PowerCollection) chan *dbus.Signal {
 	}
 
 	powerCollection.session	= buildSessionResource()
-	powerCollection.JsonResponseCache2.Clear()
+	powerCollection.CachingJsonGetter.Clear()
 
 	return signals
 }

@@ -8,7 +8,6 @@ package applications
 
 import (
 	"fmt"
-	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/server"
 	"github.com/surlykke/RefudeServices/lib/slice"
@@ -102,7 +101,7 @@ func setDefaultApp(mimetypeId string, appId string) {
 type MimetypeCollection struct {
 	mutex sync.Mutex
 	mimetypes map[string]*Mimetype
-	server.JsonResponseCache2
+	server.CachingJsonGetter
 	server.PostNotAllowed
 	server.PatchNotAllowed // FIXME
 	server.DeleteNotAllowed
@@ -115,39 +114,35 @@ func (*MimetypeCollection) HandledPrefixes() []string {
 func MakeMimetypecollection() *MimetypeCollection {
 	var mc = &MimetypeCollection{}
 	mc.mimetypes = make(map[string]*Mimetype)
-	mc.JsonResponseCache2 = server.MakeJsonResponseCache2(mc)
+	mc.CachingJsonGetter = server.MakeCachingJsonGetter(mc)
 	return mc
 }
 
-
-func (mc *MimetypeCollection) GetResource(r *http.Request) (interface{}, error) {
+func (mc *MimetypeCollection) GetSingle(r *http.Request) interface{} {
 	mc.mutex.Lock()
 	defer mc.mutex.Unlock()
 
-	var path = r.URL.Path
-	if path == "/mimetypes" {
-		var mimetypes = make([]*Mimetype, 0, len(mc.mimetypes))
-
-		var matcher, err = requests.GetMatcher(r);
-		if err != nil {
-			return nil, err
+	if strings.HasPrefix(r.URL.Path, "/mimetype/") {
+		da, ok := mc.mimetypes[r.URL.Path[len("/mimetype/"):]]
+		if ok {
+			return da
 		}
-
-		for _, mimetype := range mc.mimetypes {
-			if matcher(mimetype) {
-				mimetypes = append(mimetypes, mimetype)
-			}
-		}
-
-		return mimetypes, nil
-	} else if strings.HasPrefix(path, "/mimetype/") {
-		if mimetype, ok := mc.mimetypes[path[len("/mimetype/"):]]; ok {
-			return mimetype, nil
-		} else {
-			return nil, nil
-		}
-	} else {
-		return nil, nil
 	}
-
+	return nil
 }
+
+func (dac *MimetypeCollection) GetCollection(r *http.Request) []interface{} {
+	dac.mutex.Lock()
+	defer dac.mutex.Unlock()
+
+	if r.URL.Path == "/mimetypes" {
+		var result = make([]interface{}, 0, len(dac.mimetypes))
+		for _, app := range dac.mimetypes {
+			result = append(result, app)
+		}
+		return result
+	} else {
+		return nil
+	}
+}
+

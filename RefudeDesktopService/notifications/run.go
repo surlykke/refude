@@ -22,7 +22,7 @@ func Run(notificationsCollection *NotificationsCollection) {
 		case notification := <-updates:
 			notificationsCollection.mutex.Lock()
 			notificationsCollection.notifications[notification.Id] = notification
-			notificationsCollection.JsonResponseCache2.ClearByPrefixes(fmt.Sprintf("/notification/%d", notification.Id), "/notifications")
+			notificationsCollection.CachingJsonGetter.ClearByPrefixes(fmt.Sprintf("/notification/%d", notification.Id), "/notifications")
 			notificationsCollection.mutex.Unlock()
 		case rem := <-removals:
 			fmt.Println("Got removal..")
@@ -32,7 +32,7 @@ func Run(notificationsCollection *NotificationsCollection) {
 					//resourceMap.Unmap(resource.Standardizef("/notifications/%d", rem.id))
 					delete(notificationsCollection.notifications, rem.id)
 					notificationClosed(rem.id, rem.reason)
-					notificationsCollection.JsonResponseCache2.ClearByPrefixes(fmt.Sprintf("/notification/%d", rem.id), "/notifications")
+					notificationsCollection.CachingJsonGetter.ClearByPrefixes(fmt.Sprintf("/notification/%d", rem.id), "/notifications")
 
 				}
 			}

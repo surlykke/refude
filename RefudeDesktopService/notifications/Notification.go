@@ -35,13 +35,12 @@ func (n *Notification) removeAfter(duration time.Duration) {
 }
 
 type NotificationsCollection struct {
-	mutex sync.Mutex
+	mutex         sync.Mutex
 	notifications map[uint32]*Notification
-	server.JsonResponseCache2
+	server.CachingJsonGetter
 	server.PatchNotAllowed
 	server.DeleteNotAllowed
 }
-
 
 func (*NotificationsCollection) HandledPrefixes() []string {
 	return []string{"/notification"}
@@ -49,18 +48,18 @@ func (*NotificationsCollection) HandledPrefixes() []string {
 
 func MakeNotificationsCollection() *NotificationsCollection {
 	var nc = &NotificationsCollection{}
-	nc.JsonResponseCache2 = server.MakeJsonResponseCache2(nc)
+	nc.CachingJsonGetter = server.MakeCachingJsonGetter(nc)
 	nc.notifications = make(map[uint32]*Notification)
 	return nc
 }
 
-func (pc *NotificationsCollection) POST(w http.ResponseWriter, r *http.Request) {
-	if res, err := pc.GetResource(r); err != nil {
-		requests.ReportUnprocessableEntity(w, err)
-	} else if res == nil {
+func (nc *NotificationsCollection) POST(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path == "/notifications" {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	} else if res := nc.GetSingle(r); res == nil {
 		w.WriteHeader(http.StatusNotFound)
 	} else if notification, ok := res.(*Notification); !ok {
-		w.WriteHeader(http.StatusMethodNotAllowed)
+		w.WriteHeader(http.StatusMethodNotAllowed) // Shouldn't happen
 	} else {
 		var actionId = requests.GetSingleQueryParameter(r, "action", "")
 		if action, ok := notification.ResourceActions[actionId]; ok {
@@ -72,38 +71,33 @@ func (pc *NotificationsCollection) POST(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
-func (dac *NotificationsCollection) GetResource(r *http.Request) (interface{}, error) {
-	dac.mutex.Lock()
-	defer dac.mutex.Unlock()
-
+func (nc *NotificationsCollection) GetSingle(r *http.Request) interface{} {
+	nc.mutex.Lock()
+	defer nc.mutex.Unlock()
 	var path = r.URL.Path
-	if path == "/notifications" {
-		var notifications = make([]*Notification, 0, len(dac.notifications))
-
-		var matcher, err = requests.GetMatcher(r);
-		if err != nil {
-			return nil, err
-		}
-
-		for _, notification := range dac.notifications {
-			if matcher(notification) {
-				notifications = append(notifications, notification)
+	if strings.HasPrefix(path, "/notification/") {
+		if id, err := strconv.ParseUint(path[len("/notification/"):], 10, 32); err == nil {
+			if notification, ok := nc.notifications[uint32(id)]; ok {
+				return notification
 			}
-		}
 
-		return notifications, nil
-	} else if strings.HasPrefix(path, "/notification/") {
-		if id, err := strconv.ParseUint(path[len("/notification/"):], 10, 32); err != nil {
-			return nil, nil
-		} else if notification, ok := dac.notifications[uint32(id)]; ok {
-			return notification, nil
-		} else {
-			return nil, nil
 		}
-	} else {
-		return nil, nil
 	}
-
+	return nil
 }
 
+func (nc *NotificationsCollection) GetCollection(r *http.Request) []interface{} {
+	nc.mutex.Lock()
+	defer nc.mutex.Unlock()
+
+	if r.URL.Path == "/notifications" {
+		var result = make([]interface{}, 0, len(nc.notifications))
+		for _, app := range nc.notifications {
+			result = append(result, app)
+		}
+		return result
+	} else {
+		return nil
+	}
+}
 

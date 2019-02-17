@@ -98,7 +98,7 @@ func EtagMatch(etag string, etagList string) bool {
 	}
 }
 
-func matchAny(interface{}) bool {
+func MatchAny(interface{}) bool {
 	return true
 }
 
@@ -108,7 +108,14 @@ func GetMatcher(r *http.Request) (parser.Matcher, error) {
 		return parser.Parse(q[0])
 	} else {
 		fmt.Println("No query, returning matchAny")
-		return matchAny, nil
+		return MatchAny, nil
 	}
 }
 
+func GetMatcher2(r *http.Request) (parser.Matcher, error) {
+	if q, ok := r.URL.Query()["q"]; ok && len(q) > 0 {
+		return parser.Parse(q[0])
+	} else {
+		return nil, nil
+	}
+}

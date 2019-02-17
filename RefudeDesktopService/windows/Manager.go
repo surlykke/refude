@@ -50,8 +50,8 @@ func (m *Manager) handle(windowCollection *WindowCollection, event xlib.Event) {
 	case NET_CLIENT_LIST_STACKING:
 		m.updateWindows(windowCollection)
 	case "": // Means it's a ConfigureEvent
-		windowCollection.Lock()
-		defer windowCollection.Unlock()
+		windowCollection.mutex.Lock()
+		defer windowCollection.mutex.Unlock()
 		if copy := windowCollection.getCopyByParent(event.Window); copy != nil {
 			copy.X, copy.Y, copy.W, copy.H = event.X, event.Y, event.W, event.H
 			windowCollection.windows[copy.Id] = copy
@@ -60,8 +60,8 @@ func (m *Manager) handle(windowCollection *WindowCollection, event xlib.Event) {
 		if name, err := m.GetName(event.Window); err != nil {
 			log.Println("Error getting window name:", err)
 		} else {
-			windowCollection.Lock()
-			defer windowCollection.Unlock()
+			windowCollection.mutex.Lock()
+			defer windowCollection.mutex.Unlock()
 			if copy := windowCollection.getCopy(event.Window); copy != nil {
 				copy.Name = name
 				windowCollection.windows[copy.Id] = copy
@@ -71,8 +71,8 @@ func (m *Manager) handle(windowCollection *WindowCollection, event xlib.Event) {
 		if iconName, err := m.GetIconName(event.Window); err != nil {
 			log.Println("Error getting window iconname:", err)
 		} else {
-			windowCollection.Lock()
-			defer windowCollection.Unlock()
+			windowCollection.mutex.Lock()
+			defer windowCollection.mutex.Unlock()
 			if copy := windowCollection.getCopy(event.Window); copy != nil {
 				copy.IconName = iconName
 				windowCollection.windows[copy.Id] = copy
@@ -82,8 +82,8 @@ func (m *Manager) handle(windowCollection *WindowCollection, event xlib.Event) {
 		if states, err := m.in.GetAtoms(event.Window, NET_WM_STATE); err != nil {
 			log.Println("Error get window states:", err)
 		} else {
-			windowCollection.Lock()
-			defer windowCollection.Unlock()
+			windowCollection.mutex.Lock()
+			defer windowCollection.mutex.Unlock()
 			if copy := windowCollection.getCopy(event.Window); copy != nil {
 				copy.States = states
 				windowCollection.windows[copy.Id] = copy
@@ -96,8 +96,8 @@ func (m *Manager) updateWindows(windowCollection *WindowCollection) {
 	if wIds, err := m.in.GetUint32s(0, NET_CLIENT_LIST_STACKING); err != nil {
 		log.Fatal("Unable to get client list stacking", err)
 	} else {
-		windowCollection.Lock()
-		defer windowCollection.Unlock()
+		windowCollection.mutex.Lock()
+		defer windowCollection.mutex.Unlock()
 
 		var windows = make(map[uint32]*Window)
 		for i, wId := range wIds {

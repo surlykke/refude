@@ -41,12 +41,12 @@ func Run(applicationsCollection *DesktopApplicationCollection, mimetypesCollecti
 
 		mimetypesCollection.mutex.Lock()
 		mimetypesCollection.mimetypes = mtc
-		mimetypesCollection.JsonResponseCache2.Clear()
+		mimetypesCollection.CachingJsonGetter.Clear()
 		mimetypesCollection.mutex.Unlock()
 
 		applicationsCollection.mutex.Lock()
 		applicationsCollection.apps = apps
-		applicationsCollection.JsonResponseCache2.Clear()
+		applicationsCollection.CachingJsonGetter.Clear()
 		applicationsCollection.mutex.Unlock()
 
 

@@ -22,14 +22,14 @@ func Run(itemCollection *ItemCollection) {
 			itemCollection.mutex.Lock()
 			itemCollection.items[key] = item
 			updateWatcherProperties(itemCollection)
-			itemCollection.JsonResponseCache2.ClearByPrefixes("/item/"+key, "/items")
+			itemCollection.CachingJsonGetter.ClearByPrefixes("/item/"+key, "/items")
 			itemCollection.mutex.Unlock()
 			go monitorItem(event.sender, event.path)
 		case ItemRemoved:
 			itemCollection.mutex.Lock()
 			delete(itemCollection.items, key)
 			updateWatcherProperties(itemCollection)
-			itemCollection.JsonResponseCache2.ClearByPrefixes("/item/"+key, "/items")
+			itemCollection.CachingJsonGetter.ClearByPrefixes("/item/"+key, "/items")
 			itemCollection.mutex.Unlock()
 		case ItemUpdated:
 			itemCollection.mutex.Lock()
@@ -41,7 +41,7 @@ func Run(itemCollection *ItemCollection) {
 				itemCollection.mutex.Lock()
 
 				itemCollection.items[key] = &copy
-				itemCollection.JsonResponseCache2.ClearByPrefixes("/item/"+key, "/items")
+				itemCollection.CachingJsonGetter.ClearByPrefixes("/item/"+key, "/items")
 			}
 			itemCollection.mutex.Unlock()
 		}

@@ -117,7 +117,7 @@ func launchWithArgs(exec string, args []string, inTerminal bool) {
 type DesktopApplicationCollection struct {
 	mutex sync.Mutex
 	apps  map[string]*DesktopApplication
-	server.JsonResponseCache2
+	server.CachingJsonGetter
 	server.PatchNotAllowed
 	server.DeleteNotAllowed
 }
@@ -132,7 +132,7 @@ func (dac *DesktopApplicationCollection) POST(w http.ResponseWriter, r *http.Req
 	} else if ! strings.HasPrefix(r.URL.Path, "/application/") {
 		w.WriteHeader(http.StatusNotFound)
 	} else {
-		if intf, _ := dac.GetResource(r); intf == nil {
+		if intf := dac.GetSingle(r); intf == nil {
 			w.WriteHeader(http.StatusNotFound)
 		} else {
 			da := intf.(*DesktopApplication)
@@ -163,40 +163,36 @@ func (dac *DesktopApplicationCollection) POST(w http.ResponseWriter, r *http.Req
 
 func MakeDesktopApplicationCollection() *DesktopApplicationCollection {
 	var dac = &DesktopApplicationCollection{}
-	dac.JsonResponseCache2 = server.MakeJsonResponseCache2(dac)
+	dac.CachingJsonGetter = server.MakeCachingJsonGetter(dac)
 	dac.apps = make(map[string]*DesktopApplication)
 
 	return dac
 }
 
-func (dac DesktopApplicationCollection) GetResource(r *http.Request) (interface{}, error) {
-	var path = r.URL.Path
+func (dac *DesktopApplicationCollection) GetSingle(r *http.Request) interface{} {
 	dac.mutex.Lock()
 	defer dac.mutex.Unlock()
 
-	if path == "/applications" {
-		var apps = make([]*DesktopApplication, 0, len(dac.apps))
-
-		var matcher, err = requests.GetMatcher(r);
-		if err != nil {
-			return nil, err
+	if strings.HasPrefix(r.URL.Path, "/application/") {
+		da, ok := dac.apps[r.URL.Path[len("/application/"):]]
+		if ok {
+			return da
 		}
-
-		for _, app := range dac.apps {
-			if matcher(app) {
-				apps = append(apps, app)
-			}
-		}
-		fmt.Println("Returning", len(apps), "applications")
-		return apps, nil
-	} else if strings.HasPrefix(path, "/application/") {
-		if app, ok := dac.apps[path[len("/application/"):]]; ok {
-			return app, nil
-		} else {
-			return nil, nil
-		}
-	} else {
-		return nil, nil
 	}
+	return nil
+}
 
+func (dac *DesktopApplicationCollection) GetCollection(r *http.Request) []interface{} {
+	dac.mutex.Lock()
+	defer dac.mutex.Unlock()
+
+	if r.URL.Path == "/applications" {
+		var result = make([]interface{}, 0, len(dac.apps))
+		for _, app := range dac.apps {
+			result = append(result, app)
+		}
+		return result
+	} else {
+		return nil
+	}
 }

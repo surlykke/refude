@@ -47,17 +47,6 @@ func serveHttp(w http.ResponseWriter, r *http.Request) {
 
 
 func main() {
-	/*//var resourceMap = resource.MakeJsonResourceMap()
-
-	go applications.Run(resourceMap)
-	go windows.Run(resourceMap)
-	go power.Run(resourceMap)
-	go notifications.Run();
-	//go statusnotifications.Run(resourceMap)
-	go applications.Run()
-	go power.Run()
-	go windows.Run()
-	go statusnotifications.Run()*/
 	var applicationsCollection = applications.MakeDesktopApplicationCollection()
 	var mimetypeCollection = applications.MakeMimetypecollection()
 	go applications.Run(applicationsCollection, mimetypeCollection)
@@ -68,14 +57,14 @@ func main() {
 	var notificationCollection = notifications.MakeNotificationsCollection()
 	go notifications.Run(notificationCollection)
 
-	var devicesCollection = power.MakeDevicesCollection()
-	go power.Run(devicesCollection)
+	var powerCollection = power.MakePowerCollection()
+	go power.Run(powerCollection)
 
 	var itemCollection = statusnotifications.MakeItemCollection()
 	var menuCollection = statusnotifications.MakeMenuCollection(itemCollection)
 	go statusnotifications.Run(itemCollection)
 
-	resourceServers = []server.ResourceServer{applicationsCollection, mimetypeCollection, windowCollection, notificationCollection, devicesCollection, itemCollection, menuCollection}
+	resourceServers = []server.ResourceServer{applicationsCollection, mimetypeCollection, windowCollection, notificationCollection , powerCollection, itemCollection, menuCollection}
 
 	lib.Serve("org.refude.desktop-service", http.HandlerFunc(serveHttp))
 }

@@ -7,7 +7,6 @@
 package power
 
 import (
-	"fmt"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/server"
@@ -17,7 +16,6 @@ import (
 )
 
 const DeviceMediaType resource.MediaType = "application/vnd.org.refude.upowerdevice+json"
-
 
 type Device struct {
 	resource.AbstractResource
@@ -66,7 +64,7 @@ func deviceState(index uint32) string {
 }
 
 func deviceTecnology(index uint32) string {
-	var devTecnology = []string{"Unknown", "Lithium ion", "Lithium polymer", "Lithium iron phosphate", "Lead acid", "Nickel cadmium", "Nickel metal hydride" }
+	var devTecnology = []string{"Unknown", "Lithium ion", "Lithium polymer", "Lithium iron phosphate", "Lead acid", "Nickel cadmium", "Nickel metal hydride"}
 	if index < 0 || index > 6 {
 		index = 0
 	}
@@ -74,65 +72,56 @@ func deviceTecnology(index uint32) string {
 }
 
 type PowerCollection struct {
-	mutex sync.Mutex
+	mutex   sync.Mutex
 	devices map[string]*Device
 	session *Session
-	server.JsonResponseCache2
+	server.CachingJsonGetter
 	server.PatchNotAllowed
 	server.DeleteNotAllowed
 }
-
 
 func (*PowerCollection) HandledPrefixes() []string {
 	return []string{"/device", "/session"}
 }
 
-func MakeDevicesCollection() *PowerCollection {
+func MakePowerCollection() *PowerCollection {
 	var dc = &PowerCollection{}
-	dc.JsonResponseCache2 = server.MakeJsonResponseCache2(dc)
+	dc.CachingJsonGetter = server.MakeCachingJsonGetter(dc)
 	dc.devices = make(map[string]*Device)
 	return dc
 }
 
-func (pc *PowerCollection) GetResource(r *http.Request) (interface{}, error) {
+func (pc *PowerCollection) GetSingle(r *http.Request) interface{} {
+	pc.mutex.Lock()
+	defer pc.mutex.Unlock()
+	var path = r.URL.Path
+	if strings.HasPrefix(path, "/device/") {
+		if device, ok := pc.devices[path[len("/device/"):]]; ok {
+			return device
+		}
+	} else if path == "/session" {
+		return pc.session
+	}
+	return nil
+}
+
+func (pc *PowerCollection) GetCollection(r *http.Request) []interface{} {
 	pc.mutex.Lock()
 	defer pc.mutex.Unlock()
 
-	var path = r.URL.Path
-	if path == "/devices" {
-		var devices = make([]*Device, 0, len(pc.devices))
-
-		var matcher, err = requests.GetMatcher(r);
-		if err != nil {
-			return nil, err
-		}
-
+	if r.URL.Path == "/devices" {
+		var result = make([]interface{}, 0, len(pc.devices))
 		for _, device := range pc.devices {
-			if matcher(device) {
-				devices = append(devices, device)
-			}
+			result = append(result, device)
 		}
-
-		return devices, nil
-	} else if strings.HasPrefix(path, "/device/") {
-		fmt.Println("Getting", path[len("/device"):])
-		if device, ok := pc.devices[path[len("/device"):]]; ok {
-			return device, nil
-		} else {
-			return nil, nil
-		}
-	} else if path == "/session" && pc.session != nil {
-		return pc.session, nil
+		return result
 	} else {
-		return nil, nil
+		return nil
 	}
-
 }
 
 func (pc *PowerCollection) POST(w http.ResponseWriter, r *http.Request) {
-	if res, err := pc.GetResource(r); err != nil {
-		requests.ReportUnprocessableEntity(w, err)
-	} else if res == nil {
+	if res := pc.GetSingle(r); res == nil {
 		w.WriteHeader(http.StatusNotFound)
 	} else if session, ok := res.(*Session); !ok {
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -146,6 +135,3 @@ func (pc *PowerCollection) POST(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 }
-
-
-

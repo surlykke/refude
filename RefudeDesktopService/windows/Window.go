@@ -30,29 +30,11 @@ type Window struct {
 }
 
 type WindowCollection struct {
-	sync.Mutex
+	mutex   sync.Mutex
 	windows map[uint32]*Window
-	server.JsonResponseCache2
+	server.CachingJsonGetter
 	server.PatchNotAllowed
 	server.DeleteNotAllowed
-}
-
-func (wc *WindowCollection) POST(w http.ResponseWriter, r *http.Request) {
-	if res, err := wc.GetResource(r); err != nil {
-		requests.ReportUnprocessableEntity(w, err)
-	} else if res == nil {
-		w.WriteHeader(http.StatusNotFound)
-	} else if notification, ok := res.(*Window); !ok {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-	} else {
-		var actionId = requests.GetSingleQueryParameter(r, "action", "default")
-		if action, ok := notification.ResourceActions[actionId]; ok {
-			action.Executer()
-			w.WriteHeader(http.StatusAccepted)
-		} else {
-			w.WriteHeader(http.StatusUnprocessableEntity)
-		}
-	}
 }
 
 func (*WindowCollection) HandledPrefixes() []string {
@@ -61,10 +43,58 @@ func (*WindowCollection) HandledPrefixes() []string {
 
 func MakeWindowCollection() *WindowCollection {
 	var wc = &WindowCollection{}
-	wc.JsonResponseCache2 = server.MakeJsonResponseCache2(wc)
+	wc.CachingJsonGetter = server.MakeCachingJsonGetter(wc)
 	wc.windows = make(map[uint32]*Window)
 	return wc
 }
+
+
+func (wc *WindowCollection) GetSingle(r *http.Request) interface{} {
+	wc.mutex.Lock()
+	defer wc.mutex.Unlock()
+
+	var path = r.URL.Path
+	if strings.HasPrefix(path, "/window/") {
+		if id, err := strconv.ParseUint(path[len("/window/"):], 10, 32); err == nil {
+			if window, ok := wc.windows[uint32(id)]; ok {
+				return window
+			}
+		}
+	}
+	return nil
+}
+
+func (wc *WindowCollection) GetCollection(r *http.Request) []interface{} {
+	if r.URL.Path == "/windows" {
+		var windows = make([]interface{}, 0, len(wc.windows))
+
+		for _, window := range wc.windows {
+			windows = append(windows, window)
+		}
+
+		return windows
+	} else {
+		return nil
+	}
+}
+
+func (wc *WindowCollection) POST(w http.ResponseWriter, r *http.Request) {
+	if res := wc.GetSingle(r); res == nil {
+		w.WriteHeader(http.StatusNotFound)
+	} else if window, ok := res.(*Window); !ok {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	} else {
+		var actionId = requests.GetSingleQueryParameter(r, "action", "default")
+		if action, ok := window.ResourceActions[actionId]; ok {
+			action.Executer()
+			w.WriteHeader(http.StatusAccepted)
+		} else {
+			w.WriteHeader(http.StatusUnprocessableEntity)
+		}
+	}
+}
+
+
 
 func (wc *WindowCollection) getCopy(windowId uint32) *Window {
 	if window, ok := wc.windows[windowId]; ok {
@@ -87,34 +117,4 @@ func (wc *WindowCollection) getCopyByParent(parent uint32) *Window {
 	return nil
 }
 
-func (dac *WindowCollection) GetResource(r *http.Request) (interface{}, error) {
 
-	var path = r.URL.Path
-	if path == "/windows" {
-		var windows = make([]*Window, 0, len(dac.windows))
-
-		var matcher, err = requests.GetMatcher(r);
-		if err != nil {
-			return nil, err
-		}
-
-		for _, window := range dac.windows {
-			if matcher(window) {
-				windows = append(windows, window)
-			}
-		}
-
-		return windows, nil
-	} else if strings.HasPrefix(path, "/window/") {
-		if id, err := strconv.ParseUint(path[len("/window/"):], 10, 32); err != nil {
-			return nil, nil
-		} else if window, ok := dac.windows[uint32(id)]; ok {
-			return window, nil
-		} else {
-			return nil, nil
-		}
-	} else {
-		return nil, nil
-	}
-
-}
