@@ -87,23 +87,25 @@ func (cjg *CachingJsonGetter) GET(w http.ResponseWriter, r *http.Request) {
 	cjg.mutex.Unlock()
 
 	if !ok {
-		fmt.Println("Not in cache")
+		fmt.Println("Not in cache, query:", r.URL.Query())
 		if collection := cjg.resources.GetCollection(r); collection != nil {
 			fmt.Println("collection")
 			var matcher, err = requests.GetMatcher2(r);
+			fmt.Println("matcher, err:", matcher, err)
 			if err != nil {
 				response = MakeJsonResponse(nil, "", err)
 			} else if matcher != nil {
 				fmt.Println("Filter")
-				var tmp = make([]interface{}, 0, len(collection))
+				var filtered = make([]interface{}, 0, len(collection))
 				for _, res := range collection {
 					if matcher(res) {
-						tmp = append(tmp, res)
+						filtered = append(filtered, res)
 					}
 				}
-				collection = tmp
+				response = MakeJsonResponse(filtered, "application/json", nil)
+			} else {
+				response = MakeJsonResponse(collection, "application/json", nil)
 			}
-			response = MakeJsonResponse(collection, "application/json", nil)
 		} else if res := cjg.resources.GetSingle(r); res != nil {
 			fmt.Println("Single")
 			response = MakeJsonResponse(res, "application/json", nil)

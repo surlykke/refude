@@ -24,6 +24,8 @@ var DataDirs []string
 var RuntimeDir string
 var CurrentDesktop []string
 var Locale string
+var RefudeConvertedIconsDir string
+var RefudeSessionIconsDir string
 
 func init() {
 	Home = os.Getenv("HOME")
@@ -38,6 +40,16 @@ func init() {
 	Locale = notEmptyOr(os.Getenv("LANG"), "") // TODO Look at other env variables too
 	if index := strings.Index(Locale, "."); index > -1 { // Strip away encoding part (ie. '.UTF-8')
 		Locale = Locale[0:index]
+	}
+	RefudeConvertedIconsDir = RuntimeDir + "/org.refude.converted-icons"
+	RefudeSessionIconsDir = RuntimeDir + "/org.refude.session-icons"
+
+	if err := os.MkdirAll(RefudeConvertedIconsDir, 0700); err != nil {
+		panic(err)
+	}
+
+	if err := os.MkdirAll(RefudeConvertedIconsDir, 0700); err != nil {
+		panic(err)
 	}
 }
 

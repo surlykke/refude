@@ -149,6 +149,8 @@ func run() {
 		themes = tmpThemes
 		fallbackIcons = tmpFallbackIcons
 		mutex.Unlock()
+	mutex.RLock()
+	defer mutex.RUnlock()
 
 		for {
 			select {

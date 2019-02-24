@@ -7,11 +7,7 @@
 package main
 
 import (
-	"github.com/surlykke/RefudeServices/RefudeDesktopService/applications"
-	"github.com/surlykke/RefudeServices/RefudeDesktopService/notifications"
-	"github.com/surlykke/RefudeServices/RefudeDesktopService/power"
-	"github.com/surlykke/RefudeServices/RefudeDesktopService/statusnotifications"
-	"github.com/surlykke/RefudeServices/RefudeDesktopService/windows"
+	"github.com/surlykke/RefudeServices/RefudeDesktopService/icons"
 	"github.com/surlykke/RefudeServices/lib"
 	"github.com/surlykke/RefudeServices/lib/server"
 	"net/http"
@@ -47,7 +43,7 @@ func serveHttp(w http.ResponseWriter, r *http.Request) {
 
 
 func main() {
-	var applicationsCollection = applications.MakeDesktopApplicationCollection()
+	/*var applicationsCollection = applications.MakeDesktopApplicationCollection()
 	var mimetypeCollection = applications.MakeMimetypecollection()
 	go applications.Run(applicationsCollection, mimetypeCollection)
 
@@ -65,6 +61,9 @@ func main() {
 	go statusnotifications.Run(itemCollection)
 
 	resourceServers = []server.ResourceServer{applicationsCollection, mimetypeCollection, windowCollection, notificationCollection , powerCollection, itemCollection, menuCollection}
-
+	*/
+	var iconCollection = icons.MakeIconCollection()
+	icons.Run(iconCollection)
+	resourceServers = []server.ResourceServer{iconCollection}
 	lib.Serve("org.refude.desktop-service", http.HandlerFunc(serveHttp))
 }

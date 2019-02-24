@@ -114,8 +114,10 @@ func GetMatcher(r *http.Request) (parser.Matcher, error) {
 
 func GetMatcher2(r *http.Request) (parser.Matcher, error) {
 	if q, ok := r.URL.Query()["q"]; ok && len(q) > 0 {
+		fmt.Println("Parsing", q)
 		return parser.Parse(q[0])
 	} else {
+		fmt.Println("No query")
 		return nil, nil
 	}
 }
