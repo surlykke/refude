@@ -10,50 +10,82 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
+	"flag"
 	"fmt"
-	"github.com/surlykke/RefudeServices/lib/slice"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/textproto"
 	"os"
 	"strings"
 )
+
+type HeaderMap map[string]string
+
+func (hm *HeaderMap) String() string {
+	var separator = ""
+	var res = ""
+	for key, val := range *hm {
+		res = res + separator + key + ":" + val
+		separator = ","
+	}
+	return res
+}
+
+func (hm *HeaderMap) Set(s string) error {
+	var tmp = strings.Split(s, ":")
+	if len(tmp) != 2 || len(textproto.TrimString(tmp[0])) == 0 || len(textproto.TrimString(tmp[1])) == 0 {
+		return errors.New("Header should be of form <key>:<value>")
+	} else {
+		(*hm)[tmp[0]] = tmp[1]
+		return nil
+	}
+}
 
 func fail(msg string) {
 	fmt.Fprintln(os.Stderr, msg)
 	os.Exit(1)
 }
 
+func usage() {
+	fmt.Fprintln(flag.CommandLine.Output(), "Usage: RefudeReq options path")
+	fmt.Fprintln(flag.CommandLine.Output(), "options:")
+	flag.PrintDefaults()
+	fmt.Fprintln(flag.CommandLine.Output(), "path: path to resource (eg. /application/firefox.desktop")
+}
+
 func main() {
-	if len(os.Args) < 4 {
-		fail("Not enough arguments")
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	flag.Usage = usage
+	var headerMap = make(HeaderMap)
+	flag.Var(&headerMap, "H", "Http header in the form <key>:<value>. May occur multiple times")
+	var method = flag.String("X", "GET", "Http method")
+	flag.Parse()
+	if flag.NArg() != 1 {
+		flag.Usage()
+		os.Exit(1)
 	}
-	var service = os.Args[1]
-	var method = os.Args[2]
-	var path = os.Args[3]
-	var body = bytes.NewBuffer([]byte(strings.Join(os.Args[4:], " ")))
 
 	var client = http.Client{
 		Transport: &http.Transport{
 			DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
-				return net.Dial("unix", xdg.RuntimeDir+"/org.refude." + service)
+				return net.Dial("unix", xdg.RuntimeDir+"/org.refude.desktop-service")
 			},
 		},
 	}
-	var url = "http://localhost" + path
+	var url = "http://localhost" + flag.Arg(0)
 
-	if !slice.Contains([]string{"GET", "POST", "PATCH", "DELETE"}, method) {
-		fail("Method " + method + " not supported")
-	} else if slice.Contains([]string{"GET", "DELETE"}, method) && body.Len() > 0 {
-		panic("No body allowed")
-	} else if method == "PATCH" && body.Len() == 0 {
-		panic("Body mandatory")
+	var request, err = http.NewRequest(*method, url, nil);
+	if err != nil {
+		fail(err.Error())
+	}
+	for key, value := range headerMap {
+		request.Header.Set(key, value)
 	}
 
-	if request, err := http.NewRequest(method, url, body); err != nil {
-		fail(err.Error())
-	} else if response, err := client.Do(request); err != nil {
+	if response, err := client.Do(request); err != nil {
 		fail(err.Error())
 	} else if body, err := ioutil.ReadAll(response.Body); err != nil {
 		fail(err.Error())
@@ -68,6 +100,7 @@ func main() {
 				}
 			}
 		}
+
 		fmt.Fprint(os.Stderr, "\r\n")
 		if isJson {
 			var buf bytes.Buffer
