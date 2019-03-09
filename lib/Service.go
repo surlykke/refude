@@ -27,7 +27,7 @@ func seemsToBeRunning(socketPath string) bool {
 	}
 
 	if response, err := client.Get("http://localhost/ping"); err == nil {
-		response.Body.Close()
+		_ = response.Body.Close()
 		return true
 	} else {
 		return false
@@ -41,7 +41,7 @@ func makeListener(socketName string) (*net.UnixListener, bool) {
 		log.Fatal("Application seems to be running. Let's leave it at that")
 	}
 
-	syscall.Unlink(socketPath)
+	_ = syscall.Unlink(socketPath)
 
 	listener, err := net.ListenUnix("unix", &net.UnixAddr{
 		Name: socketPath,
