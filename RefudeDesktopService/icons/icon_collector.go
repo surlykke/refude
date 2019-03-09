@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"github.com/surlykke/RefudeServices/lib/fs"
 	"github.com/surlykke/RefudeServices/lib/image"
+	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/slice"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 	"io/ioutil"
@@ -60,24 +61,24 @@ func collectThemes() map[string]*Theme {
 	}
 
 	for themeId, theme := range themes {
-		if themeId == "hicolor" {
-			continue
-		}
-		theme.searchOrder = []string{themeId}
-		for i := 0; i < len(theme.searchOrder); i++ {
-			var themeToSearch = themes[theme.searchOrder[i]]
-			for _, parentId := range themeToSearch.Inherits {
-				if parentTheme, ok := themes[parentId]; ok && parentTheme.Id != "hicolor" {
-					theme.searchOrder = slice.AppendIfNotThere(theme.searchOrder, parentId)
+		if themeId != "hicolor" {
+			theme.SearchOrder = []string{themeId}
+			for i := 0; i < len(theme.SearchOrder); i++ {
+				var themeToSearch= themes[theme.SearchOrder[i]]
+				for _, parentId := range themeToSearch.Inherits {
+					if parentTheme, ok := themes[parentId]; ok && parentTheme.Id != "hicolor" {
+						theme.SearchOrder = slice.AppendIfNotThere(theme.SearchOrder, parentId)
+					}
 				}
 			}
 		}
 
-		theme.searchOrder = append(theme.searchOrder, "hicolor")
+		theme.SearchOrder = append(theme.SearchOrder, "hicolor")
 
 		for _, searchDir := range iconDirs {
 			for _, iconDir := range theme.iconDirs {
 				for _, icon := range collectIcons(searchDir + "/" + themeId + "/" + iconDir.Path) {
+					icon.Theme = themeId
 					icon.Context = iconDir.Context
 					icon.MinSize = iconDir.MinSize
 					icon.MaxSize = iconDir.MaxSize
@@ -188,7 +189,7 @@ func collectIcons(dir string) []*Icon {
 		}
 
 		for _, path := range paths {
-			var iconName = filepath.Base(path[0 : len(path)-4])
+			var iconName= filepath.Base(path[0 : len(path)-4])
 
 			if ending == "xpm" {
 				if tmp, err := getPathToConverted(path); err != nil {
@@ -199,8 +200,9 @@ func collectIcons(dir string) []*Icon {
 					path = tmp
 				}
 			}
-
-			icons = append(icons, &Icon{Name: iconName, Type: ending, Path: path})
+			var icon= &Icon{Name: iconName, Type: ending, img: img{Path: path}}
+			icon.AbstractResource = resource.MakeAbstractResource(resource.Standardize("/icon" + path), "application/json")
+			icons = append(icons, icon)
 		}
 	}
 	fmt.Println(" found", len(icons))

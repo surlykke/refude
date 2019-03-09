@@ -80,6 +80,17 @@ func MakeCachingJsonGetter(resources ResourceCollection) CachingJsonGetter {
 	return CachingJsonGetter{cachedResponses: make(map[string]*JsonResponse), resources: resources}
 }
 
+func ServeJson(w http.ResponseWriter, res interface{}) {
+	ServeJsonAs(w, res, "application/json")
+}
+
+func ServeJsonAs(w http.ResponseWriter, res interface{}, contentType resource.MediaType) {
+	var jsonResponse = MakeJsonResponse(res, contentType, nil)
+	w.Header().Set("Content-Type", string(jsonResponse.ContentType))
+	w.Header().Set("ETag", jsonResponse.Etag)
+	w.Write(jsonResponse.Data)
+}
+
 func (cjg *CachingJsonGetter) GET(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("CachingJsonGetter GET")
 	cjg.mutex.Lock()
