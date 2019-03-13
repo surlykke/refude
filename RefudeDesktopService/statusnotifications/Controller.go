@@ -99,7 +99,7 @@ func getOnTheBus() {
 	}
 
 	// Put StatusNotifierWatcher object up
-	conn.ExportMethodTable(
+	_ = conn.ExportMethodTable(
 		map[string]interface{}{
 			"RegisterStatusNotifierItem":   addItem,
 			"UnregisterStatusNotifierItem": func(string, dbus.Sender) {}, // We dont care, see monitorItem
@@ -109,7 +109,7 @@ func getOnTheBus() {
 	)
 
 	// Add Introspectable interface
-	conn.Export(introspect.Introspectable(INTROSPECT_XML), WATCHER_PATH, dbuscall.INTROSPECT_INTERFACE)
+	_ = conn.Export(introspect.Introspectable(INTROSPECT_XML), WATCHER_PATH, dbuscall.INTROSPECT_INTERFACE)
 
 	// Add properties interface
 	watcherProperties = prop.New(

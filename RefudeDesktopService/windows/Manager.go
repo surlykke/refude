@@ -54,7 +54,7 @@ func (m *Manager) handle(windowCollection *WindowCollection, event xlib.Event) {
 		defer windowCollection.mutex.Unlock()
 		if copy := windowCollection.getCopyByParent(event.Window); copy != nil {
 			copy.X, copy.Y, copy.W, copy.H = event.X, event.Y, event.W, event.H
-			windowCollection.windows[copy.Id] = copy
+			windowCollection.windows[copy.Self] = copy
 		}
 	case NET_WM_VISIBLE_NAME, NET_WM_NAME, WM_NAME:
 		if name, err := m.GetName(event.Window); err != nil {
@@ -64,7 +64,7 @@ func (m *Manager) handle(windowCollection *WindowCollection, event xlib.Event) {
 			defer windowCollection.mutex.Unlock()
 			if copy := windowCollection.getCopy(event.Window); copy != nil {
 				copy.Name = name
-				windowCollection.windows[copy.Id] = copy
+				windowCollection.windows[copy.Self] = copy
 			}
 		}
 	case NET_WM_ICON:
@@ -75,7 +75,7 @@ func (m *Manager) handle(windowCollection *WindowCollection, event xlib.Event) {
 			defer windowCollection.mutex.Unlock()
 			if copy := windowCollection.getCopy(event.Window); copy != nil {
 				copy.IconName = iconName
-				windowCollection.windows[copy.Id] = copy
+				windowCollection.windows[copy.Self] = copy
 			}
 		}
 	case NET_WM_STATE:
@@ -86,7 +86,7 @@ func (m *Manager) handle(windowCollection *WindowCollection, event xlib.Event) {
 			defer windowCollection.mutex.Unlock()
 			if copy := windowCollection.getCopy(event.Window); copy != nil {
 				copy.States = states
-				windowCollection.windows[copy.Id] = copy
+				windowCollection.windows[copy.Self] = copy
 			}
 		}
 	}
@@ -99,18 +99,18 @@ func (m *Manager) updateWindows(windowCollection *WindowCollection) {
 		windowCollection.mutex.Lock()
 		defer windowCollection.mutex.Unlock()
 
-		var windows = make(map[uint32]*Window)
+		var windows = make(map[resource.StandardizedPath]*Window)
 		for i, wId := range wIds {
 			var stackOrder = len(wIds) - i
-			if window, ok := windowCollection.windows[wId]; ok {
+			if window, ok := windowCollection.windows[windowSelf(wId)]; ok {
 				var copy = *window
 				copy.StackOrder = stackOrder
-				windows[copy.Id] = &copy
+				windows[copy.Self] = &copy
 			} else {
 				window := &Window{}
 				window.Id = wId;
 				window.StackOrder = stackOrder
-				window.AbstractResource = resource.MakeAbstractResource(resource.Standardizef("/window/%d", wId), WindowMediaType)
+				window.AbstractResource = resource.MakeAbstractResource(windowSelf(wId), WindowMediaType)
 				if window.Parent, err = m.in.GetParent(wId); err != nil {
 					log.Println("No parent:", err)
 					continue
@@ -139,7 +139,7 @@ func (m *Manager) updateWindows(windowCollection *WindowCollection) {
 
 				window.ResourceActions["default"] = resource.ResourceAction{Description: "Raise and focus", IconName: window.IconName, Executer: executer}
 				m.in.Listen(window.Id)
-				windows[window.Id] = window
+				windows[window.Self] = window
 			}
 		}
 		windowCollection.windows = windows

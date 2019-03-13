@@ -92,17 +92,13 @@ func ServeJsonAs(w http.ResponseWriter, res interface{}, contentType resource.Me
 }
 
 func (cjg *CachingJsonGetter) GET(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("CachingJsonGetter GET")
 	cjg.mutex.Lock()
 	var response, ok = cjg.cachedResponses[r.RequestURI]
 	cjg.mutex.Unlock()
 
 	if !ok {
-		fmt.Println("Not in cache, query:", r.URL.Query())
 		if collection := cjg.resources.GetCollection(r); collection != nil {
-			fmt.Println("collection")
 			var matcher, err = requests.GetMatcher2(r);
-			fmt.Println("matcher, err:", matcher, err)
 			if err != nil {
 				response = MakeJsonResponse(nil, "", err)
 			} else if matcher != nil {
@@ -118,18 +114,14 @@ func (cjg *CachingJsonGetter) GET(w http.ResponseWriter, r *http.Request) {
 				response = MakeJsonResponse(collection, "application/json", nil)
 			}
 		} else if res := cjg.resources.GetSingle(r); res != nil {
-			fmt.Println("Single")
 			response = MakeJsonResponse(res, "application/json", nil)
 		} else {
-			fmt.Println("nil")
 			response = nil
 		}
 
 		cjg.mutex.Lock()
 		cjg.cachedResponses[r.RequestURI] = response
 		cjg.mutex.Unlock()
-	} else {
-		fmt.Println("In cache")
 	}
 
 	if response == nil {

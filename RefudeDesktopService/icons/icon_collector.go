@@ -47,7 +47,6 @@ func collectThemes() map[string]*Theme {
 		}
 
 		for _, indexThemeFilePath := range indexThemeFilePaths {
-			fmt.Println("Looking at: ", indexThemeFilePath)
 			themeId := filepath.Base(filepath.Dir(indexThemeFilePath))
 			if _, ok := themes[themeId]; !ok {
 				if theme, err := readIndexTheme(themeId, indexThemeFilePath); err == nil {
@@ -115,7 +114,6 @@ func collectAndMonitorOtherIcons(collection *IconCollection) {
 }
 
 func readIndexTheme(themeId string, indexThemeFilePath string) (*Theme, error) {
-	fmt.Println("readIndexTheme, path:", indexThemeFilePath)
 	iniFile, err := xdg.ReadIniFile(indexThemeFilePath)
 	if err != nil {
 		log.Println("Error reading theme:", err)
@@ -180,7 +178,6 @@ func readIndexTheme(themeId string, indexThemeFilePath string) (*Theme, error) {
 
 // Returned icons only partially instantiated, caller must add Context, MinSize, MaxSize
 func collectIcons(dir string) []*Icon {
-	fmt.Print("Collecting in: ", dir)
 	var icons = make([]*Icon, 0, 100)
 	for _, ending := range []string{"png", "svg", "xpm"} {
 		paths, err := filepath.Glob(dir + "/*." + ending)
@@ -196,7 +193,6 @@ func collectIcons(dir string) []*Icon {
 					log.Println("Unable to convert", path, ":", err)
 					continue
 				} else {
-					fmt.Println("Converting", path, "to", tmp)
 					path = tmp
 				}
 			}
@@ -205,7 +201,6 @@ func collectIcons(dir string) []*Icon {
 			icons = append(icons, icon)
 		}
 	}
-	fmt.Println(" found", len(icons))
 	return icons
 }
 

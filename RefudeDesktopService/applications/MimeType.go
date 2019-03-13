@@ -54,7 +54,7 @@ func NewMimetype(id string) (*Mimetype, error) {
 			IconName:    "unknown",
 			GenericIcon: "unknown",
 		}
-		mt.AbstractResource = resource.MakeAbstractResource(resource.Standardizef("/mimetypes/%s", id), MimetypeMediaType)
+		mt.AbstractResource = resource.MakeAbstractResource(mimetypeSelf(id), MimetypeMediaType)
 
 		if strings.HasPrefix(id, "x-scheme-handler/") {
 			mt.Comment = id[len("x-scheme-handler/"):] + " url"
@@ -100,7 +100,7 @@ func setDefaultApp(mimetypeId string, appId string) {
 
 type MimetypeCollection struct {
 	mutex sync.Mutex
-	mimetypes map[string]*Mimetype
+	mimetypes map[resource.StandardizedPath]*Mimetype
 	server.CachingJsonGetter
 	server.PostNotAllowed
 	server.PatchNotAllowed // FIXME
@@ -113,7 +113,7 @@ func (*MimetypeCollection) HandledPrefixes() []string {
 
 func MakeMimetypecollection() *MimetypeCollection {
 	var mc = &MimetypeCollection{}
-	mc.mimetypes = make(map[string]*Mimetype)
+	mc.mimetypes = make(map[resource.StandardizedPath]*Mimetype)
 	mc.CachingJsonGetter = server.MakeCachingJsonGetter(mc)
 	return mc
 }
@@ -121,14 +121,11 @@ func MakeMimetypecollection() *MimetypeCollection {
 func (mc *MimetypeCollection) GetSingle(r *http.Request) interface{} {
 	mc.mutex.Lock()
 	defer mc.mutex.Unlock()
-
-	if strings.HasPrefix(r.URL.Path, "/mimetype/") {
-		da, ok := mc.mimetypes[r.URL.Path[len("/mimetype/"):]]
-		if ok {
-			return da
-		}
+	if mt, ok := mc.mimetypes[resource.Standardize(r.URL.Path)]; ok {
+		return mt
+	} else {
+		return nil
 	}
-	return nil
 }
 
 func (dac *MimetypeCollection) GetCollection(r *http.Request) []interface{} {
@@ -146,3 +143,6 @@ func (dac *MimetypeCollection) GetCollection(r *http.Request) []interface{} {
 	}
 }
 
+func mimetypeSelf(mimetypeId string) resource.StandardizedPath {
+	return resource.Standardizef("/mimetype/%s", mimetypeId)
+}

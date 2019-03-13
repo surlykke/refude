@@ -116,7 +116,7 @@ func launchWithArgs(exec string, args []string, inTerminal bool) {
 
 type DesktopApplicationCollection struct {
 	mutex sync.Mutex
-	apps  map[string]*DesktopApplication
+	apps  map[resource.StandardizedPath]*DesktopApplication
 	server.CachingJsonGetter
 	server.PatchNotAllowed
 	server.DeleteNotAllowed
@@ -164,7 +164,7 @@ func (dac *DesktopApplicationCollection) POST(w http.ResponseWriter, r *http.Req
 func MakeDesktopApplicationCollection() *DesktopApplicationCollection {
 	var dac = &DesktopApplicationCollection{}
 	dac.CachingJsonGetter = server.MakeCachingJsonGetter(dac)
-	dac.apps = make(map[string]*DesktopApplication)
+	dac.apps = make(map[resource.StandardizedPath]*DesktopApplication)
 
 	return dac
 }
@@ -172,14 +172,11 @@ func MakeDesktopApplicationCollection() *DesktopApplicationCollection {
 func (dac *DesktopApplicationCollection) GetSingle(r *http.Request) interface{} {
 	dac.mutex.Lock()
 	defer dac.mutex.Unlock()
-
-	if strings.HasPrefix(r.URL.Path, "/application/") {
-		da, ok := dac.apps[r.URL.Path[len("/application/"):]]
-		if ok {
-			return da
-		}
+	if app, ok := dac.apps[resource.Standardize(r.URL.Path)]; ok {
+		return app
+	} else {
+		return nil
 	}
-	return nil
 }
 
 func (dac *DesktopApplicationCollection) GetCollection(r *http.Request) []interface{} {
@@ -195,4 +192,8 @@ func (dac *DesktopApplicationCollection) GetCollection(r *http.Request) []interf
 	} else {
 		return nil
 	}
+}
+
+func appSelf(appId string) resource.StandardizedPath {
+	return resource.Standardizef("/application/%s", appId)
 }

@@ -36,7 +36,6 @@ func Run(applicationsCollection *DesktopApplicationCollection, mimetypesCollecti
 
 	dummy := make([]byte, 100)
 	for {
-		fmt.Println("Collecting...")
 		var mtc, apps = Collect();
 
 		mimetypesCollection.mutex.Lock()

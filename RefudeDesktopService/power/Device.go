@@ -7,6 +7,7 @@
 package power
 
 import (
+	"github.com/godbus/dbus"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/server"
@@ -19,7 +20,7 @@ const DeviceMediaType resource.MediaType = "application/vnd.org.refude.upowerdev
 
 type Device struct {
 	resource.AbstractResource
-	Id               string
+	DbusPath         dbus.ObjectPath
 	NativePath       string
 	Vendor           string
 	Model            string
@@ -73,7 +74,7 @@ func deviceTecnology(index uint32) string {
 
 type PowerCollection struct {
 	mutex   sync.Mutex
-	devices map[string]*Device
+	devices map[resource.StandardizedPath]*Device
 	session *Session
 	server.CachingJsonGetter
 	server.PatchNotAllowed
@@ -87,22 +88,21 @@ func (*PowerCollection) HandledPrefixes() []string {
 func MakePowerCollection() *PowerCollection {
 	var dc = &PowerCollection{}
 	dc.CachingJsonGetter = server.MakeCachingJsonGetter(dc)
-	dc.devices = make(map[string]*Device)
+	dc.devices = make(map[resource.StandardizedPath]*Device)
 	return dc
 }
 
 func (pc *PowerCollection) GetSingle(r *http.Request) interface{} {
 	pc.mutex.Lock()
 	defer pc.mutex.Unlock()
-	var path = r.URL.Path
-	if strings.HasPrefix(path, "/device/") {
-		if device, ok := pc.devices[path[len("/device/"):]]; ok {
-			return device
-		}
-	} else if path == "/session" {
+	var sp = resource.Standardize(r.URL.Path)
+	if sp == "/session" {
 		return pc.session
+	} else if device, ok := pc.devices[sp]; ok {
+		return device
+	} else {
+		return nil
 	}
-	return nil
 }
 
 func (pc *PowerCollection) GetCollection(r *http.Request) []interface{} {
@@ -134,4 +134,11 @@ func (pc *PowerCollection) POST(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusUnprocessableEntity)
 		}
 	}
+}
+
+func deviceSelf(dbusPath dbus.ObjectPath) resource.StandardizedPath {
+	if strings.HasPrefix(string(dbusPath), DevicePrefix) {
+		dbusPath = dbusPath[len(DevicePrefix):]
+	}
+	return resource.Standardizef("/device/%s", dbusPath)
 }

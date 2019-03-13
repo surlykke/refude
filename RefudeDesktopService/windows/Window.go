@@ -11,8 +11,6 @@ import (
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/server"
 	"net/http"
-	"strconv"
-	"strings"
 	"sync"
 )
 
@@ -31,7 +29,7 @@ type Window struct {
 
 type WindowCollection struct {
 	mutex   sync.Mutex
-	windows map[uint32]*Window
+	windows map[resource.StandardizedPath]*Window
 	server.CachingJsonGetter
 	server.PatchNotAllowed
 	server.DeleteNotAllowed
@@ -44,24 +42,18 @@ func (*WindowCollection) HandledPrefixes() []string {
 func MakeWindowCollection() *WindowCollection {
 	var wc = &WindowCollection{}
 	wc.CachingJsonGetter = server.MakeCachingJsonGetter(wc)
-	wc.windows = make(map[uint32]*Window)
+	wc.windows = make(map[resource.StandardizedPath]*Window)
 	return wc
 }
-
 
 func (wc *WindowCollection) GetSingle(r *http.Request) interface{} {
 	wc.mutex.Lock()
 	defer wc.mutex.Unlock()
-
-	var path = r.URL.Path
-	if strings.HasPrefix(path, "/window/") {
-		if id, err := strconv.ParseUint(path[len("/window/"):], 10, 32); err == nil {
-			if window, ok := wc.windows[uint32(id)]; ok {
-				return window
-			}
-		}
+	if window, ok := wc.windows[resource.Standardize(r.URL.Path)]; ok {
+		return window
+	} else {
+		return nil
 	}
-	return nil
 }
 
 func (wc *WindowCollection) GetCollection(r *http.Request) []interface{} {
@@ -97,7 +89,7 @@ func (wc *WindowCollection) POST(w http.ResponseWriter, r *http.Request) {
 
 
 func (wc *WindowCollection) getCopy(windowId uint32) *Window {
-	if window, ok := wc.windows[windowId]; ok {
+	if window, ok := wc.windows[windowSelf(windowId)]; ok {
 		var copy = *window
 		return &copy
 	} else {
@@ -117,4 +109,6 @@ func (wc *WindowCollection) getCopyByParent(parent uint32) *Window {
 	return nil
 }
 
-
+func windowSelf(windowId uint32) resource.StandardizedPath {
+	return resource.Standardizef("/window/%d", windowId)
+}

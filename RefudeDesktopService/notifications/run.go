@@ -21,16 +21,16 @@ func Run(notificationsCollection *NotificationsCollection) {
 		select {
 		case notification := <-updates:
 			notificationsCollection.mutex.Lock()
-			notificationsCollection.notifications[notification.Id] = notification
+			notificationsCollection.notifications[notification.Self] = notification
 			notificationsCollection.CachingJsonGetter.ClearByPrefixes(fmt.Sprintf("/notification/%d", notification.Id), "/notifications")
 			notificationsCollection.mutex.Unlock()
 		case rem := <-removals:
 			fmt.Println("Got removal..")
 			notificationsCollection.mutex.Lock()
-			if notification, ok := notificationsCollection.notifications[rem.id]; ok {
+			if notification, ok := notificationsCollection.notifications[notificationSelf(rem.id)]; ok {
 				if rem.internalId == 0 || rem.internalId == notification.internalId {
 					//resourceMap.Unmap(resource.Standardizef("/notifications/%d", rem.id))
-					delete(notificationsCollection.notifications, rem.id)
+					delete(notificationsCollection.notifications, notification.Self)
 					notificationClosed(rem.id, rem.reason)
 					notificationsCollection.CachingJsonGetter.ClearByPrefixes(fmt.Sprintf("/notification/%d", rem.id), "/notifications")
 

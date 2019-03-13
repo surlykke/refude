@@ -175,7 +175,6 @@ func (ic *IconCollection) GetIcons() []interface{} {
 func (ic *IconCollection) GetIcon(path resource.StandardizedPath) *Icon {
 	ic.mutex.Lock()
 	defer ic.mutex.Unlock()
-	fmt.Println("GetSingle, path:", path)
 	return ic.iconsByPath[path]
 }
 
@@ -203,7 +202,7 @@ func extractNameSizeAndTheme(query map[string][]string) ([]string, uint32, strin
 
 	var names = query["name"]
 	var iconSize = uint32(32)
-	var theme string
+	var theme = "hicolor"
 
 	if len(query["size"]) > 0 {
 		var ok bool
@@ -220,7 +219,6 @@ func extractNameSizeAndTheme(query map[string][]string) ([]string, uint32, strin
 }
 
 func (ic *IconCollection) GET(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("GET", r.URL.Path)
 	if r.URL.Path == "/iconthemes" {
 		filterAndServe(w, r, ic.GetThemes())
 	} else if r.URL.Path == "/icons" || r.URL.Path == "/icons/" {
@@ -237,13 +235,19 @@ func (ic *IconCollection) GET(w http.ResponseWriter, r *http.Request) {
 		}
 
 	} else if r.URL.Path == "/iconsearch" {
-		fmt.Println("Search pngSvgPair")
 		if pngSvgPair, ok := ic.GetIconByName(r); !ok {
 			requests.ReportUnprocessableEntity(w, errors.New("Invalid query parameters"))
 		} else if pngSvgPair == nil {
 			w.WriteHeader(http.StatusNotFound)
 		} else {
-			respond(w, r, pngSvgPair, pngSvgPair.Png.Path, pngSvgPair.Svg.Path)
+			var pngPath, svgPath string
+			if pngSvgPair.Png != nil {
+				pngPath = pngSvgPair.Png.Path
+			}
+			if pngSvgPair.Svg != nil {
+				svgPath = pngSvgPair.Svg.Path
+			}
+			respond(w, r, pngSvgPair, pngPath, svgPath)
 		}
 	} else {
 		w.WriteHeader(http.StatusNotFound)
@@ -316,7 +320,6 @@ func respond(w http.ResponseWriter, r *http.Request, res interface{}, pngPath st
 	if mimetype, err := negotiate(r, offers...); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 	} else if mimetype == "application/json" {
-		fmt.Println("Serving application/json")
 		var json = server.ToJSon(res)
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("ETag", fmt.Sprintf("\"%x\"", sha1.Sum(json)))

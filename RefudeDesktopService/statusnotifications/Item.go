@@ -16,7 +16,6 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-	"strings"
 	"sync"
 )
 
@@ -47,7 +46,7 @@ func MakeItem(sender string, path dbus.ObjectPath) *Item {
 
 type ItemCollection struct {
 	mutex sync.Mutex
-	items map[string]*Item
+	items map[resource.StandardizedPath]*Item
 	server.CachingJsonGetter
 	server.PostNotAllowed
 	server.PatchNotAllowed
@@ -61,7 +60,7 @@ func (ic *ItemCollection) HandledPrefixes() []string {
 func MakeItemCollection() *ItemCollection {
 	var itemCollection = &ItemCollection{}
 	itemCollection.CachingJsonGetter = server.MakeCachingJsonGetter(itemCollection)
-	itemCollection.items = make(map[string]*Item)
+	itemCollection.items = make(map[resource.StandardizedPath]*Item)
 	return itemCollection
 }
 
@@ -113,15 +112,11 @@ func (ic *ItemCollection) findByMenupath(menupath string) *Item {
 func (ic *ItemCollection) GetSingle(r *http.Request) interface{} {
 	ic.mutex.Lock()
 	defer ic.mutex.Unlock()
-
-	var path = r.URL.Path
-	if strings.HasPrefix(path, "/item/") {
-		if item, ok := ic.items[path[len("/item/"):]]; ok {
-			return item
-		}
+	if item, ok := ic.items[resource.Standardize(r.URL.Path)]; ok {
+		return item
+	} else {
+		return nil
 	}
-
-	return nil
 }
 
 func (ic *ItemCollection) GetCollection(r *http.Request) []interface{} {
@@ -139,3 +134,6 @@ func (ic *ItemCollection) GetCollection(r *http.Request) []interface{} {
 	}
 }
 
+func itemSelf(sender string, path dbus.ObjectPath) resource.StandardizedPath {
+	return resource.Standardizef("/item/%s%s", sender, path)
+}

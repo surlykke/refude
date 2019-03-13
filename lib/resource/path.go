@@ -16,6 +16,7 @@ type StandardizedPath string
  *       '//foo/baa' becomes '/foo/baa'
  *       '/foo///baa/////muh/' becomes '/foo/baa/muh'
  *       '/foo/..//baa//' becomes '/foo/../baa'
+ *       '/foo/baa' becomes (stays) '/foo/baa'
  */
 func Standardize(p string) StandardizedPath {
 	if len(p) == 0 || p[0] != '/' {

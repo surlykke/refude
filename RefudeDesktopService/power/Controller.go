@@ -16,7 +16,8 @@ import (
 const UPowService = "org.freedesktop.UPower"
 const UPowPath = "/org/freedesktop/UPower"
 const UPowerInterface = "org.freedesktop.UPower"
-const DisplayDevicePath = "/org/freedesktop/UPower/devices/DisplayDevice"
+const DevicePrefix = "/org/freedesktop/UPower/devices"
+const DisplayDevicePath = DevicePrefix + "/DisplayDevice"
 const UPowerDeviceInterface = "org.freedesktop.UPower.Device"
 const login1Service = "org.freedesktop.login1"
 const login1Path = "/org/freedesktop/login1"
@@ -31,9 +32,9 @@ func Run(powerCollection *PowerCollection) {
 	for signal := range signals {
 		//fmt.Println("Signal: ", signal)
 		if signal.Name == "org.freedesktop.DBus.Properties.PropertiesChanged" {
-
+			var self = deviceSelf(signal.Path)
 			powerCollection.mutex.Lock()
-			var device, ok = powerCollection.devices[string(signal.Path)]
+			var device, ok = powerCollection.devices[self]
 			powerCollection.mutex.Unlock()
 
 			if ok {
@@ -41,8 +42,8 @@ func Run(powerCollection *PowerCollection) {
 				// Brute force here, we update all, as I've seen some problems with getting out of sync after suspend..
 				updateDevice(&copy, dbuscall.GetAllProps(dbusConn, UPowService, signal.Path, UPowerDeviceInterface))
 				powerCollection.mutex.Lock()
-				powerCollection.devices[copy.Id] = &copy
-				powerCollection.CachingJsonGetter.ClearByPrefixes("/device/" + copy.Id, "/devices")
+				powerCollection.devices[self] = &copy
+				powerCollection.CachingJsonGetter.ClearByPrefixes(string(self), "/devices")
 				powerCollection.mutex.Unlock()
 			}
 
@@ -70,12 +71,12 @@ func setup(powerCollection *PowerCollection) chan *dbus.Signal {
 	devicePaths := append(enumCall.Body[0].([]dbus.ObjectPath), DisplayDevicePath)
 	for _, path := range devicePaths {
 		var device = &Device{}
-		device.DisplayDevice = path == "/org/freedesktop/UPower/devices/DisplayDevice"
-		device.Id = string(path)
-		device.AbstractResource = resource.MakeAbstractResource(resource.Standardizef("/device/%s", device.Id), DeviceMediaType)
+		device.DisplayDevice = path == DisplayDevicePath
+		device.AbstractResource = resource.MakeAbstractResource(deviceSelf(path), DeviceMediaType)
+		device.DbusPath = path
 		updateDevice(device, dbuscall.GetAllProps(dbusConn, UPowService, path, UPowerDeviceInterface))
-		fmt.Println("Setting", device.Id)
-		powerCollection.devices[device.Id] = device
+		fmt.Println("Setting", device.Self)
+		powerCollection.devices[device.Self] = device
 	}
 
 	powerCollection.session	= buildSessionResource()

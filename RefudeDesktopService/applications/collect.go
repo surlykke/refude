@@ -18,22 +18,21 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-
 	"errors"
 	"fmt"
 )
 
 type collection struct {
-	mimetypes    map[string]*Mimetype           // Maps from mimetypeid to mimetype
-	applications map[string]*DesktopApplication // Maps from applicationid to application
+	mimetypes    map[resource.StandardizedPath]*Mimetype
+	applications map[resource.StandardizedPath]*DesktopApplication
 	associations map[string][]string            // Maps from mimetypeid to a list of app ids
 	defaultApps  map[string][]string            // Maps from mimetypeid to a list of app ids
 }
 
-func Collect() (map[string]*Mimetype, map[string]*DesktopApplication) {
+func Collect() (map[resource.StandardizedPath]*Mimetype, map[resource.StandardizedPath]*DesktopApplication) {
 	var c collection
 	c.mimetypes = CollectMimeTypes()
-	c.applications = make(map[string]*DesktopApplication)
+	c.applications = make(map[resource.StandardizedPath]*DesktopApplication)
 	c.associations = make(map[string][]string) // Map a mimetypeid to a list of desktopapplication ids
 	c.defaultApps = make(map[string][]string)  // Do
 
@@ -49,9 +48,9 @@ func Collect() (map[string]*Mimetype, map[string]*DesktopApplication) {
 	}
 
 	for mimetypeId, appIds := range c.associations {
-		if mimetype, ok := c.mimetypes[mimetypeId]; ok {
+		if mimetype, ok := c.mimetypes[mimetypeSelf(mimetypeId)]; ok {
 			for _, appId := range appIds {
-				if application, ok := c.applications[appId]; ok {
+				if application, ok := c.applications[appSelf(appId)]; ok {
 					mimetype.LinkTo(resource.StandardizedPath("/application/" + appId), resource.Associated)
 					application.LinkTo(resource.StandardizedPath("/mimetype/" + mimetypeId), resource.Associated)
 				}
@@ -60,9 +59,9 @@ func Collect() (map[string]*Mimetype, map[string]*DesktopApplication) {
 	}
 
 	for mimetypeId, appIds := range c.defaultApps {
-		if mimetype, ok := c.mimetypes[mimetypeId]; ok {
+		if mimetype, ok := c.mimetypes[mimetypeSelf(mimetypeId)]; ok {
 			for _, appId := range appIds {
-				if _, ok := c.applications[appId]; ok {
+				if _, ok := c.applications[appSelf(appId)]; ok {
 					mimetype.LinkTo(resource.StandardizedPath("/application/" + appId), resource.DefaultApplication)
 				}
 			}
@@ -80,7 +79,7 @@ func (c *collection) removeAssociations(app *DesktopApplication) {
 	}
 }
 
-func CollectMimeTypes() map[string]*Mimetype {
+func CollectMimeTypes() map[resource.StandardizedPath]*Mimetype {
 	xmlCollector := struct {
 		XMLName   xml.Name `xml:"mime-info"`
 		MimeTypes []struct {
@@ -124,7 +123,7 @@ func CollectMimeTypes() map[string]*Mimetype {
 		fmt.Println("Error parsing: ", parseErr)
 	}
 
-	res := make(map[string]*Mimetype)
+	res := make(map[resource.StandardizedPath]*Mimetype)
 	for _, tmp := range xmlCollector.MimeTypes {
 		if mimeType, err := NewMimetype(tmp.Type); err != nil {
 			fmt.Println(err)
@@ -179,7 +178,7 @@ func CollectMimeTypes() map[string]*Mimetype {
 				tags = append(tags, language.Make(locale))
 			}
 
-			res[mimeType.Id] = mimeType
+			res[mimetypeSelf(mimeType.Id)] = mimeType
 		}
 	}
 
@@ -193,7 +192,7 @@ func (c *collection) collectApplications(appdir string) {
 				app, mimetypes, err := readDesktopFile(path)
 				if err == nil {
 					app.Id = strings.Replace(path[len(appdir)+1:], "/", "-", -1)
-					app.AbstractResource = resource.MakeAbstractResource(resource.Standardizef("/applications/%s", app.Id), DesktopApplicationMediaType)
+					app.AbstractResource = resource.MakeAbstractResource(appSelf(app.Id), DesktopApplicationMediaType)
 					var exec = app.Exec
 					var inTerminal = app.Terminal
 					app.ResourceActions["default"] = resource.ResourceAction{
@@ -207,7 +206,7 @@ func (c *collection) collectApplications(appdir string) {
 						}
 					}
 
-					c.applications[app.Id] = app
+					c.applications[appSelf(app.Id)] = app
 
 					for _, mimetype := range mimetypes {
 						c.associations[mimetype] = slice.AppendIfNotThere(c.associations[mimetype], app.Id)
@@ -223,10 +222,10 @@ func (c *collection) collectApplications(appdir string) {
 }
 
 func (c *collection) getOrAdd(mimetypeId string) *Mimetype {
-	if mimetype, ok := c.mimetypes[mimetypeId]; ok {
+	if mimetype, ok := c.mimetypes[mimetypeSelf(mimetypeId)]; ok {
 		return mimetype
 	} else if mimetype, err := NewMimetype(mimetypeId); err == nil {
-		c.mimetypes[mimetypeId] = mimetype
+		c.mimetypes[mimetypeSelf(mimetypeId)] = mimetype
 		return mimetype
 	} else {
 		log.Println(mimetypeId, "not legal")

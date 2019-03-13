@@ -11,8 +11,6 @@ import (
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/server"
 	"net/http"
-	"strconv"
-	"strings"
 	"sync"
 	"time"
 )
@@ -36,7 +34,7 @@ func (n *Notification) removeAfter(duration time.Duration) {
 
 type NotificationsCollection struct {
 	mutex         sync.Mutex
-	notifications map[uint32]*Notification
+	notifications map[resource.StandardizedPath]*Notification
 	server.CachingJsonGetter
 	server.PatchNotAllowed
 	server.DeleteNotAllowed
@@ -49,7 +47,7 @@ func (*NotificationsCollection) HandledPrefixes() []string {
 func MakeNotificationsCollection() *NotificationsCollection {
 	var nc = &NotificationsCollection{}
 	nc.CachingJsonGetter = server.MakeCachingJsonGetter(nc)
-	nc.notifications = make(map[uint32]*Notification)
+	nc.notifications = make(map[resource.StandardizedPath]*Notification)
 	return nc
 }
 
@@ -74,16 +72,11 @@ func (nc *NotificationsCollection) POST(w http.ResponseWriter, r *http.Request) 
 func (nc *NotificationsCollection) GetSingle(r *http.Request) interface{} {
 	nc.mutex.Lock()
 	defer nc.mutex.Unlock()
-	var path = r.URL.Path
-	if strings.HasPrefix(path, "/notification/") {
-		if id, err := strconv.ParseUint(path[len("/notification/"):], 10, 32); err == nil {
-			if notification, ok := nc.notifications[uint32(id)]; ok {
-				return notification
-			}
-
-		}
+	if n, ok := nc.notifications[resource.Standardize(r.URL.Path)]; ok {
+		return n
+	} else {
+		return nil
 	}
-	return nil
 }
 
 func (nc *NotificationsCollection) GetCollection(r *http.Request) []interface{} {
@@ -101,3 +94,6 @@ func (nc *NotificationsCollection) GetCollection(r *http.Request) []interface{} 
 	}
 }
 
+func notificationSelf(id uint32) resource.StandardizedPath {
+	return resource.Standardizef("/notification/%d", id)
+}
