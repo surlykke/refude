@@ -64,8 +64,7 @@ func init() {
 }
 
 /**
- * Wrapper around connections to X11. Not threadsafe, so users must make sure only
- * one go-routine at a time uses an instance of this.
+ * Wrapper around connections to X11. Not threadsafe.
  */
 type Connection struct {
 	display    *C.Display

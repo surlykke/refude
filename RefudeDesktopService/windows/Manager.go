@@ -24,23 +24,17 @@ type Manager struct {
 	outLock sync.Mutex
 }
 
-func Run(windowCollection *WindowCollection) {
-	var manager = Manager{
-		in:  xlib.MakeConnection(),
-		out: xlib.MakeConnection(),
-	}
-	manager.Run(windowCollection)
-}
 
-func (m *Manager) Run(windowCollection *WindowCollection) {
+
+func (m *Manager) Run() {
 	m.in.Listen(0)
-	m.updateWindows(windowCollection)
+	m.updateWindows()
 
 	for {
 		if event, err := m.in.NextEvent(); err != nil {
 			log.Println("Error retrieving next event:", err)
 		} else {
-			m.handle(windowCollection, event)
+			m.handle(Windows, event)
 		}
 	}
 }
@@ -48,7 +42,7 @@ func (m *Manager) Run(windowCollection *WindowCollection) {
 func (m *Manager) handle(windowCollection *WindowCollection, event xlib.Event) {
 	switch event.Property {
 	case NET_CLIENT_LIST_STACKING:
-		m.updateWindows(windowCollection)
+		m.updateWindows()
 	case "": // Means it's a ConfigureEvent
 		windowCollection.mutex.Lock()
 		defer windowCollection.mutex.Unlock()
@@ -92,17 +86,17 @@ func (m *Manager) handle(windowCollection *WindowCollection, event xlib.Event) {
 	}
 }
 
-func (m *Manager) updateWindows(windowCollection *WindowCollection) {
+func (m *Manager) updateWindows() {
 	if wIds, err := m.in.GetUint32s(0, NET_CLIENT_LIST_STACKING); err != nil {
 		log.Fatal("Unable to get client list stacking", err)
 	} else {
-		windowCollection.mutex.Lock()
-		defer windowCollection.mutex.Unlock()
+		Windows.mutex.Lock()
+		defer Windows.mutex.Unlock()
 
 		var windows = make(map[resource.StandardizedPath]*Window)
 		for i, wId := range wIds {
 			var stackOrder = len(wIds) - i
-			if window, ok := windowCollection.windows[windowSelf(wId)]; ok {
+			if window, ok := Windows.windows[windowSelf(wId)]; ok {
 				var copy = *window
 				copy.StackOrder = stackOrder
 				windows[copy.Self] = &copy
@@ -142,7 +136,7 @@ func (m *Manager) updateWindows(windowCollection *WindowCollection) {
 				windows[window.Self] = window
 			}
 		}
-		windowCollection.windows = windows
+		Windows.windows = windows
 	}
 
 }

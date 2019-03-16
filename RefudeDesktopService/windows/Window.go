@@ -31,13 +31,8 @@ type WindowCollection struct {
 	mutex   sync.Mutex
 	windows map[resource.StandardizedPath]*Window
 	server.CachingJsonGetter
-	server.PatchNotAllowed
-	server.DeleteNotAllowed
 }
 
-func (*WindowCollection) HandledPrefixes() []string {
-	return []string{"/window"}
-}
 
 func MakeWindowCollection() *WindowCollection {
 	var wc = &WindowCollection{}

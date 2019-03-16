@@ -93,9 +93,6 @@ type IconCollection struct {
 	themes              map[string]*Theme
 	otherIcons          map[string]*Icon
 	iconsByPath         map[resource.StandardizedPath]*Icon
-	server.PostNotAllowed
-	server.PatchNotAllowed
-	server.DeleteNotAllowed
 }
 
 func MakeIconCollection() *IconCollection {
@@ -252,10 +249,6 @@ func (ic *IconCollection) GET(w http.ResponseWriter, r *http.Request) {
 	} else {
 		w.WriteHeader(http.StatusNotFound)
 	}
-}
-
-func (IconCollection) HandledPrefixes() []string {
-	return []string{"/icon"}
 }
 
 func (ic *IconCollection) findIcon(themeName string, names []string, size uint32, iconType string) *Icon {

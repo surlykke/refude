@@ -8,7 +8,6 @@ package power
 
 import (
 	"github.com/godbus/dbus"
-	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/server"
 	"net/http"
@@ -75,14 +74,7 @@ func deviceTecnology(index uint32) string {
 type PowerCollection struct {
 	mutex   sync.Mutex
 	devices map[resource.StandardizedPath]*Device
-	session *Session
 	server.CachingJsonGetter
-	server.PatchNotAllowed
-	server.DeleteNotAllowed
-}
-
-func (*PowerCollection) HandledPrefixes() []string {
-	return []string{"/device", "/session"}
 }
 
 func MakePowerCollection() *PowerCollection {
@@ -96,9 +88,7 @@ func (pc *PowerCollection) GetSingle(r *http.Request) interface{} {
 	pc.mutex.Lock()
 	defer pc.mutex.Unlock()
 	var sp = resource.Standardize(r.URL.Path)
-	if sp == "/session" {
-		return pc.session
-	} else if device, ok := pc.devices[sp]; ok {
+	if device, ok := pc.devices[sp]; ok {
 		return device
 	} else {
 		return nil
@@ -120,21 +110,6 @@ func (pc *PowerCollection) GetCollection(r *http.Request) []interface{} {
 	}
 }
 
-func (pc *PowerCollection) POST(w http.ResponseWriter, r *http.Request) {
-	if res := pc.GetSingle(r); res == nil {
-		w.WriteHeader(http.StatusNotFound)
-	} else if session, ok := res.(*Session); !ok {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-	} else {
-		var actionId = requests.GetSingleQueryParameter(r, "action", "Suspend")
-		if action, ok := session.ResourceActions[actionId]; ok {
-			action.Executer()
-			w.WriteHeader(http.StatusAccepted)
-		} else {
-			w.WriteHeader(http.StatusUnprocessableEntity)
-		}
-	}
-}
 
 func deviceSelf(dbusPath dbus.ObjectPath) resource.StandardizedPath {
 	if strings.HasPrefix(string(dbusPath), DevicePrefix) {

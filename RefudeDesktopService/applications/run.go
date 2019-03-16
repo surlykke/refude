@@ -4,10 +4,39 @@ import (
 	"fmt"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 	"golang.org/x/sys/unix"
+	"net/http"
 	"os"
+	"strings"
 )
 
-func Run(applicationsCollection *DesktopApplicationCollection, mimetypesCollection *MimetypeCollection) {
+var applicationCollection = MakeDesktopApplicationCollection()
+var mimetypeCollection = MakeMimetypecollection()
+
+func Serve(w http.ResponseWriter, r *http.Request) bool {
+	if strings.HasPrefix(r.URL.Path, "/application") {
+		if r.Method == "GET" {
+			applicationCollection.GET(w, r)
+		} else if r.Method == "POST" {
+			applicationCollection.POST(w, r)
+		} else {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+		}
+		return true
+	} else if strings.HasPrefix(r.URL.Path, "/mimetype") {
+		if r.Method == "GET" {
+			mimetypeCollection.GET(w, r)
+		} else if r.Method == "PATCH" {
+			mimetypeCollection.PATCH(w, r)
+		} else {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+		}
+		return true
+	}
+
+	return false
+}
+
+func Run() {
 	fd, err := unix.InotifyInit()
 
 	if err != nil {
@@ -37,22 +66,18 @@ func Run(applicationsCollection *DesktopApplicationCollection, mimetypesCollecti
 	dummy := make([]byte, 100)
 	for {
 		var mtc, apps = Collect();
+		mimetypeCollection.mutex.Lock()
+		mimetypeCollection.mimetypes = mtc
+		mimetypeCollection.CachingJsonGetter.Clear()
+		mimetypeCollection.mutex.Unlock()
 
-		mimetypesCollection.mutex.Lock()
-		mimetypesCollection.mimetypes = mtc
-		mimetypesCollection.CachingJsonGetter.Clear()
-		mimetypesCollection.mutex.Unlock()
-
-		applicationsCollection.mutex.Lock()
-		applicationsCollection.apps = apps
-		applicationsCollection.CachingJsonGetter.Clear()
-		applicationsCollection.mutex.Unlock()
-
+		applicationCollection.mutex.Lock()
+		applicationCollection.apps = apps
+		applicationCollection.CachingJsonGetter.Clear()
+		applicationCollection.mutex.Unlock()
 
 		if _, err := unix.Read(fd, dummy); err != nil {
 			panic(err)
 		}
 	}
 }
-
-

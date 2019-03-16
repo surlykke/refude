@@ -2,9 +2,40 @@ package statusnotifications
 
 import (
 	"github.com/surlykke/RefudeServices/lib/resource"
+	"net/http"
+	"strings"
 )
 
-func Run(itemCollection *ItemCollection) {
+var Items = MakeItemCollection()
+var Menus = MakeMenuCollection()
+
+func Serve(w http.ResponseWriter, r *http.Request) bool {
+	if strings.HasPrefix(r.URL.Path, "/itemmenu") {
+		if r.Method == "GET" {
+			Menus.GET(w, r)
+		} else if r.Method == "POST" {
+			Menus.POST(w, r)
+		} else {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+		}
+
+		return true
+	} else if strings.HasPrefix(r.URL.Path, "/item") {
+		if r.Method == "GET" {
+			Items.GET(w, r)
+		} else if r.Method == "POST" {
+			Items.POST(w, r)
+		} else {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+		}
+
+		return true
+	} else {
+		return false
+	}
+}
+
+func Run() {
 	getOnTheBus()
 	go monitorSignals()
 
@@ -19,31 +50,31 @@ func Run(itemCollection *ItemCollection) {
 			if (item.menuPath != "") {
 				item.LinkTo(resource.Standardizef("/itemmenu/%s/%s", item.sender, item.menuPath), resource.SNI_MENU)
 			}
-			itemCollection.mutex.Lock()
-			itemCollection.items[self] = item
-			updateWatcherProperties(itemCollection)
-			itemCollection.CachingJsonGetter.ClearByPrefixes(string(self), "/items")
-			itemCollection.mutex.Unlock()
+			Items.mutex.Lock()
+			Items.items[self] = item
+			updateWatcherProperties(Items)
+			Items.CachingJsonGetter.ClearByPrefixes(string(self), "/items")
+			Items.mutex.Unlock()
 			go monitorItem(event.sender, event.path)
 		case ItemRemoved:
-			itemCollection.mutex.Lock()
-			delete(itemCollection.items, self)
-			updateWatcherProperties(itemCollection)
-			itemCollection.CachingJsonGetter.ClearByPrefixes(string(self), "/items")
-			itemCollection.mutex.Unlock()
+			Items.mutex.Lock()
+			delete(Items.items, self)
+			updateWatcherProperties(Items)
+			Items.CachingJsonGetter.ClearByPrefixes(string(self), "/items")
+			Items.mutex.Unlock()
 		case ItemUpdated:
-			itemCollection.mutex.Lock()
-			if item, ok := itemCollection.items[self]; ok {
+			Items.mutex.Lock()
+			if item, ok := Items.items[self]; ok {
 
-				itemCollection.mutex.Unlock()
-				var copy= *item
+				Items.mutex.Unlock()
+				var copy = *item
 				updateItem(&copy)
-				itemCollection.mutex.Lock()
+				Items.mutex.Lock()
 
-				itemCollection.items[self] = &copy
-				itemCollection.CachingJsonGetter.ClearByPrefixes(string(self), "/items")
+				Items.items[self] = &copy
+				Items.CachingJsonGetter.ClearByPrefixes(string(self), "/items")
 			}
-			itemCollection.mutex.Unlock()
+			Items.mutex.Unlock()
 		}
 	}
 }

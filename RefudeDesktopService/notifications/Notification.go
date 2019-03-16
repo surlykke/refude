@@ -32,26 +32,21 @@ func (n *Notification) removeAfter(duration time.Duration) {
 	time.AfterFunc(duration, func() { removals <- removal{n.Id, n.internalId, Expired} })
 }
 
-type NotificationsCollection struct {
+type NotificationCollection struct {
 	mutex         sync.Mutex
 	notifications map[resource.StandardizedPath]*Notification
 	server.CachingJsonGetter
-	server.PatchNotAllowed
-	server.DeleteNotAllowed
 }
 
-func (*NotificationsCollection) HandledPrefixes() []string {
-	return []string{"/notification"}
-}
 
-func MakeNotificationsCollection() *NotificationsCollection {
-	var nc = &NotificationsCollection{}
+func MakeNotificationCollection() *NotificationCollection {
+	var nc = &NotificationCollection{}
 	nc.CachingJsonGetter = server.MakeCachingJsonGetter(nc)
 	nc.notifications = make(map[resource.StandardizedPath]*Notification)
 	return nc
 }
 
-func (nc *NotificationsCollection) POST(w http.ResponseWriter, r *http.Request) {
+func (nc *NotificationCollection) POST(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == "/notifications" {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	} else if res := nc.GetSingle(r); res == nil {
@@ -69,7 +64,11 @@ func (nc *NotificationsCollection) POST(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
-func (nc *NotificationsCollection) GetSingle(r *http.Request) interface{} {
+func (nc *NotificationCollection) DELETE(w http.ResponseWriter, r *http.Request) {
+	// FIXME
+}
+
+func (nc *NotificationCollection) GetSingle(r *http.Request) interface{} {
 	nc.mutex.Lock()
 	defer nc.mutex.Unlock()
 	if n, ok := nc.notifications[resource.Standardize(r.URL.Path)]; ok {
@@ -79,7 +78,7 @@ func (nc *NotificationsCollection) GetSingle(r *http.Request) interface{} {
 	}
 }
 
-func (nc *NotificationsCollection) GetCollection(r *http.Request) []interface{} {
+func (nc *NotificationCollection) GetCollection(r *http.Request) []interface{} {
 	nc.mutex.Lock()
 	defer nc.mutex.Unlock()
 

@@ -48,13 +48,6 @@ type ItemCollection struct {
 	mutex sync.Mutex
 	items map[resource.StandardizedPath]*Item
 	server.CachingJsonGetter
-	server.PostNotAllowed
-	server.PatchNotAllowed
-	server.DeleteNotAllowed
-}
-
-func (ic *ItemCollection) HandledPrefixes() []string {
-	return []string{"/item/", "/items"}
 }
 
 func MakeItemCollection() *ItemCollection {

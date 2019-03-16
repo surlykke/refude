@@ -14,61 +14,24 @@ import (
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/statusnotifications"
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/windows"
 	"github.com/surlykke/RefudeServices/lib"
-	"github.com/surlykke/RefudeServices/lib/server"
 	"net/http"
-	"strings"
 )
 
-var resourceServers []server.ResourceServer
-
 func serveHttp(w http.ResponseWriter, r *http.Request) {
-	for _, resourceServer := range resourceServers {
-		for _, handledPrefix := range resourceServer.HandledPrefixes() {
-			if strings.HasPrefix(r.URL.Path, handledPrefix) {
-				switch r.Method {
-				case "GET":
-					resourceServer.GET(w, r)
-				case "POST":
-					resourceServer.POST(w, r)
-				case "PATCH":
-					resourceServer.PATCH(w, r)
-				case "DELETE":
-					resourceServer.DELETE(w, r)
-				default: w.WriteHeader(http.StatusMethodNotAllowed)
-				}
+	if ! (applications.Serve(w, r) || icons.Serve(w, r) || notifications.Serve(w, r) ||
+		power.Serve(w, r) || statusnotifications.Serve(w, r) || windows.Serve(w, r)) {
 
-				return
-			}
-		}
+		w.WriteHeader(http.StatusNotFound)
 	}
-
-	w.WriteHeader(http.StatusNotFound)
 }
 
-
-
 func main() {
-	var applicationsCollection = applications.MakeDesktopApplicationCollection()
-	var mimetypeCollection = applications.MakeMimetypecollection()
-	go applications.Run(applicationsCollection, mimetypeCollection)
-
-	var windowCollection = windows.MakeWindowCollection()
-	go windows.Run(windowCollection)
-
-	var notificationCollection = notifications.MakeNotificationsCollection()
-	go notifications.Run(notificationCollection)
-
-	var powerCollection = power.MakePowerCollection()
-	go power.Run(powerCollection)
-
-	var itemCollection = statusnotifications.MakeItemCollection()
-	var menuCollection = statusnotifications.MakeMenuCollection(itemCollection)
-	go statusnotifications.Run(itemCollection)
-
-	var iconCollection = icons.MakeIconCollection()
-	icons.Run(iconCollection)
-
-	resourceServers = []server.ResourceServer{applicationsCollection, mimetypeCollection, windowCollection, notificationCollection , powerCollection, itemCollection, menuCollection, iconCollection}
+	go applications.Run()
+	go windows.Run()
+	go notifications.Run()
+	go power.Run()
+	go statusnotifications.Run()
+	go icons.Run()
 
 	go lib.Serve("org.refude.desktop-service", http.HandlerFunc(serveHttp))
 	http.ListenAndServe(":7938", http.HandlerFunc(serveHttp))

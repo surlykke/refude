@@ -9,3 +9,4 @@ const SessionMediaType resource.MediaType = "application/vnd.org.refude.session+
 type Session struct {
 	resource.AbstractResource
 }
+

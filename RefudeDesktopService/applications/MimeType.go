@@ -102,13 +102,6 @@ type MimetypeCollection struct {
 	mutex sync.Mutex
 	mimetypes map[resource.StandardizedPath]*Mimetype
 	server.CachingJsonGetter
-	server.PostNotAllowed
-	server.PatchNotAllowed // FIXME
-	server.DeleteNotAllowed
-}
-
-func (*MimetypeCollection) HandledPrefixes() []string {
-	return []string{"/mimetype"}
 }
 
 func MakeMimetypecollection() *MimetypeCollection {
@@ -116,6 +109,10 @@ func MakeMimetypecollection() *MimetypeCollection {
 	mc.mimetypes = make(map[resource.StandardizedPath]*Mimetype)
 	mc.CachingJsonGetter = server.MakeCachingJsonGetter(mc)
 	return mc
+}
+
+func (mc *MimetypeCollection) PATCH(w http.ResponseWriter, r *http.Request) {
+	// FIXME
 }
 
 func (mc *MimetypeCollection) GetSingle(r *http.Request) interface{} {

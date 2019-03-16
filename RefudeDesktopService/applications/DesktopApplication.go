@@ -118,13 +118,8 @@ type DesktopApplicationCollection struct {
 	mutex sync.Mutex
 	apps  map[resource.StandardizedPath]*DesktopApplication
 	server.CachingJsonGetter
-	server.PatchNotAllowed
-	server.DeleteNotAllowed
 }
 
-func (*DesktopApplicationCollection) HandledPrefixes() []string {
-	return []string{"/application"}
-}
 
 func (dac *DesktopApplicationCollection) POST(w http.ResponseWriter, r *http.Request) {
 	if "/applications" == r.URL.Path {

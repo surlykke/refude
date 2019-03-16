@@ -31,17 +31,12 @@ type MenuItem struct {
 
 type MenuCollection struct {
 	itemCollection *ItemCollection
-	server.PatchNotAllowed
-	server.DeleteNotAllowed
 }
 
-func MakeMenuCollection(itemCollection *ItemCollection) *MenuCollection {
-	return &MenuCollection{itemCollection: itemCollection}
+func MakeMenuCollection() *MenuCollection {
+	return &MenuCollection{itemCollection: Items}
 }
 
-func (mc *MenuCollection) HandledPrefixes() []string {
-	return []string{"/itemmenu/"}
-}
 
 func (mc *MenuCollection) GET(w http.ResponseWriter, r *http.Request) {
 	var item = mc.itemCollection.findByMenupath(r.URL.Path)

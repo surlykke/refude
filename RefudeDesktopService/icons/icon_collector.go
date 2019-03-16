@@ -23,13 +23,8 @@ import (
 	"time"
 )
 
-func Run(collection *IconCollection) {
-	go collectAndMonitorThemeIcons(collection)
-	go collectAndMonitorOtherIcons(collection)
-}
-
-func collectAndMonitorThemeIcons(collection *IconCollection) {
-	collection.SetThemes(collectThemes()) // TODO Should loop, monitoring theme directories, and recollect on change
+func collectAndMonitorThemeIcons() {
+	iconCollection.SetThemes(collectThemes()) // TODO Should loop, monitoring theme directories, and recollect on change
 }
 
 func collectThemes() map[string]*Theme {
@@ -92,7 +87,7 @@ func collectThemes() map[string]*Theme {
 	return themes
 }
 
-func collectAndMonitorOtherIcons(collection *IconCollection) {
+func collectAndMonitorOtherIcons() {
 	var dirs = []string{"/usr/share/pixmaps", xdg.RefudeSessionIconsDir, xdg.RefudeConvertedIconsDir}
 	if watcher, err := fs.MakeWatcher(dirs...); err != nil {
 		log.Println("Unable to watch", dirs, err)
@@ -103,13 +98,13 @@ func collectAndMonitorOtherIcons(collection *IconCollection) {
 				icons[icon.Name] = icon
 			}
 		}
-		collection.SetOtherIcons(icons)
+		iconCollection.SetOtherIcons(icons)
 
 		fs.Wait(watcher)
 
 		time.Sleep(time.Second * 2)
 
-		go collectAndMonitorOtherIcons(collection)
+		go collectAndMonitorOtherIcons()
 	}
 }
 

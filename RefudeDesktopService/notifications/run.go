@@ -8,35 +8,54 @@ package notifications
 
 import (
 	"fmt"
+	"net/http"
+	"strings"
 )
 
+var notificationCollection = MakeNotificationCollection()
 
 var removals = make(chan removal)
 
-func Run(notificationsCollection *NotificationsCollection) {
+func Serve(w http.ResponseWriter, r *http.Request) bool {
+	if !strings.HasPrefix(r.URL.Path, "/notification") {
+		return false
+	}
+
+	if r.Method == "GET" {
+		notificationCollection.GET(w, r)
+	} else if r.Method == "POST" {
+		notificationCollection.POST(w, r)
+	} else if r.Method == "DELETE" {
+		notificationCollection.DELETE(w, r)
+	}
+
+	return true
+}
+
+func Run() {
 	var updates = make(chan *Notification)
 	go DoDBus(updates, removals)
 
 	for {
 		select {
 		case notification := <-updates:
-			notificationsCollection.mutex.Lock()
-			notificationsCollection.notifications[notification.Self] = notification
-			notificationsCollection.CachingJsonGetter.ClearByPrefixes(fmt.Sprintf("/notification/%d", notification.Id), "/notifications")
-			notificationsCollection.mutex.Unlock()
+			notificationCollection.mutex.Lock()
+			notificationCollection.notifications[notification.Self] = notification
+			notificationCollection.CachingJsonGetter.ClearByPrefixes(fmt.Sprintf("/notification/%d", notification.Id), "/notifications")
+			notificationCollection.mutex.Unlock()
 		case rem := <-removals:
 			fmt.Println("Got removal..")
-			notificationsCollection.mutex.Lock()
-			if notification, ok := notificationsCollection.notifications[notificationSelf(rem.id)]; ok {
+			notificationCollection.mutex.Lock()
+			if notification, ok := notificationCollection.notifications[notificationSelf(rem.id)]; ok {
 				if rem.internalId == 0 || rem.internalId == notification.internalId {
 					//resourceMap.Unmap(resource.Standardizef("/notifications/%d", rem.id))
-					delete(notificationsCollection.notifications, notification.Self)
+					delete(notificationCollection.notifications, notification.Self)
 					notificationClosed(rem.id, rem.reason)
-					notificationsCollection.CachingJsonGetter.ClearByPrefixes(fmt.Sprintf("/notification/%d", rem.id), "/notifications")
+					notificationCollection.CachingJsonGetter.ClearByPrefixes(fmt.Sprintf("/notification/%d", rem.id), "/notifications")
 
 				}
 			}
-			notificationsCollection.mutex.Unlock()
+			notificationCollection.mutex.Unlock()
 		}
 	}
 }
