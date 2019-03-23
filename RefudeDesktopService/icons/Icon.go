@@ -13,35 +13,33 @@ import (
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/server"
+	"log"
 	"math"
 	"net/http"
 	"strings"
 	"sync"
 )
 
-type img struct {
-	MinSize uint32
-	MaxSize uint32
-	Path    string
-}
-
 type Icon struct {
 	resource.AbstractResource
-	Name    string
-	Theme   string
-	Context string
-	Type    string
-	img
+	Name        string
+	Theme       string
+	Context     string
+	Type        string
+	MinSize     uint32
+	MaxSize     uint32
+	Path        string
+	themeSubDir string
 }
 
 type Theme struct {
-	Id          string
-	Name        string
-	Comment     string
-	Inherits    []string
-	SearchOrder []string
-	iconDirs    []IconDir
-	icons       map[string][]*Icon
+	resource.AbstractResource
+	Id       string
+	Name     string
+	Comment  string
+	Inherits []string
+	iconDirs map[string]IconDir
+	icons    map[string][]*Icon
 }
 
 type IconDir struct {
@@ -89,10 +87,13 @@ func (t *Theme) FindIcon(name string, size uint32, iconType string) *Icon {
 }
 
 type IconCollection struct {
-	mutex               sync.Mutex
-	themes              map[string]*Theme
-	otherIcons          map[string]*Icon
-	iconsByPath         map[resource.StandardizedPath]*Icon
+	mutex       sync.Mutex
+	themes      map[string]*Theme
+	otherIcons  map[string]*Icon
+	iconsByPath map[resource.StandardizedPath]*Icon
+
+	// Icons not yet associated with a theme (We may find the icon before the theme index)
+	strayIcons map[string]map[string][]*Icon
 }
 
 func MakeIconCollection() *IconCollection {
@@ -100,6 +101,7 @@ func MakeIconCollection() *IconCollection {
 	ic.themes = make(map[string]*Theme)
 	ic.otherIcons = make(map[string]*Icon)
 	ic.iconsByPath = make(map[resource.StandardizedPath]*Icon)
+	ic.strayIcons = make(map[string]map[string][]*Icon)
 	return ic
 }
 
@@ -181,6 +183,11 @@ func (ic *IconCollection) GetIconByName(r *http.Request) (*PngSvgPair, bool) {
 	if names, size, theme, ok := extractNameSizeAndTheme(r.URL.Query()); !ok {
 		return nil, false
 	} else {
+		fmt.Println("Looking for", names, size, theme)
+		fmt.Println("Themes are:")
+		for id, theme := range ic.themes {
+			fmt.Println(id, theme.Name, "-", len(theme.icons), "icons");
+		}
 		var pngIcon = ic.findIcon(theme, names, size, "png")
 		var svgIcon = ic.findIcon(theme, names, size, "svg")
 		if (pngIcon != nil || svgIcon != nil) {
@@ -218,20 +225,30 @@ func extractNameSizeAndTheme(query map[string][]string) ([]string, uint32, strin
 func (ic *IconCollection) GET(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == "/iconthemes" {
 		filterAndServe(w, r, ic.GetThemes())
+	} else if strings.HasPrefix(r.URL.Path, "/icontheme/") {
+		if theme, ok := ic.themes[r.URL.Path[len("/icontheme/"):]]; ok {
+			respond(w, r, theme, "", "")
+		} else {
+			w.WriteHeader(http.StatusNotFound)
+		}
 	} else if r.URL.Path == "/icons" || r.URL.Path == "/icons/" {
 		filterAndServe(w, r, ic.GetIcons())
 	} else if strings.HasPrefix(r.URL.Path, "/icon/") {
-		if icon := ic.GetIcon(resource.StandardizedPath(r.URL.Path)); icon != nil {
+		fmt.Println("Looking for", r.URL.RawPath)
+		if icon := ic.GetIcon(resource.StandardizedPath(r.URL.RawPath)); icon != nil {
+			fmt.Println("Found", icon)
 			if icon.Type == "png" {
 				respond(w, r, icon, icon.Path, "")
 			} else {
 				respond(w, r, icon, "", icon.Path)
 			}
 		} else {
+			fmt.Println("Nix gefunden")
 			w.WriteHeader(http.StatusNotFound)
 		}
 
 	} else if r.URL.Path == "/iconsearch" {
+		fmt.Println("/iconsearc..")
 		if pngSvgPair, ok := ic.GetIconByName(r); !ok {
 			requests.ReportUnprocessableEntity(w, errors.New("Invalid query parameters"))
 		} else if pngSvgPair == nil {
@@ -251,16 +268,31 @@ func (ic *IconCollection) GET(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (ic *IconCollection) findIcon(themeName string, names []string, size uint32, iconType string) *Icon {
-	if _, ok := ic.themes[themeName]; ok {
-		for _, themeName := range ic.themes[themeName].SearchOrder {
-			if theme, ok := ic.themes[themeName]; ok {
-				for _, name := range names {
-					if icon := theme.FindIcon(name, size, iconType); icon != nil {
-						return icon
-					}
+func (ic *IconCollection) findIcon(themeId string, names []string, size uint32, iconType string) *Icon {
+	var visited = make(map[string]bool) // Lists visited theme ids
+	var toVisit = make([]string, 1, 10);
+	toVisit[0] = themeId;
+	for i := 0; i < len(toVisit); i++ {
+		var themeId = toVisit[i]
+		if theme, ok := ic.themes[themeId]; ok {
+			for _, name := range names {
+				if icon := theme.FindIcon(name, size, iconType); icon != nil {
+					return icon
 				}
 			}
+			visited[themeId] = true
+			for _, parentId := range theme.Inherits {
+				if ! visited[parentId] {
+					toVisit = append(toVisit, parentId)
+				}
+			}
+		}
+	}
+
+	var hicolorTheme = ic.themes["hicolor"];
+	for _, name := range names {
+		if icon := hicolorTheme.FindIcon(name, size, iconType); icon != nil {
+			return icon
 		}
 	}
 
@@ -272,6 +304,60 @@ func (ic *IconCollection) findIcon(themeName string, names []string, size uint32
 	}
 
 	return nil
+}
+
+func (ic *IconCollection) addIcon(icon *Icon) {
+	ic.mutex.Lock()
+	defer ic.mutex.Unlock()
+
+	if icon.Theme != "" {
+		if theme, ok := ic.themes[icon.Theme]; ok {
+			if iconDir, ok := theme.iconDirs[icon.themeSubDir]; ok {
+				icon.MinSize, icon.MaxSize, icon.Context = iconDir.MinSize, iconDir.MaxSize, iconDir.Context
+				theme.icons[icon.Name] = append(theme.icons[icon.Name], icon)
+				ic.iconsByPath[icon.Self] = icon
+			} else {
+				log.Println("Unable to place icon", icon)
+			}
+
+		} else {
+			strayIconsForTheme, ok := ic.strayIcons[icon.Theme]
+			if !ok {
+				strayIconsForTheme = make(map[string][]*Icon)
+				ic.strayIcons[icon.Theme] = strayIconsForTheme
+			}
+
+			strayIconsForTheme[icon.Name] = append(strayIconsForTheme[icon.Name], icon)
+		}
+	} else {
+		ic.otherIcons[icon.Name] = icon
+		ic.iconsByPath[icon.Self] = icon
+	}
+
+}
+
+func (ic *IconCollection) addTheme(theme *Theme) {
+	ic.mutex.Lock()
+	defer ic.mutex.Unlock()
+	if _, ok := ic.themes[theme.Id]; ok {
+		log.Print("Ignoring ", theme.Id, ", have it already.")
+	}
+
+	ic.themes[theme.Id] = theme
+
+	if strayIconsForTheme, ok := ic.strayIcons[theme.Id]; ok {
+		for name, icons := range strayIconsForTheme {
+			for _, icon := range icons {
+				if iconDir, ok := theme.iconDirs[icon.themeSubDir]; ok {
+					icon.MinSize, icon.MaxSize, icon.Context = iconDir.MinSize, iconDir.MaxSize, iconDir.Context
+					theme.icons[name] = append(theme.icons[name], icon)
+				} else {
+					log.Println("Unable to place icon", icon)
+				}
+			}
+		}
+		delete(ic.strayIcons, theme.Id)
+	}
 }
 
 func filterAndServe(w http.ResponseWriter, r *http.Request, resources []interface{}) {
@@ -310,7 +396,7 @@ func respond(w http.ResponseWriter, r *http.Request, res interface{}, pngPath st
 		offers = append(offers, "image/svg")
 	}
 
-	if mimetype, err := negotiate(r, offers...); err != nil {
+	if mimetype, err := requests.Negotiate(r, offers...); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 	} else if mimetype == "application/json" {
 		var json = server.ToJSon(res)

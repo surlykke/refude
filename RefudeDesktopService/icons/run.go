@@ -1,11 +1,14 @@
 package icons
 
 import (
+	"github.com/surlykke/RefudeServices/lib/xdg"
 	"net/http"
 	"strings"
 )
 
-var iconCollection = MakeIconCollection()
+
+var DirsToLookAt chan string
+
 
 func Serve(w http.ResponseWriter, r *http.Request) bool {
 	if ! strings.HasPrefix(r.URL.Path, "/icon") {
@@ -22,7 +25,16 @@ func Serve(w http.ResponseWriter, r *http.Request) bool {
 }
 
 func Run() {
-	go collectAndMonitorThemeIcons()
-	go collectAndMonitorOtherIcons()
+	go consumeThemes()
+	go consumeIcons()
+	addBaseDir(xdg.Home + "/.icons")
+	addBaseDir(xdg.DataHome + "/icons")
+	for i := len(xdg.DataDirs) - 1; i >= 0; i-- {
+		addBaseDir(xdg.DataDirs[i]+"/icons")
+	}
+
+	for dirToLookAt := range DirsToLookAt {
+		addBaseDir(dirToLookAt)
+	}
 }
 

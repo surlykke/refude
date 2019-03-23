@@ -44,32 +44,6 @@ type ResourceCollection interface {
 	GetCollection(r *http.Request) []interface{} // nil means not found, empty slice means found (but, well, empty)
 }
 
-type ResourceServer interface {
-	resource.GetHandler
-	resource.PostHandler
-	resource.PatchHandler
-	resource.DeleteHandler
-	HandledPrefixes() []string
-}
-
-type PostNotAllowed struct{}
-
-func (PostNotAllowed) POST(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusMethodNotAllowed)
-}
-
-type PatchNotAllowed struct{}
-
-func (PatchNotAllowed) PATCH(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusMethodNotAllowed)
-}
-
-type DeleteNotAllowed struct{}
-
-func (DeleteNotAllowed) DELETE(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusMethodNotAllowed)
-}
-
 type CachingJsonGetter struct {
 	cachedResponses map[string]*JsonResponse
 	mutex           sync.Mutex
@@ -80,16 +54,6 @@ func MakeCachingJsonGetter(resources ResourceCollection) CachingJsonGetter {
 	return CachingJsonGetter{cachedResponses: make(map[string]*JsonResponse), resources: resources}
 }
 
-func ServeJson(w http.ResponseWriter, res interface{}) {
-	ServeJsonAs(w, res, "application/json")
-}
-
-func ServeJsonAs(w http.ResponseWriter, res interface{}, contentType resource.MediaType) {
-	var jsonResponse = MakeJsonResponse(res, contentType, nil)
-	w.Header().Set("Content-Type", string(jsonResponse.ContentType))
-	w.Header().Set("ETag", jsonResponse.Etag)
-	w.Write(jsonResponse.Data)
-}
 
 func (cjg *CachingJsonGetter) GET(w http.ResponseWriter, r *http.Request) {
 	cjg.mutex.Lock()

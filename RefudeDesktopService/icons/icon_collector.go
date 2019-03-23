@@ -9,102 +9,95 @@ package icons
 import (
 	"crypto/sha1"
 	"fmt"
-	"github.com/surlykke/RefudeServices/lib/fs"
 	"github.com/surlykke/RefudeServices/lib/image"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/slice"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 	"io/ioutil"
 	"log"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
 )
 
-func collectAndMonitorThemeIcons() {
-	iconCollection.SetThemes(collectThemes()) // TODO Should loop, monitoring theme directories, and recollect on change
-}
+var iconCollection = MakeIconCollection()
+var dirIsAdded = make(map[string]bool)
 
-func collectThemes() map[string]*Theme {
-	var iconDirs = []string{xdg.Home + "/.icons", xdg.DataHome + "/icons"}
-	for i := len(xdg.DataDirs) - 1; i >= 0; i-- {
-		iconDirs = append(iconDirs, xdg.DataDirs[i]+"/icons")
-	}
-
-	themes := make(map[string]*Theme)
-
-	for _, searcDir := range iconDirs {
-		indexThemeFilePaths, err := filepath.Glob(searcDir + "/" + "*" + "/index.theme")
-		if err != nil {
-			panic(err)
-		}
-
-		for _, indexThemeFilePath := range indexThemeFilePaths {
-			themeId := filepath.Base(filepath.Dir(indexThemeFilePath))
-			if _, ok := themes[themeId]; !ok {
-				if theme, err := readIndexTheme(themeId, indexThemeFilePath); err == nil {
-					themes[themeId] = theme
-				} else {
-					log.Println("Error reading index.theme: ", err)
-				}
-
+func addBaseDir(dir string) {
+	if ! dirIsAdded[dir] {
+		dirIsAdded[dir] = true
+		// First look for theme definitions
+		if indexThemeFilePaths, err := filepath.Glob(dir + "/" + "*" + "/index.theme"); err != nil {
+			log.Println("Error reading", dir, "-", err)
+		} else {
+			for _, indexThemeFilePath := range indexThemeFilePaths {
+				discoveredThemes <- struct {
+					basedir  string;
+					themedir string
+				}{dir, filepath.Base(filepath.Dir(indexThemeFilePath))}
 			}
 		}
-	}
 
-	for themeId, theme := range themes {
-		if themeId != "hicolor" {
-			theme.SearchOrder = []string{themeId}
-			for i := 0; i < len(theme.SearchOrder); i++ {
-				var themeToSearch= themes[theme.SearchOrder[i]]
-				for _, parentId := range themeToSearch.Inherits {
-					if parentTheme, ok := themes[parentId]; ok && parentTheme.Id != "hicolor" {
-						theme.SearchOrder = slice.AppendIfNotThere(theme.SearchOrder, parentId)
+		// Then collect icons
+
+		fmt.Println("Collect from", dir)
+		_ = filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				log.Println("Error descending into", path)
+				return err
+			} else {
+				if !info.IsDir() &&
+					(strings.HasSuffix(info.Name(), ".png") ||
+						strings.HasSuffix(info.Name(), ".xpm") ||
+						strings.HasSuffix(info.Name(), ".svg")) {
+					var icon = &Icon{Name: info.Name()[0 : len(info.Name())-4], Path: path, Type: info.Name()[len(info.Name())-3:]}
+					if len(path)-len(info.Name())-2 > len(dir) {
+						var relIconDir = path[len(dir)+1 : len(path)-len(info.Name())-1]
+						if slashPos := strings.Index(relIconDir, "/"); slashPos > 0 {
+							icon.Theme = relIconDir[0:slashPos]
+							icon.themeSubDir = relIconDir[slashPos+1:]
+						} else {
+							icon.Theme = relIconDir
+						}
 					}
+
+					//fmt.Printf("%s below %s - Name: '%s', Type: '%s', Theme: '%s', themeSubDir: '%s'\n", path, dir, icon.Name, icon.Type, icon.Theme, icon.themeSubDir)
+
+					icon.AbstractResource = resource.MakeAbstractResource(resource.Standardize("/icon/"+url.PathEscape(path)), "application/json")
+
+					discoveredIcons <- icon
+
 				}
+				return nil
 			}
-		}
-
-		theme.SearchOrder = append(theme.SearchOrder, "hicolor")
-
-		for _, searchDir := range iconDirs {
-			for _, iconDir := range theme.iconDirs {
-				for _, icon := range collectIcons(searchDir + "/" + themeId + "/" + iconDir.Path) {
-					icon.Theme = themeId
-					icon.Context = iconDir.Context
-					icon.MinSize = iconDir.MinSize
-					icon.MaxSize = iconDir.MaxSize
-					theme.icons[icon.Name] = append(theme.icons[icon.Name], icon)
-				}
-
-			}
-		}
+		})
 
 	}
-
-	return themes
 }
 
-func collectAndMonitorOtherIcons() {
-	var dirs = []string{"/usr/share/pixmaps", xdg.RefudeSessionIconsDir, xdg.RefudeConvertedIconsDir}
-	if watcher, err := fs.MakeWatcher(dirs...); err != nil {
-		log.Println("Unable to watch", dirs, err)
-	} else {
-		var icons = make(map[string]*Icon)
-		for _, dir := range []string{"/usr/share/pixmaps", xdg.RefudeConvertedIconsDir, xdg.RefudeSessionIconsDir} {
-			for _, icon := range collectIcons(dir) {
-				icons[icon.Name] = icon
+var discoveredThemes = make(chan struct {
+	basedir  string;
+	themedir string
+})
+
+var discoveredIcons = make(chan *Icon)
+
+func consumeThemes() {
+	var haveSeenThemeDir = make(map[string]bool)
+	for discoveredTheme := range discoveredThemes {
+		if !haveSeenThemeDir[discoveredTheme.themedir] {
+			if theme, err := readIndexTheme(discoveredTheme.themedir, discoveredTheme.basedir+"/"+discoveredTheme.themedir+"/index.theme"); err == nil {
+				iconCollection.addTheme(theme)
 			}
 		}
-		iconCollection.SetOtherIcons(icons)
+	}
+}
 
-		fs.Wait(watcher)
-
-		time.Sleep(time.Second * 2)
-
-		go collectAndMonitorOtherIcons()
+func consumeIcons() {
+	for discoveredIcon := range discoveredIcons {
+		iconCollection.addIcon(discoveredIcon)
 	}
 }
 
@@ -125,9 +118,13 @@ func readIndexTheme(themeId string, indexThemeFilePath string) (*Theme, error) {
 	theme.Id = themeId
 	theme.Name = themeGroup.Entries["Name"]
 	theme.Comment = themeGroup.Entries["Comment"]
-	theme.Inherits = slice.Split(themeGroup.Entries["Inherits"], ",")
-	theme.iconDirs = []IconDir{}
+	theme.Inherits = slice.Remove(slice.Split(themeGroup.Entries["Inherits"], ","), "hicolor"); // hicolor is always inherited, so no reason to list.
+	theme.iconDirs = make(map[string]IconDir)
 	directories := slice.Split(themeGroup.Entries["Directories"], ",")
+	if len(directories) == 0 {
+		return nil, fmt.Errorf("Ignoring theme", theme.Id, "- no directories")
+	}
+	fmt.Println("Theme", theme.Name, "directories:", directories)
 	for _, iniGroup := range iniFile[1:] {
 
 		if !slice.Contains(directories, iniGroup.Name) {
@@ -163,40 +160,13 @@ func readIndexTheme(themeId string, indexThemeFilePath string) (*Theme, error) {
 			continue
 		}
 
-		theme.iconDirs = append(theme.iconDirs, IconDir{iniGroup.Name, minSize, maxSize, iniGroup.Entries["Context"]})
+		theme.iconDirs[iniGroup.Name] = IconDir{iniGroup.Name, minSize, maxSize, iniGroup.Entries["Context"]}
 	}
 
 	theme.icons = make(map[string][]*Icon)
 
+	theme.AbstractResource = resource.MakeAbstractResource(resource.Standardizef("/icontheme/%s", theme.Id), "application/json")
 	return theme, nil
-}
-
-// Returned icons only partially instantiated, caller must add Context, MinSize, MaxSize
-func collectIcons(dir string) []*Icon {
-	var icons = make([]*Icon, 0, 100)
-	for _, ending := range []string{"png", "svg", "xpm"} {
-		paths, err := filepath.Glob(dir + "/*." + ending)
-		if err != nil {
-			panic(err)
-		}
-
-		for _, path := range paths {
-			var iconName= filepath.Base(path[0 : len(path)-4])
-
-			if ending == "xpm" {
-				if tmp, err := getPathToConverted(path); err != nil {
-					log.Println("Unable to convert", path, ":", err)
-					continue
-				} else {
-					path = tmp
-				}
-			}
-			var icon= &Icon{Name: iconName, Type: ending, img: img{Path: path}}
-			icon.AbstractResource = resource.MakeAbstractResource(resource.Standardize("/icon" + path), "application/json")
-			icons = append(icons, icon)
-		}
-	}
-	return icons
 }
 
 func getPathToConverted(pathToXpm string) (string, error) {

@@ -33,7 +33,7 @@ func init() {
 	ConfigDirs = slice.Split(notEmptyOr(os.Getenv("XDG_CONFIG_DIRS"), "/etc/xdg"), ":")
 	CacheHome = notEmptyOr(os.Getenv("XDG_CACHE_HOME"), Home+"/.cache")
 	DataHome = notEmptyOr(os.Getenv("XDG_DATA_HOME"), Home+"/.local/share")
-	DataDirs = slice.Split(notEmptyOr(os.Getenv("XDG_DATA_DIRS"), "/usr/share:/usr/local/share"), ":")
+	DataDirs = slice.Split(notEmptyOr(os.Getenv("XDG_DATA_DIRS"), "/usr/local/share:/usr/share"), ":")
 	DataDirs = slice.Remove(DataDirs, DataHome)
 	RuntimeDir = notEmptyOr(os.Getenv("XDG_RUNTIME_DIR"), "/tmp")
 	CurrentDesktop = slice.Split(notEmptyOr(os.Getenv("XDG_CURRENT_DESKTOP"), ""), ":")
