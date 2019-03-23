@@ -45,15 +45,15 @@ func (hm *HeaderMap) Set(s string) error {
 }
 
 func fail(msg string) {
-	fmt.Fprintln(os.Stderr, msg)
+	_,_ = fmt.Fprintln(os.Stderr, msg)
 	os.Exit(1)
 }
 
 func usage() {
-	fmt.Fprintln(flag.CommandLine.Output(), "Usage: RefudeReq options path")
-	fmt.Fprintln(flag.CommandLine.Output(), "options:")
+	_,_ = fmt.Fprintln(flag.CommandLine.Output(), "Usage: RefudeReq [options] path")
+	_,_ = fmt.Fprintln(flag.CommandLine.Output(), "options:")
 	flag.PrintDefaults()
-	fmt.Fprintln(flag.CommandLine.Output(), "path: path to resource (eg. /application/firefox.desktop")
+	_,_ = fmt.Fprintln(flag.CommandLine.Output(), "path: path to resource (eg. /application/firefox.desktop")
 }
 
 func main() {
