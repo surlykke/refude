@@ -48,7 +48,7 @@ func (m *Manager) handle(windowCollection *WindowCollection, event xlib.Event) {
 		defer windowCollection.mutex.Unlock()
 		if copy := windowCollection.getCopyByParent(event.Window); copy != nil {
 			copy.X, copy.Y, copy.W, copy.H = event.X, event.Y, event.W, event.H
-			windowCollection.windows[copy.Self] = copy
+			windowCollection.windows[copy.GetSelf()] = copy
 		}
 	case NET_WM_VISIBLE_NAME, NET_WM_NAME, WM_NAME:
 		if name, err := m.GetName(event.Window); err != nil {
@@ -58,7 +58,7 @@ func (m *Manager) handle(windowCollection *WindowCollection, event xlib.Event) {
 			defer windowCollection.mutex.Unlock()
 			if copy := windowCollection.getCopy(event.Window); copy != nil {
 				copy.Name = name
-				windowCollection.windows[copy.Self] = copy
+				windowCollection.windows[copy.GetSelf()] = copy
 			}
 		}
 	case NET_WM_ICON:
@@ -69,7 +69,7 @@ func (m *Manager) handle(windowCollection *WindowCollection, event xlib.Event) {
 			defer windowCollection.mutex.Unlock()
 			if copy := windowCollection.getCopy(event.Window); copy != nil {
 				copy.IconName = iconName
-				windowCollection.windows[copy.Self] = copy
+				windowCollection.windows[copy.GetSelf()] = copy
 			}
 		}
 	case NET_WM_STATE:
@@ -80,7 +80,7 @@ func (m *Manager) handle(windowCollection *WindowCollection, event xlib.Event) {
 			defer windowCollection.mutex.Unlock()
 			if copy := windowCollection.getCopy(event.Window); copy != nil {
 				copy.States = states
-				windowCollection.windows[copy.Self] = copy
+				windowCollection.windows[copy.GetSelf()] = copy
 			}
 		}
 	}
@@ -99,7 +99,7 @@ func (m *Manager) updateWindows() {
 			if window, ok := Windows.windows[windowSelf(wId)]; ok {
 				var copy = *window
 				copy.StackOrder = stackOrder
-				windows[copy.Self] = &copy
+				windows[copy.GetSelf()] = &copy
 			} else {
 				window := &Window{}
 				window.Id = wId;
@@ -133,7 +133,7 @@ func (m *Manager) updateWindows() {
 
 				window.ResourceActions["default"] = resource.ResourceAction{Description: "Raise and focus", IconName: window.IconName, Executer: executer}
 				m.in.Listen(window.Id)
-				windows[window.Self] = window
+				windows[window.GetSelf()] = window
 			}
 		}
 		Windows.windows = windows

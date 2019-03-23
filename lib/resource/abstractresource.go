@@ -37,7 +37,6 @@ const (
 )
 
 type AbstractResource struct {
-	Self            StandardizedPath          `json:"_self,omitempty"`
 	Links           []Link                    `json:"_links"`
 	Mt              MediaType                 `json:"-"`
 	ResourceActions map[string]ResourceAction `json:"_actions, omitempty"`
@@ -52,7 +51,6 @@ type Link struct {
 
 func MakeAbstractResource(SelfLink StandardizedPath, mt MediaType) AbstractResource {
 	return AbstractResource{
-		Self:  SelfLink,
 		Links: []Link{{Href: SelfLink, Rel: Self}},
 		Mt:    mt,
 		ResourceActions: make(map[string]ResourceAction),
@@ -60,7 +58,13 @@ func MakeAbstractResource(SelfLink StandardizedPath, mt MediaType) AbstractResou
 }
 
 func (ar *AbstractResource) GetSelf() StandardizedPath {
-	return ar.Self
+	for _,link := range ar.Links {
+		if link.Rel == Self {
+			return link.Href
+		}
+	}
+
+	panic("Resource has no self link")
 }
 
 func (ar *AbstractResource) GetMt() MediaType {

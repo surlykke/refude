@@ -315,7 +315,7 @@ func (ic *IconCollection) addIcon(icon *Icon) {
 			if iconDir, ok := theme.iconDirs[icon.themeSubDir]; ok {
 				icon.MinSize, icon.MaxSize, icon.Context = iconDir.MinSize, iconDir.MaxSize, iconDir.Context
 				theme.icons[icon.Name] = append(theme.icons[icon.Name], icon)
-				ic.iconsByPath[icon.Self] = icon
+				ic.iconsByPath[icon.GetSelf()] = icon
 			} else {
 				log.Println("Unable to place icon", icon)
 			}
@@ -331,7 +331,7 @@ func (ic *IconCollection) addIcon(icon *Icon) {
 		}
 	} else {
 		ic.otherIcons[icon.Name] = icon
-		ic.iconsByPath[icon.Self] = icon
+		ic.iconsByPath[icon.GetSelf()] = icon
 	}
 
 }

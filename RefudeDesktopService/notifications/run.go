@@ -40,7 +40,7 @@ func Run() {
 		select {
 		case notification := <-updates:
 			notificationCollection.mutex.Lock()
-			notificationCollection.notifications[notification.Self] = notification
+			notificationCollection.notifications[notification.GetSelf()] = notification
 			notificationCollection.CachingJsonGetter.ClearByPrefixes(fmt.Sprintf("/notification/%d", notification.Id), "/notifications")
 			notificationCollection.mutex.Unlock()
 		case rem := <-removals:
@@ -49,7 +49,7 @@ func Run() {
 			if notification, ok := notificationCollection.notifications[notificationSelf(rem.id)]; ok {
 				if rem.internalId == 0 || rem.internalId == notification.internalId {
 					//resourceMap.Unmap(resource.Standardizef("/notifications/%d", rem.id))
-					delete(notificationCollection.notifications, notification.Self)
+					delete(notificationCollection.notifications, notification.GetSelf())
 					notificationClosed(rem.id, rem.reason)
 					notificationCollection.CachingJsonGetter.ClearByPrefixes(fmt.Sprintf("/notification/%d", rem.id), "/notifications")
 

@@ -58,7 +58,7 @@ func (mc *MenuCollection) GET(w http.ResponseWriter, r *http.Request) {
 				fmt.Println("got menu")
 				var menu = Menu{resource.MakeAbstractResource(resource.Standardizef("/itemmenu/%s/%s", sender, path), ""),
 					menuItems}
-				menu.LinkTo(item.Self, resource.Related)
+				menu.LinkTo(item.GetSelf(), resource.Related)
 				var jsonResponse= server.MakeJsonResponse(menu, "", nil)
 				w.Header().Set("Content-Type", "application/json")
 				w.Header().Set("ETag", jsonResponse.Etag)

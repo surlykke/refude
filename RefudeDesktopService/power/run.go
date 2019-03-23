@@ -105,8 +105,8 @@ func setup() chan *dbus.Signal {
 		device.AbstractResource = resource.MakeAbstractResource(deviceSelf(path), DeviceMediaType)
 		device.DbusPath = path
 		updateDevice(device, dbuscall.GetAllProps(dbusConn, UPowService, path, UPowerDeviceInterface))
-		fmt.Println("Setting", device.Self)
-		Devices.devices[device.Self] = device
+		fmt.Println("Setting", device.GetSelf())
+		Devices.devices[device.GetSelf()] = device
 	}
 
 	Devices.CachingJsonGetter.Clear()
