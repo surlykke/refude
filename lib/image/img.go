@@ -7,138 +7,62 @@
 package image
 
 import (
-	"github.com/surlykke/RefudeServices/lib/xdg"
-	"image"
 	"bytes"
+	"crypto/sha1"
+	"image"
 	"image/color"
 	"image/png"
-	"fmt"
+
 	"github.com/pkg/errors"
-	"os"
-	"log"
-	"crypto/sha1"
-	"sync"
 )
 
-type PNGImg struct {
-	Size    int
-	pngData []byte
-}
-
-type PNGIcon struct {
-	images []PNGImg
-}
-
-
-
-type Img struct {
-	Width  int32
-	Height int32
-	/*
+type ARGBImage struct {
+	Width  uint32
+	Height uint32
+	/**
 	 * Holds pixels in blocks of 4 bytes. Each block (from low address to high)
-	 * the A,R,G and B component of the pixel
+	 * the R,G,B and A component of the pixel
+	 * Pixels are arranged left-to-right, top to bottom, so Pixels[0:4] is the leftmost pixel of the top row
+	 * Pixel[4*(width-1):4*width] is the right-most pixel of the top row, Pixel[4*width:4*width+4] leftmost of second row etc.
 	 */
 	Pixels []byte
 }
 
-func (img *Img) PixelAt(row int32, column int32) ([]byte, error) {
-	if column < 0 || column > img.Width || row < 0 || row > img.Height {
+func (a *ARGBImage) PixelAt(row uint32, column uint32) ([]byte, error) {
+	if column < 0 || column > a.Width || row < 0 || row > a.Height {
 		return nil, errors.New("Out of range")
 	} else {
-		pos := 4 * (row*img.Width + column)
-		return img.Pixels[pos : pos+4], nil
+		pos := 4 * (row*a.Width + column)
+		return a.Pixels[pos : pos+4], nil
 	}
 }
 
-type Icon []Img
-
-
-
-var hicolorMapSizes = map[int32]bool{
-	16:  true,
-	22:  true,
-	24:  true,
-	32:  true,
-	36:  true,
-	48:  true,
-	64:  true,
-	72:  true,
-	96:  true,
-	128: true,
-	192: true,
-	256: true,
-	512: true,
-}
-
-var savedNames = make(map[string]bool)
-var savedNamesLock sync.Mutex
-
-// Returns false if name is registered already
-func registerName(name string) bool {
-	savedNamesLock.Lock()
-	defer savedNamesLock.Unlock()
-	if _, ok := savedNames[name]; ok {
-		return false
-	} else {
-		savedNames[name] = true
-		return true
-	}
-}
-
-func SaveAsPngToSessionIconDir(argbIcon Icon) string {
-	var sessionIconDir = xdg.RuntimeDir + "/org.refude.icon-service-session-icons/"
-	var wroteSomething = false
-	hash := sha1.New()
-	for _, img := range argbIcon {
-		hash.Write(img.Pixels)
-	}
-	var iconName = fmt.Sprintf("%X", hash.Sum(nil))
-	if registerName(iconName) {
-
-		for _, img := range argbIcon {
-			if img.Height == img.Width && hicolorMapSizes[img.Height] {
-				var destDir = fmt.Sprintf("%shicolor/%dx%d/apps", sessionIconDir, img.Width, img.Height)
-				var destPath = destDir + "/" + iconName + ".png"
-				if _, err := os.Stat(destPath); os.IsNotExist(err) {
-					if err := os.MkdirAll(destDir, os.ModePerm); err != nil {
-						continue
-					}
-					wroteSomething = wroteSomething || makeAndWritePng(img, destPath)
-				} else {
-					continue
-				}
-			} else {
-				fmt.Println("Skip")
-			}
-		}
-
-		if wroteSomething {
-			if _, err := os.Create(sessionIconDir + "/marker"); err != nil {
-				log.Println("Error updating marker:", err)
-			}
-		}
-	}
-	return iconName
-}
-
-func makeAndWritePng(img Img, path string) bool {
-	pngData := image.NewRGBA(image.Rect(0, 0, int(img.Width), int(img.Height)))
-	buf := bytes.Buffer{}
-	for row := int32(0); row < img.Height; row++ {
-		for column := int32(0); column < img.Width; column++ {
-			pixelAsARGB, _ := img.PixelAt(row, column)
+func (a *ARGBImage) AsPng() ([]byte, error) {
+	pngData := image.NewRGBA(image.Rect(0, 0, int(a.Width), int(a.Height)))
+	buf := &bytes.Buffer{}
+	for row := uint32(0); row < a.Height; row++ {
+		for column := uint32(0); column < a.Width; column++ {
+			pixelAsARGB, _ := a.PixelAt(row, column)
 			pixelRGBA := color.RGBA{R: pixelAsARGB[1], G: pixelAsARGB[2], B: pixelAsARGB[3], A: pixelAsARGB[0]}
 			pngData.Set(int(column), int(row), color.RGBA(pixelRGBA))
 		}
 	}
-	png.Encode(&buf, pngData)
-	w, err := os.Create(path);
-	if err != nil {
-		log.Println("Unable to write", path, err)
-		return false
+	if err := png.Encode(buf, pngData); err != nil {
+		return nil, err
+	} else {
+		return buf.Bytes(), nil
 	}
-	defer w.Close()
-	w.Write(buf.Bytes())
-	return true
 }
 
+type ARGBIcon struct {
+	Name   string
+	Images []ARGBImage
+}
+
+func MakeIconWithHashAsName(imagelist []ARGBImage) ARGBIcon {
+	var hasher = sha1.New()
+	for _, image := range imagelist {
+		hasher.Write(image.Pixels)
+	}
+	return ARGBIcon{string(hasher.Sum(nil)), imagelist}
+}

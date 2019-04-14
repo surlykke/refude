@@ -2,39 +2,11 @@ package applications
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/surlykke/RefudeServices/lib/xdg"
 	"golang.org/x/sys/unix"
-	"net/http"
-	"os"
-	"strings"
 )
-
-var applicationCollection = MakeDesktopApplicationCollection()
-var mimetypeCollection = MakeMimetypecollection()
-
-func Serve(w http.ResponseWriter, r *http.Request) bool {
-	if strings.HasPrefix(r.URL.Path, "/application") {
-		if r.Method == "GET" {
-			applicationCollection.GET(w, r)
-		} else if r.Method == "POST" {
-			applicationCollection.POST(w, r)
-		} else {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-		}
-		return true
-	} else if strings.HasPrefix(r.URL.Path, "/mimetype") {
-		if r.Method == "GET" {
-			mimetypeCollection.GET(w, r)
-		} else if r.Method == "PATCH" {
-			mimetypeCollection.PATCH(w, r)
-		} else {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-		}
-		return true
-	}
-
-	return false
-}
 
 func Run() {
 	fd, err := unix.InotifyInit()
@@ -65,16 +37,14 @@ func Run() {
 
 	dummy := make([]byte, 100)
 	for {
-		var mtc, apps = Collect();
-		mimetypeCollection.mutex.Lock()
-		mimetypeCollection.mimetypes = mtc
-		mimetypeCollection.CachingJsonGetter.Clear()
-		mimetypeCollection.mutex.Unlock()
+		var mtc, apps = Collect()
+		mlock.Lock()
+		mimetypes = mtc
+		mlock.Unlock()
 
-		applicationCollection.mutex.Lock()
-		applicationCollection.apps = apps
-		applicationCollection.CachingJsonGetter.Clear()
-		applicationCollection.mutex.Unlock()
+		lock.Lock()
+		desktopApplications = apps
+		lock.Unlock()
 
 		if _, err := unix.Read(fd, dummy); err != nil {
 			panic(err)

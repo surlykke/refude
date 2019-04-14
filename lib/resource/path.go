@@ -8,6 +8,10 @@ import (
 // A standardized path is a path that starts with '/' and has no double slashes
 type StandardizedPath string
 
+func (sp StandardizedPath) StartsWith(prefix string) bool {
+	return strings.HasPrefix(string(sp), prefix)
+}
+
 /** transform a path to a standardized path
  * Watered down version of path.Clean. Replace any sequence of '/' with single '/'
  * Remove ending '/'
@@ -43,7 +47,7 @@ func Standardize(p string) StandardizedPath {
 
 }
 
-func Standardizef(format string, args...interface{}) StandardizedPath {
+func Standardizef(format string, args ...interface{}) StandardizedPath {
 	return Standardize(fmt.Sprintf(format, args...))
 }
 
@@ -51,7 +55,7 @@ func Standardizef(format string, args...interface{}) StandardizedPath {
 	Break standardized path into dir-part and base-part
     '/foo/baa/res' -> '/foo/baa', 'res'
     '/foo/baa' -> '/foo', 'baa'
- */
+*/
 func separate(sp StandardizedPath) (StandardizedPath, string) {
 	if len(sp) == 0 {
 		panic("Separating empty string")
@@ -60,4 +64,3 @@ func separate(sp StandardizedPath) (StandardizedPath, string) {
 		return sp[:pos], string(sp[pos+1:])
 	}
 }
-

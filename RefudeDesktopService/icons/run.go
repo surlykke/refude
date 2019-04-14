@@ -1,40 +1,31 @@
 package icons
 
 import (
+	"github.com/surlykke/RefudeServices/lib/image"
 	"github.com/surlykke/RefudeServices/lib/xdg"
-	"net/http"
-	"strings"
 )
 
+var basedirSink = make(chan string)
+var iconSink = make(chan image.ARGBIcon)
 
-var DirsToLookAt chan string
+func AddBasedir(dirToLookAt string) {
+	basedirSink <- dirToLookAt
+}
 
-
-func Serve(w http.ResponseWriter, r *http.Request) bool {
-	if ! strings.HasPrefix(r.URL.Path, "/icon") {
-		return false
-	}
-
-	if r.Method == "GET" {
-		iconCollection.GET(w, r)
-	} else {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-	}
-
-	return true
+func AddARGBIcon(icon image.ARGBIcon) {
+	iconSink <- icon
 }
 
 func Run() {
-	go consumeThemes()
-	go consumeIcons()
 	addBaseDir(xdg.Home + "/.icons")
-	addBaseDir(xdg.DataHome + "/icons")
-	for i := len(xdg.DataDirs) - 1; i >= 0; i-- {
-		addBaseDir(xdg.DataDirs[i]+"/icons")
+	for _, dataDir := range xdg.DataDirs {
+		addBaseDir(dataDir + "/icons")
 	}
+	addBaseDir(xdg.Home + "/.local/share/icons")
+	addBaseDir(refudeSessionIconsDir)
 
-	for dirToLookAt := range DirsToLookAt {
-		addBaseDir(dirToLookAt)
-	}
+	go monitorBasedirSink()
+
+	// FIXME iconSink
+
 }
-

@@ -8,20 +8,23 @@ package applications
 
 import (
 	"fmt"
-	"github.com/surlykke/RefudeServices/lib/requests"
-	"github.com/surlykke/RefudeServices/lib/resource"
-	"github.com/surlykke/RefudeServices/lib/server"
-	"github.com/surlykke/RefudeServices/lib/xdg"
-	"golang.org/x/text/language"
 	"log"
 	"net/http"
 	"os"
 	"regexp"
 	"strings"
 	"sync"
+
+	"github.com/surlykke/RefudeServices/lib/requests"
+	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib/xdg"
+	"golang.org/x/text/language"
 )
 
 const DesktopApplicationMediaType resource.MediaType = "application/vnd.org.refude.desktopapplication+json"
+
+var desktopApplications = make(map[resource.StandardizedPath]*DesktopApplication)
+var lock sync.Mutex
 
 type DesktopApplication struct {
 	resource.AbstractResource
@@ -85,7 +88,7 @@ func launch(exec string, inTerminal bool) {
 
 func launchWithArgs(exec string, args []string, inTerminal bool) {
 	var argv []string
-	var argsReg = regexp.MustCompile("%[uUfF]");
+	var argsReg = regexp.MustCompile("%[uUfF]")
 	if inTerminal {
 		var terminal, ok = os.LookupEnv("TERMINAL")
 		if !ok {
@@ -96,7 +99,7 @@ func launchWithArgs(exec string, args []string, inTerminal bool) {
 		for _, arg := range args {
 			arglist = append(arglist, "'"+strings.Replace(arg, "'", "'\\''", -1)+"'")
 		}
-		var argListS = strings.Join(arglist, " ");
+		var argListS = strings.Join(arglist, " ")
 		var cmd = argsReg.ReplaceAllString(exec, argListS)
 		fmt.Println("Run in terminal with cmd:", cmd)
 		argv = []string{terminal, "-e", cmd}
@@ -114,79 +117,21 @@ func launchWithArgs(exec string, args []string, inTerminal bool) {
 	xdg.RunCmd(argv)
 }
 
-type DesktopApplicationCollection struct {
-	mutex sync.Mutex
-	apps  map[resource.StandardizedPath]*DesktopApplication
-	server.CachingJsonGetter
+func GetApplication(path resource.StandardizedPath) *DesktopApplication {
+	lock.Lock()
+	defer lock.Unlock()
+	return desktopApplications[path]
 }
 
+func GetApplications() []interface{} {
+	lock.Lock()
+	defer lock.Unlock()
+	var result = make([]interface{}, 0, len(desktopApplications))
 
-func (dac *DesktopApplicationCollection) POST(w http.ResponseWriter, r *http.Request) {
-	if "/applications" == r.URL.Path {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-	} else if ! strings.HasPrefix(r.URL.Path, "/application/") {
-		w.WriteHeader(http.StatusNotFound)
-	} else {
-		if intf := dac.GetSingle(r); intf == nil {
-			w.WriteHeader(http.StatusNotFound)
-		} else {
-			da := intf.(*DesktopApplication)
-			fmt.Println("In post")
-			var actionName = requests.GetSingleQueryParameter(r, "action", "")
-			var args = r.URL.Query()["arg"]
-			var exec string
-			if actionName == "" {
-				exec = da.Exec
-			} else if action, ok := da.DesktopActions[actionName]; !ok {
-				w.WriteHeader(http.StatusUnprocessableEntity)
-			} else {
-				exec = action.Exec
-			}
-
-			var onlySingleArg = !(strings.Contains(exec, "%F") || strings.Contains(exec, "%U"))
-			if onlySingleArg && len(args) > 1 {
-				w.WriteHeader(http.StatusUnprocessableEntity)
-			} else {
-				launchWithArgs(da.Exec, args, da.Terminal)
-				w.WriteHeader(http.StatusAccepted)
-			}
-		}
-
+	for _, app := range desktopApplications {
+		result = append(result, app)
 	}
-
-}
-
-func MakeDesktopApplicationCollection() *DesktopApplicationCollection {
-	var dac = &DesktopApplicationCollection{}
-	dac.CachingJsonGetter = server.MakeCachingJsonGetter(dac)
-	dac.apps = make(map[resource.StandardizedPath]*DesktopApplication)
-
-	return dac
-}
-
-func (dac *DesktopApplicationCollection) GetSingle(r *http.Request) interface{} {
-	dac.mutex.Lock()
-	defer dac.mutex.Unlock()
-	if app, ok := dac.apps[resource.Standardize(r.URL.Path)]; ok {
-		return app
-	} else {
-		return nil
-	}
-}
-
-func (dac *DesktopApplicationCollection) GetCollection(r *http.Request) []interface{} {
-	dac.mutex.Lock()
-	defer dac.mutex.Unlock()
-
-	if r.URL.Path == "/applications" {
-		var result = make([]interface{}, 0, len(dac.apps))
-		for _, app := range dac.apps {
-			result = append(result, app)
-		}
-		return result
-	} else {
-		return nil
-	}
+	return result
 }
 
 func appSelf(appId string) resource.StandardizedPath {

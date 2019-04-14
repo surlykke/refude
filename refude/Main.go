@@ -53,7 +53,7 @@ func usage() {
 	_,_ = fmt.Fprintln(flag.CommandLine.Output(), "Usage: RefudeReq [options] path")
 	_,_ = fmt.Fprintln(flag.CommandLine.Output(), "options:")
 	flag.PrintDefaults()
-	_,_ = fmt.Fprintln(flag.CommandLine.Output(), "path: path to resource (eg. /application/firefox.desktop")
+	_,_ = fmt.Fprintln(flag.CommandLine.Output(), "path: path to resource (eg. /application/firefox.desktop)")
 }
 
 func main() {

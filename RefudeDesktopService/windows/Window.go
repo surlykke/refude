@@ -7,11 +7,9 @@
 package windows
 
 import (
-	"github.com/surlykke/RefudeServices/lib/requests"
-	"github.com/surlykke/RefudeServices/lib/resource"
-	"github.com/surlykke/RefudeServices/lib/server"
-	"net/http"
 	"sync"
+
+	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
 const WindowMediaType resource.MediaType = "application/vnd.org.refude.wmwindow+json"
@@ -27,74 +25,59 @@ type Window struct {
 	States     []string
 }
 
-type WindowCollection struct {
-	mutex   sync.Mutex
-	windows map[resource.StandardizedPath]*Window
-	server.CachingJsonGetter
+var windowCollection = make(map[resource.StandardizedPath]*Window)
+var mutex sync.Mutex
+
+func GetWindow(path resource.StandardizedPath) *Window {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	return windowCollection[path]
 }
 
+func setWindow(win *Window) {
+	mutex.Lock()
+	defer mutex.Unlock()
 
-func MakeWindowCollection() *WindowCollection {
-	var wc = &WindowCollection{}
-	wc.CachingJsonGetter = server.MakeCachingJsonGetter(wc)
-	wc.windows = make(map[resource.StandardizedPath]*Window)
-	return wc
+	windowCollection[win.GetSelf()] = win
 }
 
-func (wc *WindowCollection) GetSingle(r *http.Request) interface{} {
-	wc.mutex.Lock()
-	defer wc.mutex.Unlock()
-	if window, ok := wc.windows[resource.Standardize(r.URL.Path)]; ok {
-		return window
-	} else {
-		return nil
+func GetWindows() []interface{} {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	var windows = make([]interface{}, 0, len(windowCollection))
+	for _, win := range windowCollection {
+		windows = append(windows, win)
 	}
+	return windows
 }
 
-func (wc *WindowCollection) GetCollection(r *http.Request) []interface{} {
-	if r.URL.Path == "/windows" {
-		var windows = make([]interface{}, 0, len(wc.windows))
+func ClearAll() {
+	mutex.Lock()
+	defer mutex.Unlock()
 
-		for _, window := range wc.windows {
-			windows = append(windows, window)
-		}
-
-		return windows
-	} else {
-		return nil
-	}
+	windowCollection = make(map[resource.StandardizedPath]*Window)
 }
 
-func (wc *WindowCollection) POST(w http.ResponseWriter, r *http.Request) {
-	if res := wc.GetSingle(r); res == nil {
-		w.WriteHeader(http.StatusNotFound)
-	} else if window, ok := res.(*Window); !ok {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-	} else {
-		var actionId = requests.GetSingleQueryParameter(r, "action", "default")
-		if action, ok := window.ResourceActions[actionId]; ok {
-			action.Executer()
-			w.WriteHeader(http.StatusAccepted)
-		} else {
-			w.WriteHeader(http.StatusUnprocessableEntity)
+func GetCopy(winId uint32) *Window {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	for _, win := range windowCollection {
+		if win.Id == winId {
+			return &(*win)
 		}
 	}
+
+	return nil
 }
 
+func getCopyByParent(parent uint32) *Window {
+	mutex.Lock()
+	defer mutex.Unlock()
 
-
-func (wc *WindowCollection) getCopy(windowId uint32) *Window {
-	if window, ok := wc.windows[windowSelf(windowId)]; ok {
-		var copy = *window
-		return &copy
-	} else {
-		return nil
-	}
-
-}
-
-func (wc *WindowCollection) getCopyByParent(parent uint32) *Window {
-	for _, window := range wc.windows {
+	for _, window := range windowCollection {
 		if window.Parent == parent {
 			var copy = *window
 			return &copy

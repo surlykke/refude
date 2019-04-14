@@ -2,13 +2,13 @@ package statusnotifications
 
 import (
 	"fmt"
-	"github.com/godbus/dbus"
-	"github.com/pkg/errors"
-	"github.com/surlykke/RefudeServices/lib/resource"
-	"github.com/surlykke/RefudeServices/lib/server"
 	"net/http"
 	"reflect"
 	"strings"
+
+	"github.com/godbus/dbus"
+	"github.com/pkg/errors"
+	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
 type Menu struct {
@@ -29,47 +29,33 @@ type MenuItem struct {
 	SubMenus    []MenuItem `json:",omitempty"`
 }
 
-type MenuCollection struct {
-	itemCollection *ItemCollection
-}
-
-func MakeMenuCollection() *MenuCollection {
-	return &MenuCollection{itemCollection: Items}
-}
-
-
-func (mc *MenuCollection) GET(w http.ResponseWriter, r *http.Request) {
-	var item = mc.itemCollection.findByMenupath(r.URL.Path)
-	if item == nil {
-		w.WriteHeader(http.StatusNotFound)
+func GetMenu(path resource.StandardizedPath) *Menu {
+	if item := GetItem(path); item == nil {
+		return nil
 	} else {
-		var tmp= r.URL.Path[len("/itemmenu/"):]
+		var tmp = string(path[len("/itemmenu/"):])
 		fmt.Println("tmp:", tmp)
 		if slashPos := strings.Index(tmp, "/"); slashPos == -1 {
-			w.WriteHeader(http.StatusNotFound)
+			return nil
 		} else {
-			var sender= tmp[0:slashPos]
-			var path= tmp[slashPos:]
+			var sender = tmp[0:slashPos]
+			var path = tmp[slashPos:]
 			fmt.Println("fetching on", sender, path)
 			if menuItems, err := fetchMenu(sender, dbus.ObjectPath(path)); err != nil {
 				fmt.Println("got error", err)
-				w.WriteHeader(http.StatusNotFound) // TODO: Always 404 ?
+				return nil
 			} else {
 				fmt.Println("got menu")
-				var menu = Menu{resource.MakeAbstractResource(resource.Standardizef("/itemmenu/%s/%s", sender, path), ""),
-					menuItems}
+				var menu = Menu{resource.MakeAbstractResource(resource.Standardizef("/itemmenu/%s/%s", sender, path), ""), menuItems}
 				menu.LinkTo(item.GetSelf(), resource.Related)
-				var jsonResponse= server.MakeJsonResponse(menu, "", nil)
-				w.Header().Set("Content-Type", "application/json")
-				w.Header().Set("ETag", jsonResponse.Etag)
-				w.Write(jsonResponse.Data)
+				return &menu
 			}
 
 		}
 	}
 }
 
-func (mc *MenuCollection) POST(w http.ResponseWriter, r *http.Request) {
+func (menu *Menu) POST(w http.ResponseWriter, r *http.Request) {
 	/*fmt.Println("POST: ", r.URL)
 	action := requests.GetSingleQueryParameter(r, "action", "left")
 	x, _ := strconv.Atoi(requests.GetSingleQueryParameter(r, "x", "0"))
@@ -100,7 +86,6 @@ func (mc *MenuCollection) POST(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusAccepted)
 	}*/
 }
-
 
 func fetchMenu(sender string, path dbus.ObjectPath) ([]MenuItem, error) {
 	obj := conn.Object(sender, path)

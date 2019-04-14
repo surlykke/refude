@@ -83,7 +83,7 @@ func CopyIcons(iconName string, iconThemePath string) {
 
 			r, err := os.Open(path)
 			if err != nil {
-				log.Println("Error reading file:", err)
+				//log.Println("Error reading file:", err)
 				return err
 			}
 			defer r.Close()

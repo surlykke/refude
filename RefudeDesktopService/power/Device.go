@@ -7,15 +7,47 @@
 package power
 
 import (
-	"github.com/godbus/dbus"
-	"github.com/surlykke/RefudeServices/lib/resource"
-	"github.com/surlykke/RefudeServices/lib/server"
-	"net/http"
 	"strings"
 	"sync"
+
+	"github.com/godbus/dbus"
+	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
 const DeviceMediaType resource.MediaType = "application/vnd.org.refude.upowerdevice+json"
+
+const SessionMediaType resource.MediaType = "application/vnd.org.refude.session+json"
+
+var devices = make(map[resource.StandardizedPath]*Device)
+var lock sync.Mutex
+
+func GetDevice(path resource.StandardizedPath) *Device {
+	lock.Lock()
+	defer lock.Unlock()
+
+	return devices[path]
+}
+
+func setDevice(device *Device) {
+	lock.Lock()
+	defer lock.Unlock()
+
+	devices[device.GetSelf()] = device
+}
+
+func GetDevices() []interface{} {
+	lock.Lock()
+	defer lock.Unlock()
+
+	var result = make([]interface{}, 0, len(devices))
+	for _, device := range devices {
+		result = append(result, device)
+	}
+
+	return result
+}
+
+var Session = buildSessionResource()
 
 type Device struct {
 	resource.AbstractResource
@@ -70,46 +102,6 @@ func deviceTecnology(index uint32) string {
 	}
 	return devTecnology[index]
 }
-
-type PowerCollection struct {
-	mutex   sync.Mutex
-	devices map[resource.StandardizedPath]*Device
-	server.CachingJsonGetter
-}
-
-func MakePowerCollection() *PowerCollection {
-	var dc = &PowerCollection{}
-	dc.CachingJsonGetter = server.MakeCachingJsonGetter(dc)
-	dc.devices = make(map[resource.StandardizedPath]*Device)
-	return dc
-}
-
-func (pc *PowerCollection) GetSingle(r *http.Request) interface{} {
-	pc.mutex.Lock()
-	defer pc.mutex.Unlock()
-	var sp = resource.Standardize(r.URL.Path)
-	if device, ok := pc.devices[sp]; ok {
-		return device
-	} else {
-		return nil
-	}
-}
-
-func (pc *PowerCollection) GetCollection(r *http.Request) []interface{} {
-	pc.mutex.Lock()
-	defer pc.mutex.Unlock()
-
-	if r.URL.Path == "/devices" {
-		var result = make([]interface{}, 0, len(pc.devices))
-		for _, device := range pc.devices {
-			result = append(result, device)
-		}
-		return result
-	} else {
-		return nil
-	}
-}
-
 
 func deviceSelf(dbusPath dbus.ObjectPath) resource.StandardizedPath {
 	if strings.HasPrefix(string(dbusPath), DevicePrefix) {

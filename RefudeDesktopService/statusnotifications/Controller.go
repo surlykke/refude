@@ -9,19 +9,20 @@ package statusnotifications
 import (
 	"errors"
 	"fmt"
-	"github.com/godbus/dbus"
-	"github.com/godbus/dbus/introspect"
-	"github.com/godbus/dbus/prop"
-	"github.com/surlykke/RefudeServices/lib/dbusutils"
-	"github.com/surlykke/RefudeServices/lib/image"
-	"github.com/surlykke/RefudeServices/lib/slice"
 	"log"
 	"reflect"
 	"regexp"
 	"strings"
 	"time"
-)
 
+	"github.com/godbus/dbus"
+	"github.com/godbus/dbus/introspect"
+	"github.com/godbus/dbus/prop"
+	"github.com/surlykke/RefudeServices/RefudeDesktopService/icons"
+	dbuscall "github.com/surlykke/RefudeServices/lib/dbusutils"
+	"github.com/surlykke/RefudeServices/lib/image"
+	"github.com/surlykke/RefudeServices/lib/slice"
+)
 
 const WATCHER_SERVICE = "org.kde.StatusNotifierWatcher"
 const WATCHER_PATH = "/StatusNotifierWatcher"
@@ -125,7 +126,6 @@ func getOnTheBus() {
 	)
 }
 
-
 type EventType int
 
 const (
@@ -142,16 +142,14 @@ type Event struct {
 
 var events = make(chan Event)
 
-
-
-func updateWatcherProperties(itemCollection *ItemCollection) {
-	ids := make([]string, 0, len(itemCollection.items))
-	for _, item := range itemCollection.items {
+// Caller must hold lock
+func updateWatcherProperties() {
+	ids := make([]string, 0, len(items))
+	for _, item := range items {
 		ids = append(ids, item.sender+":"+string(item.itemPath))
 	}
 	watcherProperties.Set(WATCHER_INTERFACE, "RegisteredStatusItems", dbus.MakeVariant(ids))
 }
-
 
 func updateItem(item *Item) {
 	props := dbuscall.GetAllProps(conn, item.sender, item.itemPath, ITEM_INTERFACE)
@@ -178,7 +176,6 @@ func updateItem(item *Item) {
 		image.CopyIcons(item.AttentionIconName, item.iconThemePath)
 	}
 }
-
 
 func getStringOr(m map[string]dbus.Variant, key string, fallback string) string {
 	if variant, ok := m[key]; ok {
@@ -246,8 +243,7 @@ func parseMenu(value []interface{}) (MenuItem, error) {
 
 	menuItem.Id = fmt.Sprintf("%d", id)
 
-	if menuItem.Type = getStringOr(m, "type", "standard");
-		!slice.Among(menuItem.Type, "standard", "separator") {
+	if menuItem.Type = getStringOr(m, "type", "standard"); !slice.Among(menuItem.Type, "standard", "separator") {
 		return MenuItem{}, errors.New("Illegal menuitem type: " + menuItem.Type)
 	}
 	menuItem.Label = getStringOr(m, "label", "")
@@ -280,26 +276,25 @@ func parseMenu(value []interface{}) (MenuItem, error) {
 	return menuItem, nil
 }
 
-
-
 func collectPixMap(m map[string]dbus.Variant, key string) string {
 	if variant, ok := m[key]; ok {
 		if arrs, ok := variant.Value().([][]interface{}); !ok {
-			log.Println("Looking for [][]interface{} at"+key+", got:", reflect.TypeOf(variant.Value()))
+			log.Printf("Looking for [][]interface{} at %s, got: %v\n", key, reflect.TypeOf(variant.Value()))
 		} else {
-			res := make(image.Icon, 0)
+			var images = []image.ARGBImage{}
 			for _, arr := range arrs {
 				for len(arr) > 2 {
-					width := arr[0].(int32)
-					height := arr[1].(int32)
+					width := uint32(arr[0].(int32))
+					height := uint32(arr[1].(int32))
 					pixels := arr[2].([]byte)
-					res = append(res, image.Img{Width: width, Height: height, Pixels: pixels})
+					images = append(images, image.ARGBImage{Width: width, Height: height, Pixels: pixels})
 					arr = arr[3:]
 				}
 			}
-			return image.SaveAsPngToSessionIconDir(res)
+			var argbIcon = image.MakeIconWithHashAsName(images)
+			icons.AddARGBIcon(argbIcon)
+			return argbIcon.Name
 		}
 	}
 	return ""
 }
-

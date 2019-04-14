@@ -286,7 +286,7 @@ func readDesktopFile(path string) (*DesktopApplication, []string, error) {
 		da.GenericName = group.Entries["GenericName"]
 		da.NoDisplay = group.Entries["NoDisplay"] == "true"
 		da.Comment = group.Entries["Comment"]
-		icon := group.Entries["Icon"]
+		icon := group.Entries["PixmapList"]
 		if strings.HasPrefix(icon, "/") {
 			if iconName, err := image.CopyIconToSessionIconDir(icon); err != nil {
 				log.Printf("Problem with iconpath %s in %s: %s", icon, da.Id, err.Error())
@@ -322,7 +322,7 @@ func readDesktopFile(path string) (*DesktopApplication, []string, error) {
 				if action.Name = actionGroup.Entries["Name"]; action.Name == "" {
 					return nil, nil, errors.New("Desktop file invalid, action " + actionGroup.Name + " has no default 'Name'")
 				}
-				icon = actionGroup.Entries["Icon"]
+				icon = actionGroup.Entries["PixmapList"]
 				if strings.HasPrefix(icon, "/") {
 					if iconName, err := image.CopyIconToSessionIconDir(icon); err != nil {
 						log.Printf("Problem with iconpath %s in %s: %s", icon, da.Id, err.Error())

@@ -7,15 +7,56 @@
 package notifications
 
 import (
-	"github.com/surlykke/RefudeServices/lib/requests"
-	"github.com/surlykke/RefudeServices/lib/resource"
-	"github.com/surlykke/RefudeServices/lib/server"
 	"net/http"
 	"sync"
 	"time"
+
+	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
 const NotificationMediaType resource.MediaType = "application/vnd.org.refude.desktopnotification+json"
+
+var notifications = make(map[resource.StandardizedPath]*Notification)
+var lock sync.Mutex
+
+func GetNotification(path resource.StandardizedPath) *Notification {
+	lock.Lock()
+	defer lock.Unlock()
+
+	return notifications[path]
+}
+
+func GetNotifications() []interface{} {
+	lock.Lock()
+	defer lock.Unlock()
+
+	var result = make([]interface{}, len(notifications), len(notifications))
+	var i = 0
+	for _, notification := range notifications {
+		result[i] = notification
+		i++
+	}
+	return result
+}
+
+func setNotification(notification *Notification) {
+	lock.Lock()
+	defer lock.Unlock()
+
+	notifications[notification.GetSelf()] = notification
+}
+
+func removeNotification(path resource.StandardizedPath, internalId uint32) bool {
+	lock.Lock()
+	defer lock.Unlock()
+
+	if notification := notifications[path]; notification != nil && (internalId == 0 || internalId == notification.internalId) {
+		delete(notifications, path)
+		return true
+	} else {
+		return false
+	}
+}
 
 type Notification struct {
 	resource.AbstractResource
@@ -32,65 +73,8 @@ func (n *Notification) removeAfter(duration time.Duration) {
 	time.AfterFunc(duration, func() { removals <- removal{n.Id, n.internalId, Expired} })
 }
 
-type NotificationCollection struct {
-	mutex         sync.Mutex
-	notifications map[resource.StandardizedPath]*Notification
-	server.CachingJsonGetter
-}
-
-
-func MakeNotificationCollection() *NotificationCollection {
-	var nc = &NotificationCollection{}
-	nc.CachingJsonGetter = server.MakeCachingJsonGetter(nc)
-	nc.notifications = make(map[resource.StandardizedPath]*Notification)
-	return nc
-}
-
-func (nc *NotificationCollection) POST(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path == "/notifications" {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-	} else if res := nc.GetSingle(r); res == nil {
-		w.WriteHeader(http.StatusNotFound)
-	} else if notification, ok := res.(*Notification); !ok {
-		w.WriteHeader(http.StatusMethodNotAllowed) // Shouldn't happen
-	} else {
-		var actionId = requests.GetSingleQueryParameter(r, "action", "")
-		if action, ok := notification.ResourceActions[actionId]; ok {
-			action.Executer()
-			w.WriteHeader(http.StatusAccepted)
-		} else {
-			w.WriteHeader(http.StatusUnprocessableEntity)
-		}
-	}
-}
-
-func (nc *NotificationCollection) DELETE(w http.ResponseWriter, r *http.Request) {
+func (nc *Notification) DELETE(w http.ResponseWriter, r *http.Request) {
 	// FIXME
-}
-
-func (nc *NotificationCollection) GetSingle(r *http.Request) interface{} {
-	nc.mutex.Lock()
-	defer nc.mutex.Unlock()
-	if n, ok := nc.notifications[resource.Standardize(r.URL.Path)]; ok {
-		return n
-	} else {
-		return nil
-	}
-}
-
-func (nc *NotificationCollection) GetCollection(r *http.Request) []interface{} {
-	nc.mutex.Lock()
-	defer nc.mutex.Unlock()
-
-	if r.URL.Path == "/notifications" {
-		var result = make([]interface{}, 0, len(nc.notifications))
-		for _, app := range nc.notifications {
-			result = append(result, app)
-		}
-		return result
-	} else {
-		return nil
-	}
 }
 
 func notificationSelf(id uint32) resource.StandardizedPath {
