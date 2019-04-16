@@ -84,4 +84,3 @@ export default class Panel extends React.Component {
         </div>
 }
 
-

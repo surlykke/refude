@@ -39,7 +39,7 @@ export class ItemList extends React.Component {
     };
 
     componentWillReceiveProps = (props) => {
-        console.log("Itemlist will receive props");
+//        console.log("Itemlist will receive props");
         if (!(this.state.selectedUrl && props.items.findIndex(i => this.state.selectedUrl === i.url) > -1)) {
             this.setSelected(props.items[0]);
         }

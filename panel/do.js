@@ -6,11 +6,14 @@
 
 
 import React from 'react'
-import {doSearch, doPostPath, doGet} from '../common/http'
+import {POST} from '../common/http'
 import {WIN, applicationRank, publish, subscribe} from "../common/utils";
 import {ItemList} from "../common/itemlist"
 import {Indicator} from "./indicator";
 import {T} from "../common/translate";
+
+const axios = require('axios')
+axios.defaults.baseURL = "http://localhost:7938"
 
 const http = require('http');
 let windowIconStyle = w => {
@@ -44,7 +47,7 @@ class Do extends React.Component {
         this.handleBlurEvents();
     };
 
-    componentDidMount =  () => {
+    componentDidMount = () => {
         subscribe("termChanged", this.termChange);
         subscribe("itemLaunched", this.execute);
         subscribe("dismiss", this.onDismiss);
@@ -77,22 +80,7 @@ class Do extends React.Component {
                 if (!this.hasfocus) publish("dismiss");
             }, 100);
         });
-    }
-
-
-    getResources(service, mimetype, resourceKey) {
-        this.resources[resourceKey] = [];
-        doSearch(service, mimetype, "").then(resp => {
-            this.resources[resourceKey] = resp.json;
-            this.filterAndSort()
-        });
-    }
-
-    getResource(service, path, resourceKey) {
-        doGet({service: service, path: path}).then(resp => {
-            this.resources[resourceKey] = resp.json;
-        });
-    }
+    };
 
     filterAndSort = () => {
         let term = this.term.toLowerCase();
@@ -147,15 +135,23 @@ class Do extends React.Component {
 
     showWin = () => {
         if (!this.state["shown"]) {
-            this.getResources("wm-service", "application/vnd.org.refude.wmwindow+json", "windows")
-            this.getResources("desktop-service", "application/vnd.org.refude.desktopapplication+json", "applications")
-            this.getResource("power-service", "/session", "session");
+            this.resources["windows"] = this.resources["applications"] = this.resources["session"] = [];
+            axios.get("/windows").then(resp => { 
+                console.log("GET(/windows) got:", resp); 
+                this.resources["windows"] = resp.data; 
+                this.filterAndSort()
+            });
+            axios.get("/applications").then(resp => { 
+                this.resources["applications"] = resp.data; 
+                this.filterAndSort()
+            });
+            axios.get("/session").then(resp => { 
+                this.resources["session"] = resp.json
+            });
             this.setState({"shown": true});
         }
         WIN.focus();
     };
-
-
 
     termChange = term => {
         this.term = term;
@@ -163,8 +159,8 @@ class Do extends React.Component {
     };
 
     execute = (item) => {
-        console.log("execute");
-        doPostPath(item.url).then(response => {
+        console.log("execute:", item.url);
+        axios.post(item.url).then(response => {
             console.log("Post done");
             this.onDismiss();
         })
@@ -189,7 +185,7 @@ class Do extends React.Component {
                           ref={this.itemList}/>,
                 <Indicator key="indicator"/>
 
-            ]
+            ];
         else
             return null
     };

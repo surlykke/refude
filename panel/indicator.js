@@ -13,7 +13,6 @@ export class Indicator extends React.Component {
     componentDidMount = () => {
         console.log("Indicator did mount")
         subscribe("boundsBecame", bounds => {
-            console.log("Indicator received", bounds);
             this.setState({bounds: bounds});
         });
     }

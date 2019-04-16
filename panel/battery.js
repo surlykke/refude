@@ -12,8 +12,9 @@
  * Please refer to the LICENSE file for a copy of the license.
  */
 import React from 'react'
-import {doGetIfNoneMatch} from '../common/http'
 import {publish} from "../common/utils";
+
+const axios = require('axios')
 
 /**
  * We represent charge by a circle segment (cf https://en.wikipedia.org/wiki/Circular_segment)
@@ -35,11 +36,11 @@ export class Battery extends React.Component {
 
     componentDidMount = () => {
         let update = () => {
-            doGetIfNoneMatch("power-service", "/devices/DisplayDevice", this.etag).then(resp => {
-                this.etag = resp.headers.etag
+            // FIXME etags
+            axios.get("/device/DisplayDevice").then(resp => {
                 this.setState({
-                    pct: resp.json.State === "Unknown" ? 0 : resp.json.Percentage,
-                    state: resp.json.State
+                    pct: resp.data.State === "Unknown" ? 0 : resp.data.Percentage,
+                    state: resp.data.State
                 });
             }).catch(err => {
                 if (err.status !== 304) {

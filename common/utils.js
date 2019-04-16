@@ -84,7 +84,6 @@ const PUBSUB = (() => {
             subscriptions[topic].push(fn);
         },
         publish: (topic, obj) => {
-            console.log("Publish", topic);
             let subscribers = subscriptions[topic] ||  [];
             subscribers.forEach(fn => fn(obj));
         }

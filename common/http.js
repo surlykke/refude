@@ -45,11 +45,76 @@ export let doGet = options => {
             });
             req.end();
         })
-    }
-    catch (e) {
+    } catch (e) {
         console.log("Error:", e);
     }
 };
+
+export let GET = (path) => {
+    let options = {method: "GET", host: "localhost", port: 7938, path: path};
+    console.log("getting with:", options)
+    try {
+        return new Promise((successHandler, errorHandler) => {
+            let req = http.request(options, resp => {
+                let data = '';
+                resp.setEncoding('utf8');
+                resp.on('data', chunk => {
+                    if (path === "/windows") {
+                        console.log("Got chunk:", chunk)
+                    }
+                    data += chunk
+                });
+                resp.on('end', () => {
+                    if (path === "/windows") {
+                        console.log("GET(" + path + ") on 'end', data: ", data)
+                    }
+                    let o = {
+                        status: resp.statusCode,
+                        headers: resp.headers,
+                        data: data,
+                        json: JSON.parse(data)
+                    };
+                    if (o.status >= 300) {
+                        if (errorHandler) {
+                            errorHandler(o);
+                        }
+                    } else {
+                        successHandler(o);
+                    }
+                });
+            });
+            req.on('error', e => {
+                console.log("req: ", options, " -> ", e);
+            });
+            req.end();
+        })
+    } catch (e) {
+        console.log("Error:", e);
+    }
+};
+
+export let POST = (path) => {
+    let options = {method: "POST", host: "localhost", port: 7938, path: path};
+    return new Promise((succesHandler, errorHandler) => {
+        let req = http.request(options, resp => {
+            let data = '';
+            resp.setEncoding('utf8');
+            resp.on('data', chunk => {
+                data += chunk
+            });
+            resp.on('end', () => {
+                if (resp.statusCode >= 300) {
+                    errorHandler(new Error(`Request Failed.\nStatus Code: ${resp.statusCode}`));
+                } else {
+                    succesHandler(resp);
+                }
+            });
+        });
+        req.on('error', e => errorHandler(e));
+        req.end();
+    });
+};
+
 
 export let doGetIfNoneMatch = (service, path, etag) => {
     let options = {
@@ -169,6 +234,11 @@ export let doDelete = (resource) => {
     });
 };
 
+export let self = (resource) => {
+    let selflink = (resource._links || []).find(link => "self" === link.rel)
+    return selflink && selflink.href
+}
+
 let parseAndPostprocess = (service, data) => {
     if (data) {
         try {
@@ -183,8 +253,7 @@ let parseAndPostprocess = (service, data) => {
                 json.IconUrl = iconServiceUrl(json.IconName);
             }
             return json;
-        }
-        catch (e) {
+        } catch (e) {
             return undefined;
         }
     } else {
@@ -203,5 +272,6 @@ let queryString = (params) => {
         return "";
     }
 };
+
 
 
