@@ -2,10 +2,10 @@ package windows
 
 import (
 	"errors"
-	"fmt"
 	"log"
 	"sync"
 
+	"github.com/surlykke/RefudeServices/RefudeDesktopService/icons"
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/windows/xlib"
 	"github.com/surlykke/RefudeServices/lib/image"
 	"github.com/surlykke/RefudeServices/lib/resource"
@@ -68,34 +68,27 @@ func updateWindows() {
 		log.Fatal("Unable to get client list stacking", err)
 	} else {
 		ClearAll()
-		fmt.Println("her, wIds:", wIds)
 		for i, wId := range wIds {
-			fmt.Println("wId:", wId)
 			var stackOrder = len(wIds) - i
 			window := &Window{}
 			window.Id = wId
 			window.StackOrder = stackOrder
 			window.AbstractResource = resource.MakeAbstractResource(windowSelf(wId), WindowMediaType)
-			fmt.Println("GetParent")
 			if window.Parent, err = in.GetParent(wId); err != nil {
 				log.Println("No parent:", err)
 				continue
 			}
-			fmt.Println("GetGeometry")
 			if window.X, window.Y, window.W, window.H, err = in.GetGeometry(wId); err != nil {
 				log.Println("No geometry:", err)
 				continue
 			}
-			fmt.Println("GetName")
 			if window.Name, err = GetName(wId); err != nil {
 				log.Println("No name: ", err)
 				continue
 			}
-			fmt.Println("GetIconName")
 			if window.IconName, err = GetIconName(wId); err != nil {
 				log.Println("No Iconname:", err)
 			}
-			fmt.Println("GetState")
 			if window.States, err = in.GetAtoms(wId, NET_WM_STATE); err != nil {
 				log.Println("No states: ", err)
 			}
@@ -108,11 +101,8 @@ func updateWindows() {
 			}
 
 			window.ResourceActions["default"] = resource.ResourceAction{Description: "Raise and focus", IconName: window.IconName, Executer: executer}
-			fmt.Println("listen")
 			in.Listen(window.Id)
-			fmt.Println("SetWindow")
 			setWindow(window)
-			fmt.Println("End of loop")
 		}
 	}
 }
@@ -130,7 +120,6 @@ func GetName(wId uint32) (string, error) {
 }
 
 func GetIconName(wId uint32) (string, error) {
-	fmt.Println("Getting icon name")
 	pixelArray, err := in.GetUint32s(wId, NET_WM_ICON)
 	if err != nil {
 		return "", err
@@ -162,8 +151,7 @@ func GetIconName(wId uint32) (string, error) {
 		pixelArray = pixelArray[width*height:]
 	}
 
-	fmt.Println("MakeIconWithHashAsName")
 	var icon = image.MakeIconWithHashAsName(images)
-	//icons.AddARGBIcon(icon)
+	icons.AddARGBIcon(icon)
 	return icon.Name, nil
 }

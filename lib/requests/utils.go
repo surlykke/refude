@@ -9,10 +9,11 @@ package requests
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/pkg/errors"
-	"github.com/surlykke/RefudeServices/lib/parser"
 	"net/http"
 	"regexp"
+
+	"github.com/pkg/errors"
+	"github.com/surlykke/RefudeServices/lib/parser"
 )
 
 func GetSingleQueryParameter(r *http.Request, parameterName string, fallbackValue string) string {
@@ -56,9 +57,7 @@ func GetSingleParams(r *http.Request, paramNames ...string) (map[string]string, 
 	return result, nil
 }
 
-
 func ReportUnprocessableEntity(w http.ResponseWriter, err error) {
-	fmt.Println("unp: err: ", err)
 	if body, err2 := json.Marshal(err.Error()); err2 == nil {
 		w.WriteHeader(http.StatusUnprocessableEntity)
 		w.Write(body)
@@ -103,16 +102,6 @@ func MatchAny(interface{}) bool {
 }
 
 func GetMatcher(r *http.Request) (parser.Matcher, error) {
-	if q, ok := r.URL.Query()["q"]; ok && len(q) > 0 {
-		fmt.Println("query:", q, "returning parsed matcher")
-		return parser.Parse(q[0])
-	} else {
-		fmt.Println("No query, returning matchAny")
-		return MatchAny, nil
-	}
-}
-
-func GetMatcher2(r *http.Request) (parser.Matcher, error) {
 	if q, ok := r.URL.Query()["q"]; ok && len(q) > 0 {
 		fmt.Println("Parsing", q)
 		return parser.Parse(q[0])

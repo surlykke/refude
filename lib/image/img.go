@@ -9,6 +9,7 @@ package image
 import (
 	"bytes"
 	"crypto/sha1"
+	"fmt"
 	"image"
 	"image/color"
 	"image/png"
@@ -64,5 +65,5 @@ func MakeIconWithHashAsName(imagelist []ARGBImage) ARGBIcon {
 	for _, image := range imagelist {
 		hasher.Write(image.Pixels)
 	}
-	return ARGBIcon{string(hasher.Sum(nil)), imagelist}
+	return ARGBIcon{fmt.Sprintf("%X", hasher.Sum(nil)), imagelist}
 }

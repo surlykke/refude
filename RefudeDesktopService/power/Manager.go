@@ -1,8 +1,6 @@
 package power
 
 import (
-	"fmt"
-
 	"github.com/godbus/dbus"
 	dbuscall "github.com/surlykke/RefudeServices/lib/dbusutils"
 	"github.com/surlykke/RefudeServices/lib/resource"
@@ -35,7 +33,6 @@ func setup() chan *dbus.Signal {
 		device.AbstractResource = resource.MakeAbstractResource(deviceSelf(path), DeviceMediaType)
 		device.DbusPath = path
 		updateDevice(device, dbuscall.GetAllProps(dbusConn, UPowService, path, UPowerDeviceInterface))
-		fmt.Println("Setting", device.GetSelf())
 		setDevice(device)
 	}
 
@@ -63,7 +60,6 @@ func buildSessionResource() *resource.AbstractResource {
 		if "yes" == dbusConn.Object(login1Service, login1Path).Call(managerInterface+".Can"+id, dbus.Flags(0)).Body[0].(string) {
 			var dbusEndPoint = managerInterface + "." + id
 			var executer = func() {
-				fmt.Println("Calling", login1Service, login1Path, managerInterface+"."+id)
 				dbusConn.Object(login1Service, login1Path).Call(dbusEndPoint, dbus.Flags(0), false)
 			}
 			session.ResourceActions[id] = resource.ResourceAction{Description: pv[1], IconName: pv[2], Executer: executer}

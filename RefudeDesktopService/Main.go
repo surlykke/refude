@@ -44,7 +44,7 @@ func serveHttp(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var serveCollection = func(collection []interface{}) {
-		var matcher, err = requests.GetMatcher2(r)
+		var matcher, err = requests.GetMatcher(r)
 		if err != nil {
 			w.WriteHeader(http.StatusUnprocessableEntity)
 			return

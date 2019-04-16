@@ -42,6 +42,7 @@ const (
 )
 
 type AbstractResource struct {
+	Self            StandardizedPath          `json:"_self"` // Convenience - is also contained in Links
 	Links           []Link                    `json:"_links"`
 	Mt              MediaType                 `json:"-"`
 	ResourceActions map[string]ResourceAction `json:"_actions,omitempty"`
@@ -56,6 +57,7 @@ type Link struct {
 
 func MakeAbstractResource(SelfLink StandardizedPath, mt MediaType) AbstractResource {
 	return AbstractResource{
+		Self:            SelfLink,
 		Links:           []Link{{Href: SelfLink, Rel: Self}},
 		Mt:              mt,
 		ResourceActions: make(map[string]ResourceAction),

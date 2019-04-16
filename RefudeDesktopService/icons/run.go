@@ -25,7 +25,5 @@ func Run() {
 	addBaseDir(refudeSessionIconsDir)
 
 	go monitorBasedirSink()
-
-	// FIXME iconSink
-
+	go monitorIconSink()
 }

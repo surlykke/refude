@@ -7,13 +7,14 @@
 package image
 
 import (
-	"github.com/surlykke/RefudeServices/lib/xdg"
 	"io"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
+
 	"github.com/pkg/errors"
+	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
 func CopyIconToSessionIconDir(iconPath string) (string, error) {
@@ -22,9 +23,9 @@ func CopyIconToSessionIconDir(iconPath string) (string, error) {
 		return "", errors.Errorf("'%s' does not look like an icon.", iconPath)
 	}
 	var fileName = filepath.Base(iconPath)
-	var iconName = fileName[:len(fileName) - len(ext)]
+	var iconName = fileName[:len(fileName)-len(ext)]
 	var sessionIconDir = xdg.RuntimeDir + "/org.refude.icon-service-session-icons/"
-	var destPath =  sessionIconDir + fileName
+	var destPath = sessionIconDir + fileName
 
 	r, err := os.Open(iconPath)
 	if err != nil {
@@ -83,7 +84,6 @@ func CopyIcons(iconName string, iconThemePath string) {
 
 			r, err := os.Open(path)
 			if err != nil {
-				//log.Println("Error reading file:", err)
 				return err
 			}
 			defer r.Close()

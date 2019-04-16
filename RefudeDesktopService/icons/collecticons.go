@@ -56,6 +56,12 @@ func monitorBasedirSink() {
 
 }
 
+func monitorIconSink() {
+	for icon := range iconSink {
+		addARGBIcon(icon)
+	}
+}
+
 func addBaseDir(baseDir string) {
 	baseDir = path.Clean(baseDir)
 	if addedBaseDirs[baseDir] {
@@ -131,9 +137,7 @@ func placeIcon(themeId string, icon *Icon) bool {
 			icon.MinSize = dir.MinSize
 			icon.MaxSize = dir.MaxSize
 
-			iconLock.Lock()
-			defer iconLock.Unlock()
-			themeIcons[themeId][icon.Name] = append(themeIcons[themeId][icon.Name], icon)
+			addThemeIcon(theme.Id, icon)
 			return true
 		}
 
@@ -141,54 +145,51 @@ func placeIcon(themeId string, icon *Icon) bool {
 	return false
 }
 
-func addOtherIcon(icon *Icon) {
-	iconLock.Lock()
-	defer iconLock.Unlock()
-	otherIcons[icon.Name] = icon
-}
-
 func addARGBIcon(argbIcon image.ARGBIcon) {
+	fmt.Println("add icon", argbIcon.Name)
 
-	var hicolorTheme = GetTheme("hicolor")
-	fmt.Println("Adding icon", argbIcon.Name, "to", hicolorTheme)
+	fmt.Println("Adding icon", argbIcon.Name, "to hicolorTheme")
 
-	iconLock.Lock()
-	defer iconLock.Unlock()
+	if !haveThemeIcon("hicolor", argbIcon.Name) {
+
+	}
 
 	var hicolorIconMap = themeIcons["hicolor"]
 
 	if _, ok := hicolorIconMap[argbIcon.Name]; !ok {
 		for _, pixMap := range argbIcon.Images {
-			if pixMap.Width == pixMap.Height {
-				if iconDir, ok := findMatchingDir(hicolorTheme, pixMap.Width, "app"); ok {
-					if png, err := pixMap.AsPng(); err != nil {
-						fmt.Println("Error converting to png:", err)
-					} else {
-						var path = refudeSessionIconsDir + "/hicolor/" + iconDir.Path
-						if err = os.MkdirAll(path, os.ModePerm); err != nil {
-							fmt.Println("Error creating dir:", path, err)
-						} else {
-							path = path + "/" + argbIcon.Name + ".png"
-							if err = ioutil.WriteFile(path, png, os.ModePerm); err != nil {
-								fmt.Println("Error writing", path, err)
-							} else {
-								var icon = &Icon{
-									Name:    argbIcon.Name,
-									Theme:   "hicolor",
-									Context: iconDir.Context,
-									Type:    "png",
-									MinSize: iconDir.MinSize,
-									MaxSize: iconDir.MaxSize,
-									Path:    path,
-								}
-								hicolorIconMap[argbIcon.Name] = append(hicolorIconMap[argbIcon.Name], icon)
-							}
-						}
-					}
+			if pixMap.Width != pixMap.Height {
+			} else {
+				var path = fmt.Sprintf("%s/%d/%s.png", refudeSessionIconsDir, pixMap.Width, argbIcon.Name)
+				var icon = &Icon{
+					Name:    argbIcon.Name,
+					Theme:   "hicolor",
+					Context: "",
+					Type:    "png",
+					MinSize: pixMap.Width,
+					MaxSize: pixMap.Width,
+					Path:    path,
 				}
+				addThemeIcon("hicolor", icon)
+				go savePng(path, pixMap)
 			}
 		}
 	}
+}
+
+func savePng(path string, pixMap image.ARGBImage) {
+	if png, err := pixMap.AsPng(); err != nil {
+		log.Println("Error converting pixmap to png:", err)
+	} else {
+		var lastSlashPos = strings.LastIndex(path, "/")
+		var dir = path[0:lastSlashPos]
+		if err = os.MkdirAll(dir, os.ModePerm); err != nil {
+			log.Println("Unable to create", dir, err)
+		} else if err = ioutil.WriteFile(path, png, 0700); err != nil {
+			log.Println("Unable to write file", err)
+		}
+	}
+
 }
 
 func findMatchingDir(theme *Theme, size uint32, context string) (IconDir, bool) {

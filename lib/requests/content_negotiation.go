@@ -64,7 +64,6 @@ func extractAcceptString(r *http.Request) (string, bool) {
 }
 
 func read(accept string, offers...string) (string, error) {
-	fmt.Println("Accept:", accept, "- offers:", offers)
 	var weights = make([]int, len(offers), len(offers))
 
 	// Read through accept
@@ -72,22 +71,17 @@ func read(accept string, offers...string) (string, error) {
 	for {
 		if mrMatch := mimetypePattern.FindStringSubmatch(accept); mrMatch != nil {
 			accept = accept[len(mrMatch[0]):]
-			fmt.Println("mrMatch:", mrMatch)
 			var requiredRange, requiredTypeLen = mrMatch[1], strings.Index(mrMatch[1], "/")
 			var weight = 1000
 			var haveWeight = false
 			for len(accept) > 0 && accept[0] == ';' {
-				fmt.Println("Look for parameter")
 				accept = accept[1:]
-				fmt.Println("Trying to match at:", accept)
 				if parMatch := parameterPattern.FindStringSubmatch(accept); parMatch != nil {
-					fmt.Println("parMatch:", parMatch)
 					// FIXME Deal with other parameters than "q"
 					if !haveWeight && parMatch[1] == "q" {
 						if w, ok := readWeight(parMatch[2]); !ok {
 							return "", errors.New("Invalid weight: " + parMatch[2])
 						} else {
-							fmt.Println("Weight became:", w)
 							weight = w
 						}
 						haveWeight = true

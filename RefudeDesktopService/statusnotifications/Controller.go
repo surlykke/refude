@@ -47,7 +47,6 @@ func senderAndPath(serviceName string, sender dbus.Sender) (string, dbus.ObjectP
  * serviceId Can be a name of service or a path of object
  */
 func addItem(serviceName string, sender dbus.Sender) *dbus.Error {
-	fmt.Println("addItem:", serviceName, ",", sender)
 	var event = Event{eventType: ItemCreated}
 	event.sender, event.path = senderAndPath(serviceName, sender)
 	events <- event
@@ -61,7 +60,6 @@ func monitorSignals() {
 	conn.BusObject().Call(addMatch, 0, "type='signal', interface='org.kde.StatusNotifierItem'")
 
 	for signal := range dbusSignals {
-		//fmt.Println("signal:", signal)
 		if strings.HasPrefix(signal.Name, "org.kde.StatusNotifierItem.New") {
 			events <- Event{eventType: ItemUpdated, sender: signal.Sender, path: signal.Path}
 		}
@@ -70,7 +68,6 @@ func monitorSignals() {
 
 // We cannot reliably detect items disappearing by signals, it seems, so we do brute force polling
 func monitorItem(sender string, itemPath dbus.ObjectPath) {
-	fmt.Println("itemWatcher: ", sender, itemPath)
 	for {
 		if _, ok := dbuscall.GetSingleProp(conn, sender, itemPath, ITEM_INTERFACE, "Status"); !ok {
 			break
@@ -224,7 +221,6 @@ func getDbusPath(m map[string]dbus.Variant, key string) dbus.ObjectPath {
 }
 
 func parseMenu(value []interface{}) (MenuItem, error) {
-	fmt.Println("Into parseMenu")
 	var menuItem = MenuItem{}
 	var id int32
 	var ok bool

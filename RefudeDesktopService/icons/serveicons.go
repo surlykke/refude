@@ -12,18 +12,15 @@ import (
 
 // Caller ensures r.URL.Path starts with '/icon/'
 func ServeIcon(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Looking for", r.URL.RawPath)
 	if r.Method != "GET" {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	} else if icon := getIcon(resource.StandardizedPath(r.URL.RawPath)); icon != nil {
-		fmt.Println("Found", icon)
 		if icon.Type == "png" {
 			respond(w, r, icon, icon.Path, "")
 		} else {
 			respond(w, r, icon, "", icon.Path)
 		}
 	} else {
-		fmt.Println("Nix gefunden")
 		w.WriteHeader(http.StatusNotFound)
 	}
 
@@ -31,7 +28,6 @@ func ServeIcon(w http.ResponseWriter, r *http.Request) {
 
 // Caller ensures r.URL.Path == "/icon"
 func ServeNamedIcon(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("/iconsearc..")
 	if r.Method != "GET" {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	} else if pngSvgPair, ok := getIconByName(r); !ok {
@@ -58,11 +54,9 @@ func getIcon(path resource.StandardizedPath) *Icon {
 }
 
 func getIconByName(r *http.Request) (*PngSvgPair, bool) {
-	fmt.Println("getIconByName")
 	if name, size, theme, ok := extractNameSizeAndTheme(r.URL.Query()); !ok {
 		return nil, false
 	} else {
-		fmt.Println("theme:", theme, "name:", name, "size:", size)
 		var pngIcon = findIcon(theme, name, size, "png")
 		var svgIcon = findIcon(theme, name, size, "svg")
 		if pngIcon != nil || svgIcon != nil {
@@ -101,13 +95,11 @@ func extractNameSizeAndTheme(query map[string][]string) (string, uint32, string,
 }
 
 func findIcon(themeId string, name string, size uint32, iconType string) *Icon {
-	fmt.Println("Looking for", iconType)
 	var visited = make(map[string]bool)
 	var toVisit = make([]string, 1, 10)
 	toVisit[0] = themeId
 	for i := 0; i < len(toVisit); i++ {
 		var themeId = toVisit[i]
-		fmt.Println("Visit", themeId)
 		if theme := getTheme(themeId); theme != nil {
 			if icon := findIconInTheme(themeId, name, size, iconType); icon != nil {
 				return icon
@@ -119,8 +111,6 @@ func findIcon(themeId string, name string, size uint32, iconType string) *Icon {
 					toVisit = append(toVisit, parentId)
 				}
 			}
-		} else {
-			fmt.Println("Theme not found...")
 		}
 	}
 
@@ -140,15 +130,12 @@ func findIcon(themeId string, name string, size uint32, iconType string) *Icon {
 // Inspired by pseudocode example in
 // https://specifications.freedesktop.org/icon-theme-spec/icon-theme-spec-latest.html#icon_lookup
 func findIconInTheme(themeId string, name string, size uint32, iconType string) *Icon {
-	fmt.Println("Into findIconInTheme", themeId, name)
-	defer fmt.Println("Leave findIconInTheme")
 	shortestDistanceSoFar := uint32(math.MaxUint32)
 	var candidate *Icon = nil
 
 	iconLock.Lock()
 	defer iconLock.Unlock()
 	// Caller ensures themeIcons[themeId] is not zero
-	fmt.Println("- has", len(themeIcons[themeId]), "icons,", len(themeIcons[themeId][name]), "for", name)
 	for _, icon := range themeIcons[themeId][name] {
 		if icon.Type != iconType {
 			continue
@@ -172,11 +159,15 @@ func findIconInTheme(themeId string, name string, size uint32, iconType string) 
 		}
 	}
 
+	if candidate == nil {
+		fmt.Println("No icon with name", name)
+	}
+
 	return candidate
 }
 
 func filterAndServe(w http.ResponseWriter, r *http.Request, resources []interface{}) {
-	if matcher, err := requests.GetMatcher2(r); err != nil {
+	if matcher, err := requests.GetMatcher(r); err != nil {
 		requests.ReportUnprocessableEntity(w, err)
 	} else {
 		var toServe []interface{}

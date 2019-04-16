@@ -8,25 +8,26 @@ package applications
 
 import (
 	"encoding/xml"
-	"github.com/surlykke/RefudeServices/lib/image"
-	"github.com/surlykke/RefudeServices/lib/resource"
-	"github.com/surlykke/RefudeServices/lib/slice"
-	"github.com/surlykke/RefudeServices/lib/xdg"
-	"golang.org/x/text/language"
+	"errors"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
-	"errors"
-	"fmt"
+
+	"github.com/surlykke/RefudeServices/lib/image"
+	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib/slice"
+	"github.com/surlykke/RefudeServices/lib/xdg"
+	"golang.org/x/text/language"
 )
 
 type collection struct {
 	mimetypes    map[resource.StandardizedPath]*Mimetype
 	applications map[resource.StandardizedPath]*DesktopApplication
-	associations map[string][]string            // Maps from mimetypeid to a list of app ids
-	defaultApps  map[string][]string            // Maps from mimetypeid to a list of app ids
+	associations map[string][]string // Maps from mimetypeid to a list of app ids
+	defaultApps  map[string][]string // Maps from mimetypeid to a list of app ids
 }
 
 func Collect() (map[resource.StandardizedPath]*Mimetype, map[resource.StandardizedPath]*DesktopApplication) {
@@ -51,8 +52,8 @@ func Collect() (map[resource.StandardizedPath]*Mimetype, map[resource.Standardiz
 		if mimetype, ok := c.mimetypes[mimetypeSelf(mimetypeId)]; ok {
 			for _, appId := range appIds {
 				if application, ok := c.applications[appSelf(appId)]; ok {
-					mimetype.LinkTo(resource.StandardizedPath("/application/" + appId), resource.Associated)
-					application.LinkTo(resource.StandardizedPath("/mimetype/" + mimetypeId), resource.Associated)
+					mimetype.LinkTo(resource.StandardizedPath("/application/"+appId), resource.Associated)
+					application.LinkTo(resource.StandardizedPath("/mimetype/"+mimetypeId), resource.Associated)
 				}
 			}
 		}
@@ -62,14 +63,12 @@ func Collect() (map[resource.StandardizedPath]*Mimetype, map[resource.Standardiz
 		if mimetype, ok := c.mimetypes[mimetypeSelf(mimetypeId)]; ok {
 			for _, appId := range appIds {
 				if _, ok := c.applications[appSelf(appId)]; ok {
-					mimetype.LinkTo(resource.StandardizedPath("/application/" + appId), resource.DefaultApplication)
+					mimetype.LinkTo(resource.StandardizedPath("/application/"+appId), resource.DefaultApplication)
 				}
 			}
 		}
 	}
 
-
-	fmt.Println("Collected ", len(c.mimetypes), "mimetypes and", len(c.applications), "applications")
 	return c.mimetypes, c.applications
 }
 
@@ -128,7 +127,7 @@ func CollectMimeTypes() map[resource.StandardizedPath]*Mimetype {
 		if mimeType, err := NewMimetype(tmp.Type); err != nil {
 			fmt.Println(err)
 		} else {
-			var collectedLocales= make(map[string]bool)
+			var collectedLocales = make(map[string]bool)
 
 			for _, tmpComment := range tmp.Comment {
 				if xdg.LocaleMatch(tmpComment.Lang) || (tmpComment.Lang == "" && mimeType.Comment == "") {
@@ -173,7 +172,7 @@ func CollectMimeTypes() map[resource.StandardizedPath]*Mimetype {
 				mimeType.GenericIcon = mimeType.Id[:slashPos] + "-x-generic"
 			}
 
-			var tags= make([]language.Tag, len(collectedLocales))
+			var tags = make([]language.Tag, len(collectedLocales))
 			for locale, _ := range collectedLocales {
 				tags = append(tags, language.Make(locale))
 			}
@@ -286,7 +285,7 @@ func readDesktopFile(path string) (*DesktopApplication, []string, error) {
 		da.GenericName = group.Entries["GenericName"]
 		da.NoDisplay = group.Entries["NoDisplay"] == "true"
 		da.Comment = group.Entries["Comment"]
-		icon := group.Entries["PixmapList"]
+		icon := group.Entries["Icon"]
 		if strings.HasPrefix(icon, "/") {
 			if iconName, err := image.CopyIconToSessionIconDir(icon); err != nil {
 				log.Printf("Problem with iconpath %s in %s: %s", icon, da.Id, err.Error())
@@ -322,7 +321,7 @@ func readDesktopFile(path string) (*DesktopApplication, []string, error) {
 				if action.Name = actionGroup.Entries["Name"]; action.Name == "" {
 					return nil, nil, errors.New("Desktop file invalid, action " + actionGroup.Name + " has no default 'Name'")
 				}
-				icon = actionGroup.Entries["PixmapList"]
+				icon = actionGroup.Entries["icon"]
 				if strings.HasPrefix(icon, "/") {
 					if iconName, err := image.CopyIconToSessionIconDir(icon); err != nil {
 						log.Printf("Problem with iconpath %s in %s: %s", icon, da.Id, err.Error())

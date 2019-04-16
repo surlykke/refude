@@ -7,18 +7,13 @@
 package power
 
 import (
-	"fmt"
-
 	dbuscall "github.com/surlykke/RefudeServices/lib/dbusutils"
 )
 
 func Run() {
-	fmt.Println("power.Run")
 	var signals = setup()
-	fmt.Println("looking for signals")
 
 	for signal := range signals {
-		//fmt.Println("Signal: ", signal)
 		if signal.Name == "org.freedesktop.DBus.Properties.PropertiesChanged" {
 			var path = deviceSelf(signal.Path)
 			if device := GetDevice(path); device != nil {

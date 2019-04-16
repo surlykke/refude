@@ -61,7 +61,6 @@ type DesktopAction struct {
 }
 
 func (da *DesktopApplication) POST(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("In post")
 	var actionName = requests.GetSingleQueryParameter(r, "action", "")
 	var args = r.URL.Query()["arg"]
 	var exec string
@@ -101,7 +100,6 @@ func launchWithArgs(exec string, args []string, inTerminal bool) {
 		}
 		var argListS = strings.Join(arglist, " ")
 		var cmd = argsReg.ReplaceAllString(exec, argListS)
-		fmt.Println("Run in terminal with cmd:", cmd)
 		argv = []string{terminal, "-e", cmd}
 	} else {
 		var fields = strings.Fields(exec)

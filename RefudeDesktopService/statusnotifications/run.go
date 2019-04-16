@@ -9,7 +9,6 @@ func Run() {
 	go monitorSignals()
 
 	for event := range events {
-		//fmt.Println("Got event: ", event)
 		var self = itemSelf(event.sender, event.path)
 		switch event.eventType {
 		case ItemCreated:

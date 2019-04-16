@@ -1,10 +1,10 @@
 package fs
 
 import (
-	"fmt"
-	"golang.org/x/sys/unix"
 	"os"
 	"syscall"
+
+	"golang.org/x/sys/unix"
 )
 
 func MakeWatcher(paths ...string) (int, error) {
@@ -13,7 +13,6 @@ func MakeWatcher(paths ...string) (int, error) {
 	} else {
 		syscall.Close(fd)
 		for _, path := range paths {
-			fmt.Println("Watching", path)
 			var watchmode uint32
 			if stat, err := os.Stat(path); err != nil {
 				syscall.Close(fd)

@@ -8,12 +8,12 @@ package notifications
 
 import (
 	"errors"
-	"fmt"
+	"strings"
+	"time"
+
 	"github.com/godbus/dbus"
 	"github.com/godbus/dbus/introspect"
 	"github.com/surlykke/RefudeServices/lib/resource"
-	"strings"
-	"time"
 )
 
 const NOTIFICATIONS_SERVICE = "org.freedesktop.Notifications"
@@ -113,12 +113,12 @@ func generate(out chan uint32) {
 
 func GetCapabilities() ([]string, *dbus.Error) {
 	return []string{
-		"actions",
-		"body",
-		"body-hyperlinks",
-		"body-markup",
-		"icon-static",
-	},
+			"actions",
+			"body",
+			"body-hyperlinks",
+			"body-markup",
+			"icon-static",
+		},
 		nil
 }
 
@@ -131,8 +131,6 @@ func makeNotifyFunction(notifications chan *Notification) interface{} {
 		actions []string,
 		hints map[string]dbus.Variant,
 		expire_timeout int32) (uint32, *dbus.Error) {
-
-		fmt.Println("Notify:", app_name, replaces_id, app_icon, summary, body, actions, hints, expire_timeout)
 
 		var id uint32
 		if replaces_id != 0 {
@@ -174,7 +172,9 @@ func makeNotifyFunction(notifications chan *Notification) interface{} {
 			var actionId = actions[i]
 			var actionDescription = actions[i+1]
 			notification.ResourceActions[actionId] = resource.ResourceAction{
-				Description: actionDescription, IconName: "", Executer: func() { conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".ActionInvoked", notificationId, actionId) },
+				Description: actionDescription, IconName: "", Executer: func() {
+					conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".ActionInvoked", notificationId, actionId)
+				},
 			}
 		}
 

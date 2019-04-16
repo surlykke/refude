@@ -24,7 +24,6 @@ func Run() {
 		}
 
 		if xdg.DirOrFileExists(appDir) {
-			fmt.Println("Watching: " + appDir)
 			if _, err := unix.InotifyAddWatch(fd, appDir, unix.IN_CREATE|unix.IN_MODIFY|unix.IN_DELETE); err != nil {
 				fmt.Println("Could not watch:", appDir, ":", err)
 			}

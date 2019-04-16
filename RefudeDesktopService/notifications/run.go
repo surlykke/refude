@@ -6,10 +6,6 @@
 //
 package notifications
 
-import (
-	"fmt"
-)
-
 var removals = make(chan removal)
 
 func Run() {
@@ -21,7 +17,6 @@ func Run() {
 		case notification := <-updates:
 			setNotification(notification)
 		case rem := <-removals:
-			fmt.Println("Got removal..")
 			if removeNotification(notificationSelf(rem.id), rem.internalId) {
 				notificationClosed(rem.id, rem.reason)
 			}

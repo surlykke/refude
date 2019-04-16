@@ -10,7 +10,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/surlykke/RefudeServices/lib/xdg"
 	"io/ioutil"
 	"log"
 	"net"
@@ -20,6 +19,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+
+	"github.com/surlykke/RefudeServices/lib/xdg"
 
 	"github.com/rakyll/magicmime"
 )
@@ -57,20 +58,17 @@ func getJson(path string, res interface{}) error {
 
 func postJson(path string) error {
 	url := "http://localhost" + path
-	fmt.Println("Posting against: ", url)
 	if request, err := http.NewRequest("POST", url, nil); err != nil {
 		return err
 	} else if response, err := client.Do(request); err != nil {
 		return err
 	} else {
 		defer response.Body.Close()
-		fmt.Println(response.Status)
 		return nil
 	}
 }
 
 func getDefaultApp(mimetypeid string) (string, error) {
-	fmt.Println("Looking for ", mimetypeid)
 	mimetype := MimeType{}
 	if err := getJson("/mimetypes/"+mimetypeid, &mimetype); err != nil {
 		return "", err

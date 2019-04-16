@@ -66,8 +66,32 @@ func GetIcons() []interface{} {
 	return icons
 }
 
+// Caller ensures themeIcons[themeId] is there
+func addThemeIcon(themeId string, icon *Icon) {
+	iconLock.Lock()
+	defer iconLock.Unlock()
+	themeIcons[themeId][icon.Name] = append(themeIcons[themeId][icon.Name], icon)
+}
+
+func haveThemeIcon(themeId string, name string) bool {
+	iconLock.Lock()
+	defer iconLock.Unlock()
+
+	if iconMap, ok := themeIcons[themeId]; !ok {
+		return false
+	} else {
+		_, ok = iconMap[name]
+		return ok
+	}
+}
+
+func addOtherIcon(icon *Icon) {
+	iconLock.Lock()
+	defer iconLock.Unlock()
+	otherIcons[icon.Name] = icon
+}
+
 func addTheme(theme *Theme) {
-	fmt.Println("Add theme", theme.Id)
 	themeLock.Lock()
 	iconLock.Lock()
 	defer iconLock.Unlock()
