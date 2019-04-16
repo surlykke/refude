@@ -9,7 +9,7 @@ ZSH_COMPLETION_DIR=${XDG_DATA_HOME:-${HOME}/.local/share}/zsh/completions
 FISH_COMPLETION_DIR=${XDG_CONFIG_HOME:-${HOME}/.config}/fish/completions
 mkdir -p $BIN_DIR $BASH_COMPLETION_DIR $ZSH_COMPLETION_DIR $FISH_COMPLETION_DIR
 
-for dir in Refude*; do
+for dir in refude RefudeXdgOpen RefudeDesktopService; do
     if [[ -d $dir ]]; then
         (cd $dir && echo "Building $dir" && go install) || exit 1
     fi

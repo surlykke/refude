@@ -7,7 +7,6 @@
 package icons
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/surlykke/RefudeServices/lib/resource"
