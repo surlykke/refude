@@ -21,7 +21,6 @@ import (
 )
 
 func serveHttp(w http.ResponseWriter, r *http.Request) {
-
 	var path = resource.StandardizedPath(r.URL.Path)
 	switch {
 	case path == "/windows":

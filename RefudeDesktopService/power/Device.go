@@ -35,11 +35,11 @@ func setDevice(device *Device) {
 	devices[device.GetSelf()] = device
 }
 
-func GetDevices() []interface{} {
+func GetDevices() []resource.Resource {
 	lock.Lock()
 	defer lock.Unlock()
 
-	var result = make([]interface{}, 0, len(devices))
+	var result = make([]resource.Resource, 0, len(devices))
 	for _, device := range devices {
 		result = append(result, device)
 	}

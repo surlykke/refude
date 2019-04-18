@@ -66,10 +66,27 @@ func ReportUnprocessableEntity(w http.ResponseWriter, err error) {
 	}
 }
 
-var r = regexp.MustCompile(`^\s*(?:W/)?("[^"]*")\s*`)
+func CheckEtag(r *http.Request, resourceEtag string) int {
+	switch r.Method {
+	case "GET", "HEAD":
+		var etagList = r.Header.Get("If-None-Match")
+		if etagList != "" && EtagMatch(resourceEtag, etagList) {
+			return http.StatusNotModified
+		}
+	case "POST", "PUT", "PATCH", "DELETE":
+		var etagList = r.Header.Get("If-Match")
+		if etagList != "" && !EtagMatch(resourceEtag, etagList) {
+			return http.StatusPreconditionFailed
+		}
+	}
+
+	return 0
+}
 
 // We do not do weak matches, so any 'W/' preceding a tag is
 // ignored
+var r = regexp.MustCompile(`^\s*(?:W/)?("[^"]*")\s*`)
+
 func EtagMatch(etag string, etagList string) bool {
 	var pos = 0
 

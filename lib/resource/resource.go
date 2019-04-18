@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
+	"sort"
 
 	"github.com/surlykke/RefudeServices/lib/requests"
 )
@@ -43,6 +44,12 @@ type Link struct {
 	Title string           `json:",omitempty"`
 }
 
+type ResourceCollection []Resource
+
+func (rc ResourceCollection) Len() int           { return len(rc) }
+func (rc ResourceCollection) Swap(i, j int)      { rc[i], rc[j] = rc[j], rc[i] }
+func (rc ResourceCollection) Less(i, j int) bool { return rc[i].GetSelf() < rc[j].GetSelf() }
+
 type JsonResponse struct {
 	Data []byte
 	Etag string
@@ -60,12 +67,14 @@ func ToJSon(res interface{}) JsonResponse {
 
 }
 
-func ServeCollection(w http.ResponseWriter, r *http.Request, collection []interface{}) {
+func ServeCollection(w http.ResponseWriter, r *http.Request, collection []Resource) {
 	var matcher, err = requests.GetMatcher(r)
 	if err != nil {
 		w.WriteHeader(http.StatusUnprocessableEntity)
 		return
-	} else if matcher != nil {
+	}
+
+	if matcher != nil {
 		var matched = 0
 		for i := 0; i < len(collection); i++ {
 			if matcher(collection[i]) {
@@ -76,7 +85,24 @@ func ServeCollection(w http.ResponseWriter, r *http.Request, collection []interf
 		collection = collection[0:matched]
 	}
 
+	sort.Sort(ResourceCollection(collection))
+
+	_, brief := r.URL.Query()["brief"]
 	var response = ToJSon(collection)
+	if brief {
+		var briefs = make([]StandardizedPath, len(collection), len(collection))
+		for i := 0; i < len(collection); i++ {
+			briefs[i] = collection[i].GetSelf()
+		}
+		response = ToJSon(briefs)
+	} else {
+		response = ToJSon(collection)
+	}
+
+	if statusCode := requests.CheckEtag(r, response.Etag); statusCode != 0 {
+		w.WriteHeader(statusCode)
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("ETag", response.Etag)
@@ -86,11 +112,20 @@ func ServeCollection(w http.ResponseWriter, r *http.Request, collection []interf
 func ServeResource(w http.ResponseWriter, r *http.Request, res Resource) {
 	if reflect.ValueOf(res).IsNil() {
 		w.WriteHeader(http.StatusNotFound)
-	} else if r.Method == "GET" {
-		var response = ToJSon(res)
+		return
+	}
+
+	var jsonResponse = ToJSon(res)
+
+	if statusCode := requests.CheckEtag(r, jsonResponse.Etag); statusCode != 0 {
+		w.WriteHeader(statusCode)
+		return
+	}
+
+	if r.Method == "GET" {
 		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("ETag", response.Etag)
-		_, _ = w.Write(response.Data)
+		w.Header().Set("ETag", jsonResponse.Etag)
+		_, _ = w.Write(jsonResponse.Data)
 	} else if r.Method == "POST" {
 		res.POST(w, r)
 	} else if r.Method == "PATCH" {

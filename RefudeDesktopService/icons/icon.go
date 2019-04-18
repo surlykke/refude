@@ -20,11 +20,11 @@ var otherIcons map[string]*Icon
 var iconsByPath map[resource.StandardizedPath]*Icon
 var iconLock sync.Mutex
 
-func GetThemes() []interface{} {
+func GetThemes() []resource.Resource {
 	themeLock.Lock()
 	defer themeLock.Unlock()
 
-	var themes = make([]interface{}, 0, len(themes))
+	var themes = make([]resource.Resource, 0, len(themes))
 	for _, theme := range themes {
 		themes = append(themes, theme)
 	}
@@ -45,11 +45,11 @@ func GetTheme(path resource.StandardizedPath) *Theme {
 	}
 }
 
-func GetIcons() []interface{} {
+func GetIcons() []resource.Resource {
 	iconLock.Lock()
 	defer iconLock.Unlock()
 
-	var icons = make([]interface{}, 0, 1000 /*?*/)
+	var icons = make([]resource.Resource, 0, 1000 /*?*/)
 	for _, themeIconMap := range themeIcons {
 		for _, iconList := range themeIconMap {
 			for _, icon := range iconList {

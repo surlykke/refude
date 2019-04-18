@@ -26,11 +26,11 @@ func GetNotification(path resource.StandardizedPath) *Notification {
 	return notifications[path]
 }
 
-func GetNotifications() []interface{} {
+func GetNotifications() []resource.Resource {
 	lock.Lock()
 	defer lock.Unlock()
 
-	var result = make([]interface{}, len(notifications), len(notifications))
+	var result = make([]resource.Resource, len(notifications), len(notifications))
 	var i = 0
 	for _, notification := range notifications {
 		result[i] = notification

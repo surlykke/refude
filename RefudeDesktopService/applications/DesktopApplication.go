@@ -121,10 +121,10 @@ func GetApplication(path resource.StandardizedPath) *DesktopApplication {
 	return desktopApplications[path]
 }
 
-func GetApplications() []interface{} {
+func GetApplications() []resource.Resource {
 	lock.Lock()
 	defer lock.Unlock()
-	var result = make([]interface{}, 0, len(desktopApplications))
+	var result = make([]resource.Resource, 0, len(desktopApplications))
 
 	for _, app := range desktopApplications {
 		result = append(result, app)

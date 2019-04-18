@@ -45,12 +45,12 @@ func GetWindow(path resource.StandardizedPath) *Window {
 	}
 }
 
-func GetWindows() []interface{} {
+func GetWindows() []resource.Resource {
 	if windows, err := getWindows(); err != nil {
 		log.Printf("Error getting windows: %v\n", err)
 		return nil
 	} else {
-		var result = make([]interface{}, len(windows), len(windows))
+		var result = make([]resource.Resource, len(windows), len(windows))
 		for i := 0; i < len(windows); i++ {
 			result[i] = windows[i]
 		}

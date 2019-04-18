@@ -7,10 +7,11 @@
 package parser
 
 import (
-	"github.com/pkg/errors"
 	"reflect"
 	"strconv"
 	"strings"
+
+	"github.com/pkg/errors"
 )
 
 /**
@@ -36,11 +37,10 @@ import (
 
 type Matcher func(res interface{}) bool
 
-
 type pathElementKind int
 
 const (
-	keys     pathElementKind = iota
+	keys pathElementKind = iota
 	indexes
 	wildcard
 )
@@ -72,19 +72,18 @@ type ErrorMsg struct {
 
 func (em ErrorMsg) Error() string {
 	return "query:    " + strconv.Quote(em.query) + "\n" +
-		   "error:    " + string(em.parseError) + "\n" +
-		   "position: " + strconv.Itoa(em.position)
+		"error:    " + string(em.parseError) + "\n" +
+		"position: " + strconv.Itoa(em.position)
 }
-
 
 func Parse(query string) (m Matcher, err error) {
 	err = nil
 	var l = MakeLexer(query)
 	defer func() {
-		r := recover();
+		r := recover()
 		if r != nil {
 			if parseError, ok := r.(ParseError); ok {
-				err = errors.Errorf("query: %s\nerror:d %s\nat:%d", query, parseError, l.tokenStart);
+				err = errors.Errorf("query: %s\nerror:d %s\nat:%d", query, parseError, l.tokenStart)
 			} else {
 				panic(r)
 			}
@@ -131,7 +130,7 @@ func readTerm(ts *Lexer) Matcher {
 	} else {
 		return func(res interface{}) bool {
 			for _, f := range factorMatchers {
-				if ! f(res) {
+				if !f(res) {
 					return false
 				}
 			}
@@ -143,7 +142,7 @@ func readTerm(ts *Lexer) Matcher {
 func readFactor(ts *Lexer) Matcher {
 	var negate = false
 	for ts.Current.Text == "not" {
-		negate = ! negate
+		negate = !negate
 		ts.next()
 	}
 
@@ -158,7 +157,7 @@ func readFactor(ts *Lexer) Matcher {
 
 	if negate {
 		return func(res interface{}) bool {
-			return ! m(res)
+			return !m(res)
 		}
 	} else {
 		return m
@@ -170,8 +169,8 @@ var stringCheckers = map[string]func(lhs, rhs string) bool{
 	"eqi":  func(lhs, rhs string) bool { return strings.ToUpper(lhs) == strings.ToUpper(rhs) },
 	"neq":  func(lhs, rhs string) bool { return lhs != rhs },
 	"neqi": func(lhs, rhs string) bool { return strings.ToUpper(lhs) != strings.ToUpper(rhs) },
-	"~":   func(lhs, rhs string) bool { return strings.Contains(lhs, rhs) },
-	"~i":  func(lhs, rhs string) bool { return strings.Contains(strings.ToUpper(lhs), strings.ToUpper(rhs)) },
+	"~":    func(lhs, rhs string) bool { return strings.Contains(lhs, rhs) },
+	"~i":   func(lhs, rhs string) bool { return strings.Contains(strings.ToUpper(lhs), strings.ToUpper(rhs)) },
 }
 
 var numberCheckers = map[string]func(lhs, rhs int) bool{
@@ -227,7 +226,7 @@ func readRelation(ts *Lexer) Matcher {
 }
 
 /**
- *  PATHSPEC -> dollar ELEMENTLIST
+ *  PATHSPEC -> 'r' ELEMENTLIST
  *  ELEMENTLIST -> '[' KEYLIST ']' ELEMENTLIST | <none>
  *  KEYLIST -> STRINGLIST | INTLIST
  *  STRINGLIST -> String ',' STRINGLIST | String
@@ -236,8 +235,8 @@ func readRelation(ts *Lexer) Matcher {
 
 func readPathSpec(ts *Lexer) []pathElement {
 	var pe = make([]pathElement, 0)
-	ts.Current.assertRaw("r");
-	ts.next();
+	ts.Current.assertRaw("r")
+	ts.next()
 	for {
 		if ts.Current.Text == "." {
 			ts.next()
@@ -348,7 +347,7 @@ func fieldCollector(pathSpec []pathElement, node interface{}, leafs *[]interface
 			if pathSpec[0].kind == indexes {
 				for _, i := range pathSpec[0].indexes {
 					if 0 <= i && i < v.Len() {
-						fieldCollector(pathSpec[1:], v.Index(int(i)).Addr().Interface(), leafs);
+						fieldCollector(pathSpec[1:], v.Index(int(i)).Addr().Interface(), leafs)
 					}
 				}
 			} else if pathSpec[0].kind == wildcard {

@@ -41,11 +41,11 @@ func removeItem(path resource.StandardizedPath) {
 	updateWatcherProperties()
 }
 
-func GetItems() []interface{} {
+func GetItems() []resource.Resource {
 	lock.Lock()
 	defer lock.Unlock()
 
-	var res = make([]interface{}, 0, len(items))
+	var res = make([]resource.Resource, 0, len(items))
 	for _, item := range items {
 		res = append(res, item)
 	}
