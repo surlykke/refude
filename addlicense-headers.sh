@@ -6,5 +6,5 @@ addHeader () {
 }
 export -f addHeader
 
-find lib Refude* -name '*.go' -not -exec grep -q GPL2 {} \; -exec bash -c 'addHeader "{}"' \; -print
+find  -name '*.go' -not -exec grep -q GPL2 {} \; -exec bash -c 'addHeader "{}"' \; -print
 
