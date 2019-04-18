@@ -3,6 +3,7 @@ package windows
 import (
 	"fmt"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/windows/xlib"
@@ -77,39 +78,64 @@ func getWindow(wId uint32) (*Window, error) {
 	return window, nil
 }
 
+// Pulling icons from X11 (as GetIconName below does) is somewhat costly. For example 'Visual Studio Code' has a
+// window icon of size 1024x1024, so it contains ~ 4 Mb. Hence the caching.
+// TODO: Update cache on icon change event (?). Purge cache on window close
+var iconNameCache = make(map[uint32]string)
+var iconNameCacheLock sync.Mutex
+
+func getIconNameFromCache(wId uint32) (string, bool) {
+	iconNameCacheLock.Lock()
+	defer iconNameCacheLock.Unlock()
+	name, ok := iconNameCache[wId]
+	return name, ok
+}
+
+func setIconNameInCache(wId uint32, name string) {
+	iconNameCacheLock.Lock()
+	defer iconNameCacheLock.Unlock()
+	iconNameCache[wId] = name
+}
+
 func GetIconName(wId uint32) (string, error) {
-	pixelArray, err := xlib.GetIcon(wId)
-	if err != nil {
-		return "", err
-	}
+	if name, ok := getIconNameFromCache(wId); ok {
+		return name, nil
+	} else {
 
-	/*
-	 * Icons retrieved from the X-server (EWMH) will come as arrays of uint32. There will be first two ints giving
-	 * width and height, then width*height uints each holding a pixel in ARGB format.
-	 * After that it may repeat: again a width and height uint and then pixels and
-	 * so on...
-	 */
-	var images = []image.ARGBImage{}
-	for len(pixelArray) >= 2 {
-		width := pixelArray[0]
-		height := pixelArray[1]
-
-		pixelArray = pixelArray[2:]
-		if len(pixelArray) < int(width*height) {
-			break
+		pixelArray, err := xlib.GetIcon(wId)
+		if err != nil {
+			return "", err
 		}
-		pixels := make([]byte, 4*width*height)
-		for pos := uint32(0); pos < width*height; pos++ {
-			pixels[4*pos] = uint8((pixelArray[pos] & 0xFF000000) >> 24)
-			pixels[4*pos+1] = uint8((pixelArray[pos] & 0xFF0000) >> 16)
-			pixels[4*pos+2] = uint8((pixelArray[pos] & 0xFF00) >> 8)
-			pixels[4*pos+3] = uint8(pixelArray[pos] & 0xFF)
-		}
-		images = append(images, image.ARGBImage{Width: width, Height: height, Pixels: pixels})
-		pixelArray = pixelArray[width*height:]
-	}
 
-	var icon = image.MakeIconWithHashAsName(images)
-	icons.AddARGBIcon(icon)
-	return icon.Name, nil
+		/*
+		 * Icons retrieved from the X-server (EWMH) will come as arrays of uint32. There will be first two ints giving
+		 * width and height, then width*height uints each holding a pixel in ARGB format.
+		 * After that it may repeat: again a width and height uint and then pixels and
+		 * so on...
+		 */
+		var images = []image.ARGBImage{}
+		for len(pixelArray) >= 2 {
+			width := pixelArray[0]
+			height := pixelArray[1]
+
+			pixelArray = pixelArray[2:]
+			if len(pixelArray) < int(width*height) {
+				break
+			}
+			pixels := make([]byte, 4*width*height)
+			for pos := uint32(0); pos < width*height; pos++ {
+				pixels[4*pos] = uint8((pixelArray[pos] & 0xFF000000) >> 24)
+				pixels[4*pos+1] = uint8((pixelArray[pos] & 0xFF0000) >> 16)
+				pixels[4*pos+2] = uint8((pixelArray[pos] & 0xFF00) >> 8)
+				pixels[4*pos+3] = uint8(pixelArray[pos] & 0xFF)
+			}
+			images = append(images, image.ARGBImage{Width: width, Height: height, Pixels: pixels})
+			pixelArray = pixelArray[width*height:]
+		}
+
+		var icon = image.MakeIconWithHashAsName(images)
+		icons.AddARGBIcon(icon)
+		setIconNameInCache(wId, icon.Name)
+		return icon.Name, nil
+	}
 }
