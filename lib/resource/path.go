@@ -39,7 +39,7 @@ func Standardize(p string) StandardizedPath {
 		justSawSlash = p[i] == '/'
 	}
 
-	if buffer[pos-1] == '/' {
+	if pos > 1 && buffer[pos-1] == '/' {
 		return StandardizedPath(buffer[:pos-1])
 	} else {
 		return StandardizedPath(buffer[:pos])

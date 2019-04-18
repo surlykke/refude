@@ -30,7 +30,7 @@ func setup() chan *dbus.Signal {
 	for _, path := range devicePaths {
 		var device = &Device{}
 		device.DisplayDevice = path == DisplayDevicePath
-		device.AbstractResource = resource.MakeAbstractResource(deviceSelf(path), DeviceMediaType)
+		device.GenericResource = resource.MakeGenericResource(deviceSelf(path), DeviceMediaType)
 		device.DbusPath = path
 		updateDevice(device, dbuscall.GetAllProps(dbusConn, UPowService, path, UPowerDeviceInterface))
 		setDevice(device)
@@ -54,8 +54,8 @@ var possibleActionValues = map[string][]string{
 	"Hibernate":   {"Hibernate", "Put the machine into hibernation", "system-suspend-hibernate"},
 	"HybridSleep": {"HybridSleep", "Put the machine into hybrid sleep", "system-suspend-hibernate"}}
 
-func buildSessionResource() *resource.AbstractResource {
-	var session = resource.MakeAbstractResource("/session", SessionMediaType)
+func buildSessionResource() *resource.GenericResource {
+	var session = resource.MakeGenericResource("/session", SessionMediaType)
 	for id, pv := range possibleActionValues {
 		if "yes" == dbusConn.Object(login1Service, login1Path).Call(managerInterface+".Can"+id, dbus.Flags(0)).Body[0].(string) {
 			var dbusEndPoint = managerInterface + "." + id

@@ -147,7 +147,7 @@ func makeNotifyFunction(notifications chan *Notification) interface{} {
 			Body:       sanitize(body, allowedTags, allowedEscapes),
 		}
 
-		notification.AbstractResource = resource.MakeAbstractResource(notificationSelf(id), NotificationMediaType)
+		notification.GenericResource = resource.MakeGenericResource(notificationSelf(id), NotificationMediaType)
 
 		if expire_timeout == 0 {
 			expire_timeout = 2000

@@ -27,7 +27,7 @@ var desktopApplications = make(map[resource.StandardizedPath]*DesktopApplication
 var lock sync.Mutex
 
 type DesktopApplication struct {
-	resource.AbstractResource
+	resource.GenericResource
 	Type            string
 	Version         string `json:",omitempty"`
 	Name            string

@@ -50,7 +50,7 @@ func GetDevices() []interface{} {
 var Session = buildSessionResource()
 
 type Device struct {
-	resource.AbstractResource
+	resource.GenericResource
 	DbusPath         dbus.ObjectPath
 	NativePath       string
 	Vendor           string

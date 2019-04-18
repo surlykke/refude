@@ -59,7 +59,7 @@ func removeNotification(path resource.StandardizedPath, internalId uint32) bool 
 }
 
 type Notification struct {
-	resource.AbstractResource
+	resource.GenericResource
 	Id            uint32
 	internalId    uint32
 	Sender        string

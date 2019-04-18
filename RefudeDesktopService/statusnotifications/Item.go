@@ -68,7 +68,7 @@ func findByMenupath(menupath string) *Item {
 }
 
 type Item struct {
-	resource.AbstractResource
+	resource.GenericResource
 	key                     string
 	sender                  string
 	itemPath                dbus.ObjectPath

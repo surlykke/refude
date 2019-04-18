@@ -9,11 +9,12 @@ package lib
 import (
 	"context"
 	"fmt"
-	"github.com/surlykke/RefudeServices/lib/xdg"
 	"log"
 	"net"
 	"net/http"
 	"syscall"
+
+	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
 func seemsToBeRunning(socketPath string) bool {
@@ -46,7 +47,7 @@ func makeListener(socketName string) (*net.UnixListener, bool) {
 	listener, err := net.ListenUnix("unix", &net.UnixAddr{
 		Name: socketPath,
 		Net:  "unix",
-	});
+	})
 	if err != nil {
 		fmt.Println(err)
 		return nil, false
@@ -56,8 +57,11 @@ func makeListener(socketName string) (*net.UnixListener, bool) {
 }
 
 func Serve(socketName string, handler http.Handler) {
-	if listener, ok := makeListener(socketName); ok {
+	if seemsToBeRunning(socketName) {
+		fmt.Println("Something is already running on", socketName)
+	} else if listener, ok := makeListener(socketName); ok {
 		http.Serve(listener, handler)
+	} else {
+		fmt.Println("Unable to listen on", socketName)
 	}
 }
-

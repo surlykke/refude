@@ -100,7 +100,7 @@ func addTheme(theme *Theme) {
 }
 
 type Icon struct {
-	resource.AbstractResource
+	resource.GenericResource
 	Name        string
 	Theme       string
 	Context     string
@@ -112,7 +112,7 @@ type Icon struct {
 }
 
 type Theme struct {
-	resource.AbstractResource
+	resource.GenericResource
 	Id       string
 	Name     string
 	Comment  string

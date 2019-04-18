@@ -12,7 +12,7 @@ import (
 )
 
 type Menu struct {
-	resource.AbstractResource
+	resource.GenericResource
 	Menu []MenuItem
 }
 
@@ -42,7 +42,7 @@ func GetMenu(path resource.StandardizedPath) *Menu {
 			if menuItems, err := fetchMenu(sender, dbus.ObjectPath(path)); err != nil {
 				return nil
 			} else {
-				var menu = Menu{resource.MakeAbstractResource(resource.Standardizef("/itemmenu/%s/%s", sender, path), ""), menuItems}
+				var menu = Menu{resource.MakeGenericResource(resource.Standardizef("/itemmenu/%s/%s", sender, path), ""), menuItems}
 				menu.LinkTo(item.GetSelf(), resource.Related)
 				return &menu
 			}

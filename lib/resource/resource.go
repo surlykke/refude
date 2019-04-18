@@ -11,25 +11,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"reflect"
 
 	"github.com/surlykke/RefudeServices/lib/requests"
 )
 
-type Resource interface {
-	GetSelf() StandardizedPath
-	GetMt() MediaType
-	POST(w http.ResponseWriter, r *http.Request)
-	PATCH(w http.ResponseWriter, r *http.Request)
-	DELETE(w http.ResponseWriter, r *http.Request)
-}
-
-type Executer func()
-
-type ResourceAction struct {
-	Description string
-	IconName    string
-	Executer    Executer `json:"-"`
-}
+type MediaType string
 
 type Relation string
 
@@ -41,11 +28,12 @@ const (
 	SNI_MENU                    = "http://relations.refude.org/sni_menu"
 )
 
-type AbstractResource struct {
-	Self            StandardizedPath          `json:"_self"` // Convenience - is also contained in Links
-	Links           []Link                    `json:"_links"`
-	Mt              MediaType                 `json:"-"`
-	ResourceActions map[string]ResourceAction `json:"_actions,omitempty"`
+type Resource interface {
+	GetSelf() StandardizedPath
+	GetMt() MediaType
+	POST(w http.ResponseWriter, r *http.Request)
+	PATCH(w http.ResponseWriter, r *http.Request)
+	DELETE(w http.ResponseWriter, r *http.Request)
 }
 
 type Link struct {
@@ -53,51 +41,6 @@ type Link struct {
 	Rel   Relation         `json:"rel"` // We never have more than one relation on a link - we'll make a new link with same href
 	Type  MediaType        `json:",omitempty"`
 	Title string           `json:",omitempty"`
-}
-
-func MakeAbstractResource(SelfLink StandardizedPath, mt MediaType) AbstractResource {
-	return AbstractResource{
-		Self:            SelfLink,
-		Links:           []Link{{Href: SelfLink, Rel: Self}},
-		Mt:              mt,
-		ResourceActions: make(map[string]ResourceAction),
-	}
-}
-
-func (ar *AbstractResource) GetSelf() StandardizedPath {
-	for _, link := range ar.Links {
-		if link.Rel == Self {
-			return link.Href
-		}
-	}
-
-	panic("Resource has no self link")
-}
-
-func (ar *AbstractResource) GetMt() MediaType {
-	return ar.Mt
-}
-
-func (r *AbstractResource) LinkTo(target StandardizedPath, relation Relation) {
-	r.Links = append(r.Links, Link{Href: target, Rel: relation})
-}
-
-func (ar *AbstractResource) POST(w http.ResponseWriter, r *http.Request) {
-	var actionId = requests.GetSingleQueryParameter(r, "action", "default")
-	if action, ok := ar.ResourceActions[actionId]; ok {
-		action.Executer()
-		w.WriteHeader(http.StatusAccepted)
-	} else {
-		w.WriteHeader(http.StatusUnprocessableEntity)
-	}
-}
-
-func (ar *AbstractResource) PATCH(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusMethodNotAllowed)
-}
-
-func (ar *AbstractResource) DELETE(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusMethodNotAllowed)
 }
 
 type JsonResponse struct {
@@ -115,4 +58,46 @@ func ToJSon(res interface{}) JsonResponse {
 	}
 	return jsonResponse
 
+}
+
+func ServeCollection(w http.ResponseWriter, r *http.Request, collection []interface{}) {
+	var matcher, err = requests.GetMatcher(r)
+	if err != nil {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		return
+	} else if matcher != nil {
+		var matched = 0
+		for i := 0; i < len(collection); i++ {
+			if matcher(collection[i]) {
+				collection[matched] = collection[i]
+				matched++
+			}
+		}
+		collection = collection[0:matched]
+	}
+
+	var response = ToJSon(collection)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("ETag", response.Etag)
+	_, _ = w.Write(response.Data)
+}
+
+func ServeResource(w http.ResponseWriter, r *http.Request, res Resource) {
+	if reflect.ValueOf(res).IsNil() {
+		w.WriteHeader(http.StatusNotFound)
+	} else if r.Method == "GET" {
+		var response = ToJSon(res)
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("ETag", response.Etag)
+		_, _ = w.Write(response.Data)
+	} else if r.Method == "POST" {
+		res.POST(w, r)
+	} else if r.Method == "PATCH" {
+		res.PATCH(w, r)
+	} else if r.Method == "DELETE" {
+		res.DELETE(w, r)
+	} else {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	}
 }

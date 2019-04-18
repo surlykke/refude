@@ -29,7 +29,7 @@ var mimetypes = make(map[resource.StandardizedPath]*Mimetype)
 var mlock sync.Mutex
 
 type Mimetype struct {
-	resource.AbstractResource
+	resource.GenericResource
 	Id              string
 	Comment         string
 	Acronym         string `json:",omitempty"`
@@ -56,7 +56,7 @@ func NewMimetype(id string) (*Mimetype, error) {
 			IconName:    "unknown",
 			GenericIcon: "unknown",
 		}
-		mt.AbstractResource = resource.MakeAbstractResource(mimetypeSelf(id), MimetypeMediaType)
+		mt.GenericResource = resource.MakeGenericResource(mimetypeSelf(id), MimetypeMediaType)
 
 		if strings.HasPrefix(id, "x-scheme-handler/") {
 			mt.Comment = id[len("x-scheme-handler/"):] + " url"

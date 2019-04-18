@@ -8,7 +8,6 @@ package main
 
 import (
 	"net/http"
-	"reflect"
 
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/icons"
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/notifications"
@@ -18,86 +17,43 @@ import (
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/applications"
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/windows"
 	"github.com/surlykke/RefudeServices/lib"
-	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
 func serveHttp(w http.ResponseWriter, r *http.Request) {
 
-	var serveResource = func(res resource.Resource) {
-		if reflect.ValueOf(res).IsNil() {
-			w.WriteHeader(http.StatusNotFound)
-		} else if r.Method == "GET" {
-			var response = resource.ToJSon(res)
-			w.Header().Set("Content-Type", "application/json")
-			w.Header().Set("ETag", response.Etag)
-			_, _ = w.Write(response.Data)
-		} else if r.Method == "POST" {
-			res.POST(w, r)
-		} else if r.Method == "PATCH" {
-			res.PATCH(w, r)
-		} else if r.Method == "DELETE" {
-			res.DELETE(w, r)
-		} else {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-		}
-	}
-
-	var serveCollection = func(collection []interface{}) {
-		var matcher, err = requests.GetMatcher(r)
-		if err != nil {
-			w.WriteHeader(http.StatusUnprocessableEntity)
-			return
-		} else if matcher != nil {
-			var matched = 0
-			for i := 0; i < len(collection); i++ {
-				if matcher(collection[i]) {
-					collection[matched] = collection[i]
-					matched++
-				}
-			}
-			collection = collection[0:matched]
-		}
-
-		var response = resource.ToJSon(collection)
-
-		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("ETag", response.Etag)
-		_, _ = w.Write(response.Data)
-	}
-
 	var path = resource.StandardizedPath(r.URL.Path)
 	switch {
 	case path == "/windows":
-		serveCollection(windows.GetWindows())
+		resource.ServeCollection(w, r, windows.GetWindows())
 	case path.StartsWith("/window/"):
-		serveResource(windows.GetWindow(path))
+		resource.ServeResource(w, r, windows.GetWindow(path))
 	case path == "/applications":
-		serveCollection(applications.GetApplications())
+		resource.ServeCollection(w, r, applications.GetApplications())
 	case path.StartsWith("/application/"):
-		serveResource(applications.GetApplication(path))
+		resource.ServeResource(w, r, applications.GetApplication(path))
 	case path == "/notifications":
-		serveCollection(notifications.GetNotifications())
+		resource.ServeCollection(w, r, notifications.GetNotifications())
 	case path.StartsWith("/notification/"):
-		serveResource(notifications.GetNotification(path))
+		resource.ServeResource(w, r, notifications.GetNotification(path))
 	case path == "/devices":
-		serveCollection(power.GetDevices())
+		resource.ServeCollection(w, r, power.GetDevices())
 	case path.StartsWith("/device/"):
-		serveResource(power.GetDevice(path))
+		resource.ServeResource(w, r, power.GetDevice(path))
 	case path == "/session":
-		serveResource(power.Session)
+		resource.ServeResource(w, r, power.Session)
 	case path == "/items":
-		serveCollection(statusnotifications.GetItems())
+		resource.ServeCollection(w, r, statusnotifications.GetItems())
 	case path.StartsWith("/item/"):
-		serveResource(statusnotifications.GetItem(path))
+		resource.ServeResource(w, r, statusnotifications.GetItem(path))
 	case path.StartsWith("/itemmenu/"):
-		serveResource(statusnotifications.GetMenu(path))
+		resource.ServeResource(w, r, statusnotifications.GetMenu(path))
 	case path == "/iconthemes":
-		serveCollection(icons.GetThemes())
+		resource.ServeCollection(w, r, icons.GetThemes())
 	case path.StartsWith("/icontheme/"):
-		serveResource(icons.GetTheme(path))
+		resource.ServeResource(w, r, icons.GetTheme(path))
 	case path == "/icons":
-		serveCollection(icons.GetIcons())
+		resource.ServeCollection(w, r, icons.GetIcons())
 	case path == "/icon":
 		icons.ServeNamedIcon(w, r)
 	case path.StartsWith("/icon/"):

@@ -17,7 +17,7 @@ import (
 const WindowMediaType resource.MediaType = "application/vnd.org.refude.wmwindow+json"
 
 type Window struct {
-	resource.AbstractResource
+	resource.GenericResource
 	Id         uint32
 	Parent     uint32
 	StackOrder int

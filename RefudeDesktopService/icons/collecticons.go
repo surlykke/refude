@@ -113,7 +113,7 @@ func addBaseDir(baseDir string) {
 					}
 				}
 
-				icon.AbstractResource = resource.MakeAbstractResource(resource.Standardize("/icon/"+url.PathEscape(path)), "application/json")
+				icon.GenericResource = resource.MakeGenericResource(resource.Standardize("/icon/"+url.PathEscape(path)), "application/json")
 				if icon.Theme != "" {
 					if !placeIcon(icon.Theme, icon) {
 						unplacedIcons = append(unplacedIcons, icon)
@@ -256,7 +256,7 @@ func readIndexTheme(themeId string, indexThemeFilePath string) (*Theme, error) {
 		theme.Dirs[iniGroup.Name] = IconDir{iniGroup.Name, minSize, maxSize, iniGroup.Entries["Context"]}
 	}
 
-	theme.AbstractResource = resource.MakeAbstractResource(resource.Standardizef("/icontheme/%s", theme.Id), "application/json")
+	theme.GenericResource = resource.MakeGenericResource(resource.Standardizef("/icontheme/%s", theme.Id), "application/json")
 	return theme, nil
 }
 

@@ -37,7 +37,7 @@ func getWindow(wId uint32) (*Window, error) {
 	window := &Window{}
 	window.Id = wId
 	var err error
-	window.AbstractResource = resource.MakeAbstractResource(windowSelf(wId), WindowMediaType)
+	window.GenericResource = resource.MakeGenericResource(windowSelf(wId), WindowMediaType)
 	window.Parent, err = xlib.GetParent(wId)
 	if err != nil {
 		return nil, err

@@ -191,7 +191,7 @@ func (c *collection) collectApplications(appdir string) {
 				app, mimetypes, err := readDesktopFile(path)
 				if err == nil {
 					app.Id = strings.Replace(path[len(appdir)+1:], "/", "-", -1)
-					app.AbstractResource = resource.MakeAbstractResource(appSelf(app.Id), DesktopApplicationMediaType)
+					app.GenericResource = resource.MakeGenericResource(appSelf(app.Id), DesktopApplicationMediaType)
 					var exec = app.Exec
 					var inTerminal = app.Terminal
 					app.ResourceActions["default"] = resource.ResourceAction{

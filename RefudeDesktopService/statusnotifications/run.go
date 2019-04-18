@@ -13,7 +13,7 @@ func Run() {
 		switch event.eventType {
 		case ItemCreated:
 			item := MakeItem(event.sender, event.path)
-			item.AbstractResource = resource.MakeAbstractResource(self, ItemMediaType)
+			item.GenericResource = resource.MakeGenericResource(self, ItemMediaType)
 			updateItem(item)
 			setItem(item)
 		case ItemRemoved:
