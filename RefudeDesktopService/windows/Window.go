@@ -7,7 +7,9 @@
 package windows
 
 import (
-	"sync"
+	"fmt"
+	"log"
+	"strconv"
 
 	"github.com/surlykke/RefudeServices/lib/resource"
 )
@@ -19,72 +21,42 @@ type Window struct {
 	Id         uint32
 	Parent     uint32
 	StackOrder int
-	X, Y, W, H int
+	X, Y       int32
+	W, H       uint32
 	Name       string
 	IconName   string `json:",omitempty"`
 	States     []string
 }
 
-var windowCollection = make(map[resource.StandardizedPath]*Window)
-var mutex sync.Mutex
-
 func GetWindow(path resource.StandardizedPath) *Window {
-	mutex.Lock()
-	defer mutex.Unlock()
+	fmt.Printf("GetWindow(%s)\n", path)
+	if !path.StartsWith("/window/") {
+		return nil
+	} else if id, err := strconv.ParseUint(string(path[len("/window/"):]), 10, 32); err != nil {
+		return nil
+	} else {
+		fmt.Printf("Calling getWindow with %d\n", id)
+		window, err := getWindow(uint32(id))
+		if err != nil {
+			return nil
+		}
 
-	return windowCollection[path]
-}
-
-func setWindow(win *Window) {
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	windowCollection[win.GetSelf()] = win
+		return window
+	}
 }
 
 func GetWindows() []interface{} {
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	var windows = make([]interface{}, 0, len(windowCollection))
-	for _, win := range windowCollection {
-		windows = append(windows, win)
-	}
-	return windows
-}
-
-func ClearAll() {
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	windowCollection = make(map[resource.StandardizedPath]*Window)
-}
-
-func GetCopy(winId uint32) *Window {
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	for _, win := range windowCollection {
-		if win.Id == winId {
-			return &(*win)
+	if windows, err := getWindows(); err != nil {
+		log.Printf("Error getting windows: %v\n", err)
+		return nil
+	} else {
+		var result = make([]interface{}, len(windows), len(windows))
+		for i := 0; i < len(windows); i++ {
+			result[i] = windows[i]
 		}
+		return result
 	}
 
-	return nil
-}
-
-func getCopyByParent(parent uint32) *Window {
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	for _, window := range windowCollection {
-		if window.Parent == parent {
-			var copy = *window
-			return &copy
-		}
-	}
-
-	return nil
 }
 
 func windowSelf(windowId uint32) resource.StandardizedPath {

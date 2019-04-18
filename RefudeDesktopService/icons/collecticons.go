@@ -75,11 +75,8 @@ func addBaseDir(baseDir string) {
 		for _, indexThemeFilePath := range indexThemeFilePaths {
 			var indexThemeFileRelativePath = indexThemeFilePath[len(baseDir)+1:]
 			var themeId = filepath.Base(filepath.Dir(indexThemeFileRelativePath))
-			fmt.Println("look at", themeId, "in", baseDir)
 			if themeId != "" && getTheme(themeId) == nil {
-				if theme, err := readIndexTheme(themeId, indexThemeFilePath); err != nil {
-					fmt.Println("Error reading", indexThemeFilePath, err)
-				} else {
+				if theme, err := readIndexTheme(themeId, indexThemeFilePath); err == nil {
 					addTheme(theme)
 
 					var unplacedIconsCount = 0
@@ -146,10 +143,6 @@ func placeIcon(themeId string, icon *Icon) bool {
 }
 
 func addARGBIcon(argbIcon image.ARGBIcon) {
-	fmt.Println("add icon", argbIcon.Name)
-
-	fmt.Println("Adding icon", argbIcon.Name, "to hicolorTheme")
-
 	if !haveThemeIcon("hicolor", argbIcon.Name) {
 
 	}

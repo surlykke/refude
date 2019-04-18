@@ -1,126 +1,84 @@
 package windows
 
 import (
-	"errors"
+	"fmt"
 	"log"
-	"sync"
+	"time"
+
+	"github.com/surlykke/RefudeServices/RefudeDesktopService/windows/xlib"
 
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/icons"
-	"github.com/surlykke/RefudeServices/RefudeDesktopService/windows/xlib"
 	"github.com/surlykke/RefudeServices/lib/image"
 	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
-const (
-	NET_WM_VISIBLE_NAME      = "_NET_WM_VISIBLE_NAME"
-	NET_WM_NAME              = "_NET_WM_NAME"
-	WM_NAME                  = "WM_NAME"
-	NET_WM_ICON              = "_NET_WM_ICON"
-	NET_CLIENT_LIST_STACKING = "_NET_CLIENT_LIST_STACKING"
-	NET_WM_STATE             = "_NET_WM_STATE"
-)
+// Returns windows in descending stack order
+func getWindows() ([]*Window, error) {
+	if wIds, err := xlib.GetStack(); err != nil {
+		return nil, fmt.Errorf("Unable to get client list stacking %v", err)
+	} else {
+		var windows = make([]*Window, 0, len(wIds))
+		for i := 0; i < len(wIds); i++ {
+			var wId = wIds[len(wIds)-i-1]
+			if window, err := getWindow(wId); err != nil {
+				log.Printf("Error getting window %d: %v\n", wId, err)
+			} else {
+				windows = append(windows, window)
+			}
+		}
 
-var in = xlib.MakeConnection()  // Used to retrive data from X. Events, getProperty.. All access to this originates in the Run function
-var out = xlib.MakeConnection() // Used send data to X (events or through setters). Protected by a mutex (outLock)
-var outLock sync.Mutex
-
-func handle(event xlib.Event) {
-	switch event.Property {
-	case NET_CLIENT_LIST_STACKING:
-		updateWindows()
-	case "": // Means it's a ConfigureEvent
-		if copy := getCopyByParent(event.Window); copy != nil {
-			copy.X, copy.Y, copy.W, copy.H = event.X, event.Y, event.W, event.H
-			setWindow(copy)
-		}
-	case NET_WM_VISIBLE_NAME, NET_WM_NAME, WM_NAME:
-		if name, err := GetName(event.Window); err != nil {
-			log.Println("Error getting window name:", err)
-		} else {
-			if copy := GetCopy(event.Window); copy != nil {
-				copy.Name = name
-				setWindow(copy)
-			}
-		}
-	case NET_WM_ICON:
-		if iconName, err := GetIconName(event.Window); err != nil {
-			log.Println("Error getting window iconname:", err)
-		} else {
-			if copy := GetCopy(event.Window); copy != nil {
-				copy.IconName = iconName
-				setWindow(copy)
-			}
-		}
-	case NET_WM_STATE:
-		if states, err := in.GetAtoms(event.Window, NET_WM_STATE); err != nil {
-			log.Println("Error get window states:", err)
-		} else {
-			if copy := GetCopy(event.Window); copy != nil {
-				copy.States = states
-				setWindow(copy)
-			}
-		}
+		return windows, nil
 	}
 }
 
-func updateWindows() {
-	if wIds, err := in.GetUint32s(0, NET_CLIENT_LIST_STACKING); err != nil {
-		log.Fatal("Unable to get client list stacking", err)
-	} else {
-		ClearAll()
-		for i, wId := range wIds {
-			var stackOrder = len(wIds) - i
-			window := &Window{}
-			window.Id = wId
-			window.StackOrder = stackOrder
-			window.AbstractResource = resource.MakeAbstractResource(windowSelf(wId), WindowMediaType)
-			if window.Parent, err = in.GetParent(wId); err != nil {
-				log.Println("No parent:", err)
-				continue
-			}
-			if window.X, window.Y, window.W, window.H, err = in.GetGeometry(wId); err != nil {
-				log.Println("No geometry:", err)
-				continue
-			}
-			if window.Name, err = GetName(wId); err != nil {
-				log.Println("No name: ", err)
-				continue
-			}
-			if window.IconName, err = GetIconName(wId); err != nil {
-				log.Println("No Iconname:", err)
-			}
-			if window.States, err = in.GetAtoms(wId, NET_WM_STATE); err != nil {
-				log.Println("No states: ", err)
-			}
-
-			var wIdCopy = wId
-			var executer = func() {
-				outLock.Lock()
-				defer outLock.Unlock()
-				out.RaiseAndFocusWindow(wIdCopy)
-			}
-
-			window.ResourceActions["default"] = resource.ResourceAction{Description: "Raise and focus", IconName: window.IconName, Executer: executer}
-			in.Listen(window.Id)
-			setWindow(window)
-		}
+func getWindow(wId uint32) (*Window, error) {
+	var start = time.Now()
+	window := &Window{}
+	window.Id = wId
+	var err error
+	window.AbstractResource = resource.MakeAbstractResource(windowSelf(wId), WindowMediaType)
+	window.Parent, err = xlib.GetParent(wId)
+	if err != nil {
+		return nil, err
 	}
-}
 
-func GetName(wId uint32) (string, error) {
-	if name, err := in.GetPropStr(wId, NET_WM_VISIBLE_NAME); err == nil {
-		return name, nil
-	} else if name, err = in.GetPropStr(wId, NET_WM_NAME); err == nil {
-		return name, nil
-	} else if name, err = in.GetPropStr(wId, WM_NAME); err == nil {
-		return name, nil
+	if window.Parent != 0 {
+		window.X, window.Y, window.W, window.H, err = xlib.GetGeometry(window.Parent)
 	} else {
-		return "", errors.New("Neither '_NET_WM_VISIBLE_NAME', '_NET_WM_NAME' nor 'WM_NAME' set")
+		window.X, window.Y, window.W, window.H, err = xlib.GetGeometry(wId)
 	}
+	if err != nil {
+		return nil, err
+	}
+
+	window.Name, err = xlib.GetName(wId)
+	if err != nil {
+		return nil, err
+	}
+
+	window.IconName, err = GetIconName(wId)
+	if err != nil {
+		return nil, err
+	}
+
+	window.States, err = xlib.GetState(wId)
+	if err != nil {
+		return nil, err
+	}
+
+	var wIdCopy = wId
+	var executer = func() {
+		xlib.RaiseAndFocusWindow(wIdCopy)
+	}
+
+	window.ResourceActions["default"] = resource.ResourceAction{Description: "Raise and focus", IconName: window.IconName, Executer: executer}
+	fmt.Println("getWindow took", time.Since(start))
+	fmt.Println("")
+	return window, nil
 }
 
 func GetIconName(wId uint32) (string, error) {
-	pixelArray, err := in.GetUint32s(wId, NET_WM_ICON)
+	pixelArray, err := xlib.GetIcon(wId)
 	if err != nil {
 		return "", err
 	}

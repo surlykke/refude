@@ -109,7 +109,6 @@ func serveHttp(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	go applications.Run()
-	go windows.Run()
 	go notifications.Run()
 	go power.Run()
 	go statusnotifications.Run()
