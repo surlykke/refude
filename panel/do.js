@@ -42,7 +42,7 @@ class Do extends React.Component {
     constructor(props) {
         //devtools();
         super(props);
-        this.resources = {windows: [], applications: []};
+        this.resources = {notifications: [], windows: [], applications: []};
         this.term = "";
         this.state = {items: []};
         this.display = {x: 0, y: 0, w: 100, h: 100};
@@ -55,6 +55,10 @@ class Do extends React.Component {
         subscribe("termChanged", this.termChange);
         subscribe("itemLaunched", this.execute);
         subscribe("dismiss", this.onDismiss);
+        monitorUrl("/notifications", notifications => {
+            console.log("Setting notifications to:", notifications)
+            this.resources.notifications = notifications;
+        });
     };
 
     componentDidUpdate = () => {
@@ -90,6 +94,17 @@ class Do extends React.Component {
         let term = this.term.toLowerCase();
 
         let items = [];
+        console.log("Looking at:", this.resources.notifications);
+        this.resources.notifications
+            .filter(n => n.Subject.toLowerCase().indexOf(term) > -1 || n.Body.toLowerCase().indexOf(term) > -1)
+            .forEach(n => {
+                items.push({
+                    group: T("Notifications"),
+                    url: n._self,
+                    description: n.Subject,
+                    Comment: n.Body
+                });
+            });
         this.resources.windows
             .filter(w => w.Name.toLowerCase().indexOf(term) > -1)
             .sort((w1, w2) => w1.StackOrder - w2.StackOrder)
@@ -171,7 +186,8 @@ class Do extends React.Component {
 
     onDismiss = () => {
         if (this.state.shown) {
-            this.resources = {};
+            this.resources.windows = [];
+            this.resources.applications = [];
             this.term = "";
             this.setState({items: []});
             this.setState({"shown": undefined});
