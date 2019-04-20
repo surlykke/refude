@@ -9,14 +9,17 @@ mkdir -p ${REFUDEDIR}
 
 ./build.sh
 
+echo done building
+
 for appdir in panel appchooser notifications ; do
-	cp -R dist/$appdir ${PREFIX}/share/refude/$appdir
+	rm -rf $REFUDEDIR/$appdir
+	cp -R dist/$appdir $REFUDEDIR/$appdir
 done
 
 for app in panel/refudePanel panel/refudeDo appchooser/refudeAppChooser notifications/refudeNotifications;  do
-	ln -sf ${PREFIX}/share/refude/$app ${PREFIX}/bin
+	ln -sf $REFUDEDIR/$app ${PREFIX}/bin
 done
 
 for desktopfile in panel/refudePanel.desktop notifications/refudeNotifications.desktop; do
-    ln -sf ${PREFIX}/share/refude/$desktopfile ${PREFIX}/share/applications
+    ln -sf $REFUDEDIR/$desktopfile ${PREFIX}/share/applications
 done

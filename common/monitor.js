@@ -4,55 +4,51 @@
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
 //
-import {doGetIfNoneMatch} from '../common/http'
+import { doGetIfNoneMatch } from '../common/http'
+import Axios from 'axios';
 
-let monitorResources = (service, mimetype, onUpdated) => {
-    let linksEtag = null;
-    let itemMap = new Map();
+Axios.defaults.baseUrl = "http://localhost:7938";
 
-    let update = () => {
-        let items = [];
-        for (let [k, v] of itemMap) {
-            if (v.item) {
-                items.push(v.item);
-            }
-        }
-        onUpdated(items);
+export let getLink = (item, rel) => {
+    console.log("getLink:", item, rel)
+    if (item && rel && item._links) {
+        let link = item._links.find(l => rel === l.rel);
+        console.log("getLink returning", link && link.href)
+        return link && link.href;
     }
+}
 
-    let getItems = () => {
-        for (let [path, pair] of itemMap) {
-            doGetIfNoneMatch(service, path, pair.etag).then((o) => {
-                itemMap.set(path, {etag: o.headers["etag"], item: o.json});
-                update();
-            }, o => {
-                if (o.status === 404) {
-                    itemMap.delete(path);
-                    update();
-                }
-            });
-        }
-    };
+export let doGet = (path, dataHandler) => {
+    Axios.get(path).then(resp => {
+        dataHandler(resp.data)
+    }).catch(err => {
+        console.log("GET", path, "got:", err)
+    })
+}
 
-    let getLinks = () => {
-        doGetIfNoneMatch(service, "/links", linksEtag).then(
-            (o) => {
-                linksEtag = o.headers["etag"];
-                (o.json[mimetype] || []).forEach(path => {
-                    itemMap.set(path, {})
-                });
-                getItems();
-            },
-            (o) => {
-                getItems();
-            });
-    };
+export let doPost = (path, successHandler) => {
+    Axios.post(path).then(resp => {
+        successHandler && successHandler(resp);
+    }).catch(err => {
+        console.log("POST", path, "got:", err)
+    });
+}
 
-    let run = () => {
-        getLinks();
-        setTimeout(run, 1000);
-    };
-    run();
-};
+export let monitorUrl = (path, dataHandler) => {
+    let etag
+    let getIfNoneMatch = () => {
+        let headers = { "If-None-Match": etag};
+        let validateStatus = status => status === 304 || status < 300 
+        Axios.get(path, { headers: headers, validateStatus: validateStatus}).then(resp => {
+            if (resp.status < 300) {
+                etag = resp.headers.etag
+                dataHandler(resp.data)
+            }
+            setTimeout(getIfNoneMatch, 1000)
+        }).catch(err => {
+            setTimeout(getIfNoneMatch, 10000) 
+        });
+    }
+    getIfNoneMatch()
+}
 
-export {monitorResources}

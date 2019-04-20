@@ -132,7 +132,7 @@ export class ItemList extends React.Component {
         return (
             <div onKeyDown={this.keyDown} style={outerStyle}>
                 <div style={searchBoxStyle}>
-                    <input id="input" style={inputStyle} type="search" onChange={onTermChange} disabled={this.props.disabled} />
+                    <input id="input" style={inputStyle} type="search" onChange={onTermChange} disabled={this.props.disabled} autoComplete="off"/>
                 </div>
                 <div id="itemListDiv" style={innerStyle}>
                     {content}

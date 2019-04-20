@@ -11,9 +11,13 @@ import {WIN, applicationRank, publish, subscribe} from "../common/utils";
 import {ItemList} from "../common/itemlist"
 import {Indicator} from "./indicator";
 import {T} from "../common/translate";
+import { monitorUrl } from '../common/monitor';
 
 const axios = require('axios')
 axios.defaults.baseURL = "http://localhost:7938"
+
+const windowSearch = encodeURIComponent('not r.States[%] eq _NET_WM_STATE_ABOVE')
+const applicationSearch = encodeURIComponent('not r.NoDisplay eq true')
 
 const http = require('http');
 let windowIconStyle = w => {
@@ -87,7 +91,6 @@ class Do extends React.Component {
 
         let items = [];
         this.resources.windows
-            .filter(w => w.States.indexOf("_NET_WM_STATE_ABOVE") < 0)
             .filter(w => w.Name.toLowerCase().indexOf(term) > -1)
             .sort((w1, w2) => w1.StackOrder - w2.StackOrder)
             .forEach(w => {
@@ -136,17 +139,17 @@ class Do extends React.Component {
     showWin = () => {
         if (!this.state["shown"]) {
             this.resources["windows"] = this.resources["applications"] = this.resources["session"] = [];
-            axios.get("/windows").then(resp => { 
+            axios.get("/windows?q=" + windowSearch).then(resp => { 
                 console.log("GET(/windows) got:", resp); 
                 this.resources["windows"] = resp.data; 
                 this.filterAndSort()
             });
-            axios.get("/applications").then(resp => { 
+            axios.get("/applications?q=" + applicationSearch).then(resp => { 
                 this.resources["applications"] = resp.data; 
                 this.filterAndSort()
             });
             axios.get("/session").then(resp => { 
-                this.resources["session"] = resp.json
+                this.resources["session"] = resp.data
             });
             this.setState({"shown": true});
         }
@@ -191,5 +194,4 @@ class Do extends React.Component {
     };
 }
 
-//render(<Do/>, document.getElementById('root'));
 export {Do}

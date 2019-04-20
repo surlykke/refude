@@ -12,7 +12,7 @@
  * Please refer to the LICENSE file for a copy of the license.
  */
 import React from 'react'
-import {WIN, watchScreenChanges, /*devtools,*/ loadPosition, subscribe} from '../common/utils'
+import {WIN, watchScreenChanges, devtools, loadPosition, subscribe} from '../common/utils'
 import {Clock} from './clock'
 import {Battery} from './battery'
 import {NotifierItems} from './notifieritems'
@@ -74,7 +74,6 @@ export default class Panel extends React.Component {
         <div style={{width: "500px"}}>
             <div style={style} id="content" ref={div => { this.content = div }}>
                 <Clock style={pluginStyle}/>
-                <Notificationalert style={pluginStyle}/>
                 <NotifierItems style={pluginStyle}/>
                 <Battery style={pluginStyle}/>
                 <DragField style={pluginStyle}/>
@@ -83,4 +82,5 @@ export default class Panel extends React.Component {
             </div>
         </div>
 }
+
 
