@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"log"
 	"sync"
-	"time"
 
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/windows/xlib"
 
@@ -39,7 +38,6 @@ func getWindows() ([]*Window, error) {
 }
 
 func getWindow(wId uint32) (*Window, error) {
-	var start = time.Now()
 	window := &Window{}
 	window.Id = wId
 	var err error
@@ -79,8 +77,6 @@ func getWindow(wId uint32) (*Window, error) {
 	}
 
 	window.ResourceActions["default"] = resource.ResourceAction{Description: "Raise and focus", IconName: window.IconName, Executer: executer}
-	fmt.Println("getWindow took", time.Since(start))
-	fmt.Println("")
 	return window, nil
 }
 

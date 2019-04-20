@@ -28,6 +28,7 @@ func Run() {
 		addBaseDir(dataDir + "/icons")
 	}
 	addBaseDir(xdg.Home + "/.local/share/icons")
+	addBaseDir("/usr/share/pixmaps")
 	addBaseDir(refudeSessionIconsDir)
 
 	go monitorBasedirSink()

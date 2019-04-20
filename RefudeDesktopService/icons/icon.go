@@ -7,6 +7,7 @@
 package icons
 
 import (
+	"sort"
 	"sync"
 
 	"github.com/surlykke/RefudeServices/lib/resource"
@@ -28,6 +29,7 @@ func GetThemes() []resource.Resource {
 	for _, theme := range themes {
 		themes = append(themes, theme)
 	}
+	sort.Sort(resource.ResourceCollection(themes))
 	return themes
 }
 
@@ -61,7 +63,7 @@ func GetIcons() []resource.Resource {
 	for _, icon := range otherIcons {
 		icons = append(icons, icon)
 	}
-
+	sort.Sort(resource.ResourceCollection(icons))
 	return icons
 }
 
@@ -87,6 +89,12 @@ func haveThemeIcon(themeId string, name string) bool {
 func addOtherIcon(icon *Icon) {
 	iconLock.Lock()
 	defer iconLock.Unlock()
+	// We prefer png's or svg's over xpm's
+	if icon.Type == "xpm" {
+		if _, ok := otherIcons[icon.Name]; ok {
+			return
+		}
+	}
 	otherIcons[icon.Name] = icon
 }
 

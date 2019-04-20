@@ -185,38 +185,48 @@ func CollectMimeTypes() map[resource.StandardizedPath]*Mimetype {
 }
 
 func (c *collection) collectApplications(appdir string) {
-	if xdg.DirOrFileExists(appdir) {
-		_ = filepath.Walk(appdir, func(path string, info os.FileInfo, err error) error {
-			if strings.HasSuffix(path, ".desktop") && !info.IsDir() {
-				app, mimetypes, err := readDesktopFile(path)
-				if err == nil {
-					app.Id = strings.Replace(path[len(appdir)+1:], "/", "-", -1)
-					app.GenericResource = resource.MakeGenericResource(appSelf(app.Id), DesktopApplicationMediaType)
-					var exec = app.Exec
-					var inTerminal = app.Terminal
-					app.ResourceActions["default"] = resource.ResourceAction{
-						Description: "Launch", IconName: app.IconName, Executer: func() { launch(exec, inTerminal) },
-					}
-					for id, action := range app.DesktopActions {
-						var exec = action.Exec
-						var inTerminal = app.Terminal
-						app.ResourceActions[id] = resource.ResourceAction{
-							Description: action.Name, IconName: action.IconName, Executer: func() { launch(exec, inTerminal) },
-						}
-					}
-
-					c.applications[appSelf(app.Id)] = app
-
-					for _, mimetype := range mimetypes {
-						c.associations[mimetype] = slice.AppendIfNotThere(c.associations[mimetype], app.Id)
-					}
-
-				} else {
-					log.Println("Error processing ", path, ":\n\t", err)
-				}
-			}
+	var visitor = func(path string, info os.FileInfo, err error) error {
+		if info.IsDir() || !strings.HasSuffix(path, ".desktop") {
 			return nil
-		})
+		}
+
+		app, mimetypes, err := readDesktopFile(path)
+		if err != nil {
+			log.Println("Error processing ", path, ":\n\t", err)
+			return nil
+		}
+
+		if app.Hidden ||
+			(len(app.OnlyShowIn) > 0 && !slice.ElementsInCommon(xdg.CurrentDesktop, app.OnlyShowIn)) ||
+			(len(app.NotShowIn) > 0 && slice.ElementsInCommon(xdg.CurrentDesktop, app.NotShowIn)) {
+			return nil
+		}
+
+		app.Id = strings.Replace(path[len(appdir)+1:], "/", "-", -1)
+		app.GenericResource = resource.MakeGenericResource(appSelf(app.Id), DesktopApplicationMediaType)
+		var exec = app.Exec
+		var inTerminal = app.Terminal
+		app.ResourceActions["default"] = resource.ResourceAction{
+			Description: "Launch", IconName: app.IconName, Executer: func() { launch(exec, inTerminal) },
+		}
+		for id, action := range app.DesktopActions {
+			var exec = action.Exec
+			var inTerminal = app.Terminal
+			app.ResourceActions[id] = resource.ResourceAction{
+				Description: action.Name, IconName: action.IconName, Executer: func() { launch(exec, inTerminal) },
+			}
+		}
+
+		c.applications[appSelf(app.Id)] = app
+
+		for _, mimetype := range mimetypes {
+			c.associations[mimetype] = slice.AppendIfNotThere(c.associations[mimetype], app.Id)
+		}
+		return nil
+	}
+
+	if xdg.DirOrFileExists(appdir) {
+		_ = filepath.Walk(appdir, visitor)
 	}
 }
 

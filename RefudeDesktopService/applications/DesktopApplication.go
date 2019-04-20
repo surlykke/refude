@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"sort"
 	"strings"
 	"sync"
 
@@ -129,6 +130,7 @@ func GetApplications() []resource.Resource {
 	for _, app := range desktopApplications {
 		result = append(result, app)
 	}
+	sort.Sort(resource.ResourceCollection(result))
 	return result
 }
 

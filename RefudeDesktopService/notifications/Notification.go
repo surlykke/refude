@@ -8,6 +8,7 @@ package notifications
 
 import (
 	"net/http"
+	"sort"
 	"sync"
 	"time"
 
@@ -36,6 +37,7 @@ func GetNotifications() []resource.Resource {
 		result[i] = notification
 		i++
 	}
+	sort.Sort(resource.ResourceCollection(result)) // FIXME Better to sort by creation time
 	return result
 }
 

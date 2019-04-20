@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
-	"sort"
 
 	"github.com/surlykke/RefudeServices/lib/requests"
 )
@@ -84,8 +83,6 @@ func ServeCollection(w http.ResponseWriter, r *http.Request, collection []Resour
 		}
 		collection = collection[0:matched]
 	}
-
-	sort.Sort(ResourceCollection(collection))
 
 	_, brief := r.URL.Query()["brief"]
 	var response = ToJSon(collection)

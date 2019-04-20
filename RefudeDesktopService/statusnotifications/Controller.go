@@ -21,6 +21,7 @@ import (
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/icons"
 	dbuscall "github.com/surlykke/RefudeServices/lib/dbusutils"
 	"github.com/surlykke/RefudeServices/lib/image"
+	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/slice"
 )
 
@@ -148,7 +149,10 @@ func updateWatcherProperties() {
 	watcherProperties.Set(WATCHER_INTERFACE, "RegisteredStatusItems", dbus.MakeVariant(ids))
 }
 
-func updateItem(item *Item) {
+func buildItem(sender string, path dbus.ObjectPath) *Item {
+	var item = MakeItem(sender, path)
+	item.GenericResource = resource.MakeGenericResource(itemSelf(sender, path), ItemMediaType)
+
 	props := dbuscall.GetAllProps(conn, item.sender, item.itemPath, ITEM_INTERFACE)
 
 	item.Id = getStringOr(props, "ID", "")
@@ -162,16 +166,23 @@ func updateItem(item *Item) {
 	item.menuPath = getDbusPath(props, "Menu")
 	item.iconThemePath = getStringOr(props, "IconThemePath", "")
 
+	if item.menuPath != "" {
+		item.LinkTo(menuSelf(sender, item.menuPath), resource.SNI_MENU)
+	}
+
 	if item.IconName == "" {
 		item.IconName = collectPixMap(props, "IconPixmap")
-	} else if item.iconThemePath != "" {
-		image.CopyIcons(item.IconName, item.iconThemePath)
 	}
+
 	if item.AttentionIconName == "" {
 		item.AttentionIconName = collectPixMap(props, "AttentionIconPixmap")
-	} else if item.iconThemePath != "" {
-		image.CopyIcons(item.AttentionIconName, item.iconThemePath)
 	}
+
+	if item.iconThemePath != "" {
+		icons.AddBasedir(item.iconThemePath)
+	}
+
+	return item
 }
 
 func getStringOr(m map[string]dbus.Variant, key string, fallback string) string {

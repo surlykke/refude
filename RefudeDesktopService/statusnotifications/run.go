@@ -6,10 +6,6 @@
 //
 package statusnotifications
 
-import (
-	"github.com/surlykke/RefudeServices/lib/resource"
-)
-
 func Run() {
 	getOnTheBus()
 	go monitorSignals()
@@ -17,19 +13,10 @@ func Run() {
 	for event := range events {
 		var self = itemSelf(event.sender, event.path)
 		switch event.eventType {
-		case ItemCreated:
-			item := MakeItem(event.sender, event.path)
-			item.GenericResource = resource.MakeGenericResource(self, ItemMediaType)
-			updateItem(item)
-			setItem(item)
+		case ItemUpdated, ItemCreated:
+			setItem(buildItem(event.sender, event.path))
 		case ItemRemoved:
 			removeItem(self)
-		case ItemUpdated:
-			if item := GetItem(self); item != nil {
-				var copy = *item
-				updateItem(&copy)
-				setItem(&copy)
-			}
 		}
 	}
 }

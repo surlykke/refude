@@ -7,7 +7,6 @@
 package windows
 
 import (
-	"fmt"
 	"log"
 	"strconv"
 
@@ -29,13 +28,11 @@ type Window struct {
 }
 
 func GetWindow(path resource.StandardizedPath) *Window {
-	fmt.Printf("GetWindow(%s)\n", path)
 	if !path.StartsWith("/window/") {
 		return nil
 	} else if id, err := strconv.ParseUint(string(path[len("/window/"):]), 10, 32); err != nil {
 		return nil
 	} else {
-		fmt.Printf("Calling getWindow with %d\n", id)
 		window, err := getWindow(uint32(id))
 		if err != nil {
 			return nil

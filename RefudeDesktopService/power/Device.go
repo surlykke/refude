@@ -7,6 +7,7 @@
 package power
 
 import (
+	"sort"
 	"strings"
 	"sync"
 
@@ -43,7 +44,7 @@ func GetDevices() []resource.Resource {
 	for _, device := range devices {
 		result = append(result, device)
 	}
-
+	sort.Sort(resource.ResourceCollection(result))
 	return result
 }
 

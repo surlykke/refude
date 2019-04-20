@@ -8,7 +8,6 @@ package icons
 
 import (
 	"errors"
-	"fmt"
 	"math"
 	"net/http"
 
@@ -84,7 +83,7 @@ func extractNameSizeAndTheme(query map[string][]string) (string, uint32, string,
 	}
 	var name = query["name"][0]
 	var iconSize = uint32(32)
-	var theme = "hicolor"
+	var theme = "oxygen"
 
 	if len(query["size"]) > 0 {
 		var ok bool
@@ -163,10 +162,6 @@ func findIconInTheme(themeId string, name string, size uint32, iconType string) 
 		if distance == 0 {
 			break
 		}
-	}
-
-	if candidate == nil {
-		fmt.Println("No icon with name", name)
 	}
 
 	return candidate

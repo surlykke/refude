@@ -92,39 +92,57 @@ func addBaseDir(baseDir string) {
 		}
 	}
 
-	_ = filepath.Walk(baseDir, func(path string, info os.FileInfo, err error) error {
+	var walkFunc = func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			log.Println("Error descending into", path)
 			return err
-		} else {
-			if !info.IsDir() &&
-				(strings.HasSuffix(info.Name(), ".png") ||
-					strings.HasSuffix(info.Name(), ".xpm") ||
-					strings.HasSuffix(info.Name(), ".svg")) {
+		}
 
-				var icon = &Icon{Name: info.Name()[0 : len(info.Name())-4], Path: path, Type: info.Name()[len(info.Name())-3:]}
-				if len(path)-len(info.Name())-2 > len(baseDir) {
-					var relIconDir = path[len(baseDir)+1 : len(path)-len(info.Name())-1]
-					if slashPos := strings.Index(relIconDir, "/"); slashPos > 0 {
-						icon.Theme = relIconDir[0:slashPos]
-						icon.themeSubdir = relIconDir[slashPos+1:]
-					} else {
-						icon.Theme = relIconDir
-					}
-				}
-
-				icon.GenericResource = resource.MakeGenericResource(resource.Standardize("/icon/"+url.PathEscape(path)), "application/json")
-				if icon.Theme != "" {
-					if !placeIcon(icon.Theme, icon) {
-						unplacedIcons = append(unplacedIcons, icon)
-					}
-				} else {
-					addOtherIcon(icon)
-				}
-			}
+		if info.IsDir() ||
+			!(strings.HasSuffix(info.Name(), ".png") ||
+				strings.HasSuffix(info.Name(), ".xpm") ||
+				strings.HasSuffix(info.Name(), ".svg")) {
 			return nil
 		}
-	})
+
+		var icon = &Icon{Name: info.Name()[0 : len(info.Name())-4]}
+		if iconType := info.Name()[len(info.Name())-3:]; iconType == "xpm" {
+			convertedPath, err := getPathToConverted(path)
+			if err != nil {
+				log.Println("Error converting", path, err)
+				return nil
+			}
+			icon.Type = "xpm"
+			icon.Path = convertedPath
+		} else {
+			icon.Type = iconType
+			icon.Path = path
+		}
+
+		//, Path: path, Type: info.Name()[len(info.Name())-3:]}
+
+		if len(path)-len(info.Name())-2 > len(baseDir) {
+			var relIconDir = path[len(baseDir)+1 : len(path)-len(info.Name())-1]
+			if slashPos := strings.Index(relIconDir, "/"); slashPos > 0 {
+				icon.Theme = relIconDir[0:slashPos]
+				icon.themeSubdir = relIconDir[slashPos+1:]
+			} else {
+				icon.Theme = relIconDir
+			}
+		}
+
+		icon.GenericResource = resource.MakeGenericResource(resource.Standardize("/icon/"+url.PathEscape(path)), "application/json")
+		if icon.Theme != "" {
+			if !placeIcon(icon.Theme, icon) {
+				unplacedIcons = append(unplacedIcons, icon)
+			}
+		} else {
+			addOtherIcon(icon)
+		}
+		return nil
+	}
+
+	_ = filepath.Walk(baseDir, walkFunc)
 }
 
 func placeIcon(themeId string, icon *Icon) bool {

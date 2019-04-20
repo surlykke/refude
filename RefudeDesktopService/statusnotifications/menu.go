@@ -36,24 +36,23 @@ type MenuItem struct {
 }
 
 func GetMenu(path resource.StandardizedPath) *Menu {
-	if item := GetItem(path); item == nil {
+	fmt.Println("Getting menu for", path)
+	var tmp = string(path[len("/itemmenu/"):])
+	if slashPos := strings.Index(tmp, "/"); slashPos == -1 {
 		return nil
 	} else {
-		var tmp = string(path[len("/itemmenu/"):])
-		if slashPos := strings.Index(tmp, "/"); slashPos == -1 {
+		var sender = tmp[0:slashPos]
+		var path = tmp[slashPos:]
+		fmt.Println("sender, path:", sender, path)
+
+		if menuItems, err := fetchMenu(sender, dbus.ObjectPath(path)); err != nil {
 			return nil
 		} else {
-			var sender = tmp[0:slashPos]
-			var path = tmp[slashPos:]
-			if menuItems, err := fetchMenu(sender, dbus.ObjectPath(path)); err != nil {
-				return nil
-			} else {
-				var menu = Menu{resource.MakeGenericResource(resource.Standardizef("/itemmenu/%s/%s", sender, path), ""), menuItems}
-				menu.LinkTo(item.GetSelf(), resource.Related)
-				return &menu
-			}
-
+			var menu = Menu{resource.MakeGenericResource(menuSelf(sender, dbus.ObjectPath(path)), ""), menuItems}
+			//menu.LinkTo(item.GetSelf(), resource.Related)
+			return &menu
 		}
+
 	}
 }
 
@@ -104,4 +103,8 @@ func fetchMenu(sender string, path dbus.ObjectPath) ([]MenuItem, error) {
 	} else {
 		return []MenuItem{menu}, nil
 	}
+}
+
+func menuSelf(sender string, path dbus.ObjectPath) resource.StandardizedPath {
+	return resource.Standardizef("/itemmenu/%s/%s", sender, path)
 }
