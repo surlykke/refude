@@ -181,6 +181,8 @@ func addARGBIcon(argbIcon image.ARGBIcon) {
 					MaxSize: pixMap.Width,
 					Path:    path,
 				}
+				icon.GenericResource = resource.MakeGenericResource(resource.Standardize("/icon/"+url.PathEscape(path)), "application/json")
+
 				addThemeIcon("hicolor", icon)
 				go savePng(path, pixMap)
 			}
