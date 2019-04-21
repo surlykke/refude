@@ -23,7 +23,9 @@ export let screenId = () => {
     return id;
 };
 
-export let loadPosition = () => {
+let storedPosition = {x: 0, y: 0}
+
+let loadPosition = () => {
     let id = screenId();
     let str = localStorage.getItem(id);
     if (str) {
@@ -37,33 +39,42 @@ export let loadPosition = () => {
                 parseInt(geometry.h)
             ];
             if (!isNaN(x) && !isNaN(y) && !isNaN(w) && !isNaN(h)) {
-                [WIN.x, WIN.y] = [x, y];
+                storedPosition.x = x
+                storedPosition.y = y
+                WIN.x = storedPosition.x
+                WIN.y = storedPosition.y
             }
         }
     }
 };
 
-export let storePosition = () => {
-    let id = screenId();
-    let value = JSON.stringify({x: WIN.x, y: WIN.y, w: WIN.width, h: WIN.height})
-    localStorage.setItem(id, value);
-};
-
-
-let aboutToLoad
-export let watchScreenChanges = () => {
+export let managePosition = () => {
+    loadPosition()
+    let aboutToLoad
     SCREEN.on("displayBoundsChanged", () => {
         if (!aboutToLoad) {
             aboutToLoad = true;
             setTimeout(() => {
-                    loadPosition();
-                    aboutToLoad = undefined;
-                },
+                loadPosition();
+                aboutToLoad = undefined;
+            },
                 1000
             );
         }
     });
-};
+
+    let checkPosition = () => {
+        if (WIN.x !== storedPosition.x || WIN.y !== storedPosition.y) {
+            let id = screenId();
+            let value = JSON.stringify({ x: WIN.x, y: WIN.y, w: WIN.width, h: WIN.height })
+            localStorage.setItem(id, value);
+        }
+
+        setTimeout(checkPosition, 5000)
+    }
+
+    setTimeout(checkPosition, 10000)
+}
 
 export let applicationRank = (app, lowercaseTerm) => {
     let tmp;
@@ -84,7 +95,7 @@ const PUBSUB = (() => {
             subscriptions[topic].push(fn);
         },
         publish: (topic, obj) => {
-            let subscribers = subscriptions[topic] ||  [];
+            let subscribers = subscriptions[topic] || [];
             subscribers.forEach(fn => fn(obj));
         }
     };

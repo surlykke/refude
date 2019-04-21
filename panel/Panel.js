@@ -12,7 +12,7 @@
  * Please refer to the LICENSE file for a copy of the license.
  */
 import React from 'react'
-import {WIN, watchScreenChanges, devtools, loadPosition, subscribe} from '../common/utils'
+import {devtools, managePosition, subscribe} from '../common/utils'
 import {Clock} from './clock'
 import {Battery} from './battery'
 import {NotifierItems} from './notifieritems'
@@ -46,12 +46,9 @@ const pluginStyle = {
 export default class Panel extends React.Component {
 
     constructor(props) {
-        //devtools();
         super(props)
-        WIN.on('loaded', () => {
-            loadPosition();
-            watchScreenChanges();
-        });
+        managePosition()
+        //devtools();
     }
 
     componentDidMount = () => {

@@ -45,7 +45,6 @@ export let monitorUrl = (path, dataHandler) => {
         let actualPath = typeof(path) === "function" ? path() : path
         let headers = { "If-None-Match": etag};
         let validateStatus = status => status === 304 || status < 300 
-        console.log("monitor", actualPath)
         Axios.get(actualPath, { headers: headers, validateStatus: validateStatus}).then(resp => {
             if (resp.status < 300) {
                 etag = resp.headers.etag
