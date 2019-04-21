@@ -38,12 +38,15 @@ export let doPatch = (path, body, successHandler) => {
     });
 };
 
+// Call with a path or a function producing a path
 export let monitorUrl = (path, dataHandler) => {
     let etag
     let getIfNoneMatch = () => {
+        let actualPath = typeof(path) === "function" ? path() : path
         let headers = { "If-None-Match": etag};
         let validateStatus = status => status === 304 || status < 300 
-        Axios.get(path, { headers: headers, validateStatus: validateStatus}).then(resp => {
+        console.log("monitor", actualPath)
+        Axios.get(actualPath, { headers: headers, validateStatus: validateStatus}).then(resp => {
             if (resp.status < 300) {
                 etag = resp.headers.etag
                 dataHandler(resp)

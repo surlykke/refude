@@ -15,6 +15,8 @@ import { doGet, doPost, monitorUrl } from '../common/monitor';
 const axios = require('axios')
 axios.defaults.baseURL = "http://localhost:7938"
 
+
+
 const windowSearch = "/windows?q=" + encodeURIComponent('not r.States[%] eq _NET_WM_STATE_ABOVE')
 const applicationSearch = "/applications?q=" + encodeURIComponent('not r.NoDisplay eq true')
 
@@ -43,7 +45,7 @@ class Do extends React.Component {
         super(props);
         this.resources = { notifications: [], windows: [], applications: [] };
         this.term = "";
-        this.state = { items: [], notificationItems: [] };
+        this.state = { items: [], recentNotificationItems: [] };
         this.display = { x: 0, y: 0, w: 100, h: 100 };
 
         this.listenForUpDown();
@@ -54,9 +56,11 @@ class Do extends React.Component {
         subscribe("termChanged", this.termChange);
         subscribe("itemLaunched", this.execute);
         subscribe("dismiss", this.onDismiss);
-        monitorUrl("/notifications", resp => {
-            this.resources.notifications = resp.data
-            let notificationItems = resp.data.map(n => {
+
+        let path = () => "/notifications?q=" + encodeURIComponent("r.Created gt " + (new Date().getTime() - 3000)) 
+
+        monitorUrl(path, resp => {
+            let recentNotificationItems = resp.data.map(n => {
                 return {
                     group: T("Notifications"),
                     url: n._self,
@@ -64,9 +68,10 @@ class Do extends React.Component {
                     Comment: n.Body
                 }
             });
-            this.setState({ notificationItems: notificationItems })
+            this.setState({ recentNotificationItems: recentNotificationItems })
         });
     };
+
 
     componentDidUpdate = () => {
         publish("componentUpdated");
@@ -160,17 +165,22 @@ class Do extends React.Component {
         if (!this.state["shown"]) {
             this.resources["windows"] = this.resources["applications"] = this.resources["session"] = [];
 
+            doGet("/notifications", resp => {
+                this.resources.notifications = resp.data
+                this.filterAndSort
+            });
+
             doGet(windowSearch, resp => {
                 this.resources.windows = resp.data;
                 this.filterAndSort()
             });
 
             doGet(applicationSearch, resp => {
-                this.resources["applications"] = resp.data;
+                this.resources.applications = resp.data;
                 this.filterAndSort()
             });
             doGet("/session", resp => {
-                this.resources["session"] = resp.data
+                this.resources.session = resp.data
             });
             this.setState({ "shown": true });
         }
@@ -210,9 +220,9 @@ class Do extends React.Component {
 
             ];
         }
-        else if (this.state.notificationItems && this.state.notificationItems.length > 0) {
+        else if (this.state.recentNotificationItems.length > 0) {
             let content = []
-            this.state.notificationItems.forEach(n => {
+            this.state.recentNotificationItems.forEach(n => {
                 content.push(<Item key={n.url} item={n}/>)
             })
             return <div>
