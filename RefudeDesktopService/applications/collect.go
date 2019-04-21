@@ -49,11 +49,10 @@ func Collect() (map[resource.StandardizedPath]*Mimetype, map[resource.Standardiz
 	}
 
 	for mimetypeId, appIds := range c.associations {
-		if mimetype, ok := c.mimetypes[mimetypeSelf(mimetypeId)]; ok {
+		if _, ok := c.mimetypes[mimetypeSelf(mimetypeId)]; ok {
 			for _, appId := range appIds {
 				if application, ok := c.applications[appSelf(appId)]; ok {
-					mimetype.LinkTo(resource.StandardizedPath("/application/"+appId), resource.Associated)
-					application.LinkTo(resource.StandardizedPath("/mimetype/"+mimetypeId), resource.Associated)
+					application.Mimetypes = slice.AppendIfNotThere(application.Mimetypes, mimetypeId)
 				}
 			}
 		}
@@ -320,7 +319,8 @@ func readDesktopFile(path string) (*DesktopApplication, []string, error) {
 		da.StartupNotify = group.Entries["StartupNotify"] == "true"
 		da.StartupWmClass = group.Entries["StartupWMClass"]
 		da.Url = group.Entries["URL"]
-
+		da.Mimetypes = []string{}
+		
 		for _, actionGroup := range iniFile[1:] {
 			if !strings.HasPrefix(actionGroup.Name, "Desktop Action ") {
 				log.Print(path, ", ", "Unknown group type: ", actionGroup.Name, " - ignoring\n")

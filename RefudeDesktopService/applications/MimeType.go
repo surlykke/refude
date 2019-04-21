@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"sort"
 	"strings"
 	"sync"
 
@@ -66,6 +67,23 @@ func NewMimetype(id string) (*Mimetype, error) {
 
 		return mt, nil
 	}
+}
+
+func GetMimetype(path resource.StandardizedPath) *Mimetype {
+	mlock.Lock()
+	defer mlock.Unlock()
+	return mimetypes[path]
+}
+
+func GetMimetypes() []resource.Resource {
+	mlock.Lock()
+	defer mlock.Unlock()
+	var resources = make([]resource.Resource, 0, len(mimetypes))
+	for _, mimetype := range mimetypes {
+		resources = append(resources, mimetype)
+	}
+	sort.Sort(resource.ResourceCollection(resources))
+	return resources
 }
 
 func (mt *Mimetype) POST(w http.ResponseWriter, r *http.Request) {

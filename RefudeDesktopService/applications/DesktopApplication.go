@@ -53,6 +53,7 @@ type DesktopApplication struct {
 	DesktopActions  map[string]*DesktopAction
 	Id              string
 	languages       language.Matcher
+	Mimetypes       []string
 }
 
 type DesktopAction struct {
