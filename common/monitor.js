@@ -1,26 +1,22 @@
+import Axios from "axios";
+Axios.defaults.baseURL = 'http://localhost:7938'
+
 // Copyright (c) 2015, 2016, 2017 Christian Surlykke
 //
 // This file is part of the refude project. 
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
 //
-import { doGetIfNoneMatch } from '../common/http'
-import Axios from 'axios';
-
-Axios.defaults.baseUrl = "http://localhost:7938";
-
 export let getLink = (item, rel) => {
-    console.log("getLink:", item, rel)
     if (item && rel && item._links) {
         let link = item._links.find(l => rel === l.rel);
-        console.log("getLink returning", link && link.href)
         return link && link.href;
     }
 }
 
 export let doGet = (path, dataHandler) => {
     Axios.get(path).then(resp => {
-        dataHandler(resp.data)
+        dataHandler(resp)
     }).catch(err => {
         console.log("GET", path, "got:", err)
     })
@@ -34,6 +30,14 @@ export let doPost = (path, successHandler) => {
     });
 }
 
+export let doPatch = (path, body, successHandler) => {
+    Axios.patch(path, body).then(resp => {
+        successHandler && successHandler(resp)
+    }).catch(err => {
+        console.log("PATCH", path, "got:", err)
+    });
+};
+
 export let monitorUrl = (path, dataHandler) => {
     let etag
     let getIfNoneMatch = () => {
@@ -42,7 +46,7 @@ export let monitorUrl = (path, dataHandler) => {
         Axios.get(path, { headers: headers, validateStatus: validateStatus}).then(resp => {
             if (resp.status < 300) {
                 etag = resp.headers.etag
-                dataHandler(resp.data)
+                dataHandler(resp)
             }
             setTimeout(getIfNoneMatch, 1000)
         }).catch(err => {

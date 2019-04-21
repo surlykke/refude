@@ -15,17 +15,14 @@ export class NotifierItem extends React.Component {
     }
 
     componentDidMount = () => {
-        monitorUrl(this.props.path, data => {
-            console.log("Got item:", data)
-            this.setState({ item: data })
+        monitorUrl(this.props.path, resp => {
+            this.setState({ item: resp.data })
         });
     }
 
     render = () => {
-        console.log("Render item");
         let showMenu = (event) => {
             let buildMenu = (jsonMenu) => {
-                console.log("Building menu from", jsonMenu);
                 let menu = new nw.Menu()
                 jsonMenu.Menu.forEach(jsonMenuItem => {
 
@@ -51,7 +48,7 @@ export class NotifierItem extends React.Component {
 
             let href = getLink(this.state.item, "http://relations.refude.org/sni_menu")
             if (href) {
-                doGet(href, data => buildMenu(data).popup(event.clientX, event.clientY));
+                doGet(href, resp => buildMenu(resp.data).popup(event.clientX, event.clientY));
             }
         };
 
@@ -66,9 +63,7 @@ export class NotifierItem extends React.Component {
             event.persist()
             let { x, y } = getXY(event)
             if (event.button === 0) {
-                console.log("posting on item:", this.state.item);
                 let postUrl = this.state.item._self + '?action=left&x=' + x + '&y=' + y;
-                console.log("Against:", postUrl)
                 doPost(postUrl);
             } else if (event.button === 1) {
                 doPost(this.state.item._self + '?action=middle&x=' + x + '&y=' + y);
@@ -91,7 +86,6 @@ export class NotifierItem extends React.Component {
         }
 
         let iconUrl = () => {
-            console.log("iconUrl returning", '/icon?name=' + this.state.item.IconName)
             return 'http://localhost:7938/icon?name=' + this.state.item.IconName
         }
 
@@ -112,7 +106,7 @@ export class NotifierItems extends React.Component {
     }
 
     componentDidMount = () => {
-        monitorUrl("/items?brief", data => this.setState({ itemPaths: data }));
+        monitorUrl("/items?brief", resp => this.setState({ itemPaths: resp.data }));
     };
 
     componentDidUpdate = () => {
@@ -120,7 +114,6 @@ export class NotifierItems extends React.Component {
     };
 
     render = () => {
-        console.log("Render item");
         return <div style={this.style}>
             {this.state.itemPaths.map(path => (<NotifierItem key={path} path={path} />))}
         </div>

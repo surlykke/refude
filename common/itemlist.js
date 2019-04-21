@@ -43,6 +43,7 @@ export class ItemList extends React.Component {
         if (!(this.state.selectedUrl && props.items.findIndex(i => this.state.selectedUrl === i.url) > -1)) {
             this.setSelected(props.items[0]);
         }
+        console.log("itemlist setting items to:", props.items)
         this.setState({items: props.items});
     };
 

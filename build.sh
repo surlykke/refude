@@ -4,7 +4,7 @@
 
 cd $(dirname $0)
 
-for appdir in appchooser notifications panel; do
+for appdir in appchooser panel; do
     mkdir -p dist/$appdir
     cp $appdir/static/* dist/$appdir
 done

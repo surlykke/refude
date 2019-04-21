@@ -7,7 +7,7 @@
 import React from 'react';
 import {publish} from "./utils";
 
-let Item = props => {
+export let Item = props => {
 
     let {item, selected} = props;
 
@@ -52,5 +52,3 @@ let Item = props => {
         </div>
     )
 }
-
-export {Item}

@@ -5,7 +5,6 @@
 // Please refer to the GPL2 file for a copy of the license.
 //
 import React from 'react';
-import {doGet, doPost, doSearch} from '../common/http'
 import {T} from "../common/translate";
 import {ItemList} from "../common/itemlist"
 import {applicationRank, subscribe} from "../common/utils";

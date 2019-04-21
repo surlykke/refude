@@ -6,18 +6,17 @@
 
 
 import React from 'react'
-import {POST} from '../common/http'
-import {WIN, applicationRank, publish, subscribe} from "../common/utils";
-import {ItemList} from "../common/itemlist"
-import {Indicator} from "./indicator";
-import {T} from "../common/translate";
-import { monitorUrl } from '../common/monitor';
-
+import { WIN, applicationRank, publish, subscribe } from "../common/utils";
+import { ItemList} from "../common/itemlist"
+import { Item} from "../common/item"
+import { Indicator } from "./indicator";
+import { T } from "../common/translate";
+import { doGet, doPost, monitorUrl } from '../common/monitor';
 const axios = require('axios')
 axios.defaults.baseURL = "http://localhost:7938"
 
-const windowSearch = encodeURIComponent('not r.States[%] eq _NET_WM_STATE_ABOVE')
-const applicationSearch = encodeURIComponent('not r.NoDisplay eq true')
+const windowSearch = "/windows?q=" + encodeURIComponent('not r.States[%] eq _NET_WM_STATE_ABOVE')
+const applicationSearch = "/applications?q=" + encodeURIComponent('not r.NoDisplay eq true')
 
 const http = require('http');
 let windowIconStyle = w => {
@@ -42,10 +41,10 @@ class Do extends React.Component {
     constructor(props) {
         //devtools();
         super(props);
-        this.resources = {notifications: [], windows: [], applications: []};
+        this.resources = { notifications: [], windows: [], applications: [] };
         this.term = "";
-        this.state = {items: []};
-        this.display = {x: 0, y: 0, w: 100, h: 100};
+        this.state = { items: [], notificationItems: [] };
+        this.display = { x: 0, y: 0, w: 100, h: 100 };
 
         this.listenForUpDown();
         this.handleBlurEvents();
@@ -55,9 +54,17 @@ class Do extends React.Component {
         subscribe("termChanged", this.termChange);
         subscribe("itemLaunched", this.execute);
         subscribe("dismiss", this.onDismiss);
-        monitorUrl("/notifications", notifications => {
-            console.log("Setting notifications to:", notifications)
-            this.resources.notifications = notifications;
+        monitorUrl("/notifications", resp => {
+            this.resources.notifications = resp.data
+            let notificationItems = resp.data.map(n => {
+                return {
+                    group: T("Notifications"),
+                    url: n._self,
+                    description: n.Subject,
+                    Comment: n.Body
+                }
+            });
+            this.setState({ notificationItems: notificationItems })
         });
     };
 
@@ -67,7 +74,6 @@ class Do extends React.Component {
 
     listenForUpDown = () => {
         let that = this;
-        console.log('http:', http);
         http.createServer(function (req, res) {
             that.showWin();
             if (req.url === "/up") {
@@ -94,7 +100,6 @@ class Do extends React.Component {
         let term = this.term.toLowerCase();
 
         let items = [];
-        console.log("Looking at:", this.resources.notifications);
         this.resources.notifications
             .filter(n => n.Subject.toLowerCase().indexOf(term) > -1 || n.Body.toLowerCase().indexOf(term) > -1)
             .forEach(n => {
@@ -115,7 +120,7 @@ class Do extends React.Component {
                     description: w.Name,
                     iconName: w._actions['default'].IconName,
                     iconStyle: windowIconStyle(w),
-                    bounds: {X: w.X, Y: w.Y, W: w.W, H: w.H}
+                    bounds: { X: w.X, Y: w.Y, W: w.W, H: w.H }
                 });
             });
 
@@ -148,25 +153,26 @@ class Do extends React.Component {
             }
         }
 
-        this.setState({items: items});
+        this.setState({ items: items });
     };
 
     showWin = () => {
         if (!this.state["shown"]) {
             this.resources["windows"] = this.resources["applications"] = this.resources["session"] = [];
-            axios.get("/windows?q=" + windowSearch).then(resp => { 
-                console.log("GET(/windows) got:", resp); 
-                this.resources["windows"] = resp.data; 
+
+            doGet(windowSearch, resp => {
+                this.resources.windows = resp.data;
                 this.filterAndSort()
             });
-            axios.get("/applications?q=" + applicationSearch).then(resp => { 
-                this.resources["applications"] = resp.data; 
+
+            doGet(applicationSearch, resp => {
+                this.resources["applications"] = resp.data;
                 this.filterAndSort()
             });
-            axios.get("/session").then(resp => { 
+            doGet("/session", resp => {
                 this.resources["session"] = resp.data
             });
-            this.setState({"shown": true});
+            this.setState({ "shown": true });
         }
         WIN.focus();
     };
@@ -177,9 +183,7 @@ class Do extends React.Component {
     };
 
     execute = (item) => {
-        console.log("execute:", item.url);
-        axios.post(item.url).then(response => {
-            console.log("Post done");
+        doPost(item.url, response => {
             this.onDismiss();
         })
     };
@@ -189,25 +193,36 @@ class Do extends React.Component {
             this.resources.windows = [];
             this.resources.applications = [];
             this.term = "";
-            this.setState({items: []});
-            this.setState({"shown": undefined});
+            this.setState({ items: [] });
+            this.setState({ "shown": undefined });
         }
     };
 
     render = () => {
-        let itemListStyle = {maxWidth: "300px", maxHeight: "300px"};
-        if (this.state.shown)
+        let itemListStyle = { maxWidth: "300px", maxHeight: "300px" };
+        if (this.state.shown) {
             return [
                 <ItemList key="itemlist"
-                          style={itemListStyle}
-                          items={this.state.items}
-                          ref={this.itemList}/>,
-                <Indicator key="indicator"/>
+                    style={itemListStyle}
+                    items={this.state.items}
+                    ref={this.itemList} />,
+                <Indicator key="indicator" />
 
             ];
-        else
+        }
+        else if (this.state.notificationItems && this.state.notificationItems.length > 0) {
+            let content = []
+            this.state.notificationItems.forEach(n => {
+                content.push(<Item key={n.url} item={n}/>)
+            })
+            return <div>
+                {content}                
+            </div>
+            
+        } else {
             return null
+        }
     };
 }
 
-export {Do}
+export { Do }

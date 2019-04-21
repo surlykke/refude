@@ -23,8 +23,7 @@ module.exports = {
     },
     entry: {
         panel: './panel/index.js',
-        appchooser: './appchooser/index.js',
-        notifications: './notifications/index.js'
+        appchooser: './appchooser/index.js'
     },
     target: 'node',
     output: {
