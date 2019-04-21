@@ -48,7 +48,7 @@ const (
 type pathElement struct {
 	kind    pathElementKind
 	keys    []string
-	indexes []int
+	indexes []int64
 }
 
 //type ParseError struct {
@@ -173,13 +173,13 @@ var stringCheckers = map[string]func(lhs, rhs string) bool{
 	"~i":   func(lhs, rhs string) bool { return strings.Contains(strings.ToUpper(lhs), strings.ToUpper(rhs)) },
 }
 
-var numberCheckers = map[string]func(lhs, rhs int) bool{
-	"eq":  func(lhs, rhs int) bool { return lhs == rhs },
-	"neq": func(lhs, rhs int) bool { return lhs != rhs },
-	"lt":  func(lhs, rhs int) bool { return lhs < rhs },
-	"lte": func(lhs, rhs int) bool { return lhs <= rhs },
-	"gt":  func(lhs, rhs int) bool { return lhs > rhs },
-	"gte": func(lhs, rhs int) bool { return lhs >= rhs },
+var numberCheckers = map[string]func(lhs, rhs int64) bool{
+	"eq":  func(lhs, rhs int64) bool { return lhs == rhs },
+	"neq": func(lhs, rhs int64) bool { return lhs != rhs },
+	"lt":  func(lhs, rhs int64) bool { return lhs < rhs },
+	"lte": func(lhs, rhs int64) bool { return lhs <= rhs },
+	"gt":  func(lhs, rhs int64) bool { return lhs > rhs },
+	"gte": func(lhs, rhs int64) bool { return lhs >= rhs },
 }
 
 var boolCheckers = map[string]func(lhs, rhs bool) bool{
@@ -256,7 +256,7 @@ func readPathSpec(ts *Lexer) []pathElement {
 				}
 				pe = append(pe, pathElement{kind: keys, keys: names})
 			} else if ts.Current.Kind == Integer {
-				numVals := []int{ts.Current.NumVal}
+				numVals := []int64{ts.Current.NumVal}
 				ts.next()
 				for ts.Current.Text == "," {
 					ts.next()
@@ -291,10 +291,10 @@ func buildStringMatcher(pathSpec []pathElement, rhs string, checker func(string,
 	}
 }
 
-func buildNumberMatcher(pathSpec []pathElement, rhs int, checker func(int, int) bool) Matcher {
+func buildNumberMatcher(pathSpec []pathElement, rhs int64, checker func(int64, int64) bool) Matcher {
 	return func(res interface{}) bool {
 		for _, node := range extractFieldValues(pathSpec, res) {
-			if lhs, ok := node.(int); ok && checker(lhs, rhs) {
+			if lhs, ok := node.(int64); ok && checker(lhs, rhs) {
 				return true
 			}
 		}
@@ -346,7 +346,7 @@ func fieldCollector(pathSpec []pathElement, node interface{}, leafs *[]interface
 		} else if v.Kind() == reflect.Slice || v.Kind() == reflect.Array {
 			if pathSpec[0].kind == indexes {
 				for _, i := range pathSpec[0].indexes {
-					if 0 <= i && i < v.Len() {
+					if 0 <= i && int(i) < v.Len() {
 						fieldCollector(pathSpec[1:], v.Index(int(i)).Addr().Interface(), leafs)
 					}
 				}

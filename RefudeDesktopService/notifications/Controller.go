@@ -143,6 +143,7 @@ func makeNotifyFunction(notifications chan *Notification) interface{} {
 			Id:         id,
 			internalId: <-ids,
 			Sender:     app_name,
+			Created:    time.Now().UnixNano() / 1000000,
 			Subject:    sanitize(summary, []string{}, []string{}),
 			Body:       sanitize(body, allowedTags, allowedEscapes),
 		}
@@ -154,10 +155,8 @@ func makeNotifyFunction(notifications chan *Notification) interface{} {
 		}
 
 		if expire_timeout > 0 {
-			var timeToExpire = time.Millisecond * time.Duration(expire_timeout)
-			var expires = time.Now().Add(timeToExpire)
-			notification.Expires = &expires
-			notification.removeAfter(timeToExpire)
+			notification.Expires = notification.Created + int64(expire_timeout)
+			notification.removeAfter(time.Millisecond * time.Duration(expire_timeout))
 		}
 
 		// Add a dismiss action

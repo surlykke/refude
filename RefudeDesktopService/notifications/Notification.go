@@ -62,13 +62,13 @@ func removeNotification(path resource.StandardizedPath, internalId uint32) bool 
 
 type Notification struct {
 	resource.GenericResource
-	Id            uint32
-	internalId    uint32
-	Sender        string
-	Subject       string
-	Body          string
-	RelevanceHint int
-	Expires       *time.Time `json:",omitempty"`
+	Id         uint32
+	internalId uint32
+	Sender     string
+	Subject    string
+	Body       string
+	Created    int64
+	Expires    int64 `json:",omitempty"`
 }
 
 func (n *Notification) removeAfter(duration time.Duration) {
@@ -76,7 +76,7 @@ func (n *Notification) removeAfter(duration time.Duration) {
 }
 
 func (nc *Notification) DELETE(w http.ResponseWriter, r *http.Request) {
-	// FIXME
+	removals <- removal{id: nc.Id, internalId: 0, reason: Dismissed}
 }
 
 func notificationSelf(id uint32) resource.StandardizedPath {

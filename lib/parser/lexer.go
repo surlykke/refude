@@ -10,8 +10,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
-	"unicode"
 	"strings"
+	"unicode"
 )
 
 type ParseError string
@@ -19,7 +19,7 @@ type ParseError string
 type TokenKind int
 
 const (
-	Start	      TokenKind = iota
+	Start TokenKind = iota
 	String
 	Identifier
 	Integer     //: TODO: Floats
@@ -34,15 +34,24 @@ var relationOperators = []string{"~i", "~", "neqi", "neq", "eqi", "eq", "lte", "
 
 func (tk TokenKind) String() string {
 	switch tk {
-	case Start:       return "Start"
-	case String:      return "String"
-	case Identifier:  return "Identifier"
-	case Integer:     return "Integer"
-	case Boolean:     return "Boolean"
-	case Relation:    return "Relation"
-	case SpecialChar: return "SpecialChar"
-	case End:         return "End"
-	default:          return "<undefined>"  
+	case Start:
+		return "Start"
+	case String:
+		return "String"
+	case Identifier:
+		return "Identifier"
+	case Integer:
+		return "Integer"
+	case Boolean:
+		return "Boolean"
+	case Relation:
+		return "Relation"
+	case SpecialChar:
+		return "SpecialChar"
+	case End:
+		return "End"
+	default:
+		return "<undefined>"
 	}
 }
 
@@ -52,7 +61,7 @@ type Token struct {
 
 	// Union
 	StrVal  string
-	NumVal  int
+	NumVal  int64
 	BoolVal bool
 }
 
@@ -71,7 +80,7 @@ func (t Token) assertKind(acceptableKinds ...TokenKind) {
 		errorMsg = "Expected " + acceptableKinds[0].String()
 	} else {
 		errorMsg = "Expected one of " + acceptableKinds[0].String()
-		for _,acceptableKind := range acceptableKinds[1:] {
+		for _, acceptableKind := range acceptableKinds[1:] {
 			errorMsg = errorMsg + ", " + acceptableKind.String()
 		}
 	}
@@ -89,26 +98,24 @@ func (t Token) assertRaw(acceptableRawValues ...string) {
 		errorMsg = "Expected " + acceptableRawValues[0]
 	} else {
 		errorMsg = "Expected one of " + acceptableRawValues[0]
-		for _,acceptableRawValue := range acceptableRawValues[1:] {
+		for _, acceptableRawValue := range acceptableRawValues[1:] {
 			errorMsg = errorMsg + ", " + acceptableRawValue
 		}
 	}
 	panic(ParseError(errorMsg))
 }
 
-
 type Lexer struct {
-	Current      Token
-	s            string
-	pos          int
-	tokenStart   int
+	Current    Token
+	s          string
+	pos        int
+	tokenStart int
 }
 
 func MakeLexer(s string) *Lexer {
 	var ts = &Lexer{Current: Token{Kind: Start}, s: s}
 	return ts
 }
-
 
 func (l *Lexer) currentText() string {
 	return l.s[l.tokenStart:l.pos]
@@ -140,7 +147,7 @@ func (l *Lexer) next() {
 	} else if unicode.IsDigit(l.rune()) || l.ch() == '-' && l.pos < len(l.s)-1 && unicode.IsDigit(l.rune()) {
 		for l.pos++; l.pos < len(l.s) && unicode.IsDigit(l.rune()); l.pos++ {
 		}
-		if numVal, err := strconv.Atoi(l.currentText()); err != nil {
+		if numVal, err := strconv.ParseInt(l.currentText(), 10, 64); err != nil {
 			panic(ParseError("Invalid number: " + err.Error()))
 		} else {
 			l.Current = Token{Kind: Integer, NumVal: numVal}
@@ -160,13 +167,13 @@ func (l *Lexer) next() {
 		}
 	} else {
 		if strings.HasPrefix(l.s[l.pos:], "~i") {
-			l.Current = Token{Kind:Relation}
+			l.Current = Token{Kind: Relation}
 			l.pos += 2
 		} else if l.s[l.pos] == '~' {
-			l.Current = Token{Kind:Relation}
+			l.Current = Token{Kind: Relation}
 			l.pos++
 		} else {
-			l.Current = Token{Kind:SpecialChar}
+			l.Current = Token{Kind: SpecialChar}
 			l.pos++
 		}
 	}
@@ -176,7 +183,7 @@ func (l *Lexer) next() {
 func (l *Lexer) readString() []byte {
 	if l.ch() == '"' {
 		var escaping = false
-		for l.pos++ ; l.pos < len(l.s); l.pos++ {
+		for l.pos++; l.pos < len(l.s); l.pos++ {
 			if l.ch() == '"' && !escaping {
 				l.pos++
 				return []byte(l.currentText())
@@ -218,5 +225,3 @@ func (l *Lexer) readString() []byte {
 	}
 	panic(ParseError("Runaway string"))
 }
-
-
