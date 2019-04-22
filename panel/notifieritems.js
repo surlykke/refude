@@ -5,8 +5,9 @@
 // Please refer to the GPL2 file for a copy of the license.
 //
 import React from 'react'
-import { monitorUrl, doGet, getLink, doPost } from "../common/monitor";
+import { monitorUrl, getLink} from "../common/monitor";
 import { publish } from "../common/utils";
+import Axios from 'axios';
 
 export class NotifierItem extends React.Component {
     constructor(props) {
@@ -38,7 +39,7 @@ export class NotifierItem extends React.Component {
                         menuItem.submenu = buildMenu(jsonMenuItem.SubMenus)
                     } else if (menuItem.type === "normal" || menuItem.type === "checkbox") {
                         menuItem.click = () => {
-                            doPost(this.state.item._self + '?action=menu&id=' + jsonMenuItem.Id);
+                            Axios.post(this.state.item._self + '?action=menu&id=' + jsonMenuItem.Id);
                         }
                     }
                     menu.append(menuItem)
@@ -48,7 +49,7 @@ export class NotifierItem extends React.Component {
 
             let href = getLink(this.state.item, "http://relations.refude.org/sni_menu")
             if (href) {
-                doGet(href, resp => buildMenu(resp.data).popup(event.clientX, event.clientY));
+                Axios.get(href).then(resp => buildMenu(resp.data).popup(event.clientX, event.clientY));
             }
         };
 
@@ -64,9 +65,9 @@ export class NotifierItem extends React.Component {
             let { x, y } = getXY(event)
             if (event.button === 0) {
                 let postUrl = this.state.item._self + '?action=left&x=' + x + '&y=' + y;
-                doPost(postUrl);
+                Axios.post(postUrl);
             } else if (event.button === 1) {
-                doPost(this.state.item._self + '?action=middle&x=' + x + '&y=' + y);
+                Axios.post(this.state.item._self + '?action=middle&x=' + x + '&y=' + y);
             }
             event.preventDefault()
         }

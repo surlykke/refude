@@ -11,11 +11,10 @@ import { ItemList} from "../common/itemlist"
 import { Item} from "../common/item"
 import { Indicator } from "./indicator";
 import { T } from "../common/translate";
-import { doGet, doPost, monitorUrl } from '../common/monitor';
-const axios = require('axios')
-axios.defaults.baseURL = "http://localhost:7938"
+import {monitorUrl } from '../common/monitor';
+import Axios from 'axios';
 
-
+Axios.defaults.baseURL = "http://localhost:7938"
 
 const windowSearch = "/windows?q=" + encodeURIComponent('not r.States[%] eq _NET_WM_STATE_ABOVE')
 const applicationSearch = "/applications?q=" + encodeURIComponent('not r.NoDisplay eq true')
@@ -164,22 +163,22 @@ class Do extends React.Component {
     showWin = () => {
         if (!this.state["shown"]) {
             this.resources["windows"] = this.resources["applications"] = this.resources["session"] = [];
-
-            doGet("/notifications", resp => {
+            
+            Axios.get("/notifications").then(resp => {
                 this.resources.notifications = resp.data
                 this.filterAndSort
             });
 
-            doGet(windowSearch, resp => {
+            Axios.get(windowSearch).then(resp => {
                 this.resources.windows = resp.data;
                 this.filterAndSort()
             });
 
-            doGet(applicationSearch, resp => {
+            Axios.get(applicationSearch).then(resp => {
                 this.resources.applications = resp.data;
                 this.filterAndSort()
             });
-            doGet("/session", resp => {
+            Axios.get("/session").then(resp => {
                 this.resources.session = resp.data
             });
             this.setState({ "shown": true });
@@ -193,7 +192,7 @@ class Do extends React.Component {
     };
 
     execute = (item) => {
-        doPost(item.url, response => {
+        Axios.post(item.url).then(response => {
             this.onDismiss();
         })
     };

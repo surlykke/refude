@@ -14,44 +14,25 @@ export let getLink = (item, rel) => {
     }
 }
 
-export let doGet = (path, dataHandler) => {
-    Axios.get(path).then(resp => {
-        dataHandler(resp)
-    }).catch(err => {
-        console.log("GET", path, "got:", err)
-    })
-}
-
-export let doPost = (path, successHandler) => {
-    Axios.post(path).then(resp => {
-        successHandler && successHandler(resp);
-    }).catch(err => {
-        console.log("POST", path, "got:", err)
-    });
-}
-
-export let doPatch = (path, body, successHandler) => {
-    Axios.patch(path, body).then(resp => {
-        successHandler && successHandler(resp)
-    }).catch(err => {
-        console.log("PATCH", path, "got:", err)
-    });
-};
-
 // Call with a path or a function producing a path
-export let monitorUrl = (path, dataHandler) => {
+export let monitorUrl = (path, dataHandler, errorHandler) => {
     let etag
     let getIfNoneMatch = () => {
         let actualPath = typeof(path) === "function" ? path() : path
         let headers = { "If-None-Match": etag};
-        let validateStatus = status => status === 304 || status < 300 
+        let validateStatus = status => status === 404 || status === 304 || status < 300 
         Axios.get(actualPath, { headers: headers, validateStatus: validateStatus}).then(resp => {
-            if (resp.status < 300) {
+            if (resp.status == 404) {
+                // resource must have gone away
+                return
+            } else if (resp.status < 300) {
                 etag = resp.headers.etag
                 dataHandler(resp)
             }
             setTimeout(getIfNoneMatch, 1000)
         }).catch(err => {
+            etag = undefined
+            errorHandler && errorHandler(err) 
             setTimeout(getIfNoneMatch, 10000) 
         });
     }

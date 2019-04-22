@@ -16,7 +16,6 @@ export class ItemList extends React.Component {
     }
 
     componentDidMount = () => {
-        console.log("Itemlist did mount");
         subscribe("moveRequested", this.move);
         subscribe("click", this.setSelected);
         subscribe("doubleclick", item => publish("itemLaunched", item));
@@ -39,11 +38,9 @@ export class ItemList extends React.Component {
     };
 
     componentWillReceiveProps = (props) => {
-//        console.log("Itemlist will receive props");
         if (!(this.state.selectedUrl && props.items.findIndex(i => this.state.selectedUrl === i.url) > -1)) {
             this.setSelected(props.items[0]);
         }
-        console.log("itemlist setting items to:", props.items)
         this.setState({items: props.items});
     };
 
