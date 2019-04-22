@@ -23,7 +23,7 @@ const desktopapp = "application/vnd.org.refude.desktopapplication+json";
 export default class AppChooser extends React.Component {
     constructor(props) {
         super(props);
-        devtools();
+        //devtools();
         this.mimetypeIdList = [mimetypeId];
         this.mimetypeComment = {}
         this.appMap = {};
@@ -98,13 +98,13 @@ export default class AppChooser extends React.Component {
     launch = (app, always) => {
         console.log("Launching", app.Name)
         if (always) {
-            Axios.patch(mimetype._self, { defaultApp: app.Id }).then(resp => {
+            Axios.patch(mimetype._self, { DefaultApp: app.Id }).then(resp => {
                Axios.post(app._self, { arg: filePath }).then(resp => {
                     gui.App.quit();
                 }); 
             });
         } else {
-            Axios.post(app._self, { arg: filePath }).then(resp => {
+            Axios.post(app._self + "?arg=" + encodeURIComponent(filePath)).then(resp => {
                     gui.App.quit();
             });
         }
