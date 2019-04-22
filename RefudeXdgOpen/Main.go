@@ -10,11 +10,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
-	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -26,7 +24,7 @@ import (
 )
 
 type MimeType struct {
-	DefaultApplication string
+	DefaultApp string
 }
 
 var client = http.Client{
@@ -37,28 +35,25 @@ var client = http.Client{
 	},
 }
 
-func getJson(path string, res interface{}) error {
-	url := "http://localhost" + path
-	response, err := client.Get(url)
+func getMimetype(mimetypeId string) (*MimeType, error) {
+	response, err := client.Get("http://localhost/mimetype/" + mimetypeId)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	defer response.Body.Close()
-	if body, err := ioutil.ReadAll(response.Body); err != nil {
-		return err
-	} else if len(body) > 0 {
-		if err = json.Unmarshal(body, res); err != nil {
-			return err
-		}
+	var mimetype = &MimeType{}
+	var decoder = json.NewDecoder(response.Body)
+	err = decoder.Decode(mimetype)
+	if err != nil {
+		return nil, err
 	}
 
-	return nil
+	return mimetype, nil
 }
 
-func postJson(path string) error {
-	url := "http://localhost" + path
-	if request, err := http.NewRequest("POST", url, nil); err != nil {
+func launchApp(appId string) error {
+	if request, err := http.NewRequest("POST", "http://localhost/application/"+appId, nil); err != nil {
 		return err
 	} else if response, err := client.Do(request); err != nil {
 		return err
@@ -69,11 +64,13 @@ func postJson(path string) error {
 }
 
 func getDefaultApp(mimetypeid string) (string, error) {
-	mimetype := MimeType{}
-	if err := getJson("/mimetypes/"+mimetypeid, &mimetype); err != nil {
+	var mimetype, err = getMimetype(mimetypeid)
+	if err != nil {
+		fmt.Printf("Error getting mimetype : %v", err)
 		return "", err
 	} else {
-		return mimetype.DefaultApplication, nil
+		fmt.Println("Mimetype:", mimetype)
+		return mimetype.DefaultApp, nil
 	}
 }
 
@@ -115,11 +112,13 @@ func main() {
 
 	if len(mimetypeId) == 0 {
 		log.Fatal("Could not determine type of " + arg)
-	} else if appId, err := getDefaultApp(mimetypeId); err != nil {
+	}
+	appId, err := getDefaultApp(mimetypeId)
+	if err != nil {
 		log.Fatal("Error querying default app of ", mimetypeId, err)
-	} else if appId != "" {
-		path := "/applications/" + appId + "?arg=" + url.QueryEscape(arg)
-		if err = postJson(path); err != nil {
+	}
+	if appId != "" {
+		if err = launchApp(appId); err != nil {
 			log.Fatal("Error launching " + appId + " with " + arg)
 		}
 	} else {

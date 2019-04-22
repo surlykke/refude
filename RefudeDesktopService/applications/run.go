@@ -54,5 +54,6 @@ func Run() {
 		if _, err := unix.Read(fd, dummy); err != nil {
 			panic(err)
 		}
+		fmt.Println("applications do new collect...")
 	}
 }

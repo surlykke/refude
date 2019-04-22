@@ -7,14 +7,16 @@
 package applications
 
 import (
+	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"regexp"
 	"sort"
 	"strings"
 	"sync"
+
+	"github.com/surlykke/RefudeServices/lib/requests"
 
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/slice"
@@ -40,6 +42,7 @@ type Mimetype struct {
 	SubClassOf      []string
 	IconName        string
 	GenericIcon     string
+	DefaultApp      string `json:",omitempty"`
 }
 
 var mimetypePattern = regexp.MustCompile(`^([^/]+)/([^/]+)$`)
@@ -96,11 +99,11 @@ func (mt *Mimetype) POST(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func setDefaultApp(mimetypeId string, appId string) {
+func setDefaultApp(mimetypeId string, appId string) error {
 	path := xdg.ConfigHome + "/mimeapps.list"
 
 	if iniFile, err := xdg.ReadIniFile(path); err != nil && !os.IsNotExist(err) {
-		log.Println(fmt.Sprint(err))
+		return err
 	} else {
 		var defaultGroup = iniFile.FindGroup("Default Applications")
 		if defaultGroup == nil {
@@ -113,13 +116,24 @@ func setDefaultApp(mimetypeId string, appId string) {
 		defaultAppsS = strings.Join(defaultApps, ";")
 		defaultGroup.Entries[mimetypeId] = defaultAppsS
 		if err = xdg.WriteIniFile(path, iniFile); err != nil {
-			log.Println(fmt.Sprint(err))
+			return err
 		}
+		return nil
 	}
 }
 
 func (mc *Mimetype) PATCH(w http.ResponseWriter, r *http.Request) {
-	// FIXME
+	var decoder = json.NewDecoder(r.Body)
+	var decoded = make(map[string]string)
+	if err := decoder.Decode(&decoded); err != nil {
+		requests.ReportUnprocessableEntity(w, err)
+	} else if defaultApp, ok := decoded["DefaultApp"]; !ok || len(decoded) != 1 {
+		requests.ReportUnprocessableEntity(w, fmt.Errorf("Patch payload should contain exactly one parameter: 'DefaultApp"))
+	} else if err = setDefaultApp(mc.Id, defaultApp); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	} else {
+		w.WriteHeader(http.StatusAccepted)
+	}
 }
 
 func mimetypeSelf(mimetypeId string) resource.StandardizedPath {

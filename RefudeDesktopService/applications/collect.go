@@ -62,7 +62,8 @@ func Collect() (map[resource.StandardizedPath]*Mimetype, map[resource.Standardiz
 		if mimetype, ok := c.mimetypes[mimetypeSelf(mimetypeId)]; ok {
 			for _, appId := range appIds {
 				if _, ok := c.applications[appSelf(appId)]; ok {
-					mimetype.LinkTo(resource.StandardizedPath("/application/"+appId), resource.DefaultApplication)
+					mimetype.DefaultApp = appId
+					break
 				}
 			}
 		}
@@ -320,7 +321,7 @@ func readDesktopFile(path string) (*DesktopApplication, []string, error) {
 		da.StartupWmClass = group.Entries["StartupWMClass"]
 		da.Url = group.Entries["URL"]
 		da.Mimetypes = []string{}
-		
+
 		for _, actionGroup := range iniFile[1:] {
 			if !strings.HasPrefix(actionGroup.Name, "Desktop Action ") {
 				log.Print(path, ", ", "Unknown group type: ", actionGroup.Name, " - ignoring\n")
