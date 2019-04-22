@@ -5,25 +5,29 @@
 // Please refer to the GPL2 file for a copy of the license.
 //
 import React from 'react';
-import {T} from "../common/translate";
-import {ItemList} from "../common/itemlist"
-import {applicationRank, subscribe} from "../common/utils";
+import { T } from "../common/translate";
+import { ItemList } from "../common/itemlist"
+import { applicationRank, subscribe, devtools } from "../common/utils";
+import Axios from 'axios';
+
+Axios.defaults.baseURL = 'http://localhost:7938'
 
 let gui = window.require('nw.gui');
 let filePath = gui.App.argv[0];
 let fileName = filePath.substring(filePath.lastIndexOf('/') + 1);
 let mimetypeId = gui.App.argv[1];
+let mimetype
 
 const desktopapp = "application/vnd.org.refude.desktopapplication+json";
 
 export default class AppChooser extends React.Component {
     constructor(props) {
-        //devtools();
         super(props);
+        devtools();
         this.mimetypeIdList = [mimetypeId];
         this.mimetypeComment = {}
         this.appMap = {};
-        this.state = {items: []};
+        this.state = { items: [] };
         this.term = ""
         this.fetchMimetypes(0);
     }
@@ -34,20 +38,21 @@ export default class AppChooser extends React.Component {
             this.term = term.toLowerCase();
             this.filterAndSort();
         });
-        subscribe("itemLaunched", (item) => this.setState({selected: item.app}));
+        subscribe("itemLaunched", (item) => this.setState({ selected: item.app }));
     }
 
     fetchMimetypes = (pos) => {
         if (pos < this.mimetypeIdList.length) {
-            doGet({service: "desktop-service", path: `/mimetypes/${this.mimetypeIdList[pos]}`}).then(resp => {
-                    this.mimetypeComment[this.mimetypeIdList[pos]] = resp.json.Comment;
-                    resp.json.SubClassOf.filter(m => !this.mimetypeIdList.includes(m)).forEach(m => this.mimetypeIdList.push(m));
-                    this.fetchMimetypes(pos + 1);
-                },
-                (resp) => {
-                    this.fetchMimetypes(pos + 1);
+            Axios.get(`/mimetype/${this.mimetypeIdList[pos]}`).then(resp => {
+                let mt = resp.data
+                if (pos === 0) {
+                    mimetype = mt
                 }
-            )
+                this.mimetypeComment[this.mimetypeIdList[pos]] = mt.Comment;
+                mt.SubClassOf.filter(m => !this.mimetypeIdList.includes(m)).forEach(m => this.mimetypeIdList.push(m));
+            }).then(() => {
+                this.fetchMimetypes(pos + 1)
+            });
         } else {
             this.mimetypeIdList.push('other');
             console.log("mimetypeIdList:", this.mimetypeIdList);
@@ -57,19 +62,15 @@ export default class AppChooser extends React.Component {
     };
 
     fetchApps = () => {
-        doSearch("desktop-service", desktopapp, "r.Exec ~i '%f' or r.Exec ~i '%u'").then(
-            resp => {
-                let foundApps = [];
-                for (let mimetypeId of this.mimetypeIdList) {
-                    this.appMap[mimetypeId] = resp.json.filter(app => !foundApps.includes(app) && (mimetypeId === 'other' || app.Mimetypes.includes(mimetypeId)))
-                    foundApps.push(...this.appMap[mimetypeId]);
-                }
-                this.filterAndSort();
-            },
-            resp => {
-                console.log("error resp:", resp);
+        Axios.get("/applications?q=" + encodeURIComponent("r.Exec ~i '%f' or r.Exec ~i '%u'")).then(resp => {
+            let apps = resp.data
+            let foundApps = [];
+            for (let mimetypeId of this.mimetypeIdList) {
+                this.appMap[mimetypeId] = apps.filter(app => !foundApps.includes(app) && (mimetypeId === 'other' || app.Mimetypes.includes(mimetypeId)))
+                foundApps.push(...this.appMap[mimetypeId]);
             }
-        )
+            this.filterAndSort();
+        });
     };
 
 
@@ -91,32 +92,26 @@ export default class AppChooser extends React.Component {
             })
         }
         console.log("Set items:", items);
-        this.setState({items: items});
+        this.setState({ items: items });
     };
 
     launch = (app, always) => {
+        console.log("Launching", app.Name)
         if (always) {
-            doPost(this.mimeMap.get(mimetypeId), {defaultApp: app.Id}).then(
-                (resp) => {
-                    doPost(app, {arg: filePath}).then(resp => {
-                        gui.App.quit();
-                    });
-                },
-                (resp) => {
-                    doPost(app, {arg: filePath}).then(resp => {
-                        gui.App.quit();
-                    });
-                }
-            );
+            Axios.patch(mimetype._self, { defaultApp: app.Id }).then(resp => {
+               Axios.post(app._self, { arg: filePath }).then(resp => {
+                    gui.App.quit();
+                }); 
+            });
         } else {
-            doPost(app, {arg: filePath}).then(resp => {
-                gui.App.quit();
+            Axios.post(app._self, { arg: filePath }).then(resp => {
+                    gui.App.quit();
             });
         }
     };
 
     cancel = () => {
-        this.setState({selected: undefined});
+        this.setState({ selected: undefined });
     };
 
     cancelOnEscape = (event) => {
@@ -179,21 +174,21 @@ export default class AppChooser extends React.Component {
 
         return <div style={style}>
             {this.state.selected &&
-            <div style={overlayStyle} onKeyDown={this.props.dismiss}>
-                <div style={popupStyle}>
-                    <span dangerouslySetInnerHTML={{__html: T("Open files of type <b>%0</b> with <b>%1</b>?", comment, appName)}}/>
-                    <div style={buttonBarStyle}>
-                        <button style={buttonStyle} onClick={() => this.launch(this.state.selected, false)} autoFocus>{T("Just once")}</button>
-                        <button style={buttonStyle} onClick={() => this.launch(this.state.selected, true)}>{T("Always")}</button>
-                        <button style={buttonStyle} onClick={this.cancel}>{T("Cancel")}</button>
+                <div style={overlayStyle} onKeyDown={this.props.dismiss}>
+                    <div style={popupStyle}>
+                        <span dangerouslySetInnerHTML={{ __html: T("Open files of type <b>%0</b> with <b>%1</b>?", comment, appName) }} />
+                        <div style={buttonBarStyle}>
+                            <button style={buttonStyle} onClick={() => this.launch(this.state.selected, false)} autoFocus>{T("Just once")}</button>
+                            <button style={buttonStyle} onClick={() => this.launch(this.state.selected, true)}>{T("Always")}</button>
+                            <button style={buttonStyle} onClick={this.cancel}>{T("Cancel")}</button>
+                        </div>
                     </div>
-                </div>
-            </div>}
+                </div>}
 
             <div key="heading" style={headingStyle}>
-                <span dangerouslySetInnerHTML={{__html: T("Open &nbsp;<b>%0</b>&nbsp;with:", fileName)}}/>
+                <span dangerouslySetInnerHTML={{ __html: T("Open &nbsp;<b>%0</b>&nbsp;with:", fileName) }} />
             </div>
-            <ItemList key="itemlist" items={this.state.items} disabled={this.state.selected}/>
+            <ItemList key="itemlist" items={this.state.items} disabled={this.state.selected} />
         </div>
     }
 }
