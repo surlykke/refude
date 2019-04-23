@@ -53,7 +53,7 @@ export default class Panel extends React.Component {
 
     componentDidMount = () => {
         subscribe("componentUpdated", this.adjustSize);
-        this.adjustSize();
+        setTimeout(this.adjustSize, 1000)
     };
 
 
@@ -67,8 +67,8 @@ export default class Panel extends React.Component {
         )
     };
 
-    render = () =>
-        <div style={{width: "500px"}}>
+    render = () => {
+        return <div style={{width: "500px"}}>
             <div style={style} id="content" ref={div => { this.content = div }}>
                 <Clock style={pluginStyle}/>
                 <NotifierItems style={pluginStyle}/>
@@ -78,6 +78,7 @@ export default class Panel extends React.Component {
                 <Do/>
             </div>
         </div>
+    }
 }
 
 

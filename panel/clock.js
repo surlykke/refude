@@ -30,8 +30,9 @@ class Clock extends React.Component {
 		update()
 	}
 
-	render = () =>
-		<div id="clock" style={this.props.style}>{this.state.time}</div>
+	render = () => {
+		return <div id="clock" style={this.props.style}>{this.state.time}</div>
+	}
 }
 
 export {Clock}

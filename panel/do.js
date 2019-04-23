@@ -7,11 +7,11 @@
 
 import React from 'react'
 import { WIN, applicationRank, publish, subscribe } from "../common/utils";
-import { ItemList} from "../common/itemlist"
-import { Item} from "../common/item"
+import { ItemList } from "../common/itemlist"
+import { Item } from "../common/item"
 import { Indicator } from "./indicator";
 import { T } from "../common/translate";
-import {monitorUrl } from '../common/monitor';
+import { monitorUrl } from '../common/monitor';
 import Axios from 'axios';
 
 Axios.defaults.baseURL = "http://localhost:7938"
@@ -44,7 +44,7 @@ class Do extends React.Component {
         super(props);
         this.resources = { notifications: [], windows: [], applications: [] };
         this.term = "";
-        this.state = { items: [], recentNotificationItems: [] };
+        this.state = { items: [], flashNotifications: [] };
         this.display = { x: 0, y: 0, w: 100, h: 100 };
 
         this.listenForUpDown();
@@ -56,18 +56,19 @@ class Do extends React.Component {
         subscribe("itemLaunched", this.execute);
         subscribe("dismiss", this.onDismiss);
 
-        let path = () => "/notifications?q=" + encodeURIComponent("r.Created gt " + (new Date().getTime() - 3000)) 
 
-        monitorUrl(path, resp => {
-            let recentNotificationItems = resp.data.map(n => {
-                return {
-                    group: T("Notifications"),
-                    url: n._self,
-                    description: n.Subject,
-                    Comment: n.Body
-                }
-            });
-            this.setState({ recentNotificationItems: recentNotificationItems })
+        let updateFlashNotifications = () => {
+            let fiveSecondsAgo = new Date().getTime() - 5000
+            this.setState({ flashNotifications: this.resources.notifications.filter(n => n.Created > fiveSecondsAgo) })
+            setTimeout(updateFlashNotifications, 200)
+        }
+        updateFlashNotifications()
+
+        monitorUrl("/notifications", resp => {
+            this.resources.notifications = resp.data
+            if (this.state.shown) {
+                this.filterAndSort()
+            }
         });
     };
 
@@ -163,11 +164,6 @@ class Do extends React.Component {
     showWin = () => {
         if (!this.state["shown"]) {
             this.resources["windows"] = this.resources["applications"] = this.resources["session"] = [];
-            
-            Axios.get("/notifications").then(resp => {
-                this.resources.notifications = resp.data
-                this.filterAndSort
-            });
 
             Axios.get(windowSearch).then(resp => {
                 this.resources.windows = resp.data;
@@ -178,9 +174,11 @@ class Do extends React.Component {
                 this.resources.applications = resp.data;
                 this.filterAndSort()
             });
+
             Axios.get("/session").then(resp => {
                 this.resources.session = resp.data
             });
+
             this.setState({ "shown": true });
         }
         WIN.focus();
@@ -219,15 +217,16 @@ class Do extends React.Component {
 
             ];
         }
-        else if (this.state.recentNotificationItems.length > 0) {
+        else if (this.state.flashNotifications.length > 0) {
             let content = []
-            this.state.recentNotificationItems.forEach(n => {
-                content.push(<Item key={n.url} item={n}/>)
+            this.state.flashNotifications.forEach(n => {
+                let item = {url: n._self, description: n.Subject, Comment: n.Body}
+                content.push(<Item key={item.url} item={item}/>)
             })
             return <div>
-                {content}                
+                {content}
             </div>
-            
+
         } else {
             return null
         }

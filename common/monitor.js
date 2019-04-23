@@ -23,7 +23,7 @@ export let monitorUrl = (path, dataHandler, errorHandler) => {
         let validateStatus = status => status === 404 || status === 304 || status < 300 
         Axios.get(actualPath, { headers: headers, validateStatus: validateStatus}).then(resp => {
             if (resp.status == 404) {
-                // resource must have gone away
+                // resource must have gone away - stop monitoring
                 return
             } else if (resp.status < 300) {
                 etag = resp.headers.etag

@@ -8,8 +8,8 @@ import React from 'react'
 
 const gui = window.require('nw.gui');
 export class CloseButton extends React.Component {
-	render = () =>
-		<div style={this.props.style} onClick={() => gui.App.quit()}>
+	render = () => {
+		return <div style={this.props.style} onClick={() => gui.App.quit()}>
 			<svg width="20" height="20" viewBox="0 0 100 100">
 				<g fillOpacity="0" strokeWidth="12" stroke="black">
 					<line x1="15" y1="15" x2="85" y2="85"/>
@@ -17,5 +17,6 @@ export class CloseButton extends React.Component {
 				</g>
 			</svg>
 		</div>
+	}
 }
 

@@ -4,7 +4,10 @@
 
 cd $(dirname $0)
 
-for appdir in appchooser panel; do
+#apps='appchooser panel test'
+apps='appchooser panel'
+
+for appdir in $apps; do
     mkdir -p dist/$appdir
     cp $appdir/static/* dist/$appdir
 done
