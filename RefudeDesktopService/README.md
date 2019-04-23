@@ -22,26 +22,19 @@ or if you prefer unix domain sockets:
 curl --unix $XDG_RUNTIME_DIR/org.refude.desktop-service http://localhost/applications/firefox
 
 
-RefudeServices also comes with a command line client - ```refude``` - allowing 
+RefudeServices also comes with a command line client - ```refuc``` - allowing 
 you to do:
 
 ```
-refude /applications/firefox
+refuc /applications/firefox
 ```
-
-In addition to the services there are two applications:
-
-* [RefudeProxy](RefudeProxy/README.md): Which proxies the unix socket to TCP, allowing acces via TCP on http://localhost:7938
-* [RefudeXdgOpen](RefudeXdgOpen/README.md): A stand-alone application meant to serve as a drop-in replacement for freedesktops xdg-open. 
 
 ### Service structure
 
 #### Generic resources
 
 
-Can be used to check if the service is alive. Will respond to a Http GET with Status 200 Ok.
-
-##### /doc
+#### /doc
 
 Serves this document
 
@@ -50,7 +43,7 @@ ou'll get a list of all 'some-service's resources with a path beginning with `/f
 
 ## Clients
 
-Of course playing around with refude, curl and such is great fun, but the real purpose of RefudeServices is to 
+Of course playing around with refuc, curl and such is great fun, but the real purpose of RefudeServices is to 
 serve as infrastructure for desktop environments and applications.
 
 There is only one known RefudeServices-client: [refude](https://github.com/surlykke/refude). Go check that out.
