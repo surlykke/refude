@@ -13,7 +13,6 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
-	"time"
 
 	"github.com/godbus/dbus"
 	"github.com/godbus/dbus/introspect"
@@ -59,23 +58,26 @@ func monitorSignals() {
 	conn.Signal(dbusSignals)
 	addMatch := "org.freedesktop.DBus.AddMatch"
 	conn.BusObject().Call(addMatch, 0, "type='signal', interface='org.kde.StatusNotifierItem'")
-
+	conn.BusObject().Call(addMatch, 0, "sender=org.freedesktop.DBus,path=/org/freedesktop/DBus,interface=org.freedesktop.DBus,member=NameOwnerChanged,type=signal")
 	for signal := range dbusSignals {
-		if strings.HasPrefix(signal.Name, "org.kde.StatusNotifierItem.New") {
+		if signal.Name == "org.freedesktop.DBus.NameOwnerChanged" {
+			if len(signal.Body) >= 3 {
+				if oldOwner, ok := signal.Body[1].(string); ok {
+					checkItemStatus(oldOwner)
+				}
+			}
+		} else if strings.HasPrefix(signal.Name, "org.kde.StatusNotifierItem.New") {
 			events <- Event{eventType: ItemUpdated, sender: signal.Sender, path: signal.Path}
 		}
 	}
 }
 
-// We cannot reliably detect items disappearing by signals, it seems, so we do brute force polling
-func monitorItem(sender string, itemPath dbus.ObjectPath) {
-	for {
-		if _, ok := dbuscall.GetSingleProp(conn, sender, itemPath, ITEM_INTERFACE, "Status"); !ok {
-			break
+func checkItemStatus(sender string) {
+	for _, item := range getItemsBySender(sender) {
+		if _, ok := dbuscall.GetSingleProp(conn, item.sender, item.itemPath, ITEM_INTERFACE, "Status"); !ok {
+			events <- Event{eventType: ItemRemoved, sender: item.sender, path: item.itemPath}
 		}
-		time.Sleep(time.Second)
 	}
-	events <- Event{eventType: ItemRemoved, sender: sender, path: itemPath}
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -100,8 +102,10 @@ func getOnTheBus() {
 	// Put StatusNotifierWatcher object up
 	_ = conn.ExportMethodTable(
 		map[string]interface{}{
-			"RegisterStatusNotifierItem":   addItem,
-			"UnregisterStatusNotifierItem": func(string, dbus.Sender) {}, // We dont care, see monitorItem
+			"RegisterStatusNotifierItem": addItem,
+			"UnregisterStatusNotifierItem": func(s string, sender dbus.Sender) {
+				fmt.Println("Got UnregisterStatusNotifierItem:", s, ",", sender)
+			}, // We dont care, see monitorItem
 		},
 		WATCHER_PATH,
 		WATCHER_INTERFACE,

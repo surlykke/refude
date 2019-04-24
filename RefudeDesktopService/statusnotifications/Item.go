@@ -49,6 +49,20 @@ func removeItem(path resource.StandardizedPath) {
 	updateWatcherProperties()
 }
 
+func getItemsBySender(sender string) []*Item {
+	lock.Lock()
+	defer lock.Unlock()
+
+	var itemList = make([]*Item, 0, len(items))
+	for _, item := range items {
+		if sender == item.sender {
+			itemList = append(itemList, item)
+		}
+	}
+
+	return itemList
+}
+
 func GetItems() []resource.Resource {
 	lock.Lock()
 	defer lock.Unlock()
