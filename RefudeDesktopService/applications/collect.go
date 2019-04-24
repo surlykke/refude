@@ -202,7 +202,7 @@ func (c *collection) collectApplications(appdir string) {
 			return nil
 		}
 
-		app.Id = strings.Replace(path[len(appdir)+1:], "/", "-", -1)
+		app.Id = strings.Replace(path[len(appdir)+1:len(path)-8], "/", "-", -1)
 		app.GenericResource = resource.MakeGenericResource(appSelf(app.Id), DesktopApplicationMediaType)
 		var exec = app.Exec
 		var inTerminal = app.Terminal

@@ -11,22 +11,97 @@ is not defined, at ```/tmp/org.refude.desktop-service```.
 
 You may connect over TCP at ```localhost:7938```.
 
-For example, assuming you have firefox installed, you can get data about firefox 
-with the curl command:
+For example, assuming you have firefox installed, you can get the firefox 
+resource with the curl command:
 
 ```
-curl http://localhost:7938/applications/firefox
+curl http://localhost:7938/application/firefox
 ```
-or if you prefer unix domain sockets:
+which will give (something like):
 
-curl --unix $XDG_RUNTIME_DIR/org.refude.desktop-service http://localhost/applications/firefox
+```json
+{
+    "_self": "/application/firefox",
+    "_links": [
+        {
+            "href": "/application/firefox",
+            "rel": "self"
+        }
+    ],
+    "_actions": {
+        "default": {
+            "Description": "Launch",
+            "IconName": "firefox"
+        },
+        "new-private-window": {
+            "Description": "Open a New Private Window",
+            "IconName": "firefox"
+        },
+        "new-window": {
+            "Description": "Åbn et nyt vindue",
+            "IconName": "firefox"
+        }
+    },
+    "Type": "Application",
+    "Version": "1.0",
+    "Name": "Firefox - internetbrowser",
+    "GenericName": "Webbrowser",
+    "NoDisplay": false,
+    "Comment": "Surf på internettet",
+    "IconName": "firefox",
+    "Hidden": false,
+    "OnlyShowIn": [],
+    "NotShowIn": [],
+    "Exec": "firefox %u",
+    "Terminal": false,
+    "Categories": [
+        "GNOME",
+        "GTK",
+        "Network",
+        "WebBrowser"
+    ],
+    "Implements": [],
+    "Keywords": null,
+    "StartupNotify": true,
+    "DesktopActions": {
+        "new-private-window": {
+            "Name": "Open a New Private Window",
+            "Exec": "firefox -private-window",
+            "IconName": "firefox"
+        },
+        "new-window": {
+            "Name": "Åbn et nyt vindue",
+            "Exec": "firefox -new-window",
+            "IconName": "firefox"
+        }
+    },
+    "Id": "firefox",
+    "Mimetypes": [
+        "application/x-xpinstall",
+        "video/webm",
+        "image/gif",
+        "application/rdf+xml",
+        "text/html",
+        "image/png",
+        "application/xml",
+        "application/rss+xml",
+        "application/xhtml+xml",
+        "image/jpeg"
+    ]
+}
 
+```
+
+
+```
+curl --unix $XDG_RUNTIME_DIR/org.refude.desktop-service http://localhost/application/firefox
+```
 
 RefudeServices also comes with a command line client - ```refuc``` - allowing 
 you to do:
 
 ```
-refuc /applications/firefox
+refuc /application/firefox
 ```
 
 ### Service structure
