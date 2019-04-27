@@ -10,9 +10,12 @@ Axios.defaults.baseURL = 'http://localhost:7938'
 export let getLink = (item, rel) => {
     if (item && rel && item._links) {
         let link = item._links.find(l => rel === l.rel);
+        console.log("getLink", rel, "returns", link && link.href)
         return link && link.href;
     }
 }
+
+export let self = (res) => getLink(res, "self")
 
 // Call with a path or a function producing a path
 export let monitorUrl = (path, dataHandler, errorHandler) => {

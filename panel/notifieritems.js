@@ -5,7 +5,7 @@
 // Please refer to the GPL2 file for a copy of the license.
 //
 import React from 'react'
-import { monitorUrl, getLink} from "../common/monitor";
+import { monitorUrl, getLink, self} from "../common/monitor";
 import { publish } from "../common/utils";
 import Axios from 'axios';
 
@@ -39,7 +39,7 @@ export class NotifierItem extends React.Component {
                         menuItem.submenu = buildMenu(jsonMenuItem.SubMenus)
                     } else if (menuItem.type === "normal" || menuItem.type === "checkbox") {
                         menuItem.click = () => {
-                            Axios.post(this.state.item._self + '?action=menu&id=' + jsonMenuItem.Id);
+                            Axios.post(self(this.state.item) + '?action=menu&id=' + jsonMenuItem.Id);
                         }
                     }
                     menu.append(menuItem)
@@ -64,10 +64,10 @@ export class NotifierItem extends React.Component {
             event.persist()
             let { x, y } = getXY(event)
             if (event.button === 0) {
-                let postUrl = this.state.item._self + '?action=left&x=' + x + '&y=' + y;
+                let postUrl = self(this.state.item) + '?action=left&x=' + x + '&y=' + y;
                 Axios.post(postUrl);
             } else if (event.button === 1) {
-                Axios.post(this.state.item._self + '?action=middle&x=' + x + '&y=' + y);
+                Axios.post(self(this.state.item) + '?action=middle&x=' + x + '&y=' + y);
             }
             event.preventDefault()
         }

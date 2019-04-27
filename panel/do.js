@@ -11,7 +11,7 @@ import { ItemList } from "../common/itemlist"
 import { Item } from "../common/item"
 import { Indicator } from "./indicator";
 import { T } from "../common/translate";
-import { monitorUrl } from '../common/monitor';
+import { self, monitorUrl } from '../common/monitor';
 import Axios from 'axios';
 
 Axios.defaults.baseURL = "http://localhost:7938"
@@ -59,8 +59,11 @@ class Do extends React.Component {
 
         let updateFlashNotifications = () => {
             let fiveSecondsAgo = new Date().getTime() - 5000
-            this.setState({ flashNotifications: this.resources.notifications.filter(n => n.Created > fiveSecondsAgo) })
-            setTimeout(updateFlashNotifications, 200)
+            let tmp = this.resources.notifications.filter(n => n.Created > fiveSecondsAgo)
+            if (tmp.length > 0 || this.state.flashNotifications.length > 0) {
+                this.setState({ flashNotifications: tmp})
+            }
+            setTimeout(updateFlashNotifications, 1000)
         }
         updateFlashNotifications()
 
@@ -110,7 +113,7 @@ class Do extends React.Component {
             .forEach(n => {
                 items.push({
                     group: T("Notifications"),
-                    url: n._self,
+                    url: self(n),
                     description: n.Subject,
                     Comment: n.Body
                 });
@@ -121,7 +124,7 @@ class Do extends React.Component {
             .forEach(w => {
                 items.push({
                     group: T("Open windows"),
-                    url: w._self,
+                    url: self(w),
                     description: w.Name,
                     iconName: w._actions['default'].IconName,
                     iconStyle: windowIconStyle(w),
@@ -137,7 +140,7 @@ class Do extends React.Component {
                 .forEach(a => {
                     items.push({
                         group: T("Applications"),
-                        url: a._self,
+                        url: self(a),
                         description: a.Name + (a.Comment ? ' - ' + a.Comment : ''),
                         iconName: a.IconName,
                     })
@@ -149,7 +152,7 @@ class Do extends React.Component {
                 if (a.Description.toLowerCase().indexOf(term) > -1) {
                     let item = {
                         group: T("Leave"),
-                        url: this.resources.session._self + "?action=" + id,
+                        url: self(this.resources.session) + "?action=" + id,
                         description: a.Description,
                         iconName: a.IconName
                     };
@@ -220,7 +223,7 @@ class Do extends React.Component {
         else if (this.state.flashNotifications.length > 0) {
             let content = []
             this.state.flashNotifications.forEach(n => {
-                let item = {url: n._self, description: n.Subject, Comment: n.Body}
+                let item = {url: self(n), description: n.Subject, Comment: n.Body}
                 content.push(<Item key={item.url} item={item}/>)
             })
             return <div>
