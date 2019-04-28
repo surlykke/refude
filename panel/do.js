@@ -59,7 +59,7 @@ class Do extends React.Component {
 
         let updateFlashNotifications = () => {
             let fiveSecondsAgo = new Date().getTime() - 5000
-            let tmp = this.resources.notifications.filter(n => n.Created > fiveSecondsAgo)
+            let tmp = this.resources.notifications.filter(n => Date.parse(n.Created) > fiveSecondsAgo)
             if (tmp.length > 0 || this.state.flashNotifications.length > 0) {
                 this.setState({ flashNotifications: tmp})
             }
