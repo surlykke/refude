@@ -7,12 +7,14 @@
 package power
 
 import (
+	"io"
 	"sort"
 	"strings"
 	"sync"
 
 	"github.com/godbus/dbus"
 	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib/serialize"
 )
 
 const DeviceMediaType resource.MediaType = "application/vnd.org.refude.upowerdevice+json"
@@ -32,7 +34,7 @@ func GetDevice(path resource.StandardizedPath) *Device {
 func setDevice(device *Device) {
 	lock.Lock()
 	defer lock.Unlock()
-
+	device.SetEtag(resource.CalculateEtag(device))
 	devices[device.GetSelf()] = device
 }
 
@@ -44,7 +46,7 @@ func GetDevices() []resource.Resource {
 	for _, device := range devices {
 		result = append(result, device)
 	}
-	sort.Sort(resource.ResourceCollection(result))
+	sort.Sort(resource.ResourceList(result))
 	return result
 }
 
@@ -109,4 +111,34 @@ func deviceSelf(dbusPath dbus.ObjectPath) resource.StandardizedPath {
 		dbusPath = dbusPath[len(DevicePrefix):]
 	}
 	return resource.Standardizef("/device/%s", dbusPath)
+}
+
+func (d *Device) WriteBytes(w io.Writer) {
+	d.GenericResource.WriteBytes(w)
+	serialize.String(w, string(d.DbusPath))
+	serialize.String(w, d.NativePath)
+	serialize.String(w, d.Vendor)
+	serialize.String(w, d.Model)
+	serialize.String(w, d.Serial)
+	serialize.UInt64(w, d.UpdateTime)
+	serialize.String(w, d.Type)
+	serialize.Bool(w, d.PowerSupply)
+	serialize.Bool(w, d.HasHistory)
+	serialize.Bool(w, d.HasStatistics)
+	serialize.Bool(w, d.Online)
+	serialize.Float64(w, d.Energy)
+	serialize.Float64(w, d.EnergyEmpty)
+	serialize.Float64(w, d.EnergyFull)
+	serialize.Float64(w, d.EnergyFullDesign)
+	serialize.Float64(w, d.EnergyRate)
+	serialize.Float64(w, d.Voltage)
+	serialize.UInt64(w, uint64(d.TimeToEmpty))
+	serialize.UInt64(w, uint64(d.TimeToFull))
+	serialize.Float64(w, d.Percentage)
+	serialize.Bool(w, d.IsPresent)
+	serialize.String(w, d.State)
+	serialize.Bool(w, d.IsRechargeable)
+	serialize.Float64(w, d.Capacity)
+	serialize.String(w, d.Technology)
+	serialize.Bool(w, d.DisplayDevice)
 }

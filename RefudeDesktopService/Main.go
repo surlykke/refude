@@ -22,19 +22,14 @@ import (
 
 func serveHttp(w http.ResponseWriter, r *http.Request) {
 	var path = resource.StandardizedPath(r.URL.Path)
+	if resource.ServeHttp(applications.ApplicationsAndMimetypes, w, r) {
+		return
+	}
 	switch {
 	case path == "/windows":
 		resource.ServeCollection(w, r, windows.GetWindows())
 	case path.StartsWith("/window/"):
 		resource.ServeResource(w, r, windows.GetWindow(path))
-	case path == "/applications":
-		resource.ServeCollection(w, r, applications.GetApplications())
-	case path.StartsWith("/application/"):
-		resource.ServeResource(w, r, applications.GetApplication(path))
-	case path == "/mimetypes":
-		resource.ServeCollection(w, r, applications.GetMimetypes())
-	case path.StartsWith("/mimetype/"):
-		resource.ServeResource(w, r, applications.GetMimetype(path))
 	case path == "/notifications":
 		resource.ServeCollection(w, r, notifications.GetNotifications())
 	case path.StartsWith("/notification/"):

@@ -10,9 +10,12 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 	"golang.org/x/sys/unix"
 )
+
+var ApplicationsAndMimetypes = resource.MakeGenericResourceCollection("/applications", "/mimetypes")
 
 func Run() {
 	fd, err := unix.InotifyInit()
@@ -43,13 +46,14 @@ func Run() {
 	dummy := make([]byte, 100)
 	for {
 		var mtc, apps = Collect()
-		mlock.Lock()
-		mimetypes = mtc
-		mlock.Unlock()
-
-		lock.Lock()
-		desktopApplications = apps
-		lock.Unlock()
+		var collection = make(map[string]resource.Resource, len(mtc)+len(apps))
+		for _, mt := range mtc {
+			collection[string(mt.GetSelf())] = mt
+		}
+		for _, app := range apps {
+			collection[string(app.GetSelf())] = app
+		}
+		ApplicationsAndMimetypes.ReplaceAll(collection)
 
 		if _, err := unix.Read(fd, dummy); err != nil {
 			panic(err)

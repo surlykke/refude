@@ -8,24 +8,20 @@ package applications
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
 	"regexp"
-	"sort"
 	"strings"
-	"sync"
 
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib/serialize"
 	"github.com/surlykke/RefudeServices/lib/xdg"
-	"golang.org/x/text/language"
 )
 
 const DesktopApplicationMediaType resource.MediaType = "application/vnd.org.refude.desktopapplication+json"
-
-var desktopApplications = make(map[resource.StandardizedPath]*DesktopApplication)
-var lock sync.Mutex
 
 type DesktopApplication struct {
 	resource.GenericResource
@@ -52,7 +48,6 @@ type DesktopApplication struct {
 	Url             string `json:",omitempty"`
 	DesktopActions  map[string]*DesktopAction
 	Id              string
-	languages       language.Matcher
 	Mimetypes       []string
 }
 
@@ -117,24 +112,43 @@ func launchWithArgs(exec string, args []string, inTerminal bool) {
 	xdg.RunCmd(argv)
 }
 
-func GetApplication(path resource.StandardizedPath) *DesktopApplication {
-	lock.Lock()
-	defer lock.Unlock()
-	return desktopApplications[path]
-}
-
-func GetApplications() []resource.Resource {
-	lock.Lock()
-	defer lock.Unlock()
-	var result = make([]resource.Resource, 0, len(desktopApplications))
-
-	for _, app := range desktopApplications {
-		result = append(result, app)
-	}
-	sort.Sort(resource.ResourceCollection(result))
-	return result
-}
-
 func appSelf(appId string) resource.StandardizedPath {
-	return resource.Standardizef("/application/%s", appId)
+	return resource.Standardizef("/applications/%s", appId)
+}
+
+func (da *DesktopApplication) WriteBytes(w io.Writer) {
+	da.GenericResource.WriteBytes(w)
+	serialize.String(w, da.Type)
+	serialize.String(w, da.Version)
+	serialize.String(w, da.Name)
+	serialize.String(w, da.GenericName)
+	serialize.Bool(w, da.NoDisplay)
+	serialize.String(w, da.Comment)
+	serialize.String(w, da.IconName)
+	serialize.Bool(w, da.Hidden)
+	serialize.StringSlice(w, da.OnlyShowIn)
+	serialize.StringSlice(w, da.NotShowIn)
+	serialize.Bool(w, da.DbusActivatable)
+	serialize.String(w, da.TryExec)
+	serialize.String(w, da.Exec)
+	serialize.String(w, da.Path)
+	serialize.Bool(w, da.Terminal)
+	serialize.StringSlice(w, da.Categories)
+	serialize.StringSlice(w, da.Implements)
+	serialize.StringSlice(w, da.Keywords)
+	serialize.Bool(w, da.StartupNotify)
+	serialize.String(w, da.StartupWmClass)
+	serialize.String(w, da.Url)
+	for id, action := range da.DesktopActions {
+		serialize.String(w, id)
+		action.WriteBytes(w)
+	}
+	serialize.String(w, da.Id)
+	serialize.StringSlice(w, da.Mimetypes)
+}
+
+func (action *DesktopAction) WriteBytes(w io.Writer) {
+	serialize.String(w, action.Name)
+	serialize.String(w, action.Exec)
+	serialize.String(w, action.IconName)
 }

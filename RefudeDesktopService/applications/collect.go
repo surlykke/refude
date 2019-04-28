@@ -69,6 +69,12 @@ func Collect() (map[resource.StandardizedPath]*Mimetype, map[resource.Standardiz
 		}
 	}
 
+	for _, application := range c.applications {
+		application.SetEtag(resource.CalculateEtag(application))
+	}
+	for _, mimetype := range c.mimetypes {
+		mimetype.SetEtag(resource.CalculateEtag(mimetype))
+	}
 	return c.mimetypes, c.applications
 }
 

@@ -7,9 +7,13 @@
 package resource
 
 import (
+	"crypto/sha1"
+	"fmt"
+	"io"
 	"net/http"
 
 	"github.com/surlykke/RefudeServices/lib/requests"
+	"github.com/surlykke/RefudeServices/lib/serialize"
 )
 
 type Executer func()
@@ -21,15 +25,14 @@ type ResourceAction struct {
 }
 
 type GenericResource struct {
-	Self            StandardizedPath          `json:"_self"` // Convenience - is also contained in Links
 	Links           []Link                    `json:"_links"`
 	Mt              MediaType                 `json:"-"`
 	ResourceActions map[string]ResourceAction `json:"_actions,omitempty"`
+	etag            string
 }
 
 func MakeGenericResource(SelfLink StandardizedPath, mt MediaType) GenericResource {
 	return GenericResource{
-		Self:            SelfLink,
 		Links:           []Link{{Href: SelfLink, Rel: Self}},
 		Mt:              mt,
 		ResourceActions: make(map[string]ResourceAction),
@@ -48,6 +51,14 @@ func (gr *GenericResource) GetSelf() StandardizedPath {
 
 func (gr *GenericResource) GetMt() MediaType {
 	return gr.Mt
+}
+
+func (gr *GenericResource) GetEtag() string {
+	return gr.etag
+}
+
+func (gr *GenericResource) SetEtag(etag string) {
+	gr.etag = etag
 }
 
 func (gr *GenericResource) LinkTo(target StandardizedPath, relation Relation) {
@@ -70,4 +81,28 @@ func (gr *GenericResource) PATCH(w http.ResponseWriter, r *http.Request) {
 
 func (gr *GenericResource) DELETE(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusMethodNotAllowed)
+}
+
+func CalculateEtag(bp ByteProducer) string {
+	var sha1Hasher = sha1.New()
+	bp.WriteBytes(sha1Hasher)
+	return fmt.Sprintf("%X", sha1Hasher.Sum(nil))
+}
+
+type ByteProducer interface {
+	WriteBytes(io.Writer)
+}
+
+func (gr *GenericResource) WriteBytes(w io.Writer) {
+	for _, link := range gr.Links {
+		serialize.String(w, string(link.Href))
+		serialize.String(w, string(link.Type))
+		serialize.String(w, string(link.Title))
+		serialize.String(w, string(link.Rel))
+	}
+	for id, action := range gr.ResourceActions {
+		serialize.String(w, id)
+		serialize.String(w, action.Description)
+		serialize.String(w, action.IconName)
+	}
 }

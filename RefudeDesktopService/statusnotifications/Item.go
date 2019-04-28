@@ -8,6 +8,7 @@ package statusnotifications
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"sort"
@@ -18,6 +19,7 @@ import (
 	"github.com/godbus/dbus"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib/serialize"
 	"github.com/surlykke/RefudeServices/lib/slice"
 )
 
@@ -37,6 +39,7 @@ func setItem(item *Item) {
 	lock.Lock()
 	defer lock.Unlock()
 
+	item.SetEtag(resource.CalculateEtag(item))
 	items[item.GetSelf()] = item
 	updateWatcherProperties()
 }
@@ -71,7 +74,7 @@ func GetItems() []resource.Resource {
 	for _, item := range items {
 		res = append(res, item)
 	}
-	sort.Sort(resource.ResourceCollection(res))
+	sort.Sort(resource.ResourceList(res))
 	return res
 }
 
@@ -103,9 +106,7 @@ type Item struct {
 	AttentionIconName       string
 	AttentionAccessibleDesc string
 	Title                   string
-	Menu                    []MenuItem `json:",omitempty"`
-
-	iconThemePath string
+	iconThemePath           string
 }
 
 func MakeItem(sender string, path dbus.ObjectPath) *Item {
@@ -152,4 +153,16 @@ func (item *Item) POST(w http.ResponseWriter, r *http.Request) {
 	} else {
 		w.WriteHeader(http.StatusAccepted)
 	}
+}
+
+func (item *Item) WriteBytes(w io.Writer) {
+	item.GenericResource.WriteBytes(w)
+	serialize.String(w, item.Id)
+	serialize.String(w, item.Category)
+	serialize.String(w, item.Status)
+	serialize.String(w, item.IconName)
+	serialize.String(w, item.IconAccessibleDesc)
+	serialize.String(w, item.AttentionIconName)
+	serialize.String(w, item.AttentionAccessibleDesc)
+	serialize.String(w, item.Title)
 }

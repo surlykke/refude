@@ -29,7 +29,7 @@ func GetThemes() []resource.Resource {
 	for _, theme := range themes {
 		themes = append(themes, theme)
 	}
-	sort.Sort(resource.ResourceCollection(themes))
+	sort.Sort(resource.ResourceList(themes))
 	return themes
 }
 
@@ -63,7 +63,7 @@ func GetIcons() []resource.Resource {
 	for _, icon := range otherIcons {
 		icons = append(icons, icon)
 	}
-	sort.Sort(resource.ResourceCollection(icons))
+	sort.Sort(resource.ResourceList(icons))
 	return icons
 }
 

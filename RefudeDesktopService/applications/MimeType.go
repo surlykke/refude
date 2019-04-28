@@ -9,14 +9,14 @@ package applications
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"regexp"
-	"sort"
 	"strings"
-	"sync"
 
 	"github.com/surlykke/RefudeServices/lib/requests"
+	"github.com/surlykke/RefudeServices/lib/serialize"
 
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/slice"
@@ -27,9 +27,6 @@ import (
 
 const freedesktopOrgXml = "/usr/share/mime/packages/freedesktop.org.xml"
 const MimetypeMediaType resource.MediaType = "application/vnd.org.refude.mimetype+json"
-
-var mimetypes = make(map[resource.StandardizedPath]*Mimetype)
-var mlock sync.Mutex
 
 type Mimetype struct {
 	resource.GenericResource
@@ -70,23 +67,6 @@ func NewMimetype(id string) (*Mimetype, error) {
 
 		return mt, nil
 	}
-}
-
-func GetMimetype(path resource.StandardizedPath) *Mimetype {
-	mlock.Lock()
-	defer mlock.Unlock()
-	return mimetypes[path]
-}
-
-func GetMimetypes() []resource.Resource {
-	mlock.Lock()
-	defer mlock.Unlock()
-	var resources = make([]resource.Resource, 0, len(mimetypes))
-	for _, mimetype := range mimetypes {
-		resources = append(resources, mimetype)
-	}
-	sort.Sort(resource.ResourceCollection(resources))
-	return resources
 }
 
 func (mt *Mimetype) POST(w http.ResponseWriter, r *http.Request) {
@@ -137,5 +117,19 @@ func (mc *Mimetype) PATCH(w http.ResponseWriter, r *http.Request) {
 }
 
 func mimetypeSelf(mimetypeId string) resource.StandardizedPath {
-	return resource.Standardizef("/mimetype/%s", mimetypeId)
+	return resource.Standardizef("/mimetypes/%s", mimetypeId)
+}
+
+func (mt *Mimetype) WriteBytes(w io.Writer) {
+	mt.GenericResource.WriteBytes(w)
+	serialize.String(w, mt.Id)
+	serialize.String(w, mt.Comment)
+	serialize.String(w, mt.Acronym)
+	serialize.String(w, mt.ExpandedAcronym)
+	serialize.StringSlice(w, mt.Aliases)
+	serialize.StringSlice(w, mt.Globs)
+	serialize.StringSlice(w, mt.SubClassOf)
+	serialize.String(w, mt.IconName)
+	serialize.String(w, mt.GenericIcon)
+	serialize.String(w, mt.DefaultApp)
 }

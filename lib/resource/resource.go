@@ -11,7 +11,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"reflect"
 
 	"github.com/surlykke/RefudeServices/lib/requests"
 )
@@ -31,6 +30,7 @@ const (
 type Resource interface {
 	GetSelf() StandardizedPath
 	GetMt() MediaType
+	GetEtag() string
 	POST(w http.ResponseWriter, r *http.Request)
 	PATCH(w http.ResponseWriter, r *http.Request)
 	DELETE(w http.ResponseWriter, r *http.Request)
@@ -43,11 +43,12 @@ type Link struct {
 	Title string           `json:",omitempty"`
 }
 
-type ResourceCollection []Resource
+type ResourceList []Resource
 
-func (rc ResourceCollection) Len() int           { return len(rc) }
-func (rc ResourceCollection) Swap(i, j int)      { rc[i], rc[j] = rc[j], rc[i] }
-func (rc ResourceCollection) Less(i, j int) bool { return rc[i].GetSelf() < rc[j].GetSelf() }
+// For sorting
+func (rc ResourceList) Len() int           { return len(rc) }
+func (rc ResourceList) Swap(i, j int)      { rc[i], rc[j] = rc[j], rc[i] }
+func (rc ResourceList) Less(i, j int) bool { return rc[i].GetSelf() < rc[j].GetSelf() }
 
 type JsonResponse struct {
 	Data []byte
@@ -67,6 +68,10 @@ func ToJSon(res interface{}) JsonResponse {
 }
 
 func ServeCollection(w http.ResponseWriter, r *http.Request, collection []Resource) {
+	if r.Method != "GET" {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
 	var matcher, err = requests.GetMatcher(r)
 	if err != nil {
 		w.WriteHeader(http.StatusUnprocessableEntity)
@@ -107,11 +112,6 @@ func ServeCollection(w http.ResponseWriter, r *http.Request, collection []Resour
 }
 
 func ServeResource(w http.ResponseWriter, r *http.Request, res Resource) {
-	if reflect.ValueOf(res).IsNil() {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-
 	var jsonResponse = ToJSon(res)
 
 	if statusCode := requests.CheckEtag(r, jsonResponse.Etag); statusCode != 0 {
