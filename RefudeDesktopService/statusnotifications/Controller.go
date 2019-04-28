@@ -73,7 +73,13 @@ func monitorSignals() {
 }
 
 func checkItemStatus(sender string) {
-	for _, item := range getItemsBySender(sender) {
+	var hasSender = func(res resource.Resource) bool {
+		item, ok := res.(*Item)
+		return ok && item.sender == sender
+	}
+
+	for _, res := range Items.Filter(hasSender) {
+		var item = res.(*Item)
 		if _, ok := dbuscall.GetSingleProp(conn, item.sender, item.itemPath, ITEM_INTERFACE, "Status"); !ok {
 			events <- Event{eventType: ItemRemoved, sender: item.sender, path: item.itemPath}
 		}
@@ -146,9 +152,12 @@ var events = make(chan Event)
 
 // Caller must hold lock
 func updateWatcherProperties() {
-	ids := make([]string, 0, len(items))
-	for _, item := range items {
-		ids = append(ids, item.sender+":"+string(item.itemPath))
+	var itemResources = Items.GetList("/items")
+	ids := make([]string, 0, 20)
+	for _, res := range itemResources {
+		if item, ok := res.(*Item); ok {
+			ids = append(ids, item.sender+":"+string(item.itemPath))
+		}
 	}
 	watcherProperties.Set(WATCHER_INTERFACE, "RegisteredStatusItems", dbus.MakeVariant(ids))
 }

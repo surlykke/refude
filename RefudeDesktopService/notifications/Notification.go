@@ -27,16 +27,12 @@ type Notification struct {
 	Expires time.Time `json:",omitempty"`
 }
 
-func (n *Notification) removeAfter(duration time.Duration) {
-	time.AfterFunc(duration, func() { removals <- removal{n.Id, Expired} })
-}
-
 func (nc *Notification) DELETE(w http.ResponseWriter, r *http.Request) {
 	removals <- removal{id: nc.Id, reason: Dismissed}
 }
 
 func notificationSelf(id uint32) resource.StandardizedPath {
-	return resource.Standardizef("/notifications/%d", id)
+	return resource.Standardizef("/notification/%d", id)
 }
 
 func (n *Notification) WriteBytes(w io.Writer) {

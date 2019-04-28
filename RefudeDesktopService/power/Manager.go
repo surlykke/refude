@@ -7,6 +7,8 @@
 package power
 
 import (
+	"fmt"
+
 	"github.com/godbus/dbus"
 	dbuscall "github.com/surlykke/RefudeServices/lib/dbusutils"
 	"github.com/surlykke/RefudeServices/lib/resource"
@@ -22,7 +24,7 @@ const login1Service = "org.freedesktop.login1"
 const login1Path = "/org/freedesktop/login1"
 const managerInterface = "org.freedesktop.login1.Manager"
 
-func setup() chan *dbus.Signal {
+func subscribeToDeviceUpdates() chan *dbus.Signal {
 	var signals = make(chan *dbus.Signal, 100)
 
 	dbusConn.Signal(signals)
@@ -30,6 +32,12 @@ func setup() chan *dbus.Signal {
 		"org.freedesktop.DBus.AddMatch",
 		0,
 		"type='signal',interface='org.freedesktop.DBus.Properties',member='PropertiesChanged', sender='org.freedesktop.UPower'")
+
+	return signals
+}
+
+func getDevices() []*Device {
+	var devices = make([]*Device, 0, 10)
 
 	enumCall := dbusConn.Object(UPowService, UPowPath).Call(UPowerInterface+".EnumerateDevices", dbus.Flags(0))
 	devicePaths := append(enumCall.Body[0].([]dbus.ObjectPath), DisplayDevicePath)
@@ -39,10 +47,10 @@ func setup() chan *dbus.Signal {
 		device.GenericResource = resource.MakeGenericResource(deviceSelf(path), DeviceMediaType)
 		device.DbusPath = path
 		updateDevice(device, dbuscall.GetAllProps(dbusConn, UPowService, path, UPowerDeviceInterface))
-		setDevice(device)
+		devices = append(devices, device)
 	}
 
-	return signals
+	return devices
 }
 
 var dbusConn = func() *dbus.Conn {
@@ -72,6 +80,7 @@ func buildSessionResource() *resource.GenericResource {
 		}
 	}
 
+	fmt.Println("buildSessionResource returning:", session)
 	return &session
 }
 

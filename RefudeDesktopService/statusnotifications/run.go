@@ -6,6 +6,8 @@
 //
 package statusnotifications
 
+var Items = MakeItemCollection()
+
 func Run() {
 	getOnTheBus()
 	go monitorSignals()
@@ -14,9 +16,9 @@ func Run() {
 		var self = itemSelf(event.sender, event.path)
 		switch event.eventType {
 		case ItemUpdated, ItemCreated:
-			setItem(buildItem(event.sender, event.path))
+			Items.Set(buildItem(event.sender, event.path))
 		case ItemRemoved:
-			removeItem(self)
+			Items.Remove(string(self))
 		}
 	}
 }

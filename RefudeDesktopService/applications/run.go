@@ -15,7 +15,12 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-var ApplicationsAndMimetypes = resource.MakeGenericResourceCollection("/applications", "/mimetypes")
+var ApplicationsAndMimetypes = func() *resource.GenericResourceCollection {
+	var grc = resource.MakeGenericResourceCollection()
+	grc.AddCollectionResource("/applications", "/application/")
+	grc.AddCollectionResource("/mimetypes", "/mimetype/")
+	return grc
+}()
 
 func Run() {
 	fd, err := unix.InotifyInit()

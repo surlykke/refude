@@ -8,9 +8,7 @@ package power
 
 import (
 	"io"
-	"sort"
 	"strings"
-	"sync"
 
 	"github.com/godbus/dbus"
 	"github.com/surlykke/RefudeServices/lib/resource"
@@ -20,37 +18,6 @@ import (
 const DeviceMediaType resource.MediaType = "application/vnd.org.refude.upowerdevice+json"
 
 const SessionMediaType resource.MediaType = "application/vnd.org.refude.session+json"
-
-var devices = make(map[resource.StandardizedPath]*Device)
-var lock sync.Mutex
-
-func GetDevice(path resource.StandardizedPath) *Device {
-	lock.Lock()
-	defer lock.Unlock()
-
-	return devices[path]
-}
-
-func setDevice(device *Device) {
-	lock.Lock()
-	defer lock.Unlock()
-	device.SetEtag(resource.CalculateEtag(device))
-	devices[device.GetSelf()] = device
-}
-
-func GetDevices() []resource.Resource {
-	lock.Lock()
-	defer lock.Unlock()
-
-	var result = make([]resource.Resource, 0, len(devices))
-	for _, device := range devices {
-		result = append(result, device)
-	}
-	sort.Sort(resource.ResourceList(result))
-	return result
-}
-
-var Session = buildSessionResource()
 
 type Device struct {
 	resource.GenericResource

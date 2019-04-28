@@ -23,26 +23,13 @@ import (
 func serveHttp(w http.ResponseWriter, r *http.Request) {
 	var path = resource.StandardizedPath(r.URL.Path)
 	var served = resource.ServeHttp(applications.ApplicationsAndMimetypes, w, r) ||
-		resource.ServeHttp(notifications.Notifications, w, r)
+		resource.ServeHttp(notifications.Notifications, w, r) ||
+		resource.ServeHttp(power.PowerResources, w, r) ||
+		resource.ServeHttp(windows.Windows, w, r) ||
+		resource.ServeHttp(statusnotifications.Items, w, r)
 
 	if !served {
 		switch {
-		case path == "/windows":
-			resource.ServeCollection(w, r, windows.GetWindows())
-		case path.StartsWith("/window/"):
-			resource.ServeResource(w, r, windows.GetWindow(path))
-		case path == "/devices":
-			resource.ServeCollection(w, r, power.GetDevices())
-		case path.StartsWith("/device/"):
-			resource.ServeResource(w, r, power.GetDevice(path))
-		case path == "/session":
-			resource.ServeResource(w, r, power.Session)
-		case path == "/items":
-			resource.ServeCollection(w, r, statusnotifications.GetItems())
-		case path.StartsWith("/item/"):
-			resource.ServeResource(w, r, statusnotifications.GetItem(path))
-		case path.StartsWith("/itemmenu/"):
-			resource.ServeResource(w, r, statusnotifications.GetMenu(path))
 		case path == "/iconthemes":
 			resource.ServeCollection(w, r, icons.GetThemes())
 		case path.StartsWith("/icontheme/"):

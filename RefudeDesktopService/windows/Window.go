@@ -9,6 +9,7 @@ package windows
 import (
 	"log"
 	"strconv"
+	"strings"
 
 	"github.com/surlykke/RefudeServices/lib/resource"
 )
@@ -27,8 +28,14 @@ type Window struct {
 	States     []string
 }
 
-func GetWindow(path resource.StandardizedPath) *Window {
-	if !path.StartsWith("/window/") {
+func windowSelf(windowId uint32) resource.StandardizedPath {
+	return resource.Standardizef("/window/%d", windowId)
+}
+
+type WindowCollection struct{}
+
+func (wc WindowCollection) Get(path string) resource.Resource {
+	if !strings.HasPrefix(path, "/window/") {
 		return nil
 	} else if id, err := strconv.ParseUint(string(path[len("/window/"):]), 10, 32); err != nil {
 		return nil
@@ -37,13 +44,14 @@ func GetWindow(path resource.StandardizedPath) *Window {
 		if err != nil {
 			return nil
 		}
-
 		return window
 	}
 }
 
-func GetWindows() []resource.Resource {
-	if windows, err := getWindows(); err != nil {
+func (wc WindowCollection) GetList(path string) []resource.Resource {
+	if "/windows" != path {
+		return nil
+	} else if windows, err := getWindows(); err != nil {
 		log.Printf("Error getting windows: %v\n", err)
 		return nil
 	} else {
@@ -56,6 +64,4 @@ func GetWindows() []resource.Resource {
 
 }
 
-func windowSelf(windowId uint32) resource.StandardizedPath {
-	return resource.Standardizef("/window/%d", windowId)
-}
+var Windows = WindowCollection{}

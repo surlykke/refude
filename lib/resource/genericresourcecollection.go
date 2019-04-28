@@ -7,26 +7,28 @@ import (
 
 type GenericResourceCollection struct {
 	sync.Mutex
-	prefixes  []string // maps list paths to prefixes, eg. /windows -> /window/
-	resources map[string]Resource
+	collectionResources map[string][]string // Not thread safe, must be set before serving begins
+	resources           map[string]Resource
 }
 
 type ResourceCond func(resource Resource) bool
 
-func MakeGenericResourceCollection(prefixes ...string) *GenericResourceCollection {
+func MakeGenericResourceCollection() *GenericResourceCollection {
 	var grc = &GenericResourceCollection{}
-	grc.prefixes = prefixes
+	grc.collectionResources = map[string][]string{}
 	grc.resources = make(map[string]Resource)
 	return grc
 }
 
-func (grc *GenericResourceCollection) OwnsPath(path string) bool {
-	for _, prefix := range grc.prefixes {
-		if strings.HasPrefix(path, prefix) {
-			return true
-		}
-	}
-	return false
+// When embedding
+func (gcr *GenericResourceCollection) InitializeGenericResourceCollection() {
+	gcr.collectionResources = make(map[string][]string)
+	gcr.resources = make(map[string]Resource)
+}
+
+func (grc *GenericResourceCollection) AddCollectionResource(path string, prefixes ...string) *GenericResourceCollection {
+	grc.collectionResources[path] = append(grc.collectionResources[path], prefixes...)
+	return grc
 }
 
 func (grc *GenericResourceCollection) Get(path string) Resource {
@@ -36,30 +38,24 @@ func (grc *GenericResourceCollection) Get(path string) Resource {
 	return grc.resources[path]
 }
 
-func (grc *GenericResourceCollection) GetByPrefix(prefix string) []Resource {
-	var isAPrefix = false
-	for _, p := range grc.prefixes {
-		if prefix == p {
-			isAPrefix = true
-			break
-		}
-	}
+func (grc *GenericResourceCollection) GetList(path string) []Resource {
+	if prefixes, ok := grc.collectionResources[path]; ok {
+		var resList = make([]Resource, 0, len(grc.resources))
+		grc.Lock()
+		defer grc.Unlock()
 
-	if !isAPrefix {
+		for _, prefix := range prefixes {
+			for path, resource := range grc.resources {
+				if strings.HasPrefix(path, prefix) {
+					resList = append(resList, resource)
+				}
+			}
+		}
+		return resList
+	} else {
 		return nil
 	}
 
-	grc.Lock()
-	defer grc.Unlock()
-
-	var list = make([]Resource, 0, len(grc.resources))
-	for path, res := range grc.resources {
-		if isProperPrefix(prefix, path) {
-			list = append(list, res)
-		}
-	}
-
-	return list
 }
 
 func (grc *GenericResourceCollection) Set(resource Resource) {
@@ -96,6 +92,18 @@ func (grc *GenericResourceCollection) RemoveIf(path string, cond ResourceCond) b
 		return true
 	}
 	return false
+}
+
+func (gcr *GenericResourceCollection) Filter(cond func(Resource) bool) []Resource {
+	var resList = make([]Resource, 0, len(gcr.resources))
+	gcr.Lock()
+	defer gcr.Unlock()
+	for _, res := range gcr.resources {
+		if cond(res) {
+			resList = append(resList, res)
+		}
+	}
+	return resList
 }
 
 func isProperPrefix(prefix, s string) bool {

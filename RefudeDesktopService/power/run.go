@@ -7,22 +7,41 @@
 package power
 
 import (
+	"fmt"
+
 	dbuscall "github.com/surlykke/RefudeServices/lib/dbusutils"
+	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
+var PowerResources = func() *resource.GenericResourceCollection {
+	var grc = resource.MakeGenericResourceCollection()
+	grc.AddCollectionResource("/devices", "/device/")
+	return grc
+}()
+
 func Run() {
-	var signals = setup()
+	var signals = subscribeToDeviceUpdates()
+
+	for _, device := range getDevices() {
+		fmt.Println("Setting device to", device.GetSelf())
+		PowerResources.Set(device)
+	}
+
+	PowerResources.Set(buildSessionResource())
 
 	for signal := range signals {
 		if signal.Name == "org.freedesktop.DBus.Properties.PropertiesChanged" {
 			var path = deviceSelf(signal.Path)
-			if device := GetDevice(path); device != nil {
-				var copy = *device
-				// Brute force here, we update all, as I've seen some problems with getting out of sync after suspend..
-				updateDevice(&copy, dbuscall.GetAllProps(dbusConn, UPowService, signal.Path, UPowerDeviceInterface))
-				setDevice(&copy)
+			if res := PowerResources.Get(string(path)); res != nil {
+				if device, ok := res.(*Device); ok {
+					var copy = *device
+					// Brute force here, we update all, as I've seen some problems with getting out of sync after suspend..
+					updateDevice(&copy, dbuscall.GetAllProps(dbusConn, UPowService, signal.Path, UPowerDeviceInterface))
+					PowerResources.Set(&copy)
 
+				}
 			}
+
 			// TODO Handle device added/removed
 			// (need hardware to test)
 		}

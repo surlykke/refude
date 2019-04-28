@@ -8,9 +8,7 @@ package statusnotifications
 
 import (
 	"fmt"
-	"net/http"
 	"reflect"
-	"strings"
 
 	"github.com/godbus/dbus"
 	"github.com/pkg/errors"
@@ -33,57 +31,6 @@ type MenuItem struct {
 	ToggleType  string     `json:",omitempty"`
 	ToggleState int32
 	SubMenus    []MenuItem `json:",omitempty"`
-}
-
-func GetMenu(path resource.StandardizedPath) *Menu {
-	fmt.Println("Getting menu for", path)
-	var tmp = string(path[len("/itemmenu/"):])
-	if slashPos := strings.Index(tmp, "/"); slashPos == -1 {
-		return nil
-	} else {
-		var sender = tmp[0:slashPos]
-		var path = tmp[slashPos:]
-		fmt.Println("sender, path:", sender, path)
-
-		if menuItems, err := fetchMenu(sender, dbus.ObjectPath(path)); err != nil {
-			return nil
-		} else {
-			var menu = Menu{resource.MakeGenericResource(menuSelf(sender, dbus.ObjectPath(path)), ""), menuItems}
-			//menu.LinkTo(item.GetSelf(), resource.Related)
-			return &menu
-		}
-
-	}
-}
-
-func (menu *Menu) POST(w http.ResponseWriter, r *http.Request) {
-	/*
-		action := requests.GetSingleQueryParameter(r, "action", "left")
-		x, _ := strconv.Atoi(requests.GetSingleQueryParameter(r, "x", "0"))
-		y, _ := strconv.Atoi(requests.GetSingleQueryParameter(r, "y", "0"))
-		id := requests.GetSingleQueryParameter(r, "id", "")
-
-		var call *dbus.Call
-		if slice.Among(action, "left", "middle", "right") {
-			action2method := map[string]string{"left": "Activate", "middle": "SecondaryActivate", "right": "ContextMenu"}
-			dbusObj := conn.Object(item.sender, item.itemPath)
-			call = dbusObj.Call("org.kde.StatusNotifierItem."+action2method[action], dbus.Flags(0), x, y);
-		} else if action == "menu" && slice.Among(id, item.menuIds...) {
-			idAsInt, _ := strconv.Atoi(id)
-			data := dbus.MakeVariant("")
-			time := uint32(time2.Now().Unix())
-			dbusObj := conn.Object(item.sender, item.menuPath)
-			call = dbusObj.Call("com.canonical.dbusmenu.Event", dbus.Flags(0), idAsInt, "clicked", data, time)
-		} else {
-			w.WriteHeader(http.StatusUnprocessableEntity)
-			return
-		}
-		if call.Err != nil {
-			log.Println(call.Err)
-			w.WriteHeader(http.StatusInternalServerError)
-		} else {
-			w.WriteHeader(http.StatusAccepted)
-		}*/
 }
 
 func fetchMenu(sender string, path dbus.ObjectPath) ([]MenuItem, error) {

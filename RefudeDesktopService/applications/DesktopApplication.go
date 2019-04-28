@@ -113,7 +113,7 @@ func launchWithArgs(exec string, args []string, inTerminal bool) {
 }
 
 func appSelf(appId string) resource.StandardizedPath {
-	return resource.Standardizef("/applications/%s", appId)
+	return resource.Standardizef("/application/%s", appId)
 }
 
 func (da *DesktopApplication) WriteBytes(w io.Writer) {

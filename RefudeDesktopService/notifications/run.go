@@ -12,7 +12,11 @@ import (
 	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
-var Notifications = resource.MakeGenericResourceCollection("/notifications")
+var Notifications = func() *resource.GenericResourceCollection {
+	var grc = resource.MakeGenericResourceCollection()
+	grc.AddCollectionResource("/notifications", "/notification/")
+	return grc
+}()
 
 var removals = make(chan removal)
 

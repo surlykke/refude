@@ -11,9 +11,8 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"sort"
 	"strconv"
-	"sync"
+	"strings"
 	"time"
 
 	"github.com/godbus/dbus"
@@ -24,73 +23,6 @@ import (
 )
 
 const ItemMediaType resource.MediaType = "application/vnd.org.refude.statusnotifieritem+json"
-
-var items = make(map[resource.StandardizedPath]*Item)
-var lock sync.Mutex
-
-func GetItem(path resource.StandardizedPath) *Item {
-	lock.Lock()
-	defer lock.Unlock()
-
-	return items[path]
-}
-
-func setItem(item *Item) {
-	lock.Lock()
-	defer lock.Unlock()
-
-	item.SetEtag(resource.CalculateEtag(item))
-	items[item.GetSelf()] = item
-	updateWatcherProperties()
-}
-
-func removeItem(path resource.StandardizedPath) {
-	lock.Lock()
-	defer lock.Unlock()
-
-	delete(items, path)
-	updateWatcherProperties()
-}
-
-func getItemsBySender(sender string) []*Item {
-	lock.Lock()
-	defer lock.Unlock()
-
-	var itemList = make([]*Item, 0, len(items))
-	for _, item := range items {
-		if sender == item.sender {
-			itemList = append(itemList, item)
-		}
-	}
-
-	return itemList
-}
-
-func GetItems() []resource.Resource {
-	lock.Lock()
-	defer lock.Unlock()
-
-	var res = make([]resource.Resource, 0, len(items))
-	for _, item := range items {
-		res = append(res, item)
-	}
-	sort.Sort(resource.ResourceList(res))
-	return res
-}
-
-func findByMenupath(menupath string) *Item {
-	lock.Lock()
-	defer lock.Unlock()
-
-	for _, item := range items {
-		for _, link := range item.Links {
-			if resource.SNI_MENU == link.Rel && menupath == string(link.Href) {
-				return item
-			}
-		}
-	}
-	return nil
-}
 
 type Item struct {
 	resource.GenericResource
@@ -165,4 +97,38 @@ func (item *Item) WriteBytes(w io.Writer) {
 	serialize.String(w, item.AttentionIconName)
 	serialize.String(w, item.AttentionAccessibleDesc)
 	serialize.String(w, item.Title)
+}
+
+type ItemCollection struct {
+	*resource.GenericResourceCollection
+}
+
+func MakeItemCollection() *ItemCollection {
+	var ic = &ItemCollection{resource.MakeGenericResourceCollection()}
+	ic.InitializeGenericResourceCollection()
+	ic.AddCollectionResource("/items", "/item/")
+	return ic
+}
+
+func (ic *ItemCollection) Get(path string) resource.Resource {
+	if !strings.HasPrefix(path, "/itemmenu/") {
+		return ic.GenericResourceCollection.Get(path)
+	} else {
+		var tmp = string(path[len("/itemmenu/"):])
+		if slashPos := strings.Index(tmp, "/"); slashPos == -1 {
+			return nil
+		} else {
+			var sender = tmp[0:slashPos]
+			var path = tmp[slashPos:]
+			fmt.Println("sender, path:", sender, path)
+
+			if menuItems, err := fetchMenu(sender, dbus.ObjectPath(path)); err != nil {
+				return nil
+			} else {
+				var menu = Menu{resource.MakeGenericResource(menuSelf(sender, dbus.ObjectPath(path)), ""), menuItems}
+				//menu.LinkTo(item.GetSelf(), resource.Related)
+				return &menu
+			}
+		}
+	}
 }
