@@ -8,7 +8,6 @@ package notifications
 
 import (
 	"errors"
-	"fmt"
 	"strings"
 	"time"
 
@@ -151,8 +150,9 @@ func makeNotifyFunction(notifications chan *Notification) interface{} {
 		}
 
 		if expire_timeout > 0 {
-			notification.Expires = time.Now().Add(time.Millisecond * time.Duration(expire_timeout + 1))
-			time.AfterFunc(time.Millisecond*time.Duration(expire_timeout), func() {
+			notification.Expires = notification.Created.Add(time.Millisecond * time.Duration(expire_timeout))
+			// Problem with seconds and such? Think not.
+			time.AfterFunc(notification.Expires.Sub(notification.Created)+time.Millisecond, func() {
 				removals <- removal{notification.Id, Expired}
 			})
 		}
@@ -184,28 +184,6 @@ func makeCloseFuntion(removals chan removal) interface{} {
 	return func(id uint32) *dbus.Error {
 		removals <- removal{id, Closed}
 		return nil
-	}
-}
-
-func doRemoval(id, reason uint32) {
-	var notificationIsExpired = func(res resource.Resource) bool {
-		fmt.Println("Unix    :", time.Now().Unix())
-		fmt.Println("UnixNano:", time.Now().UnixNano())
-		if n, ok := res.(*Notification); ok {
-			fmt.Println("Now    :", time.Now())
-			fmt.Println("Expires:", n.Expires)
-			res := !time.Now().Before(n.Expires)
-			fmt.Println(res)
-			return res
-		}
-		return false
-	}
-
-	var path = string(notificationSelf(id))
-
-	if (reason == Dismissed || reason == Closed) && Notifications.Remove(path) ||
-		reason == Expired && Notifications.RemoveIf(path, notificationIsExpired) {
-		conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", id, reason)
 	}
 }
 
