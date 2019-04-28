@@ -11,6 +11,8 @@ type GenericResourceCollection struct {
 	resources map[string]Resource
 }
 
+type ResourceCond func(resource Resource) bool
+
 func MakeGenericResourceCollection(prefixes ...string) *GenericResourceCollection {
 	var grc = &GenericResourceCollection{}
 	grc.prefixes = prefixes
@@ -72,6 +74,28 @@ func (grc *GenericResourceCollection) ReplaceAll(newcollection map[string]Resour
 	defer grc.Unlock()
 
 	grc.resources = newcollection
+}
+
+func (grc *GenericResourceCollection) Remove(path string) bool {
+	grc.Lock()
+	defer grc.Unlock()
+
+	if _, ok := grc.resources[path]; ok {
+		delete(grc.resources, path)
+		return true
+	}
+	return false
+}
+
+func (grc *GenericResourceCollection) RemoveIf(path string, cond ResourceCond) bool {
+	grc.Lock()
+	defer grc.Unlock()
+
+	if res, ok := grc.resources[path]; ok && cond(res) {
+		delete(grc.resources, path)
+		return true
+	}
+	return false
 }
 
 func isProperPrefix(prefix, s string) bool {

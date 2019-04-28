@@ -6,6 +6,14 @@
 //
 package notifications
 
+import (
+	"time"
+
+	"github.com/surlykke/RefudeServices/lib/resource"
+)
+
+var Notifications = resource.MakeGenericResourceCollection("/notifications")
+
 var removals = make(chan removal)
 
 func Run() {
@@ -15,11 +23,20 @@ func Run() {
 	for {
 		select {
 		case notification := <-updates:
-			setNotification(notification)
+			Notifications.Set(notification)
 		case rem := <-removals:
-			if removeNotification(notificationSelf(rem.id), rem.internalId) {
-				notificationClosed(rem.id, rem.reason)
+			var path = string(notificationSelf(rem.id))
+			if rem.reason == Expired && Notifications.RemoveIf(path, notificationIsExpired) ||
+				rem.reason == Dismissed && Notifications.Remove(path) ||
+				rem.reason == Closed && Notifications.Remove(path) {
+				conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", rem.id, rem.reason)
 			}
 		}
+
 	}
+}
+
+func notificationIsExpired(res resource.Resource) bool {
+	n, ok := res.(*Notification)
+	return ok && !time.Now().Before(n.Expires)
 }

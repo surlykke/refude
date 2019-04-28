@@ -22,42 +22,40 @@ import (
 
 func serveHttp(w http.ResponseWriter, r *http.Request) {
 	var path = resource.StandardizedPath(r.URL.Path)
-	if resource.ServeHttp(applications.ApplicationsAndMimetypes, w, r) {
-		return
-	}
-	switch {
-	case path == "/windows":
-		resource.ServeCollection(w, r, windows.GetWindows())
-	case path.StartsWith("/window/"):
-		resource.ServeResource(w, r, windows.GetWindow(path))
-	case path == "/notifications":
-		resource.ServeCollection(w, r, notifications.GetNotifications())
-	case path.StartsWith("/notification/"):
-		resource.ServeResource(w, r, notifications.GetNotification(path))
-	case path == "/devices":
-		resource.ServeCollection(w, r, power.GetDevices())
-	case path.StartsWith("/device/"):
-		resource.ServeResource(w, r, power.GetDevice(path))
-	case path == "/session":
-		resource.ServeResource(w, r, power.Session)
-	case path == "/items":
-		resource.ServeCollection(w, r, statusnotifications.GetItems())
-	case path.StartsWith("/item/"):
-		resource.ServeResource(w, r, statusnotifications.GetItem(path))
-	case path.StartsWith("/itemmenu/"):
-		resource.ServeResource(w, r, statusnotifications.GetMenu(path))
-	case path == "/iconthemes":
-		resource.ServeCollection(w, r, icons.GetThemes())
-	case path.StartsWith("/icontheme/"):
-		resource.ServeResource(w, r, icons.GetTheme(path))
-	case path == "/icons":
-		resource.ServeCollection(w, r, icons.GetIcons())
-	case path == "/icon":
-		icons.ServeNamedIcon(w, r)
-	case path.StartsWith("/icon/"):
-		icons.ServeIcon(w, r)
-	default:
-		w.WriteHeader(http.StatusNotFound)
+	var served = resource.ServeHttp(applications.ApplicationsAndMimetypes, w, r) ||
+		resource.ServeHttp(notifications.Notifications, w, r)
+
+	if !served {
+		switch {
+		case path == "/windows":
+			resource.ServeCollection(w, r, windows.GetWindows())
+		case path.StartsWith("/window/"):
+			resource.ServeResource(w, r, windows.GetWindow(path))
+		case path == "/devices":
+			resource.ServeCollection(w, r, power.GetDevices())
+		case path.StartsWith("/device/"):
+			resource.ServeResource(w, r, power.GetDevice(path))
+		case path == "/session":
+			resource.ServeResource(w, r, power.Session)
+		case path == "/items":
+			resource.ServeCollection(w, r, statusnotifications.GetItems())
+		case path.StartsWith("/item/"):
+			resource.ServeResource(w, r, statusnotifications.GetItem(path))
+		case path.StartsWith("/itemmenu/"):
+			resource.ServeResource(w, r, statusnotifications.GetMenu(path))
+		case path == "/iconthemes":
+			resource.ServeCollection(w, r, icons.GetThemes())
+		case path.StartsWith("/icontheme/"):
+			resource.ServeResource(w, r, icons.GetTheme(path))
+		case path == "/icons":
+			resource.ServeCollection(w, r, icons.GetIcons())
+		case path == "/icon":
+			icons.ServeNamedIcon(w, r)
+		case path.StartsWith("/icon/"):
+			icons.ServeIcon(w, r)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
 	}
 }
 

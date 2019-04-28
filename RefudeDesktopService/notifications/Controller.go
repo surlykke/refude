@@ -8,6 +8,7 @@ package notifications
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -96,11 +97,7 @@ const (
 	Closed           = 3
 )
 
-type removal struct {
-	id         uint32
-	internalId uint32
-	reason     uint32
-}
+type removal struct{ id, reason uint32 }
 
 var conn *dbus.Conn
 var ids = make(chan uint32, 0)
@@ -140,12 +137,11 @@ func makeNotifyFunction(notifications chan *Notification) interface{} {
 		}
 
 		notification := &Notification{
-			Id:         id,
-			internalId: <-ids,
-			Sender:     app_name,
-			Created:    time.Now().UnixNano() / 1000000,
-			Subject:    sanitize(summary, []string{}, []string{}),
-			Body:       sanitize(body, allowedTags, allowedEscapes),
+			Id:      id,
+			Sender:  app_name,
+			Created: time.Now(),
+			Subject: sanitize(summary, []string{}, []string{}),
+			Body:    sanitize(body, allowedTags, allowedEscapes),
 		}
 
 		notification.GenericResource = resource.MakeGenericResource(notificationSelf(id), NotificationMediaType)
@@ -155,14 +151,16 @@ func makeNotifyFunction(notifications chan *Notification) interface{} {
 		}
 
 		if expire_timeout > 0 {
-			notification.Expires = notification.Created + int64(expire_timeout)
-			notification.removeAfter(time.Millisecond * time.Duration(expire_timeout))
+			notification.Expires = time.Now().Add(time.Millisecond * time.Duration(expire_timeout + 1))
+			time.AfterFunc(time.Millisecond*time.Duration(expire_timeout), func() {
+				removals <- removal{notification.Id, Expired}
+			})
 		}
 
 		// Add a dismiss action
 		var notificationId = notification.Id
 		notification.ResourceActions["dismiss"] = resource.ResourceAction{
-			Description: "Dismiss", IconName: "", Executer: func() { removals <- removal{notificationId, 0, Dismissed} },
+			Description: "Dismiss", IconName: "", Executer: func() { removals <- removal{notificationId, Dismissed} },
 		}
 
 		// Add actions given in notification (We are aware that one of these may overwrite the dismiss action added above)
@@ -184,13 +182,31 @@ func makeNotifyFunction(notifications chan *Notification) interface{} {
 
 func makeCloseFuntion(removals chan removal) interface{} {
 	return func(id uint32) *dbus.Error {
-		removals <- removal{id, 0, Closed}
+		removals <- removal{id, Closed}
 		return nil
 	}
 }
 
-func notificationClosed(id uint32, reason uint32) {
-	conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", id, reason)
+func doRemoval(id, reason uint32) {
+	var notificationIsExpired = func(res resource.Resource) bool {
+		fmt.Println("Unix    :", time.Now().Unix())
+		fmt.Println("UnixNano:", time.Now().UnixNano())
+		if n, ok := res.(*Notification); ok {
+			fmt.Println("Now    :", time.Now())
+			fmt.Println("Expires:", n.Expires)
+			res := !time.Now().Before(n.Expires)
+			fmt.Println(res)
+			return res
+		}
+		return false
+	}
+
+	var path = string(notificationSelf(id))
+
+	if (reason == Dismissed || reason == Closed) && Notifications.Remove(path) ||
+		reason == Expired && Notifications.RemoveIf(path, notificationIsExpired) {
+		conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", id, reason)
+	}
 }
 
 func GetServerInformation() (string, string, string, string, *dbus.Error) {
