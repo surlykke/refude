@@ -21,29 +21,35 @@ import (
 	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
-func serveHttp(w http.ResponseWriter, r *http.Request) {
-	var path = string(r.URL.Path)
-	var served = resource.ServeHttp(applications.ApplicationsAndMimetypes, w, r) ||
-		resource.ServeHttp(notifications.Notifications, w, r) ||
-		resource.ServeHttp(power.PowerResources, w, r) ||
-		resource.ServeHttp(windows.Windows, w, r) ||
-		resource.ServeHttp(statusnotifications.Items, w, r)
+var resourceCollections = []resource.ResourceCollection{
+	applications.ApplicationsAndMimetypes,
+	notifications.Notifications,
+	power.PowerResources,
+	windows.Windows,
+	statusnotifications.Items,
+}
 
-	if !served {
-		switch {
-		case path == "/iconthemes":
-			resource.ServeCollection(w, r, icons.GetThemes())
-		case strings.HasPrefix(path, "/icontheme/"):
-			resource.ServeResource(w, r, icons.GetTheme(path))
-		case path == "/icons":
-			resource.ServeCollection(w, r, icons.GetIcons())
-		case path == "/icon":
-			icons.ServeNamedIcon(w, r)
-		case strings.HasPrefix(path, "/icon/"):
-			icons.ServeIcon(w, r)
-		default:
-			w.WriteHeader(http.StatusNotFound)
+func serveHttp(w http.ResponseWriter, r *http.Request) {
+	for _, resourceCollection := range resourceCollections {
+		if resource.ServeHttp(resourceCollection, w, r) {
+			return
 		}
+	}
+
+	var path = string(r.URL.Path)
+	switch {
+	case path == "/iconthemes":
+		resource.ServeCollection(w, r, icons.GetThemes())
+	case strings.HasPrefix(path, "/icontheme/"):
+		resource.ServeResource(w, r, icons.GetTheme(path))
+	case path == "/icons":
+		resource.ServeCollection(w, r, icons.GetIcons())
+	case path == "/icon":
+		icons.ServeNamedIcon(w, r)
+	case strings.HasPrefix(path, "/icon/"):
+		icons.ServeIcon(w, r)
+	default:
+		w.WriteHeader(http.StatusNotFound)
 	}
 }
 
