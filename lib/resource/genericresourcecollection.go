@@ -1,6 +1,7 @@
 package resource
 
 import (
+	"sort"
 	"strings"
 	"sync"
 )
@@ -51,6 +52,9 @@ func (grc *GenericResourceCollection) GetList(path string) []Resource {
 				}
 			}
 		}
+
+		sort.Sort(ResourceList(resList))
+
 		return resList
 	} else {
 		return nil
