@@ -24,16 +24,16 @@ import (
 )
 
 type collection struct {
-	mimetypes    map[resource.StandardizedPath]*Mimetype
-	applications map[resource.StandardizedPath]*DesktopApplication
+	mimetypes    map[string]*Mimetype
+	applications map[string]*DesktopApplication
 	associations map[string][]string // Maps from mimetypeid to a list of app ids
 	defaultApps  map[string][]string // Maps from mimetypeid to a list of app ids
 }
 
-func Collect() (map[resource.StandardizedPath]*Mimetype, map[resource.StandardizedPath]*DesktopApplication) {
+func Collect() (map[string]*Mimetype, map[string]*DesktopApplication) {
 	var c collection
 	c.mimetypes = CollectMimeTypes()
-	c.applications = make(map[resource.StandardizedPath]*DesktopApplication)
+	c.applications = make(map[string]*DesktopApplication)
 	c.associations = make(map[string][]string) // Map a mimetypeid to a list of desktopapplication ids
 	c.defaultApps = make(map[string][]string)  // Do
 
@@ -84,7 +84,7 @@ func (c *collection) removeAssociations(app *DesktopApplication) {
 	}
 }
 
-func CollectMimeTypes() map[resource.StandardizedPath]*Mimetype {
+func CollectMimeTypes() map[string]*Mimetype {
 	xmlCollector := struct {
 		XMLName   xml.Name `xml:"mime-info"`
 		MimeTypes []struct {
@@ -128,7 +128,7 @@ func CollectMimeTypes() map[resource.StandardizedPath]*Mimetype {
 		fmt.Println("Error parsing: ", parseErr)
 	}
 
-	res := make(map[resource.StandardizedPath]*Mimetype)
+	res := make(map[string]*Mimetype)
 	for _, tmp := range xmlCollector.MimeTypes {
 		if mimeType, err := NewMimetype(tmp.Type); err != nil {
 			fmt.Println(err)

@@ -116,8 +116,8 @@ func (mc *Mimetype) PATCH(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func mimetypeSelf(mimetypeId string) resource.StandardizedPath {
-	return resource.Standardizef("/mimetype/%s", mimetypeId)
+func mimetypeSelf(mimetypeId string) string {
+	return fmt.Sprintf("/mimetype/%s", mimetypeId)
 }
 
 func (mt *Mimetype) WriteBytes(w io.Writer) {

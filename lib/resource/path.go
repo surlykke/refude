@@ -8,15 +8,7 @@ package resource
 
 import (
 	"fmt"
-	"strings"
 )
-
-// A standardized path is a path that starts with '/' and has no double slashes
-type StandardizedPath string
-
-func (sp StandardizedPath) StartsWith(prefix string) bool {
-	return strings.HasPrefix(string(sp), prefix)
-}
 
 /** transform a path to a standardized path
  * Watered down version of path.Clean. Replace any sequence of '/' with single '/'
@@ -28,7 +20,7 @@ func (sp StandardizedPath) StartsWith(prefix string) bool {
  *       '/foo/..//baa//' becomes '/foo/../baa'
  *       '/foo/baa' becomes (stays) '/foo/baa'
  */
-func Standardize(p string) StandardizedPath {
+func Standardize(p string) string {
 	if len(p) == 0 || p[0] != '/' {
 		panic(fmt.Sprintf("path must start with '/': '%s'", p))
 	}
@@ -46,27 +38,9 @@ func Standardize(p string) StandardizedPath {
 	}
 
 	if pos > 1 && buffer[pos-1] == '/' {
-		return StandardizedPath(buffer[:pos-1])
+		return string(buffer[:pos-1])
 	} else {
-		return StandardizedPath(buffer[:pos])
+		return string(buffer[:pos])
 	}
 
-}
-
-func Standardizef(format string, args ...interface{}) StandardizedPath {
-	return Standardize(fmt.Sprintf(format, args...))
-}
-
-/**
-	Break standardized path into dir-part and base-part
-    '/foo/baa/res' -> '/foo/baa', 'res'
-    '/foo/baa' -> '/foo', 'baa'
-*/
-func separate(sp StandardizedPath) (StandardizedPath, string) {
-	if len(sp) == 0 {
-		panic("Separating empty string")
-	} else {
-		var pos = strings.LastIndexByte(string(sp[:len(sp)-1]), '/')
-		return sp[:pos], string(sp[pos+1:])
-	}
 }

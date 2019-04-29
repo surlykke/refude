@@ -8,6 +8,7 @@ package icons
 
 import (
 	"sort"
+	"strings"
 	"sync"
 
 	"github.com/surlykke/RefudeServices/lib/resource"
@@ -18,7 +19,7 @@ var themeLock sync.Mutex
 
 var themeIcons map[string]map[string][]*Icon
 var otherIcons map[string]*Icon
-var iconsByPath map[resource.StandardizedPath]*Icon
+var iconsByPath map[string]*Icon
 var iconLock sync.Mutex
 
 func GetThemes() []resource.Resource {
@@ -39,8 +40,8 @@ func getTheme(themeId string) *Theme {
 	return themes[themeId]
 }
 
-func GetTheme(path resource.StandardizedPath) *Theme {
-	if !path.StartsWith("/icontheme/") {
+func GetTheme(path string) *Theme {
+	if !strings.HasPrefix(path, "/icontheme/") {
 		return nil
 	} else {
 		return getTheme(string(path[len("/icontheme/"):]))

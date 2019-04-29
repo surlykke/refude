@@ -44,7 +44,7 @@ func init() {
 	themes = make(map[string]*Theme)
 	themeIcons = make(map[string]map[string][]*Icon)
 	otherIcons = make(map[string]*Icon)
-	iconsByPath = make(map[resource.StandardizedPath]*Icon)
+	iconsByPath = make(map[string]*Icon)
 	addedBaseDirs = make(map[string]bool)
 }
 
@@ -276,7 +276,7 @@ func readIndexTheme(themeId string, indexThemeFilePath string) (*Theme, error) {
 		theme.Dirs[iniGroup.Name] = IconDir{iniGroup.Name, minSize, maxSize, iniGroup.Entries["Context"]}
 	}
 
-	theme.GenericResource = resource.MakeGenericResource(resource.Standardizef("/icontheme/%s", theme.Id), "application/json")
+	theme.GenericResource = resource.MakeGenericResource(fmt.Sprintf("/icontheme/%s", theme.Id), "application/json")
 	return theme, nil
 }
 

@@ -7,6 +7,7 @@
 package power
 
 import (
+	"fmt"
 	"io"
 	"strings"
 
@@ -73,11 +74,11 @@ func deviceTecnology(index uint32) string {
 	return devTecnology[index]
 }
 
-func deviceSelf(dbusPath dbus.ObjectPath) resource.StandardizedPath {
+func deviceSelf(dbusPath dbus.ObjectPath) string {
 	if strings.HasPrefix(string(dbusPath), DevicePrefix) {
 		dbusPath = dbusPath[len(DevicePrefix):]
 	}
-	return resource.Standardizef("/device/%s", dbusPath)
+	return fmt.Sprintf("/device%s", dbusPath)
 }
 
 func (d *Device) WriteBytes(w io.Writer) {

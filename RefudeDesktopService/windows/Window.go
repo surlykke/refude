@@ -7,6 +7,7 @@
 package windows
 
 import (
+	"fmt"
 	"log"
 	"strconv"
 	"strings"
@@ -28,8 +29,8 @@ type Window struct {
 	States     []string
 }
 
-func windowSelf(windowId uint32) resource.StandardizedPath {
-	return resource.Standardizef("/window/%d", windowId)
+func windowSelf(windowId uint32) string {
+	return fmt.Sprintf("/window/%d", windowId)
 }
 
 type WindowCollection struct{}

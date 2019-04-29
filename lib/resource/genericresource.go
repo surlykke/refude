@@ -31,7 +31,7 @@ type GenericResource struct {
 	etag            string
 }
 
-func MakeGenericResource(SelfLink StandardizedPath, mt MediaType) GenericResource {
+func MakeGenericResource(SelfLink string, mt MediaType) GenericResource {
 	return GenericResource{
 		Links:           []Link{{Href: SelfLink, Rel: Self}},
 		Mt:              mt,
@@ -39,7 +39,7 @@ func MakeGenericResource(SelfLink StandardizedPath, mt MediaType) GenericResourc
 	}
 }
 
-func (gr *GenericResource) GetSelf() StandardizedPath {
+func (gr *GenericResource) GetSelf() string {
 	for _, link := range gr.Links {
 		if link.Rel == Self {
 			return link.Href
@@ -61,7 +61,7 @@ func (gr *GenericResource) SetEtag(etag string) {
 	gr.etag = etag
 }
 
-func (gr *GenericResource) LinkTo(target StandardizedPath, relation Relation) {
+func (gr *GenericResource) LinkTo(target string, relation Relation) {
 	gr.Links = append(gr.Links, Link{Href: target, Rel: relation})
 }
 

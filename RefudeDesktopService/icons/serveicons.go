@@ -19,7 +19,7 @@ import (
 func ServeIcon(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
 		w.WriteHeader(http.StatusMethodNotAllowed)
-	} else if icon := getIcon(resource.StandardizedPath(r.URL.RawPath)); icon != nil {
+	} else if icon := getIcon(string(r.URL.RawPath)); icon != nil {
 		if icon.Type == "png" {
 			respond(w, r, icon, icon.Path, "")
 		} else {
@@ -52,7 +52,7 @@ func ServeNamedIcon(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func getIcon(path resource.StandardizedPath) *Icon {
+func getIcon(path string) *Icon {
 	iconLock.Lock()
 	defer iconLock.Unlock()
 	return iconsByPath[path]

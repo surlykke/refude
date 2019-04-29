@@ -112,8 +112,8 @@ func launchWithArgs(exec string, args []string, inTerminal bool) {
 	xdg.RunCmd(argv)
 }
 
-func appSelf(appId string) resource.StandardizedPath {
-	return resource.Standardizef("/application/%s", appId)
+func appSelf(appId string) string {
+	return fmt.Sprintf("/application/%s", appId)
 }
 
 func (da *DesktopApplication) WriteBytes(w io.Writer) {

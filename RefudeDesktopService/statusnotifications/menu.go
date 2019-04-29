@@ -52,6 +52,6 @@ func fetchMenu(sender string, path dbus.ObjectPath) ([]MenuItem, error) {
 	}
 }
 
-func menuSelf(sender string, path dbus.ObjectPath) resource.StandardizedPath {
-	return resource.Standardizef("/itemmenu/%s/%s", sender, path)
+func menuSelf(sender string, path dbus.ObjectPath) string {
+	return fmt.Sprintf("/itemmenu/%s/%s", sender, path)
 }

@@ -28,7 +28,7 @@ const (
 )
 
 type Resource interface {
-	GetSelf() StandardizedPath
+	GetSelf() string
 	GetMt() MediaType
 	GetEtag() string
 	POST(w http.ResponseWriter, r *http.Request)
@@ -37,10 +37,10 @@ type Resource interface {
 }
 
 type Link struct {
-	Href  StandardizedPath `json:"href"`
-	Rel   Relation         `json:"rel"` // We never have more than one relation on a link - we'll make a new link with same href
-	Type  MediaType        `json:",omitempty"`
-	Title string           `json:",omitempty"`
+	Href  string    `json:"href"`
+	Rel   Relation  `json:"rel"` // We never have more than one relation on a link - we'll make a new link with same href
+	Type  MediaType `json:",omitempty"`
+	Title string    `json:",omitempty"`
 }
 
 type ResourceList []Resource
@@ -92,7 +92,7 @@ func ServeCollection(w http.ResponseWriter, r *http.Request, collection []Resour
 	_, brief := r.URL.Query()["brief"]
 	var response = ToJSon(collection)
 	if brief {
-		var briefs = make([]StandardizedPath, len(collection), len(collection))
+		var briefs = make([]string, len(collection), len(collection))
 		for i := 0; i < len(collection); i++ {
 			briefs[i] = collection[i].GetSelf()
 		}

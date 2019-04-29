@@ -45,8 +45,8 @@ func MakeItem(sender string, path dbus.ObjectPath) *Item {
 	return &Item{key: sender + string(path), sender: sender, itemPath: path}
 }
 
-func itemSelf(sender string, path dbus.ObjectPath) resource.StandardizedPath {
-	return resource.Standardizef("/item/%s%s", sender, path)
+func itemSelf(sender string, path dbus.ObjectPath) string {
+	return fmt.Sprintf("/item/%s%s", sender, path)
 }
 
 func (item *Item) POST(w http.ResponseWriter, r *http.Request) {

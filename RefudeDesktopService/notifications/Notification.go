@@ -7,6 +7,7 @@
 package notifications
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"time"
@@ -31,8 +32,8 @@ func (nc *Notification) DELETE(w http.ResponseWriter, r *http.Request) {
 	removals <- removal{id: nc.Id, reason: Dismissed}
 }
 
-func notificationSelf(id uint32) resource.StandardizedPath {
-	return resource.Standardizef("/notification/%d", id)
+func notificationSelf(id uint32) string {
+	return fmt.Sprintf("/notification/%d", id)
 }
 
 func (n *Notification) WriteBytes(w io.Writer) {
