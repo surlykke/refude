@@ -11,10 +11,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"net/url"
 	"os"
 	"path"
-	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -24,42 +22,29 @@ import (
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
+// All use of methods in this file happens from run, so it's sequential
+
 var refudeConvertedIconsDir string
 var refudeSessionIconsDir string
 
 var addedBaseDirs map[string]bool
-var unplacedIcons = []*Icon{}
+var unscannedDirectories = make(map[string][]string)
+var foundIconNames = make(map[string]bool)
+
+var themes = make(map[string]*Theme)
+var themeIcons = make(map[string]map[string]*Icon)
+var otherIcons = make(map[string]*Icon)
 
 func init() {
 	refudeConvertedIconsDir = xdg.RuntimeDir + "/org.refude.converted-icons"
-	refudeSessionIconsDir = xdg.RuntimeDir + "/org.refude.session-icons"
-
 	if err := os.MkdirAll(refudeConvertedIconsDir, 0700); err != nil {
 		panic(err)
 	}
-
+	refudeSessionIconsDir = xdg.RuntimeDir + "/org.refude.session-icons"
 	if err := os.MkdirAll(refudeSessionIconsDir, 0700); err != nil {
 		panic(err)
 	}
-	themes = make(map[string]*Theme)
-	themeIcons = make(map[string]map[string][]*Icon)
-	otherIcons = make(map[string]*Icon)
-	iconsByPath = make(map[string]*Icon)
-	addedBaseDirs = make(map[string]bool)
-}
 
-func monitorBasedirSink() {
-
-	for baseDir := range basedirSink {
-		addBaseDir(baseDir)
-	}
-
-}
-
-func monitorIconSink() {
-	for icon := range iconSink {
-		addARGBIcon(icon)
-	}
 }
 
 func addBaseDir(baseDir string) {
@@ -68,125 +53,132 @@ func addBaseDir(baseDir string) {
 		return
 	}
 
-	// First look for theme definitions
-	if indexThemeFilePaths, err := filepath.Glob(baseDir + "/" + "*" + "/index.theme"); err != nil {
-		log.Println("Error globbing", baseDir, "-", err)
+	// First, look for themes
+	if baseSubdirs, err := getVisibleSubdirs(baseDir); err != nil {
+		log.Println("Error reading dirs in", baseDir, err)
 	} else {
-		for _, indexThemeFilePath := range indexThemeFilePaths {
-			var indexThemeFileRelativePath = indexThemeFilePath[len(baseDir)+1:]
-			var themeId = filepath.Base(filepath.Dir(indexThemeFileRelativePath))
-			if themeId != "" && getTheme(themeId) == nil {
-				if theme, err := readIndexTheme(themeId, indexThemeFilePath); err == nil {
-					addTheme(theme)
+		for _, baseSubdir := range baseSubdirs {
+			var themeName = baseSubdir
+			var theme = themes[baseSubdir]
+			var themeDirPath = baseDir + "/" + baseSubdir
+			if theme == nil {
+				var themeIndexPath = themeDirPath + "/index.theme"
+				if _, err := os.Stat(themeIndexPath); os.IsNotExist(err) {
+					unscannedDirectories[themeName] = append(unscannedDirectories[themeName], themeDirPath)
+				} else if theme, err = readIndexTheme(baseSubdir, themeIndexPath); err != nil {
+					log.Println("error reading", themeIndexPath, err)
+					continue
+				} else {
+					themes[themeName] = theme
+					themeIcons[themeName] = make(map[string]*Icon)
+					resources.Set(&(*theme))
 
-					var unplacedIconsCount = 0
-					for i := 0; i < len(unplacedIcons); i++ {
-						if !placeIcon(themeId, unplacedIcons[i]) {
-							unplacedIcons[unplacedIconsCount] = unplacedIcons[i]
-							unplacedIconsCount++
-						}
+					for _, path := range unscannedDirectories[themeName] {
+						collectIconsForTheme(theme, path)
 					}
-					unplacedIcons = unplacedIcons[0:unplacedIconsCount]
 				}
+			}
+
+			if theme != nil {
+				collectIconsForTheme(theme, themeDirPath)
 			}
 		}
 	}
 
-	var walkFunc = func(path string, info os.FileInfo, err error) error {
+}
+
+func collectIconsForTheme(theme *Theme, baseDir string) {
+	for _, iconSubdir := range theme.Dirs {
+		var subdirPath = baseDir + "/" + iconSubdir.Path
+		if !dirExists(subdirPath) {
+			continue
+		}
+
+		iconFileNames, err := getIcons(subdirPath)
 		if err != nil {
-			log.Println("Error descending into", path)
-			return err
+			log.Println("Error reading icons in", subdirPath, err)
+			continue
 		}
 
-		if info.IsDir() ||
-			!(strings.HasSuffix(info.Name(), ".png") ||
-				strings.HasSuffix(info.Name(), ".xpm") ||
-				strings.HasSuffix(info.Name(), ".svg")) {
-			return nil
-		}
-
-		var icon = &Icon{Name: info.Name()[0 : len(info.Name())-4]}
-		if iconType := info.Name()[len(info.Name())-3:]; iconType == "xpm" {
-			convertedPath, err := getPathToConverted(path)
-			if err != nil {
-				log.Println("Error converting", path, err)
-				return nil
-			}
-			icon.Type = "xpm"
-			icon.Path = convertedPath
-		} else {
-			icon.Type = iconType
-			icon.Path = path
-		}
-
-		//, Path: path, Type: info.Name()[len(info.Name())-3:]}
-
-		if len(path)-len(info.Name())-2 > len(baseDir) {
-			var relIconDir = path[len(baseDir)+1 : len(path)-len(info.Name())-1]
-			if slashPos := strings.Index(relIconDir, "/"); slashPos > 0 {
-				icon.Theme = relIconDir[0:slashPos]
-				icon.themeSubdir = relIconDir[slashPos+1:]
-			} else {
-				icon.Theme = relIconDir
-			}
-		}
-
-		icon.GenericResource = resource.MakeGenericResource(resource.Standardize("/icon/"+url.PathEscape(path)), "application/json")
-		if icon.Theme != "" {
-			if !placeIcon(icon.Theme, icon) {
-				unplacedIcons = append(unplacedIcons, icon)
-			}
-		} else {
-			addOtherIcon(icon)
-		}
-		return nil
-	}
-
-	_ = filepath.Walk(baseDir, walkFunc)
-}
-
-func placeIcon(themeId string, icon *Icon) bool {
-	if theme := getTheme(themeId); theme != nil {
-		if dir, ok := theme.Dirs[icon.themeSubdir]; ok {
-			icon.Context = dir.Context
-			icon.MinSize = dir.MinSize
-			icon.MaxSize = dir.MaxSize
-
-			addThemeIcon(theme.Id, icon)
-			return true
-		}
-
-	}
-	return false
-}
-
-func addARGBIcon(argbIcon image.ARGBIcon) {
-	if !haveThemeIcon("hicolor", argbIcon.Name) {
-
-	}
-
-	var hicolorIconMap = themeIcons["hicolor"]
-
-	if _, ok := hicolorIconMap[argbIcon.Name]; !ok {
-		for _, pixMap := range argbIcon.Images {
-			if pixMap.Width != pixMap.Height {
-			} else {
-				var path = fmt.Sprintf("%s/%d/%s.png", refudeSessionIconsDir, pixMap.Width, argbIcon.Name)
-				var icon = &Icon{
-					Name:    argbIcon.Name,
-					Theme:   "hicolor",
-					Context: "",
-					Type:    "png",
-					MinSize: pixMap.Width,
-					MaxSize: pixMap.Width,
-					Path:    path,
+		for _, iconFileName := range iconFileNames {
+			var iconFilePath = subdirPath + "/" + iconFileName
+			var name = iconFileName[0 : len(iconFileName)-4]
+			if strings.HasSuffix(iconFilePath, ".xpm") {
+				if iconFilePath, err := getPathToConverted(iconFilePath); err != nil {
+					log.Println("Problem converting", iconFilePath, err)
+					continue
 				}
-				icon.GenericResource = resource.MakeGenericResource(resource.Standardize("/icon/"+url.PathEscape(path)), "application/json")
-
-				addThemeIcon("hicolor", icon)
-				go savePng(path, pixMap)
 			}
+			icon, ok := themeIcons[theme.Id][name]
+			if !ok {
+				icon = &Icon{Name: name, Theme: theme.Id}
+				themeIcons[theme.Id][name] = icon
+			}
+			icon.Images = append(icon.Images, IconImage{
+				Type:    iconFilePath[len(iconFilePath)-3:],
+				Context: iconSubdir.Context,
+				MinSize: iconSubdir.MinSize,
+				MaxSize: iconSubdir.MaxSize,
+				Path:    iconFilePath,
+			})
+			foundIconNames[name] = true
 		}
+	}
+}
+
+func collectIconsInBaseDir(basedir string) {
+	if iconFileNames, err := getIcons(basedir); err != nil {
+		log.Println("Error reading icons in", basedir, err)
+	} else {
+		for _, iconFileName := range iconFileNames {
+			var iconFilePath = basedir + "/" + iconFileName
+			var name = iconFileName[0 : len(iconFileName)-4]
+
+			if strings.HasSuffix(iconFilePath, ".xpm") {
+				if iconFilePath, err := getPathToConverted(iconFilePath); err != nil {
+					log.Println("Problem converting", iconFilePath, err)
+					continue
+				}
+			}
+
+			otherIcons[name] = &Icon{
+				Name: name,
+				Images: []IconImage{{
+					Type: iconFilePath[len(iconFilePath)-3:],
+					Path: iconFilePath,
+				}},
+			}
+
+			foundIconNames[name] = true
+		}
+	}
+}
+
+//
+// Adds the icon to hicolor
+//
+func addARGBIcon(argbIcon image.ARGBIcon) {
+	if _, ok := themeIcons["hicolor"][argbIcon.Name]; ok {
+		return
+	}
+
+	var icon = Icon{Name: argbIcon.Name, Theme: "hicolor"}
+
+	for _, pixMap := range argbIcon.Images {
+		if pixMap.Width != pixMap.Height {
+		} else {
+			var path = fmt.Sprintf("%s/%d/%s.png", refudeSessionIconsDir, pixMap.Width, argbIcon.Name)
+			icon.Images = append(icon.Images, IconImage{
+				Type:    "png",
+				MinSize: pixMap.Height,
+				MaxSize: pixMap.Height,
+				Path:    fmt.Sprintf("%s/%d/%s.png", refudeSessionIconsDir, pixMap.Width, argbIcon.Name),
+			})
+			go savePng(path, pixMap)
+		}
+	}
+	if len(icon.Images) > 0 {
+		themeIcons["hicolor"][icon.Name] = &icon
 	}
 }
 
@@ -203,16 +195,6 @@ func savePng(path string, pixMap image.ARGBImage) {
 		}
 	}
 
-}
-
-func findMatchingDir(theme *Theme, size uint32, context string) (IconDir, bool) {
-	for _, dir := range theme.Dirs {
-		if dir.MinSize <= size && dir.MaxSize >= size && dir.Context == context {
-			return dir, true
-		}
-	}
-
-	return IconDir{}, false
 }
 
 func readIndexTheme(themeId string, indexThemeFilePath string) (*Theme, error) {
@@ -310,4 +292,87 @@ func readUint32OrFallback(uintAsString string, fallback uint32) uint32 {
 	} else {
 		return fallback
 	}
+}
+
+func getVisibleSubdirs(dir string) ([]string, error) {
+	return filterDirEntries(dir, func(info os.FileInfo) bool {
+		return info.IsDir() && !strings.HasPrefix(info.Name(), ".")
+	})
+}
+
+func getIcons(dir string) ([]string, error) {
+	return filterDirEntries(dir, func(info os.FileInfo) bool {
+		return info.Mode().IsRegular() && (strings.HasSuffix(info.Name(), ".png") ||
+			strings.HasSuffix(info.Name(), ".svg") ||
+			strings.HasSuffix(info.Name(), ".xpm"))
+	})
+}
+
+func filterDirEntries(dir string, cond func(os.FileInfo) bool) ([]string, error) {
+	if entries, err := ioutil.ReadDir(dir); err != nil {
+		return nil, err
+	} else {
+		var result = make([]string, 0, len(entries))
+		for _, entry := range entries {
+			if cond(entry) {
+				result = append(result, entry.Name())
+			}
+		}
+		return result, nil
+	}
+}
+
+func dirExists(dirpath string) bool {
+	_, err := os.Stat(dirpath)
+	return !os.IsNotExist(err)
+}
+
+func publishFoundIcons() {
+	for iconName, _ := range foundIconNames {
+		for themeName, _ := range themes {
+			if icon := findIcon(themeName, iconName); icon != nil {
+				var resolvedIcon = &(*icon)
+				var self = "/icon/" + themeName + "/" + iconName
+				resolvedIcon.GenericResource = resource.MakeGenericResource(self, "application/json")
+				resources.Set(resolvedIcon)
+				if themeName == "oxygen" { // FIXME
+					resources.SetAt("/icon/"+iconName, resolvedIcon)
+				}
+			}
+		}
+		delete(foundIconNames, iconName)
+	}
+}
+
+func findIcon(themeId string, iconName string) *Icon {
+	var visited = make(map[string]bool)
+	var toVisit = make([]string, 1, 10)
+	toVisit[0] = themeId
+	for i := 0; i < len(toVisit); i++ {
+		var themeId = toVisit[i]
+		if theme, ok := themes[themeId]; ok {
+			if icon, ok := themeIcons[themeId][iconName]; ok {
+				return icon
+			}
+
+			visited[themeId] = true
+			for _, parentId := range theme.Inherits {
+				if !visited[parentId] {
+					toVisit = append(toVisit, parentId)
+				}
+			}
+		}
+	}
+
+	if themeId != "hicolor" {
+		if icon, ok := themeIcons["hicolor"][iconName]; ok {
+			return icon
+		}
+	}
+
+	if icon, ok := otherIcons[iconName]; ok {
+		return icon
+	}
+
+	return nil
 }

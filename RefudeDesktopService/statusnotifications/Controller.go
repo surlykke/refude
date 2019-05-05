@@ -14,10 +14,11 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/surlykke/RefudeServices/RefudeDesktopService/icons"
+
 	"github.com/godbus/dbus"
 	"github.com/godbus/dbus/introspect"
 	"github.com/godbus/dbus/prop"
-	"github.com/surlykke/RefudeServices/RefudeDesktopService/icons"
 	dbuscall "github.com/surlykke/RefudeServices/lib/dbusutils"
 	"github.com/surlykke/RefudeServices/lib/image"
 	"github.com/surlykke/RefudeServices/lib/resource"
@@ -192,7 +193,7 @@ func buildItem(sender string, path dbus.ObjectPath) *Item {
 	}
 
 	if item.iconThemePath != "" {
-		icons.AddBasedir(item.iconThemePath)
+		icons.BasedirSink <- item.iconThemePath
 	}
 
 	return item
@@ -312,7 +313,7 @@ func collectPixMap(m map[string]dbus.Variant, key string) string {
 				}
 			}
 			var argbIcon = image.MakeIconWithHashAsName(images)
-			icons.AddARGBIcon(argbIcon)
+			icons.IconSink <- argbIcon
 			return argbIcon.Name
 		}
 	}

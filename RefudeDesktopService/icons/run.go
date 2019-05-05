@@ -11,26 +11,25 @@ import (
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
-var basedirSink = make(chan string)
-var iconSink = make(chan image.ARGBIcon)
-
-func AddBasedir(dirToLookAt string) {
-	basedirSink <- dirToLookAt
-}
-
-func AddARGBIcon(icon image.ARGBIcon) {
-	iconSink <- icon
-}
+var BasedirSink = make(chan string)
+var IconSink = make(chan image.ARGBIcon)
 
 func Run() {
 	addBaseDir(xdg.Home + "/.icons")
+	addBaseDir(xdg.Home + "/.local/share/icons") // Not in the icon theme spec, but I think it should be
 	for _, dataDir := range xdg.DataDirs {
 		addBaseDir(dataDir + "/icons")
 	}
-	addBaseDir(xdg.Home + "/.local/share/icons")
 	addBaseDir("/usr/share/pixmaps")
 	addBaseDir(refudeSessionIconsDir)
 
-	go monitorBasedirSink()
-	go monitorIconSink()
+	for {
+		publishFoundIcons()
+		select {
+		case baseDir := <-BasedirSink:
+			addBaseDir(baseDir)
+		case argbIcon := <-IconSink:
+			addARGBIcon(argbIcon)
+		}
+	}
 }

@@ -8,9 +8,9 @@ package main
 
 import (
 	"net/http"
-	"strings"
 
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/icons"
+
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/notifications"
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/power"
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/statusnotifications"
@@ -36,19 +36,7 @@ func serveHttp(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	var path = string(r.URL.Path)
-	switch {
-	case path == "/iconthemes":
-		resource.ServeCollection(w, r, icons.GetThemes())
-	case strings.HasPrefix(path, "/icontheme/"):
-		resource.ServeResource(w, r, icons.GetTheme(path))
-	case path == "/icons":
-		resource.ServeCollection(w, r, icons.GetIcons())
-	case path == "/icon":
-		icons.ServeNamedIcon(w, r)
-	case strings.HasPrefix(path, "/icon/"):
-		icons.ServeIcon(w, r)
-	default:
+	if !icons.Serve(w, r) {
 		w.WriteHeader(http.StatusNotFound)
 	}
 }

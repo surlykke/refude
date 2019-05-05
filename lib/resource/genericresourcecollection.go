@@ -69,6 +69,13 @@ func (grc *GenericResourceCollection) Set(resource Resource) {
 	grc.resources[string(resource.GetSelf())] = resource
 }
 
+func (grc *GenericResourceCollection) SetAt(path string, resource Resource) {
+	grc.Lock()
+	defer grc.Unlock()
+
+	grc.resources[path] = resource
+}
+
 func (grc *GenericResourceCollection) ReplaceAll(newcollection map[string]Resource) {
 	grc.Lock()
 	defer grc.Unlock()

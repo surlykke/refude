@@ -11,9 +11,10 @@ import (
 	"log"
 	"sync"
 
+	"github.com/surlykke/RefudeServices/RefudeDesktopService/icons"
+
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/windows/xlib"
 
-	"github.com/surlykke/RefudeServices/RefudeDesktopService/icons"
 	"github.com/surlykke/RefudeServices/lib/image"
 	"github.com/surlykke/RefudeServices/lib/resource"
 )
@@ -136,7 +137,7 @@ func GetIconName(wId uint32) (string, error) {
 		}
 
 		var icon = image.MakeIconWithHashAsName(images)
-		icons.AddARGBIcon(icon)
+		icons.IconSink <- icon
 		setIconNameInCache(wId, icon.Name)
 		return icon.Name, nil
 	}
