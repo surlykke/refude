@@ -12,22 +12,19 @@ import (
 	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
-var Notifications = func() *resource.GenericResourceCollection {
-	var grc = resource.MakeGenericResourceCollection()
-	grc.AddCollectionResource("/notifications", "/notification/")
-	return grc
-}()
+var Notifications = resource.MakeGenericResourceCollection()
 
 var removals = make(chan removal)
 
 func Run() {
+	Notifications.Set("/notifications", Notifications.MakePrefixCollection("/notification/"))
 	var updates = make(chan *Notification)
 	go DoDBus(updates, removals)
 
 	for {
 		select {
 		case notification := <-updates:
-			Notifications.Set(notification)
+			Notifications.Set(notificationSelf(notification.Id), resource.MakeJsonResource(notification))
 		case rem := <-removals:
 			var path = string(notificationSelf(rem.id))
 			if rem.reason == Expired && Notifications.RemoveIf(path, notificationIsExpired) ||
@@ -41,6 +38,13 @@ func Run() {
 }
 
 func notificationIsExpired(res resource.Resource) bool {
-	n, ok := res.(*Notification)
-	return ok && !time.Now().Before(n.Expires)
+	jr, ok := res.(resource.JsonResource)
+	if !ok {
+		return false
+	}
+	n, ok := jr.Data.(*Notification)
+	if !ok {
+		return false
+	}
+	return !time.Now().Before(n.Expires)
 }

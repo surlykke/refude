@@ -41,8 +41,9 @@ func getWindows() ([]*Window, error) {
 func getWindow(wId uint32) (*Window, error) {
 	window := &Window{}
 	window.Id = wId
+	window.Self = windowSelf(wId)
+	window.RefudeType = "window"
 	var err error
-	window.GenericResource = resource.MakeGenericResource(windowSelf(wId), WindowMediaType)
 	window.Parent, err = xlib.GetParent(wId)
 	if err != nil {
 		return nil, err
@@ -77,7 +78,7 @@ func getWindow(wId uint32) (*Window, error) {
 		xlib.RaiseAndFocusWindow(wIdCopy)
 	}
 
-	window.ResourceActions["default"] = resource.ResourceAction{Description: "Raise and focus", IconName: window.IconName, Executer: executer}
+	window.AddAction("default", resource.ResourceAction{Description: "Raise and focus", IconName: window.IconName, Executer: executer})
 	return window, nil
 }
 

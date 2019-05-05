@@ -15,12 +15,7 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-var ApplicationsAndMimetypes = func() *resource.GenericResourceCollection {
-	var grc = resource.MakeGenericResourceCollection()
-	grc.AddCollectionResource("/applications", "/application/")
-	grc.AddCollectionResource("/mimetypes", "/mimetype/")
-	return grc
-}()
+var ResourceRepo = resource.MakeGenericResourceCollection()
 
 func Run() {
 	fd, err := unix.InotifyInit()
@@ -53,16 +48,18 @@ func Run() {
 		var mtc, apps = Collect()
 		var collection = make(map[string]resource.Resource, len(mtc)+len(apps))
 		for _, mt := range mtc {
-			collection[string(mt.GetSelf())] = mt
+			collection[mt.Self] = resource.MakeJsonResource(mt)
 		}
 		for _, app := range apps {
-			collection[string(app.GetSelf())] = app
+			collection[app.Self] = resource.MakeJsonResource(app)
 		}
-		ApplicationsAndMimetypes.ReplaceAll(collection)
+		ResourceRepo.ReplaceAll(collection)
+		ResourceRepo.Set("/applications", ResourceRepo.MakePrefixCollection("/application/"))
+		ResourceRepo.Set("/mimetypes", ResourceRepo.MakePrefixCollection("/mimetype/"))
 
 		if _, err := unix.Read(fd, dummy); err != nil {
 			panic(err)
 		}
-		fmt.Println("applications do new collect...")
+		fmt.Println("Recollect apps and mimes...")
 	}
 }

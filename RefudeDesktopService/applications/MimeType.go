@@ -9,14 +9,12 @@ package applications
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"regexp"
 	"strings"
 
 	"github.com/surlykke/RefudeServices/lib/requests"
-	"github.com/surlykke/RefudeServices/lib/serialize"
 
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/slice"
@@ -29,7 +27,8 @@ const freedesktopOrgXml = "/usr/share/mime/packages/freedesktop.org.xml"
 const MimetypeMediaType resource.MediaType = "application/vnd.org.refude.mimetype+json"
 
 type Mimetype struct {
-	resource.GenericResource
+	resource.GeneralTraits
+	resource.DefaultMethods
 	Id              string
 	Comment         string
 	Acronym         string `json:",omitempty"`
@@ -49,15 +48,15 @@ func NewMimetype(id string) (*Mimetype, error) {
 	if !mimetypePattern.MatchString(id) {
 		return nil, errors.New("Incomprehensible mimetype: " + id)
 	} else {
-		mt := &Mimetype{
-			Id:          id,
-			Aliases:     []string{},
-			Globs:       []string{},
-			SubClassOf:  []string{},
-			IconName:    "unknown",
-			GenericIcon: "unknown",
-		}
-		mt.GenericResource = resource.MakeGenericResource(mimetypeSelf(id), MimetypeMediaType)
+		mt := &Mimetype{}
+		mt.Self = mimetypeSelf(id)
+		mt.RefudeType = "mimetype"
+		mt.Id = id
+		mt.Aliases = []string{}
+		mt.Globs = []string{}
+		mt.SubClassOf = []string{}
+		mt.IconName = "unknown"
+		mt.GenericIcon = "unknown"
 
 		if strings.HasPrefix(id, "x-scheme-handler/") {
 			mt.Comment = id[len("x-scheme-handler/"):] + " url"
@@ -118,18 +117,4 @@ func (mc *Mimetype) PATCH(w http.ResponseWriter, r *http.Request) {
 
 func mimetypeSelf(mimetypeId string) string {
 	return fmt.Sprintf("/mimetype/%s", mimetypeId)
-}
-
-func (mt *Mimetype) WriteBytes(w io.Writer) {
-	mt.GenericResource.WriteBytes(w)
-	serialize.String(w, mt.Id)
-	serialize.String(w, mt.Comment)
-	serialize.String(w, mt.Acronym)
-	serialize.String(w, mt.ExpandedAcronym)
-	serialize.StringSlice(w, mt.Aliases)
-	serialize.StringSlice(w, mt.Globs)
-	serialize.StringSlice(w, mt.SubClassOf)
-	serialize.String(w, mt.IconName)
-	serialize.String(w, mt.GenericIcon)
-	serialize.String(w, mt.DefaultApp)
 }

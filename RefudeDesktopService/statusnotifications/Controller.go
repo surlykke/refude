@@ -14,6 +14,8 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/surlykke/RefudeServices/lib/resource"
+
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/icons"
 
 	"github.com/godbus/dbus"
@@ -21,7 +23,6 @@ import (
 	"github.com/godbus/dbus/prop"
 	dbuscall "github.com/surlykke/RefudeServices/lib/dbusutils"
 	"github.com/surlykke/RefudeServices/lib/image"
-	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/slice"
 )
 
@@ -74,17 +75,21 @@ func monitorSignals() {
 }
 
 func checkItemStatus(sender string) {
-	var hasSender = func(res resource.Resource) bool {
-		item, ok := res.(*Item)
-		return ok && item.sender == sender
-	}
-
-	for _, res := range Items.Filter(hasSender) {
-		var item = res.(*Item)
-		if _, ok := dbuscall.GetSingleProp(conn, item.sender, item.itemPath, ITEM_INTERFACE, "Status"); !ok {
-			events <- Event{eventType: ItemRemoved, sender: item.sender, path: item.itemPath}
+	for _, res := range Items.GetByPrefix("/item/") {
+		if item := getItem(res); item != nil && item.sender == sender {
+			if _, ok := dbuscall.GetSingleProp(conn, item.sender, item.itemPath, ITEM_INTERFACE, "Status"); !ok {
+				events <- Event{eventType: ItemRemoved, sender: item.sender, path: item.itemPath}
+			}
 		}
 	}
+}
+
+func getItem(res resource.Resource) *Item {
+	jsonResource, ok := res.(resource.JsonResource)
+	if !ok {
+		return nil
+	}
+	return jsonResource.Data.(*Item)
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -153,11 +158,11 @@ var events = make(chan Event)
 
 // Caller must hold lock
 func updateWatcherProperties() {
-	var itemResources = Items.GetList("/items")
 	ids := make([]string, 0, 20)
-	for _, res := range itemResources {
-		if item, ok := res.(*Item); ok {
+	for _, res := range Items.GetByPrefix("/item/") {
+		if item := getItem(res); item != nil {
 			ids = append(ids, item.sender+":"+string(item.itemPath))
+
 		}
 	}
 	watcherProperties.Set(WATCHER_INTERFACE, "RegisteredStatusItems", dbus.MakeVariant(ids))
@@ -165,10 +170,10 @@ func updateWatcherProperties() {
 
 func buildItem(sender string, path dbus.ObjectPath) *Item {
 	var item = MakeItem(sender, path)
-	item.GenericResource = resource.MakeGenericResource(itemSelf(sender, path), ItemMediaType)
+	item.Self = itemSelf(sender, path)
+	item.RefudeType = "statusnotifieritem"
 
 	props := dbuscall.GetAllProps(conn, item.sender, item.itemPath, ITEM_INTERFACE)
-
 	item.Id = getStringOr(props, "ID", "")
 	item.Category = getStringOr(props, "Category", "")
 	item.Status = getStringOr(props, "Status", "")
@@ -179,10 +184,7 @@ func buildItem(sender string, path dbus.ObjectPath) *Item {
 	item.Title = getStringOr(props, "Title", "")
 	item.menuPath = getDbusPath(props, "Menu")
 	item.iconThemePath = getStringOr(props, "IconThemePath", "")
-
-	if item.menuPath != "" {
-		item.LinkTo(menuSelf(sender, item.menuPath), resource.SNI_MENU)
-	}
+	item.Menu = menuSelf(sender, item.menuPath)
 
 	if item.IconName == "" {
 		item.IconName = collectPixMap(props, "IconPixmap")

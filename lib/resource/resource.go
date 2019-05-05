@@ -11,8 +11,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-
-	"github.com/surlykke/RefudeServices/lib/requests"
 )
 
 type MediaType string
@@ -28,46 +26,26 @@ const (
 )
 
 type Resource interface {
-	GetSelf() string
-	GetMt() MediaType
-	GetEtag() string
-	POST(w http.ResponseWriter, r *http.Request)
-	PATCH(w http.ResponseWriter, r *http.Request)
-	DELETE(w http.ResponseWriter, r *http.Request)
+	ServeHttp(w http.ResponseWriter, r *http.Request)
 }
 
-type Link struct {
-	Href  string    `json:"href"`
-	Rel   Relation  `json:"rel"` // We never have more than one relation on a link - we'll make a new link with same href
-	Type  MediaType `json:",omitempty"`
-	Title string    `json:",omitempty"`
+type ResourceCollection interface {
+	Get(path string) Resource
 }
 
-type ResourceList []Resource
-
-// For sorting
-func (rc ResourceList) Len() int           { return len(rc) }
-func (rc ResourceList) Swap(i, j int)      { rc[i], rc[j] = rc[j], rc[i] }
-func (rc ResourceList) Less(i, j int) bool { return rc[i].GetSelf() < rc[j].GetSelf() }
-
-type JsonResponse struct {
-	Data []byte
-	Etag string
-}
-
-func ToJSon(res interface{}) JsonResponse {
-	var jsonResponse = JsonResponse{}
-	if bytes, err := json.Marshal(res); err != nil {
+func ToBytesAndEtag(res interface{}) ([]byte, string) {
+	var bytes []byte
+	var etag string
+	var err error
+	if bytes, err = json.Marshal(res); err != nil {
 		panic(fmt.Sprintln(err))
-	} else {
-		jsonResponse.Data = bytes
-		jsonResponse.Etag = fmt.Sprintf("\"%x\"", sha1.Sum(jsonResponse.Data))
 	}
-	return jsonResponse
+	etag = fmt.Sprintf("\"%x\"", sha1.Sum(bytes))
 
+	return bytes, etag
 }
 
-func ServeCollection(w http.ResponseWriter, r *http.Request, collection []Resource) {
+/*func ServeCollection(w http.ResponseWriter, r *http.Request, collection []Resource) {
 	if r.Method != "GET" {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
@@ -109,27 +87,4 @@ func ServeCollection(w http.ResponseWriter, r *http.Request, collection []Resour
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("ETag", response.Etag)
 	_, _ = w.Write(response.Data)
-}
-
-func ServeResource(w http.ResponseWriter, r *http.Request, res Resource) {
-	var jsonResponse = ToJSon(res)
-
-	if statusCode := requests.CheckEtag(r, jsonResponse.Etag); statusCode != 0 {
-		w.WriteHeader(statusCode)
-		return
-	}
-
-	if r.Method == "GET" {
-		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("ETag", jsonResponse.Etag)
-		_, _ = w.Write(jsonResponse.Data)
-	} else if r.Method == "POST" {
-		res.POST(w, r)
-	} else if r.Method == "PATCH" {
-		res.PATCH(w, r)
-	} else if r.Method == "DELETE" {
-		res.DELETE(w, r)
-	} else {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-	}
-}
+}*/

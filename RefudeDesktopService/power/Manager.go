@@ -43,8 +43,9 @@ func getDevices() []*Device {
 	devicePaths := append(enumCall.Body[0].([]dbus.ObjectPath), DisplayDevicePath)
 	for _, path := range devicePaths {
 		var device = &Device{}
+		device.Self = deviceSelf(path)
+		device.RefudeType = "powerdevice"
 		device.DisplayDevice = path == DisplayDevicePath
-		device.GenericResource = resource.MakeGenericResource(deviceSelf(path), DeviceMediaType)
 		device.DbusPath = path
 		updateDevice(device, dbuscall.GetAllProps(dbusConn, UPowService, path, UPowerDeviceInterface))
 		devices = append(devices, device)
@@ -68,20 +69,22 @@ var possibleActionValues = map[string][]string{
 	"Hibernate":   {"Hibernate", "Put the machine into hibernation", "system-suspend-hibernate"},
 	"HybridSleep": {"HybridSleep", "Put the machine into hybrid sleep", "system-suspend-hibernate"}}
 
-func buildSessionResource() *resource.GenericResource {
-	var session = resource.MakeGenericResource("/session", SessionMediaType)
+func buildSessionResource() *SessionResource {
+	var session = &SessionResource{}
+	session.Self = "/session"
+	session.RefudeType = "session"
 	for id, pv := range possibleActionValues {
 		if "yes" == dbusConn.Object(login1Service, login1Path).Call(managerInterface+".Can"+id, dbus.Flags(0)).Body[0].(string) {
 			var dbusEndPoint = managerInterface + "." + id
 			var executer = func() {
 				dbusConn.Object(login1Service, login1Path).Call(dbusEndPoint, dbus.Flags(0), false)
 			}
-			session.ResourceActions[id] = resource.ResourceAction{Description: pv[1], IconName: pv[2], Executer: executer}
+			session.AddAction(id, resource.ResourceAction{Description: pv[1], IconName: pv[2], Executer: executer})
 		}
 	}
 
 	fmt.Println("buildSessionResource returning:", session)
-	return &session
+	return session
 }
 
 func updateDevice(d *Device, m map[string]dbus.Variant) {

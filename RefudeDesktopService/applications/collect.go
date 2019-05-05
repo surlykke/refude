@@ -69,12 +69,6 @@ func Collect() (map[string]*Mimetype, map[string]*DesktopApplication) {
 		}
 	}
 
-	for _, application := range c.applications {
-		application.SetEtag(resource.CalculateEtag(application))
-	}
-	for _, mimetype := range c.mimetypes {
-		mimetype.SetEtag(resource.CalculateEtag(mimetype))
-	}
 	return c.mimetypes, c.applications
 }
 
@@ -209,18 +203,19 @@ func (c *collection) collectApplications(appdir string) {
 		}
 
 		app.Id = strings.Replace(path[len(appdir)+1:len(path)-8], "/", "-", -1)
-		app.GenericResource = resource.MakeGenericResource(appSelf(app.Id), DesktopApplicationMediaType)
+		app.Self = appSelf(app.Id)
+		app.RefudeType = "application"
 		var exec = app.Exec
 		var inTerminal = app.Terminal
-		app.ResourceActions["default"] = resource.ResourceAction{
+		app.AddAction("default", resource.ResourceAction{
 			Description: "Launch", IconName: app.IconName, Executer: func() { launch(exec, inTerminal) },
-		}
+		})
 		for id, action := range app.DesktopActions {
 			var exec = action.Exec
 			var inTerminal = app.Terminal
-			app.ResourceActions[id] = resource.ResourceAction{
+			app.AddAction(id, resource.ResourceAction{
 				Description: action.Name, IconName: action.IconName, Executer: func() { launch(exec, inTerminal) },
-			}
+			})
 		}
 
 		c.applications[appSelf(app.Id)] = app

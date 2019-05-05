@@ -8,7 +8,7 @@ package windows
 
 import (
 	"fmt"
-	"log"
+	"net/http"
 	"strconv"
 	"strings"
 
@@ -18,7 +18,8 @@ import (
 const WindowMediaType resource.MediaType = "application/vnd.org.refude.wmwindow+json"
 
 type Window struct {
-	resource.GenericResource
+	resource.GeneralTraits
+	resource.DefaultMethods
 	Id         uint32
 	Parent     uint32
 	StackOrder int
@@ -35,8 +36,23 @@ func windowSelf(windowId uint32) string {
 
 type WindowCollection struct{}
 
+type WindowList []*Window
+
+func (wl WindowList) ServeHttp(w http.ResponseWriter, r *http.Request) {
+	var bytes, etag = resource.ToBytesAndEtag(wl)
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("ETag", etag)
+	_, _ = w.Write(bytes)
+}
+
 func (wc WindowCollection) Get(path string) resource.Resource {
-	if !strings.HasPrefix(path, "/window/") {
+	if path == "/windows" {
+		if windows, err := getWindows(); err != nil {
+			return nil
+		} else {
+			return WindowList(windows)
+		}
+	} else if !strings.HasPrefix(path, "/window/") {
 		return nil
 	} else if id, err := strconv.ParseUint(string(path[len("/window/"):]), 10, 32); err != nil {
 		return nil
@@ -45,24 +61,8 @@ func (wc WindowCollection) Get(path string) resource.Resource {
 		if err != nil {
 			return nil
 		}
-		return window
+		return resource.MakeJsonResource(window)
 	}
-}
-
-func (wc WindowCollection) GetList(path string) []resource.Resource {
-	if "/windows" != path {
-		return nil
-	} else if windows, err := getWindows(); err != nil {
-		log.Printf("Error getting windows: %v\n", err)
-		return nil
-	} else {
-		var result = make([]resource.Resource, len(windows), len(windows))
-		for i := 0; i < len(windows); i++ {
-			result[i] = windows[i]
-		}
-		return result
-	}
-
 }
 
 var Windows = WindowCollection{}

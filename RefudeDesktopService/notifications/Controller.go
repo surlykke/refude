@@ -135,15 +135,14 @@ func makeNotifyFunction(notifications chan *Notification) interface{} {
 			id = <-ids
 		}
 
-		notification := &Notification{
-			Id:      id,
-			Sender:  app_name,
-			Created: time.Now(),
-			Subject: sanitize(summary, []string{}, []string{}),
-			Body:    sanitize(body, allowedTags, allowedEscapes),
-		}
-
-		notification.GenericResource = resource.MakeGenericResource(notificationSelf(id), NotificationMediaType)
+		notification := &Notification{}
+		notification.Self = notificationSelf(id)
+		notification.RefudeType = "notification"
+		notification.Id = id
+		notification.Sender = app_name
+		notification.Created = time.Now()
+		notification.Subject = sanitize(summary, []string{}, []string{})
+		notification.Body = sanitize(body, allowedTags, allowedEscapes)
 
 		if expire_timeout == 0 {
 			expire_timeout = 2000
@@ -159,20 +158,20 @@ func makeNotifyFunction(notifications chan *Notification) interface{} {
 
 		// Add a dismiss action
 		var notificationId = notification.Id
-		notification.ResourceActions["dismiss"] = resource.ResourceAction{
+		notification.AddAction("dismiss", resource.ResourceAction{
 			Description: "Dismiss", IconName: "", Executer: func() { removals <- removal{notificationId, Dismissed} },
-		}
+		})
 
 		// Add actions given in notification (We are aware that one of these may overwrite the dismiss action added above)
 		for i := 0; i+1 < len(actions); i = i + 2 {
 			var notificationId = notification.Id
 			var actionId = actions[i]
 			var actionDescription = actions[i+1]
-			notification.ResourceActions[actionId] = resource.ResourceAction{
+			notification.AddAction(actionId, resource.ResourceAction{
 				Description: actionDescription, IconName: "", Executer: func() {
 					conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".ActionInvoked", notificationId, actionId)
 				},
-			}
+			})
 		}
 
 		notifications <- notification

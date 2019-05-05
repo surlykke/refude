@@ -8,18 +8,17 @@ package notifications
 
 import (
 	"fmt"
-	"io"
 	"net/http"
 	"time"
 
 	"github.com/surlykke/RefudeServices/lib/resource"
-	"github.com/surlykke/RefudeServices/lib/serialize"
 )
 
 const NotificationMediaType resource.MediaType = "application/vnd.org.refude.desktopnotification+json"
 
 type Notification struct {
-	resource.GenericResource
+	resource.GeneralTraits
+	resource.DefaultMethods
 	Id      uint32
 	Sender  string
 	Subject string
@@ -34,14 +33,4 @@ func (nc *Notification) DELETE(w http.ResponseWriter, r *http.Request) {
 
 func notificationSelf(id uint32) string {
 	return fmt.Sprintf("/notification/%d", id)
-}
-
-func (n *Notification) WriteBytes(w io.Writer) {
-	n.GenericResource.WriteBytes(w)
-	serialize.UInt32(w, n.Id)
-	serialize.String(w, n.Sender)
-	serialize.String(w, n.Subject)
-	serialize.String(w, n.Body)
-	serialize.UInt64(w, uint64(n.Created.UnixNano()))
-	serialize.UInt64(w, uint64(n.Expires.UnixNano()))
 }

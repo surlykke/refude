@@ -16,7 +16,8 @@ import (
 )
 
 type Menu struct {
-	resource.GenericResource
+	resource.GeneralTraits
+	resource.DefaultMethods
 	Menu []MenuItem
 }
 

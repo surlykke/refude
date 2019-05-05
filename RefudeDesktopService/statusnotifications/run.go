@@ -6,9 +6,14 @@
 //
 package statusnotifications
 
-var Items = MakeItemCollection()
+import (
+	"github.com/surlykke/RefudeServices/lib/resource"
+)
+
+var Items = resource.MakeGenericResourceCollection()
 
 func Run() {
+	Items.Set("/items", Items.MakePrefixCollection("/item/"))
 	getOnTheBus()
 	go monitorSignals()
 
@@ -16,7 +21,8 @@ func Run() {
 		var self = itemSelf(event.sender, event.path)
 		switch event.eventType {
 		case ItemUpdated, ItemCreated:
-			Items.Set(buildItem(event.sender, event.path))
+			var item = buildItem(event.sender, event.path)
+			Items.Set(item.Self, resource.MakeJsonResource(item))
 		case ItemRemoved:
 			Items.Remove(string(self))
 		}

@@ -7,14 +7,20 @@
 package icons
 
 import (
+	"fmt"
+	"math"
+	"net/http"
+
+	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
 type Icon struct {
-	resource.GenericResource
+	resource.GeneralTraits
+	resource.DefaultMethods
 	Name   string
 	Theme  string
-	Images []IconImage
+	Images ImageList
 }
 
 type IconImage struct {
@@ -25,8 +31,11 @@ type IconImage struct {
 	Path    string
 }
 
+type ImageList []IconImage
+
 type Theme struct {
-	resource.GenericResource
+	resource.GeneralTraits
+	resource.DefaultMethods
 	Id       string
 	Name     string
 	Comment  string
@@ -44,4 +53,41 @@ type IconDir struct {
 type PngSvgPair struct {
 	Png *Icon
 	Svg *Icon
+}
+
+func (il ImageList) ServeHttp(w http.ResponseWriter, r *http.Request) {
+	var size = uint32(32)
+
+	if len(r.URL.Query()["size"]) > 0 {
+		var ok bool
+		if size, ok = readUint32(r.URL.Query()["size"][0]); !ok {
+			requests.ReportUnprocessableEntity(w, fmt.Errorf("Invalid size"))
+			return
+		}
+	}
+
+	var shortestDistanceSoFar = uint32(math.MaxUint32)
+	var candidate IconImage
+
+	for _, img := range il {
+		var distance uint32
+		if img.MinSize > size {
+			distance = img.MinSize - size
+		} else if img.MaxSize < size {
+			distance = size - img.MaxSize
+		} else {
+			distance = 0
+		}
+
+		if distance < shortestDistanceSoFar {
+			shortestDistanceSoFar = distance
+			candidate = img
+		}
+		if distance == 0 {
+			break
+		}
+
+	}
+
+	http.ServeFile(w, r, candidate.Path)
 }

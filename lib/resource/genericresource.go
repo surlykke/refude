@@ -7,13 +7,10 @@
 package resource
 
 import (
-	"crypto/sha1"
-	"fmt"
-	"io"
 	"net/http"
+	"sync"
 
 	"github.com/surlykke/RefudeServices/lib/requests"
-	"github.com/surlykke/RefudeServices/lib/serialize"
 )
 
 type Executer func()
@@ -24,85 +21,97 @@ type ResourceAction struct {
 	Executer    Executer `json:"-"`
 }
 
-type GenericResource struct {
-	Links           []Link                    `json:"_links"`
-	Mt              MediaType                 `json:"-"`
-	ResourceActions map[string]ResourceAction `json:"_actions,omitempty"`
-	etag            string
+type JsonResourceData interface {
+	POST(w http.ResponseWriter, r *http.Request)
+	PATCH(w http.ResponseWriter, r *http.Request)
+	DELETE(w http.ResponseWriter, r *http.Request)
 }
 
-func MakeGenericResource(SelfLink string, mt MediaType) GenericResource {
-	return GenericResource{
-		Links:           []Link{{Href: SelfLink, Rel: Self}},
-		Mt:              mt,
-		ResourceActions: make(map[string]ResourceAction),
+// For embedding
+type GeneralTraits struct {
+	Self       string `json:"_self,omitempty"`
+	RefudeType string `json:"_refudetype,omitempty"`
+}
+
+func (gt *GeneralTraits) GetSelf() string {
+	return gt.Self
+}
+
+type DefaultMethods struct {
+	Actions map[string]ResourceAction `json:"_actions,omitempty"`
+}
+
+func (dm *DefaultMethods) AddAction(actionId string, action ResourceAction) {
+	if dm.Actions == nil {
+		dm.Actions = make(map[string]ResourceAction)
 	}
+	dm.Actions[actionId] = action
 }
 
-func (gr *GenericResource) GetSelf() string {
-	for _, link := range gr.Links {
-		if link.Rel == Self {
-			return link.Href
+func (dm *DefaultMethods) POST(w http.ResponseWriter, r *http.Request) {
+	if dm.Actions == nil {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	} else {
+		var actionId = requests.GetSingleQueryParameter(r, "action", "default")
+		if action, ok := dm.Actions[actionId]; ok {
+			action.Executer()
+			w.WriteHeader(http.StatusAccepted)
+		} else {
+			w.WriteHeader(http.StatusUnprocessableEntity)
 		}
 	}
-
-	panic("Resource has no self link")
 }
 
-func (gr *GenericResource) GetMt() MediaType {
-	return gr.Mt
-}
-
-func (gr *GenericResource) GetEtag() string {
-	return gr.etag
-}
-
-func (gr *GenericResource) SetEtag(etag string) {
-	gr.etag = etag
-}
-
-func (gr *GenericResource) LinkTo(target string, relation Relation) {
-	gr.Links = append(gr.Links, Link{Href: target, Rel: relation})
-}
-
-func (gr *GenericResource) POST(w http.ResponseWriter, r *http.Request) {
-	var actionId = requests.GetSingleQueryParameter(r, "action", "default")
-	if action, ok := gr.ResourceActions[actionId]; ok {
-		action.Executer()
-		w.WriteHeader(http.StatusAccepted)
-	} else {
-		w.WriteHeader(http.StatusUnprocessableEntity)
-	}
-}
-
-func (gr *GenericResource) PATCH(w http.ResponseWriter, r *http.Request) {
+func (dm *DefaultMethods) PATCH(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusMethodNotAllowed)
 }
 
-func (gr *GenericResource) DELETE(w http.ResponseWriter, r *http.Request) {
+func (dm *DefaultMethods) DELETE(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusMethodNotAllowed)
 }
 
-func CalculateEtag(bp ByteProducer) string {
-	var sha1Hasher = sha1.New()
-	bp.WriteBytes(sha1Hasher)
-	return fmt.Sprintf("%X", sha1Hasher.Sum(nil))
+type JsonCache struct {
+	sync.Mutex
+	json []byte
+	etag string
 }
 
-type ByteProducer interface {
-	WriteBytes(io.Writer)
+type JsonResource struct {
+	Data  JsonResourceData
+	cache *JsonCache
 }
 
-func (gr *GenericResource) WriteBytes(w io.Writer) {
-	for _, link := range gr.Links {
-		serialize.String(w, string(link.Href))
-		serialize.String(w, string(link.Type))
-		serialize.String(w, string(link.Title))
-		serialize.String(w, string(link.Rel))
+func MakeJsonResource(data JsonResourceData) JsonResource {
+	return JsonResource{Data: data, cache: &JsonCache{}}
+}
+
+func (jr JsonResource) getJsonData() ([]byte, string) {
+	jr.cache.Lock()
+	defer jr.cache.Unlock()
+	if jr.cache.json == nil {
+		jr.cache.json, jr.cache.etag = ToBytesAndEtag(jr.Data)
 	}
-	for id, action := range gr.ResourceActions {
-		serialize.String(w, id)
-		serialize.String(w, action.Description)
-		serialize.String(w, action.IconName)
+	return jr.cache.json, jr.cache.etag
+}
+
+func (jr JsonResource) ServeHttp(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case "GET":
+		var bytes, etag = jr.getJsonData()
+		if statusCode := requests.CheckEtag(r, etag); statusCode != 0 {
+			w.WriteHeader(statusCode)
+		} else {
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("ETag", etag)
+			_, _ = w.Write(bytes)
+		}
+	case "POST":
+		jr.Data.POST(w, r)
+	case "PATCH":
+		jr.Data.PATCH(w, r)
+	case "DELETE":
+		jr.Data.DELETE(w, r)
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
 }

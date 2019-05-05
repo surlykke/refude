@@ -8,7 +8,6 @@ package applications
 
 import (
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"os"
@@ -17,14 +16,14 @@ import (
 
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
-	"github.com/surlykke/RefudeServices/lib/serialize"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
 const DesktopApplicationMediaType resource.MediaType = "application/vnd.org.refude.desktopapplication+json"
 
 type DesktopApplication struct {
-	resource.GenericResource
+	resource.GeneralTraits
+	resource.DefaultMethods
 	Type            string
 	Version         string `json:",omitempty"`
 	Name            string
@@ -114,41 +113,4 @@ func launchWithArgs(exec string, args []string, inTerminal bool) {
 
 func appSelf(appId string) string {
 	return fmt.Sprintf("/application/%s", appId)
-}
-
-func (da *DesktopApplication) WriteBytes(w io.Writer) {
-	da.GenericResource.WriteBytes(w)
-	serialize.String(w, da.Type)
-	serialize.String(w, da.Version)
-	serialize.String(w, da.Name)
-	serialize.String(w, da.GenericName)
-	serialize.Bool(w, da.NoDisplay)
-	serialize.String(w, da.Comment)
-	serialize.String(w, da.IconName)
-	serialize.Bool(w, da.Hidden)
-	serialize.StringSlice(w, da.OnlyShowIn)
-	serialize.StringSlice(w, da.NotShowIn)
-	serialize.Bool(w, da.DbusActivatable)
-	serialize.String(w, da.TryExec)
-	serialize.String(w, da.Exec)
-	serialize.String(w, da.Path)
-	serialize.Bool(w, da.Terminal)
-	serialize.StringSlice(w, da.Categories)
-	serialize.StringSlice(w, da.Implements)
-	serialize.StringSlice(w, da.Keywords)
-	serialize.Bool(w, da.StartupNotify)
-	serialize.String(w, da.StartupWmClass)
-	serialize.String(w, da.Url)
-	for id, action := range da.DesktopActions {
-		serialize.String(w, id)
-		action.WriteBytes(w)
-	}
-	serialize.String(w, da.Id)
-	serialize.StringSlice(w, da.Mimetypes)
-}
-
-func (action *DesktopAction) WriteBytes(w io.Writer) {
-	serialize.String(w, action.Name)
-	serialize.String(w, action.Exec)
-	serialize.String(w, action.IconName)
 }

@@ -8,29 +8,28 @@ package statusnotifications
 
 import (
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/godbus/dbus"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
-	"github.com/surlykke/RefudeServices/lib/serialize"
 	"github.com/surlykke/RefudeServices/lib/slice"
 )
 
 const ItemMediaType resource.MediaType = "application/vnd.org.refude.statusnotifieritem+json"
 
 type Item struct {
-	resource.GenericResource
+	resource.GeneralTraits
+	resource.DefaultMethods
 	key                     string
 	sender                  string
 	itemPath                dbus.ObjectPath
 	menuPath                dbus.ObjectPath
 	Id                      string
+	Menu                    string
 	Category                string
 	Status                  string
 	IconName                string
@@ -84,51 +83,5 @@ func (item *Item) POST(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	} else {
 		w.WriteHeader(http.StatusAccepted)
-	}
-}
-
-func (item *Item) WriteBytes(w io.Writer) {
-	item.GenericResource.WriteBytes(w)
-	serialize.String(w, item.Id)
-	serialize.String(w, item.Category)
-	serialize.String(w, item.Status)
-	serialize.String(w, item.IconName)
-	serialize.String(w, item.IconAccessibleDesc)
-	serialize.String(w, item.AttentionIconName)
-	serialize.String(w, item.AttentionAccessibleDesc)
-	serialize.String(w, item.Title)
-}
-
-type ItemCollection struct {
-	*resource.GenericResourceCollection
-}
-
-func MakeItemCollection() *ItemCollection {
-	var ic = &ItemCollection{resource.MakeGenericResourceCollection()}
-	ic.InitializeGenericResourceCollection()
-	ic.AddCollectionResource("/items", "/item/")
-	return ic
-}
-
-func (ic *ItemCollection) Get(path string) resource.Resource {
-	if !strings.HasPrefix(path, "/itemmenu/") {
-		return ic.GenericResourceCollection.Get(path)
-	} else {
-		var tmp = string(path[len("/itemmenu/"):])
-		if slashPos := strings.Index(tmp, "/"); slashPos == -1 {
-			return nil
-		} else {
-			var sender = tmp[0:slashPos]
-			var path = tmp[slashPos:]
-			fmt.Println("sender, path:", sender, path)
-
-			if menuItems, err := fetchMenu(sender, dbus.ObjectPath(path)); err != nil {
-				return nil
-			} else {
-				var menu = Menu{resource.MakeGenericResource(menuSelf(sender, dbus.ObjectPath(path)), ""), menuItems}
-				//menu.LinkTo(item.GetSelf(), resource.Related)
-				return &menu
-			}
-		}
 	}
 }

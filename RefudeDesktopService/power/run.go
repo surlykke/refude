@@ -13,33 +13,40 @@ import (
 	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
-var PowerResources = func() *resource.GenericResourceCollection {
-	var grc = resource.MakeGenericResourceCollection()
-	grc.AddCollectionResource("/devices", "/device/")
-	return grc
-}()
+var PowerResources = resource.MakeGenericResourceCollection()
+
+func getDevice(path string) (*Device, bool) {
+	jsonRes, ok := PowerResources.Get(path).(resource.JsonResource)
+	if !ok {
+		return nil, false
+	}
+	device, ok := jsonRes.Data.(*Device)
+	if !ok {
+		return nil, false
+	}
+	return device, true
+}
 
 func Run() {
 	var signals = subscribeToDeviceUpdates()
 
 	for _, device := range getDevices() {
 		fmt.Println("Setting device to", device.GetSelf())
-		PowerResources.Set(device)
+		PowerResources.Set(device.Self, resource.MakeJsonResource(device))
 	}
 
-	PowerResources.Set(buildSessionResource())
+	var session = buildSessionResource()
+	PowerResources.Set(session.Self, resource.MakeJsonResource(session))
 
 	for signal := range signals {
 		if signal.Name == "org.freedesktop.DBus.Properties.PropertiesChanged" {
 			var path = deviceSelf(signal.Path)
-			if res := PowerResources.Get(string(path)); res != nil {
-				if device, ok := res.(*Device); ok {
-					var copy = *device
-					// Brute force here, we update all, as I've seen some problems with getting out of sync after suspend..
-					updateDevice(&copy, dbuscall.GetAllProps(dbusConn, UPowService, signal.Path, UPowerDeviceInterface))
-					PowerResources.Set(&copy)
+			if device, ok := getDevice(path); ok {
+				var copy = *device
+				// Brute force here, we update all, as I've seen some problems with getting out of sync after suspend..
+				updateDevice(&copy, dbuscall.GetAllProps(dbusConn, UPowService, signal.Path, UPowerDeviceInterface))
+				PowerResources.Set(copy.Self, resource.MakeJsonResource(&copy))
 
-				}
 			}
 
 			// TODO Handle device added/removed

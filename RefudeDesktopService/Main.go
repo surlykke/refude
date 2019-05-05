@@ -10,6 +10,7 @@ import (
 	"net/http"
 
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/icons"
+	"github.com/surlykke/RefudeServices/lib/resource"
 
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/notifications"
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/power"
@@ -18,27 +19,26 @@ import (
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/applications"
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/windows"
 	"github.com/surlykke/RefudeServices/lib"
-	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
-var resourceCollections = []resource.ResourceCollection{
-	applications.ApplicationsAndMimetypes,
-	notifications.Notifications,
-	power.PowerResources,
+var repos = []resource.ResourceCollection{
 	windows.Windows,
+	applications.ResourceRepo,
+	notifications.Notifications,
 	statusnotifications.Items,
+	power.PowerResources,
+	icons.IconRepo,
 }
 
 func serveHttp(w http.ResponseWriter, r *http.Request) {
-	for _, resourceCollection := range resourceCollections {
-		if resource.ServeHttp(resourceCollection, w, r) {
+	var path = r.URL.Path
+	for _, repo := range repos {
+		if resource := repo.Get(path); resource != nil {
+			resource.ServeHttp(w, r)
 			return
 		}
 	}
-
-	if !icons.Serve(w, r) {
-		w.WriteHeader(http.StatusNotFound)
-	}
+	w.WriteHeader(http.StatusNotFound)
 }
 
 func main() {
