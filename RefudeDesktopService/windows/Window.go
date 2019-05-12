@@ -15,7 +15,8 @@ import (
 )
 
 type Window struct {
-	resource.GeneralTraits
+	resource.Links
+	resource.Actions
 	Id         uint32
 	Parent     uint32
 	StackOrder int

@@ -26,7 +26,8 @@ import (
 const freedesktopOrgXml = "/usr/share/mime/packages/freedesktop.org.xml"
 
 type Mimetype struct {
-	resource.GeneralTraits
+	resource.Links
+	resource.Actions
 	Id              string
 	Comment         string
 	Acronym         string `json:",omitempty"`

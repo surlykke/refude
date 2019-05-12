@@ -1,9 +1,3 @@
-// Copyright (c) 2017,2018,2019 Christian Surlykke
-//
-// This file is part of the RefudeServices project.
-// It is distributed under the GPL v2 license.
-// Please refer to the GPL2 file for a copy of the license.
-//
 package resource
 
 import (
@@ -21,20 +15,18 @@ type ResourceAction struct {
 }
 
 // For embedding
-type GeneralTraits struct {
-	Self       string                    `json:"_self,omitempty"`
-	RefudeType string                    `json:"_refudetype,omitempty"`
-	Actions    map[string]ResourceAction `json:"_actions,omitempty"`
+type Actions struct {
+	Actions map[string]ResourceAction `json:"_actions,omitempty"`
 }
 
-func (gt *GeneralTraits) AddAction(actionId string, action ResourceAction) {
+func (gt *Actions) AddAction(actionId string, action ResourceAction) {
 	if gt.Actions == nil {
 		gt.Actions = make(map[string]ResourceAction)
 	}
 	gt.Actions[actionId] = action
 }
 
-func (gt *GeneralTraits) POST(w http.ResponseWriter, r *http.Request) {
+func (gt *Actions) POST(w http.ResponseWriter, r *http.Request) {
 	if gt.Actions == nil {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	} else {
@@ -46,8 +38,4 @@ func (gt *GeneralTraits) POST(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusUnprocessableEntity)
 		}
 	}
-}
-
-func (gt *GeneralTraits) GetSelf() string {
-	return gt.Self
 }

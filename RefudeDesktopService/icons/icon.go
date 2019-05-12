@@ -16,7 +16,7 @@ import (
 )
 
 type Icon struct {
-	resource.GeneralTraits
+	resource.Links
 	Name   string
 	Theme  string
 	Images ImageList
@@ -33,7 +33,7 @@ type IconImage struct {
 type ImageList []IconImage
 
 type Theme struct {
-	resource.GeneralTraits
+	resource.Links
 	Id       string
 	Name     string
 	Comment  string

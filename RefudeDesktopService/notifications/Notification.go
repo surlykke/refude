@@ -15,7 +15,8 @@ import (
 )
 
 type Notification struct {
-	resource.GeneralTraits
+	resource.Links
+	resource.Actions
 	Id      uint32
 	Sender  string
 	Subject string

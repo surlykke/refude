@@ -20,7 +20,8 @@ import (
 )
 
 type DesktopApplication struct {
-	resource.GeneralTraits
+	resource.Links
+	resource.Actions
 	Type            string
 	Version         string `json:",omitempty"`
 	Name            string

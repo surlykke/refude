@@ -17,7 +17,7 @@ import (
 )
 
 type Menu struct {
-	resource.GeneralTraits
+	resource.Links
 	Menu []MenuItem
 }
 

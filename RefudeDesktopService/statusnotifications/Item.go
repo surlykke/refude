@@ -22,7 +22,8 @@ import (
 )
 
 type Item struct {
-	resource.GeneralTraits
+	resource.Links
+	resource.Actions
 	key                     string
 	sender                  string
 	itemPath                dbus.ObjectPath

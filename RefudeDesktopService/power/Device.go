@@ -15,7 +15,8 @@ import (
 )
 
 type Device struct {
-	resource.GeneralTraits
+	resource.Links
+	resource.Actions
 	DbusPath         dbus.ObjectPath
 	NativePath       string
 	Vendor           string
@@ -76,5 +77,6 @@ func deviceSelf(dbusPath dbus.ObjectPath) string {
 }
 
 type SessionResource struct {
-	resource.GeneralTraits
+	resource.Links
+	resource.Actions
 }
