@@ -19,11 +19,8 @@ import (
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
-const DesktopApplicationMediaType resource.MediaType = "application/vnd.org.refude.desktopapplication+json"
-
 type DesktopApplication struct {
 	resource.GeneralTraits
-	resource.DefaultMethods
 	Type            string
 	Version         string `json:",omitempty"`
 	Name            string

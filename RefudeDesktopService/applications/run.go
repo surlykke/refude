@@ -15,7 +15,8 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-var ResourceRepo = resource.MakeGenericResourceCollection()
+var resourceMap = resource.MakeResourceMap("/applications", "/windows")
+var Resources = resource.MakeJsonResourceServer(resourceMap)
 
 func Run() {
 	fd, err := unix.InotifyInit()
@@ -46,16 +47,14 @@ func Run() {
 	dummy := make([]byte, 100)
 	for {
 		var mtc, apps = Collect()
-		var collection = make(map[string]resource.Resource, len(mtc)+len(apps))
+		var collection = make(map[string]interface{}, len(mtc)+len(apps))
 		for _, mt := range mtc {
-			collection[mt.Self] = resource.MakeJsonResource(mt)
+			collection[mt.Self] = mt
 		}
 		for _, app := range apps {
-			collection[app.Self] = resource.MakeJsonResource(app)
+			collection[app.Self] = app
 		}
-		ResourceRepo.ReplaceAll(collection)
-		ResourceRepo.Set("/applications", ResourceRepo.MakePrefixCollection("/application/"))
-		ResourceRepo.Set("/mimetypes", ResourceRepo.MakePrefixCollection("/mimetype/"))
+		resourceMap.ReplaceAll(collection)
 
 		if _, err := unix.Read(fd, dummy); err != nil {
 			panic(err)

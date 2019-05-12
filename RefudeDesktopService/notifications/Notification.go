@@ -14,11 +14,8 @@ import (
 	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
-const NotificationMediaType resource.MediaType = "application/vnd.org.refude.desktopnotification+json"
-
 type Notification struct {
 	resource.GeneralTraits
-	resource.DefaultMethods
 	Id      uint32
 	Sender  string
 	Subject string

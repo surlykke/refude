@@ -10,7 +10,6 @@ import (
 	"net/http"
 
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/icons"
-	"github.com/surlykke/RefudeServices/lib/resource"
 
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/notifications"
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/power"
@@ -21,20 +20,22 @@ import (
 	"github.com/surlykke/RefudeServices/lib"
 )
 
-var repos = []resource.ResourceCollection{
+type ResourceCollection interface {
+	ServeHTTP(w http.ResponseWriter, r *http.Request) bool
+}
+
+var repos = []ResourceCollection{
 	windows.Windows,
-	applications.ResourceRepo,
+	applications.Resources,
 	notifications.Notifications,
 	statusnotifications.Items,
 	power.PowerResources,
-	icons.IconRepo,
+	icons.Icons,
 }
 
 func serveHttp(w http.ResponseWriter, r *http.Request) {
-	var path = r.URL.Path
 	for _, repo := range repos {
-		if resource := repo.Get(path); resource != nil {
-			resource.ServeHttp(w, r)
+		if repo.ServeHTTP(w, r) {
 			return
 		}
 	}

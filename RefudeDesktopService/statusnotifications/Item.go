@@ -10,7 +10,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/godbus/dbus"
@@ -19,11 +21,8 @@ import (
 	"github.com/surlykke/RefudeServices/lib/slice"
 )
 
-const ItemMediaType resource.MediaType = "application/vnd.org.refude.statusnotifieritem+json"
-
 type Item struct {
 	resource.GeneralTraits
-	resource.DefaultMethods
 	key                     string
 	sender                  string
 	itemPath                dbus.ObjectPath
@@ -45,11 +44,10 @@ func MakeItem(sender string, path dbus.ObjectPath) *Item {
 }
 
 func itemSelf(sender string, path dbus.ObjectPath) string {
-	return fmt.Sprintf("/item/%s%s", sender, path)
+	return fmt.Sprintf("/item/%s", url.PathEscape(sender+string(path)))
 }
 
 func (item *Item) POST(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("POST: ", r.URL)
 	if item.menuPath == "" {
 		w.WriteHeader(http.StatusUnprocessableEntity)
 		return
@@ -60,18 +58,15 @@ func (item *Item) POST(w http.ResponseWriter, r *http.Request) {
 	y, _ := strconv.Atoi(requests.GetSingleQueryParameter(r, "y", "0"))
 	id := requests.GetSingleQueryParameter(r, "id", "")
 
-	fmt.Println("action: ", action)
 	var call *dbus.Call
 	if slice.Among(action, "left", "middle", "right") {
 		action2method := map[string]string{"left": "Activate", "middle": "SecondaryActivate", "right": "ContextMenu"}
-		fmt.Println("Calling: ", "org.kde.StatusNotifierItem."+action2method[action], dbus.Flags(0), x, y)
 		dbusObj := conn.Object(item.sender, item.itemPath)
 		call = dbusObj.Call("org.kde.StatusNotifierItem."+action2method[action], dbus.Flags(0), x, y)
 	} else if action == "menu" {
 		idAsInt, _ := strconv.Atoi(id)
 		data := dbus.MakeVariant("")
 		time := uint32(time.Now().Unix())
-		fmt.Println("Calling: ", "com.canonical.dbusmenu.Event", dbus.Flags(0), idAsInt, "clicked", data, time)
 		dbusObj := conn.Object(item.sender, item.menuPath)
 		call = dbusObj.Call("com.canonical.dbusmenu.Event", dbus.Flags(0), idAsInt, "clicked", data, time)
 	} else {
@@ -83,5 +78,32 @@ func (item *Item) POST(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	} else {
 		w.WriteHeader(http.StatusAccepted)
+	}
+}
+
+type ItemRepo struct {
+	resource.ResourceMap
+}
+
+func (ir *ItemRepo) Get(path string) interface{} {
+	if strings.HasPrefix(path, "/itemmenu/") {
+		var tmp = string(path[len("/itemmenu/"):])
+		if slashPos := strings.Index(tmp, "/"); slashPos == -1 {
+			return nil
+		} else {
+			var sender = tmp[0:slashPos]
+			var path = tmp[slashPos:]
+
+			if menuItems, err := fetchMenu(sender, dbus.ObjectPath(path)); err != nil {
+				return nil
+			} else {
+				var menu = Menu{Menu: menuItems}
+				menu.Self = menuSelf(sender, dbus.ObjectPath(path))
+				menu.RefudeType = "menu"
+				return &menu
+			}
+		}
+	} else {
+		return ir.ResourceMap.Get(path)
 	}
 }

@@ -20,11 +20,11 @@ import (
 )
 
 // Returns windows in descending stack order
-func getWindows() ([]*Window, error) {
+func getWindows() ([]interface{}, error) {
 	if wIds, err := xlib.GetStack(); err != nil {
 		return nil, fmt.Errorf("Unable to get client list stacking %v", err)
 	} else {
-		var windows = make([]*Window, 0, len(wIds))
+		var windows = make([]interface{}, 0, len(wIds))
 		for i := 0; i < len(wIds); i++ {
 			var wId = wIds[len(wIds)-i-1]
 			if window, err := getWindow(wId); err != nil {
@@ -138,6 +138,7 @@ func GetIconName(wId uint32) (string, error) {
 		}
 
 		var icon = image.MakeIconWithHashAsName(images)
+		fmt.Println("sending icon", icon.Name, "to icons")
 		icons.IconSink <- icon
 		setIconNameInCache(wId, icon.Name)
 		return icon.Name, nil

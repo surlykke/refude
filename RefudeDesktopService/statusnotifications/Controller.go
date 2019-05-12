@@ -14,8 +14,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/surlykke/RefudeServices/lib/resource"
-
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/icons"
 
 	"github.com/godbus/dbus"
@@ -75,21 +73,15 @@ func monitorSignals() {
 }
 
 func checkItemStatus(sender string) {
-	for _, res := range Items.GetByPrefix("/item/") {
-		if item := getItem(res); item != nil && item.sender == sender {
+	var items = resourceMap.Get("/items").([]interface{})
+	for _, res := range items {
+		var item = res.(*Item)
+		if item.sender == sender {
 			if _, ok := dbuscall.GetSingleProp(conn, item.sender, item.itemPath, ITEM_INTERFACE, "Status"); !ok {
 				events <- Event{eventType: ItemRemoved, sender: item.sender, path: item.itemPath}
 			}
 		}
 	}
-}
-
-func getItem(res resource.Resource) *Item {
-	jsonResource, ok := res.(resource.JsonResource)
-	if !ok {
-		return nil
-	}
-	return jsonResource.Data.(*Item)
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -156,14 +148,11 @@ type Event struct {
 
 var events = make(chan Event)
 
-// Caller must hold lock
 func updateWatcherProperties() {
 	ids := make([]string, 0, 20)
-	for _, res := range Items.GetByPrefix("/item/") {
-		if item := getItem(res); item != nil {
-			ids = append(ids, item.sender+":"+string(item.itemPath))
-
-		}
+	for _, res := range resourceMap.Get("/items").([]interface{}) {
+		var item = res.(*Item)
+		ids = append(ids, item.sender+":"+string(item.itemPath))
 	}
 	watcherProperties.Set(WATCHER_INTERFACE, "RegisteredStatusItems", dbus.MakeVariant(ids))
 }

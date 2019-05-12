@@ -7,24 +7,33 @@
 package statusnotifications
 
 import (
+	"fmt"
+	"time"
+
 	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
-var Items = resource.MakeGenericResourceCollection()
+var resourceMap = &ItemRepo{*resource.MakeResourceMap("/items")}
+var Items = resource.MakeJsonResourceServer(resourceMap)
 
 func Run() {
-	Items.Set("/items", Items.MakePrefixCollection("/item/"))
 	getOnTheBus()
 	go monitorSignals()
+	var started = time.Now().UnixNano()
 
 	for event := range events {
+		var elapsed = time.Now().UnixNano() - started
+		var secs = elapsed / 1000000000
+		var msecs = (elapsed - secs*1000000000) / 1000000
+		var mysecs = (elapsed - secs*1000000000 - msecs*100000) / 1000
 		var self = itemSelf(event.sender, event.path)
 		switch event.eventType {
 		case ItemUpdated, ItemCreated:
 			var item = buildItem(event.sender, event.path)
-			Items.Set(item.Self, resource.MakeJsonResource(item))
+			fmt.Printf("%d.%d.%d:Mapping %s\n", secs, msecs, mysecs, item.Self)
+			resourceMap.Set(item.Self, item)
 		case ItemRemoved:
-			Items.Remove(string(self))
+			resourceMap.Remove(string(self))
 		}
 	}
 }

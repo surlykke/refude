@@ -8,18 +8,14 @@ package windows
 
 import (
 	"fmt"
-	"net/http"
 	"strconv"
 	"strings"
 
 	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
-const WindowMediaType resource.MediaType = "application/vnd.org.refude.wmwindow+json"
-
 type Window struct {
 	resource.GeneralTraits
-	resource.DefaultMethods
 	Id         uint32
 	Parent     uint32
 	StackOrder int
@@ -36,21 +32,12 @@ func windowSelf(windowId uint32) string {
 
 type WindowCollection struct{}
 
-type WindowList []*Window
-
-func (wl WindowList) ServeHttp(w http.ResponseWriter, r *http.Request) {
-	var bytes, etag = resource.ToBytesAndEtag(wl)
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("ETag", etag)
-	_, _ = w.Write(bytes)
-}
-
-func (wc WindowCollection) Get(path string) resource.Resource {
+func (wc WindowCollection) Get(path string) interface{} {
 	if path == "/windows" {
 		if windows, err := getWindows(); err != nil {
 			return nil
 		} else {
-			return WindowList(windows)
+			return windows
 		}
 	} else if !strings.HasPrefix(path, "/window/") {
 		return nil
@@ -61,8 +48,8 @@ func (wc WindowCollection) Get(path string) resource.Resource {
 		if err != nil {
 			return nil
 		}
-		return resource.MakeJsonResource(window)
+		return window
 	}
 }
 
-var Windows = WindowCollection{}
+var Windows = resource.MakeJsonResourceServer(WindowCollection{})

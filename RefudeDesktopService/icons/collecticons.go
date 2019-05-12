@@ -17,7 +17,6 @@ import (
 	"strings"
 
 	"github.com/surlykke/RefudeServices/lib/image"
-	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/slice"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
@@ -77,7 +76,7 @@ func addBaseDir(baseDir string) {
 				} else {
 					themes[themeName] = theme
 					themeIcons[themeName] = make(map[string]*Icon)
-					IconRepo.Set(theme.Self, resource.MakeJsonResource(&(*theme)))
+					resourceMap.Set(theme.Self, &(*theme))
 
 					for _, path := range unscannedDirectories[themeName] {
 						collectIconsForTheme(theme, path)
@@ -91,14 +90,13 @@ func addBaseDir(baseDir string) {
 		}
 	}
 
+	// Then look for icons directly in base dir
+	collectIconsInBaseDir(baseDir)
 }
 
 func collectIconsForTheme(theme *Theme, themeDir string) {
 	for _, iconSubdir := range theme.Dirs {
 		var subdirPath = themeDir + "/" + iconSubdir.Path
-		if theme.Id == "hicolor" {
-			fmt.Println("Collecting for hicolor in", subdirPath)
-		}
 		if !dirExists(subdirPath) {
 			continue
 		}
@@ -112,12 +110,8 @@ func collectIconsForTheme(theme *Theme, themeDir string) {
 		for _, iconFileName := range iconFileNames {
 			var iconFilePath = subdirPath + "/" + iconFileName
 			var name = iconFileName[0 : len(iconFileName)-4]
-			if strings.HasPrefix(iconFileName, "firefox") {
-				fmt.Println("Found", iconFileName, "in", subdirPath, ", name:", name)
-			}
 			if strings.HasSuffix(iconFilePath, ".xpm") {
-				if iconFilePath, err := getPathToConverted(iconFilePath); err != nil {
-					log.Println("Problem converting", iconFilePath, err)
+				if iconFilePath, err = getPathToConverted(iconFilePath); err != nil {
 					continue
 				}
 			}
@@ -140,7 +134,7 @@ func collectIconsForTheme(theme *Theme, themeDir string) {
 
 func collectIconsInBaseDir(basedir string) {
 	if iconFileNames, err := getIcons(basedir); err != nil {
-		//log.Println("Error reading icons in", basedir, err)
+		log.Println("Error reading icons in", basedir, err)
 	} else {
 		for _, iconFileName := range iconFileNames {
 			var iconFilePath = basedir + "/" + iconFileName
@@ -191,6 +185,7 @@ func addARGBIcon(argbIcon image.ARGBIcon) {
 	}
 	if len(icon.Images) > 0 {
 		themeIcons["hicolor"][icon.Name] = &icon
+		foundIconNames[icon.Name] = true
 	}
 }
 
@@ -346,21 +341,15 @@ func dirExists(dirpath string) bool {
 func publishFoundIcons() {
 	for iconName, _ := range foundIconNames {
 		for themeName, _ := range themes {
-			if iconName == "firefox" {
-				fmt.Println("Resolving firefox for", themeName)
-			}
 			if icon := findIcon(themeName, iconName); icon != nil {
-				if iconName == "firefox" {
-					fmt.Println("Found it in theme", icon.Theme)
-				}
 				var resolvedIcon = &(*icon)
 				resolvedIcon.Self = "/icon/" + themeName + "/" + iconName
-				var jsonResource = resource.MakeJsonResource(resolvedIcon)
-				IconRepo.Set(resolvedIcon.Self, jsonResource)
-				IconRepo.Set(resolvedIcon.Self+"/img", resolvedIcon.Images)
+				var iconImgResource = IconImgResource{images: resolvedIcon.Images}
+				resourceMap.Set(resolvedIcon.Self, resolvedIcon)
+				resourceMap.Set(resolvedIcon.Self+"/img", iconImgResource)
 				if themeName == "oxygen" { // FIXME
-					IconRepo.Set("/icon/"+iconName, jsonResource)
-					IconRepo.Set("/icon/"+iconName+"/img", resolvedIcon.Images)
+					resourceMap.Set("/icon/"+iconName, resolvedIcon)
+					resourceMap.Set("/icon/"+iconName+"/img", iconImgResource)
 				}
 			}
 		}

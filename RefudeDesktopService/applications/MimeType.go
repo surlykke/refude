@@ -24,11 +24,9 @@ import (
 )
 
 const freedesktopOrgXml = "/usr/share/mime/packages/freedesktop.org.xml"
-const MimetypeMediaType resource.MediaType = "application/vnd.org.refude.mimetype+json"
 
 type Mimetype struct {
 	resource.GeneralTraits
-	resource.DefaultMethods
 	Id              string
 	Comment         string
 	Acronym         string `json:",omitempty"`
@@ -68,12 +66,16 @@ func NewMimetype(id string) (*Mimetype, error) {
 	}
 }
 
-func (mt *Mimetype) POST(w http.ResponseWriter, r *http.Request) {
-	defaultAppId := r.URL.Query()["defaultApp"]
-	if len(defaultAppId) != 1 || defaultAppId[0] == "" {
-		w.WriteHeader(http.StatusUnprocessableEntity)
+func (mt *Mimetype) PATCH(w http.ResponseWriter, r *http.Request) {
+	var decoder = json.NewDecoder(r.Body)
+	var decoded = make(map[string]string)
+	if err := decoder.Decode(&decoded); err != nil {
+		requests.ReportUnprocessableEntity(w, err)
+	} else if defaultApp, ok := decoded["DefaultApp"]; !ok || len(decoded) != 1 {
+		requests.ReportUnprocessableEntity(w, fmt.Errorf("Patch payload should contain exactly one parameter: 'DefaultApp"))
+	} else if err = setDefaultApp(mt.Id, defaultApp); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
 	} else {
-		go setDefaultApp(mt.Id, defaultAppId[0])
 		w.WriteHeader(http.StatusAccepted)
 	}
 }
@@ -98,20 +100,6 @@ func setDefaultApp(mimetypeId string, appId string) error {
 			return err
 		}
 		return nil
-	}
-}
-
-func (mc *Mimetype) PATCH(w http.ResponseWriter, r *http.Request) {
-	var decoder = json.NewDecoder(r.Body)
-	var decoded = make(map[string]string)
-	if err := decoder.Decode(&decoded); err != nil {
-		requests.ReportUnprocessableEntity(w, err)
-	} else if defaultApp, ok := decoded["DefaultApp"]; !ok || len(decoded) != 1 {
-		requests.ReportUnprocessableEntity(w, fmt.Errorf("Patch payload should contain exactly one parameter: 'DefaultApp"))
-	} else if err = setDefaultApp(mc.Id, defaultApp); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-	} else {
-		w.WriteHeader(http.StatusAccepted)
 	}
 }
 

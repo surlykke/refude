@@ -14,13 +14,8 @@ import (
 	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
-const DeviceMediaType resource.MediaType = "application/vnd.org.refude.upowerdevice+json"
-
-const SessionMediaType resource.MediaType = "application/vnd.org.refude.session+json"
-
 type Device struct {
 	resource.GeneralTraits
-	resource.DefaultMethods
 	DbusPath         dbus.ObjectPath
 	NativePath       string
 	Vendor           string
@@ -82,5 +77,4 @@ func deviceSelf(dbusPath dbus.ObjectPath) string {
 
 type SessionResource struct {
 	resource.GeneralTraits
-	resource.DefaultMethods
 }

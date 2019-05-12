@@ -17,7 +17,6 @@ import (
 
 type Icon struct {
 	resource.GeneralTraits
-	resource.DefaultMethods
 	Name   string
 	Theme  string
 	Images ImageList
@@ -35,7 +34,6 @@ type ImageList []IconImage
 
 type Theme struct {
 	resource.GeneralTraits
-	resource.DefaultMethods
 	Id       string
 	Name     string
 	Comment  string
@@ -55,7 +53,16 @@ type PngSvgPair struct {
 	Svg *Icon
 }
 
-func (il ImageList) ServeHttp(w http.ResponseWriter, r *http.Request) {
+type IconImgResource struct {
+	images ImageList
+}
+
+func (iir IconImgResource) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
 	var size = uint32(32)
 
 	if len(r.URL.Query()["size"]) > 0 {
@@ -69,7 +76,7 @@ func (il ImageList) ServeHttp(w http.ResponseWriter, r *http.Request) {
 	var shortestDistanceSoFar = uint32(math.MaxUint32)
 	var candidate IconImage
 
-	for _, img := range il {
+	for _, img := range iir.images {
 		var distance uint32
 		if img.MinSize > size {
 			distance = img.MinSize - size

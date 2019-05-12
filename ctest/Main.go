@@ -11,25 +11,17 @@ import (
 	"fmt"
 )
 
-type Data interface{}
-
-type outer struct {
+type Dat struct {
 	A string
 	B int
-	Inner
-}
-
-type Inner struct {
-	D string
 }
 
 func main() {
-	var o = outer{A: "A", B: 7}
-	var i = Inner{D: "D"}
-	o.Inner = i
-	if bytes, err := json.Marshal(o); err == nil {
-		fmt.Println(string(bytes))
-	} else {
-		fmt.Println(err)
-	}
+	var dat = Dat{"A", 7}
+	var intf interface{} = &dat
+	dat.A = "AAA"
+	var json1, _ = json.Marshal(dat)
+	var json2, _ = json.Marshal(intf)
+	fmt.Println("json1:", string(json1))
+	fmt.Println("json2:", string(json2))
 }

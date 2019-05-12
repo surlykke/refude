@@ -12,24 +12,24 @@ import (
 	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
-var Notifications = resource.MakeGenericResourceCollection()
+var notificationsMap = resource.MakeResourceMap("/notifications")
+var Notifications = resource.MakeJsonResourceServer(notificationsMap)
 
 var removals = make(chan removal)
 
 func Run() {
-	Notifications.Set("/notifications", Notifications.MakePrefixCollection("/notification/"))
 	var updates = make(chan *Notification)
 	go DoDBus(updates, removals)
 
 	for {
 		select {
 		case notification := <-updates:
-			Notifications.Set(notificationSelf(notification.Id), resource.MakeJsonResource(notification))
+			notificationsMap.Set(notificationSelf(notification.Id), notification)
 		case rem := <-removals:
 			var path = string(notificationSelf(rem.id))
-			if rem.reason == Expired && Notifications.RemoveIf(path, notificationIsExpired) ||
-				rem.reason == Dismissed && Notifications.Remove(path) ||
-				rem.reason == Closed && Notifications.Remove(path) {
+			if rem.reason == Expired && notificationsMap.RemoveIf(path, notificationIsExpired) ||
+				rem.reason == Dismissed && notificationsMap.Remove(path) ||
+				rem.reason == Closed && notificationsMap.Remove(path) {
 				conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", rem.id, rem.reason)
 			}
 		}
@@ -37,12 +37,8 @@ func Run() {
 	}
 }
 
-func notificationIsExpired(res resource.Resource) bool {
-	jr, ok := res.(resource.JsonResource)
-	if !ok {
-		return false
-	}
-	n, ok := jr.Data.(*Notification)
+func notificationIsExpired(res interface{}) bool {
+	n, ok := res.(*Notification)
 	if !ok {
 		return false
 	}
