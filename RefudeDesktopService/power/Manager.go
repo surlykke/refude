@@ -43,8 +43,7 @@ func getDevices() []*Device {
 	devicePaths := append(enumCall.Body[0].([]dbus.ObjectPath), DisplayDevicePath)
 	for _, path := range devicePaths {
 		var device = &Device{}
-		device.Self = deviceSelf(path)
-		device.RefudeType = "powerdevice"
+		device.Init(deviceSelf(path), "powerdevice")
 		device.DisplayDevice = path == DisplayDevicePath
 		device.DbusPath = path
 		updateDevice(device, dbuscall.GetAllProps(dbusConn, UPowService, path, UPowerDeviceInterface))
@@ -71,8 +70,7 @@ var possibleActionValues = map[string][]string{
 
 func buildSessionResource() *SessionResource {
 	var session = &SessionResource{}
-	session.Self = "/session"
-	session.RefudeType = "session"
+	session.Init("/session", "session")
 	for id, pv := range possibleActionValues {
 		if "yes" == dbusConn.Object(login1Service, login1Path).Call(managerInterface+".Can"+id, dbus.Flags(0)).Body[0].(string) {
 			var dbusEndPoint = managerInterface + "." + id

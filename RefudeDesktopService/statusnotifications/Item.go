@@ -23,7 +23,6 @@ import (
 
 type Item struct {
 	resource.Links
-	resource.Actions
 	key                     string
 	sender                  string
 	itemPath                dbus.ObjectPath
@@ -102,7 +101,7 @@ func (ir *ItemRepo) Get(path string) interface{} {
 				return nil
 			} else {
 				var menu = Menu{Menu: menuItems}
-				menu.Self = menuSelf(sender, dbus.ObjectPath(path))
+				menu.Init(menuSelf(sender, dbus.ObjectPath(path)), "menu")
 				menu.RefudeType = "menu"
 				return &menu
 			}

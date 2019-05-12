@@ -21,7 +21,6 @@ import (
 
 type DesktopApplication struct {
 	resource.Links
-	resource.Actions
 	Type            string
 	Version         string `json:",omitempty"`
 	Name            string

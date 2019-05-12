@@ -27,7 +27,6 @@ const freedesktopOrgXml = "/usr/share/mime/packages/freedesktop.org.xml"
 
 type Mimetype struct {
 	resource.Links
-	resource.Actions
 	Id              string
 	Comment         string
 	Acronym         string `json:",omitempty"`
@@ -48,8 +47,7 @@ func NewMimetype(id string) (*Mimetype, error) {
 		return nil, errors.New("Incomprehensible mimetype: " + id)
 	} else {
 		mt := &Mimetype{}
-		mt.Self = mimetypeSelf(id)
-		mt.RefudeType = "mimetype"
+		mt.Init(mimetypeSelf(id), "mimetype")
 		mt.Id = id
 		mt.Aliases = []string{}
 		mt.Globs = []string{}

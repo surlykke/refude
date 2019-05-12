@@ -159,9 +159,7 @@ func updateWatcherProperties() {
 
 func buildItem(sender string, path dbus.ObjectPath) *Item {
 	var item = MakeItem(sender, path)
-	item.Self = itemSelf(sender, path)
-	item.RefudeType = "statusnotifieritem"
-
+	item.Init(itemSelf(sender, path), "statusnotifieritem")
 	props := dbuscall.GetAllProps(conn, item.sender, item.itemPath, ITEM_INTERFACE)
 	item.Id = getStringOr(props, "ID", "")
 	item.Category = getStringOr(props, "Category", "")

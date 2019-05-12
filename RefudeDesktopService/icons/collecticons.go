@@ -265,8 +265,7 @@ func readIndexTheme(themeId string, indexThemeFilePath string) (*Theme, error) {
 		theme.Dirs[iniGroup.Name] = IconDir{iniGroup.Name, minSize, maxSize, iniGroup.Entries["Context"]}
 	}
 
-	theme.Self = "/icontheme/" + theme.Id
-	theme.RefudeType = "icontheme"
+	theme.Init("/icontheme/"+theme.Id, "icontheme")
 	return theme, nil
 }
 
@@ -343,7 +342,7 @@ func publishFoundIcons() {
 		for themeName, _ := range themes {
 			if icon := findIcon(themeName, iconName); icon != nil {
 				var resolvedIcon = &(*icon)
-				resolvedIcon.Self = "/icon/" + themeName + "/" + iconName
+				resolvedIcon.Init("/icon/"+themeName+"/"+iconName, "icon")
 				var iconImgResource = IconImgResource{images: resolvedIcon.Images}
 				resourceMap.Set(resolvedIcon.Self, resolvedIcon)
 				resourceMap.Set(resolvedIcon.Self+"/img", iconImgResource)

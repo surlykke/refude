@@ -8,7 +8,6 @@ package notifications
 
 import (
 	"fmt"
-	"net/http"
 	"time"
 
 	"github.com/surlykke/RefudeServices/lib/resource"
@@ -16,17 +15,12 @@ import (
 
 type Notification struct {
 	resource.Links
-	resource.Actions
 	Id      uint32
 	Sender  string
 	Subject string
 	Body    string
 	Created time.Time
 	Expires time.Time `json:",omitempty"`
-}
-
-func (nc *Notification) DELETE(w http.ResponseWriter, r *http.Request) {
-	removals <- removal{id: nc.Id, reason: Dismissed}
 }
 
 func notificationSelf(id uint32) string {

@@ -41,8 +41,7 @@ func getWindows() ([]interface{}, error) {
 func getWindow(wId uint32) (*Window, error) {
 	window := &Window{}
 	window.Id = wId
-	window.Self = windowSelf(wId)
-	window.RefudeType = "window"
+	window.Init(windowSelf(wId), "window")
 	var err error
 	window.Parent, err = xlib.GetParent(wId)
 	if err != nil {

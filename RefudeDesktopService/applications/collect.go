@@ -203,8 +203,7 @@ func (c *collection) collectApplications(appdir string) {
 		}
 
 		app.Id = strings.Replace(path[len(appdir)+1:len(path)-8], "/", "-", -1)
-		app.Self = appSelf(app.Id)
-		app.RefudeType = "application"
+		app.Init(appSelf(app.Id), "application")
 		var exec = app.Exec
 		var inTerminal = app.Terminal
 		app.AddAction("default", resource.ResourceAction{

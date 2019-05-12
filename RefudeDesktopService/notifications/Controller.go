@@ -136,8 +136,7 @@ func makeNotifyFunction(notifications chan *Notification) interface{} {
 		}
 
 		notification := &Notification{}
-		notification.Self = notificationSelf(id)
-		notification.RefudeType = "notification"
+		notification.Init(notificationSelf(id), "notification")
 		notification.Id = id
 		notification.Sender = app_name
 		notification.Created = time.Now()
@@ -158,9 +157,11 @@ func makeNotifyFunction(notifications chan *Notification) interface{} {
 
 		// Add a dismiss action
 		var notificationId = notification.Id
-		notification.AddAction("dismiss", resource.ResourceAction{
-			Description: "Dismiss", IconName: "", Executer: func() { removals <- removal{notificationId, Dismissed} },
-		})
+		notification.SetDeleteAction(
+			&resource.DeleteAction{
+				Description: "dismiss",
+				Executer:    func() { removals <- removal{notificationId, Dismissed} },
+			})
 
 		// Add actions given in notification (We are aware that one of these may overwrite the dismiss action added above)
 		for i := 0; i+1 < len(actions); i = i + 2 {
