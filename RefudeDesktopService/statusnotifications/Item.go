@@ -89,7 +89,10 @@ type ItemRepo struct {
 func (ir *ItemRepo) Get(path string) interface{} {
 	if strings.HasPrefix(path, "/itemmenu/") {
 		var tmp = string(path[len("/itemmenu/"):])
-		if slashPos := strings.Index(tmp, "/"); slashPos == -1 {
+		tmp, err := url.PathUnescape(tmp)
+		if err != nil {
+			return nil
+		} else if slashPos := strings.Index(tmp, "/"); slashPos == -1 {
 			return nil
 		} else {
 			var sender = tmp[0:slashPos]
