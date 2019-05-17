@@ -46,7 +46,7 @@ export let Item = props => {
 
     return (
         <div id={props.item.url} style={style} onClick={() => publish("click", props.item)} onDoubleClick={() => publish("doubleclick", props.item)}>
-            <img width="24px" height="24px" style={iconStyle} src={`http://localhost:7938/icon?name=${item.iconName}`} alt=""/>
+            <img width="24px" height="24px" style={iconStyle} src={`http://localhost:7938/icon/${item.iconName}/img`} alt=""/>
             <div style={nameStyle}>{item.description}</div>
             <div style={commentStyle}>{item.Comment}</div>
         </div>

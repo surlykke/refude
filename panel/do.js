@@ -11,7 +11,7 @@ import { ItemList } from "../common/itemlist"
 import { Item } from "../common/item"
 import { Indicator } from "./indicator";
 import { T } from "../common/translate";
-import { self, monitorUrl } from '../common/monitor';
+import { monitorUrl } from '../common/monitor';
 import Axios from 'axios';
 
 Axios.defaults.baseURL = "http://localhost:7938"
@@ -113,7 +113,7 @@ class Do extends React.Component {
             .forEach(n => {
                 items.push({
                     group: T("Notifications"),
-                    url: self(n),
+                    url: n._self,
                     description: n.Subject,
                     Comment: n.Body
                 });
@@ -124,7 +124,7 @@ class Do extends React.Component {
             .forEach(w => {
                 items.push({
                     group: T("Open windows"),
-                    url: self(w),
+                    url: w._self,
                     description: w.Name,
                     iconName: w._actions['default'].IconName,
                     iconStyle: windowIconStyle(w),
@@ -140,7 +140,7 @@ class Do extends React.Component {
                 .forEach(a => {
                     items.push({
                         group: T("Applications"),
-                        url: self(a),
+                        url: a._self,
                         description: a.Name + (a.Comment ? ' - ' + a.Comment : ''),
                         iconName: a.IconName,
                     })
@@ -152,7 +152,7 @@ class Do extends React.Component {
                 if (a.Description.toLowerCase().indexOf(term) > -1) {
                     let item = {
                         group: T("Leave"),
-                        url: self(this.resources.session) + "?action=" + id,
+                        url: this.resources.session._self + "?action=" + id,
                         description: a.Description,
                         iconName: a.IconName
                     };
@@ -168,13 +168,13 @@ class Do extends React.Component {
         if (!this.state["shown"]) {
             this.resources["windows"] = this.resources["applications"] = this.resources["session"] = [];
 
-            Axios.get(windowSearch).then(resp => {
-                this.resources.windows = resp.data;
+            Axios.get("/windows").then(resp => {
+                this.resources.windows = resp.data.filter(w => w.States.indexOf("_NET_WM_STATE_ABOVE") < 0);
                 this.filterAndSort()
             });
 
-            Axios.get(applicationSearch).then(resp => {
-                this.resources.applications = resp.data;
+            Axios.get("/applications").then(resp => {
+                this.resources.applications = resp.data.filter(app => ! app.NoDisplay);
                 this.filterAndSort()
             });
 
@@ -223,7 +223,7 @@ class Do extends React.Component {
         else if (this.state.flashNotifications.length > 0) {
             let content = []
             this.state.flashNotifications.forEach(n => {
-                let item = {url: self(n), description: n.Subject, Comment: n.Body}
+                let item = {url: n._self, description: n.Subject, Comment: n.Body}
                 content.push(<Item key={item.url} item={item}/>)
             })
             return <div>

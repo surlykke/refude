@@ -5,7 +5,7 @@
 // Please refer to the GPL2 file for a copy of the license.
 //
 import React from 'react'
-import { monitorUrl, getLink, self} from "../common/monitor";
+import { monitorUrl, getLink, self } from "../common/monitor";
 import { publish } from "../common/utils";
 import Axios from 'axios';
 
@@ -23,10 +23,10 @@ export class NotifierItem extends React.Component {
 
     render = () => {
         let showMenu = (event) => {
-            let buildMenu = (jsonMenu) => {
+            event.preventDefault()
+            if (this.state.item.Menu) {
                 let menu = new nw.Menu()
-                jsonMenu.Menu.forEach(jsonMenuItem => {
-
+                this.state.item.Menu.forEach(jsonMenuItem => {
                     let menuItem = new nw.MenuItem({
                         type: jsonMenuItem.Type === "separator" ? "separator" :
                             jsonMenuItem.ToggleType === "checkmark" ? "checkbox" :
@@ -39,17 +39,12 @@ export class NotifierItem extends React.Component {
                         menuItem.submenu = buildMenu(jsonMenuItem.SubMenus)
                     } else if (menuItem.type === "normal" || menuItem.type === "checkbox") {
                         menuItem.click = () => {
-                            Axios.post(self(this.state.item) + '?action=menu&id=' + jsonMenuItem.Id);
+                            Axios.post(this.state.item._self + '?action=menu&id=' + jsonMenuItem.Id);
                         }
                     }
                     menu.append(menuItem)
                 })
-                return menu
-            };
-
-            let href = getLink(this.state.item, "http://relations.refude.org/sni_menu")
-            if (href) {
-                Axios.get(href).then(resp => buildMenu(resp.data).popup(event.clientX, event.clientY));
+                menu.popup(event.clientX, event.clientY)
             }
         };
 
@@ -62,20 +57,16 @@ export class NotifierItem extends React.Component {
 
         let onClick = (event) => {
             event.persist()
+            event.preventDefault()
+
             let { x, y } = getXY(event)
             if (event.button === 0) {
-                let postUrl = self(this.state.item) + '?action=left&x=' + x + '&y=' + y;
+                let postUrl = this.state.item._self + '?action=left&x=' + x + '&y=' + y;
+                console.log("POST against", postUrl);
                 Axios.post(postUrl);
             } else if (event.button === 1) {
-                Axios.post(self(this.state.item) + '?action=middle&x=' + x + '&y=' + y);
-            }
-            event.preventDefault()
-        }
-
-        let getMenu = () => {
-            let link = this.state.item && this.state.item.Links.find(link => link.rel === "http://relations.refude.org/sni_menu")
-            if (link) {
-
+                console.log("POST against", this.state.item._self + '?action=middle&x=' + x + '&y=' + y)
+                Axios.post(this.state.item._self + '?action=middle&x=' + x + '&y=' + y);
             }
         }
 
@@ -87,7 +78,7 @@ export class NotifierItem extends React.Component {
         }
 
         let iconUrl = () => {
-            return 'http://localhost:7938/icon?name=' + this.state.item.IconName
+            return 'http://localhost:7938/icon/' + this.state.item.IconName + '/img'
         }
 
         return this.state.item ?
@@ -107,7 +98,7 @@ export class NotifierItems extends React.Component {
     }
 
     componentDidMount = () => {
-        monitorUrl("/items?brief", resp => this.setState({ itemPaths: resp.data }));
+        monitorUrl("/items/brief", resp => this.setState({ itemPaths: resp.data }));
     };
 
     componentDidUpdate = () => {
