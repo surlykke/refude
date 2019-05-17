@@ -5,7 +5,7 @@
 // Please refer to the GPL2 file for a copy of the license.
 //
 import React from 'react'
-import { monitorUrl, getLink, self } from "../common/monitor";
+import { monitorUrl} from "../common/monitor";
 import { publish } from "../common/utils";
 import Axios from 'axios';
 

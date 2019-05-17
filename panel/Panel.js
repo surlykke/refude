@@ -48,7 +48,7 @@ export default class Panel extends React.Component {
     constructor(props) {
         super(props)
         managePosition()
-        devtools();
+        // devtools();
     }
 
     componentDidMount = () => {

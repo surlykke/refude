@@ -85,7 +85,7 @@ export default class AppChooser extends React.Component {
             this.appMap[mimetypeId].filter(app => app.__rank < 1).sort((a1, a2) => a1.__rank - a2.__rank).forEach(app => {
                 items.push({
                     group: mimetypeId === 'other' ? T("Other applications") : T("Applications that handle " + this.mimetypeComment[mimetypeId]),
-                    url: self(app),
+                    url: app._self,
                     description: app.Name + (app.Comment ? ' - ' + app.Comment : ''),
                     iconName: app.IconName,
                     app: app
@@ -99,13 +99,13 @@ export default class AppChooser extends React.Component {
     launch = (app, always) => {
         console.log("Launching", app.Name)
         if (always) {
-            Axios.patch(self(mimetype), { DefaultApp: app.Id }).then(resp => {
-               Axios.post(self(app), { arg: filePath }).then(resp => {
+            Axios.patch(mimetype._self, { DefaultApp: app.Id }).then(resp => {
+               Axios.post(app._slef, { arg: filePath }).then(resp => {
                     gui.App.quit();
                 }); 
             });
         } else {
-            Axios.post(self(app) + "?arg=" + encodeURIComponent(filePath)).then(resp => {
+            Axios.post(app._self + "?arg=" + encodeURIComponent(filePath)).then(resp => {
                     gui.App.quit();
             });
         }
