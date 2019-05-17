@@ -1,68 +1,51 @@
 package resource
 
 import (
-	"sort"
-	"strings"
+	"net/http"
 	"sync"
+
+	"github.com/surlykke/RefudeServices/lib/requests"
 )
 
-type Selfie interface {
-	GetSelf() string
+// A resource is something that can handle an incoming http request, and has an etag
+type Res interface {
+	http.Handler
+	GetEtag() string // may be empty
 }
 
 type ResourceMap struct {
-	collections map[string]bool
-	resources   map[string]interface{}
+	resources map[string]Res
 	sync.Mutex
+	sync.Cond
 }
 
-func MakeResourceMap(collections ...string) *ResourceMap {
-	var rm = &ResourceMap{
-		collections: make(map[string]bool),
-		resources:   make(map[string]interface{}),
-	}
-	for _, collection := range collections {
-		rm.AddCollection(collection)
-	}
-	return rm
+func MakeResourceMap() *ResourceMap {
+	var resMap = &ResourceMap{}
+	resMap.resources = make(map[string]Res)
+	resMap.L = &sync.Mutex{}
+	return resMap
 }
 
-type resList []interface{}
-
-func (rl resList) Len() int      { return len(rl) }
-func (rl resList) Swap(i, j int) { rl[i], rl[j] = rl[j], rl[i] }
-func (rl resList) Less(i, j int) bool {
-	var sl1, ok1 = rl[i].(Selfie)
-	var sl2, ok2 = rl[j].(Selfie)
-	return ok1 && ok2 && (sl1.GetSelf() < sl2.GetSelf())
-}
-
-func (rm *ResourceMap) Get(path string) interface{} {
+func (rm *ResourceMap) Get(path string) Res {
 	rm.Lock()
 	defer rm.Unlock()
 
-	if rm.collections[path] {
-		var prefix = path[0:len(path)-1] + "/"
-		var prefixLen = len(prefix)
+	return rm.resources[path]
+}
 
-		var list = make([]interface{}, 0, len(rm.resources))
-		for p, res := range rm.resources {
-			if strings.HasPrefix(p, prefix) && strings.Index(p[prefixLen:], "/") == -1 {
-				if selfie, ok := res.(Selfie); ok {
-					list = append(list, selfie)
-				}
-			}
+func (rm *ResourceMap) LongGet(path string, etagList string) Res {
+	rm.L.Lock()
+	defer rm.L.Unlock()
+	for {
+		var res = rm.Get(path)
+		if res == nil || res.GetEtag() == "" || !requests.EtagMatch(res.GetEtag(), etagList) {
+			return res
 		}
-
-		sort.Sort(resList(list))
-
-		return list
-	} else {
-		return rm.resources[path]
+		rm.Wait()
 	}
 }
 
-func (rm *ResourceMap) Set(path string, res interface{}) {
+func (rm *ResourceMap) Set(path string, res Res) {
 	rm.Lock()
 	defer rm.Unlock()
 
@@ -80,25 +63,7 @@ func (rm *ResourceMap) Remove(path string) bool {
 	return false
 }
 
-func (rm *ResourceMap) RemoveIf(path string, cond func(interface{}) bool) bool {
-	rm.Lock()
-	defer rm.Unlock()
-
-	if res, ok := rm.resources[path]; ok && cond(res) {
-		delete(rm.resources, path)
-		return true
-	}
-	return false
-}
-
-func (rm *ResourceMap) AddCollection(path string) {
-	rm.Lock()
-	defer rm.Unlock()
-
-	rm.collections[path] = true
-}
-
-func (rm *ResourceMap) ReplaceAll(newcollection map[string]interface{}) {
+func (rm *ResourceMap) ReplaceAll(newcollection map[string]Res) {
 	rm.Lock()
 	defer rm.Unlock()
 

@@ -125,3 +125,8 @@ func GetMatcher(r *http.Request) (parser.Matcher, error) {
 		return nil, nil
 	}
 }
+
+func HaveParam(r *http.Request, paramName string) bool {
+	var _, ok = r.URL.Query()[paramName]
+	return ok
+}

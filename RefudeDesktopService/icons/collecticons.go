@@ -16,6 +16,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/surlykke/RefudeServices/lib/resource"
+
 	"github.com/surlykke/RefudeServices/lib/image"
 	"github.com/surlykke/RefudeServices/lib/slice"
 	"github.com/surlykke/RefudeServices/lib/xdg"
@@ -76,7 +78,7 @@ func addBaseDir(baseDir string) {
 				} else {
 					themes[themeName] = theme
 					themeIcons[themeName] = make(map[string]*Icon)
-					resourceMap.Set(theme.Self, &(*theme))
+					resourceMap.Set(theme.Self, resource.MakeJsonResource(theme))
 
 					for _, path := range unscannedDirectories[themeName] {
 						collectIconsForTheme(theme, path)
@@ -343,11 +345,12 @@ func publishFoundIcons() {
 			if icon := findIcon(themeName, iconName); icon != nil {
 				var resolvedIcon = &(*icon)
 				resolvedIcon.Init("/icon/"+themeName+"/"+iconName, "icon")
+				var jsonRes = resource.MakeJsonResource(resolvedIcon)
 				var iconImgResource = IconImgResource{images: resolvedIcon.Images}
-				resourceMap.Set(resolvedIcon.Self, resolvedIcon)
+				resourceMap.Set(resolvedIcon.Self, jsonRes)
 				resourceMap.Set(resolvedIcon.Self+"/img", iconImgResource)
 				if themeName == "oxygen" { // FIXME
-					resourceMap.Set("/icon/"+iconName, resolvedIcon)
+					resourceMap.Set("/icon/"+iconName, jsonRes)
 					resourceMap.Set("/icon/"+iconName+"/img", iconImgResource)
 				}
 			}

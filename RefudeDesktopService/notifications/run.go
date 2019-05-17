@@ -7,13 +7,16 @@
 package notifications
 
 import (
+	"sort"
 	"time"
 
 	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
-var notificationsMap = resource.MakeResourceMap("/notifications")
-var Notifications = resource.MakeJsonResourceServer(notificationsMap)
+var notifications = make(map[uint32]*Notification)
+
+var notificationsMap = resource.MakeResourceMap()
+var Notifications = resource.MakeServer(notificationsMap)
 
 var removals = make(chan removal)
 
@@ -21,20 +24,38 @@ func Run() {
 	var updates = make(chan *Notification)
 	go DoDBus(updates, removals)
 
+	updateCollections()
 	for {
 		select {
 		case notification := <-updates:
-			notificationsMap.Set(notificationSelf(notification.Id), notification)
+			notifications[notification.Id] = notification
+			notificationsMap.Set(notificationSelf(notification.Id), resource.MakeJsonResouceWithEtag(notification))
+			updateCollections()
 		case rem := <-removals:
 			var path = string(notificationSelf(rem.id))
-			if rem.reason == Expired && notificationsMap.RemoveIf(path, notificationIsExpired) ||
-				rem.reason == Dismissed && notificationsMap.Remove(path) ||
-				rem.reason == Closed && notificationsMap.Remove(path) {
+			if notification, ok := notifications[rem.id]; !ok {
+				continue
+			} else if rem.reason == Expired && !notificationIsExpired(notification) {
+				continue
+			} else {
+				delete(notifications, rem.id)
+				notificationsMap.Remove(path)
+				updateCollections()
 				conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", rem.id, rem.reason)
 			}
 		}
-
+		notificationsMap.Broadcast()
 	}
+}
+
+func updateCollections() {
+	var lst = make(resource.Selfielist, 0, len(notifications))
+	for _, notification := range notifications {
+		lst = append(lst, notification)
+	}
+	sort.Sort(lst)
+	notificationsMap.Set("/notifications", resource.MakeJsonResouceWithEtag(lst))
+	notificationsMap.Set("/notifications/brief", resource.MakeJsonResouceWithEtag(lst.GetSelfs()))
 }
 
 func notificationIsExpired(res interface{}) bool {

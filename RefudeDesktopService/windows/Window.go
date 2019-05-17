@@ -32,12 +32,12 @@ func windowSelf(windowId uint32) string {
 
 type WindowCollection struct{}
 
-func (wc WindowCollection) Get(path string) interface{} {
+func (wc WindowCollection) Get(path string) resource.Res {
 	if path == "/windows" {
 		if windows, err := getWindows(); err != nil {
 			return nil
 		} else {
-			return windows
+			return resource.MakeJsonResource(windows)
 		}
 	} else if !strings.HasPrefix(path, "/window/") {
 		return nil
@@ -48,8 +48,12 @@ func (wc WindowCollection) Get(path string) interface{} {
 		if err != nil {
 			return nil
 		}
-		return window
+		return resource.MakeJsonResource(window)
 	}
 }
 
-var Windows = resource.MakeJsonResourceServer(WindowCollection{})
+func (wc WindowCollection) LongGet(path string, etagList string) resource.Res {
+	return wc.Get(path)
+}
+
+var Windows = resource.MakeServer(WindowCollection{})

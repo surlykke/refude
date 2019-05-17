@@ -14,8 +14,8 @@ import (
 
 var BasedirSink = make(chan string)
 var IconSink = make(chan image.ARGBIcon)
-var resourceMap = resource.MakeResourceMap("/icons", "/themes")
-var Icons = resource.JsonResourceServer{ResourceRepo: resourceMap}
+var resourceMap = resource.MakeResourceMap()
+var Icons = resource.Server{ResourceRepo: resourceMap}
 
 func Run() {
 	addBaseDir(xdg.Home + "/.icons")

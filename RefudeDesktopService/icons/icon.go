@@ -98,3 +98,7 @@ func (iir IconImgResource) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	http.ServeFile(w, r, candidate.Path)
 }
+
+func (iir IconImgResource) GetEtag() string {
+	return ""
+}

@@ -7,33 +7,63 @@
 package statusnotifications
 
 import (
-	"fmt"
-	"time"
+	"sort"
+
+	"github.com/godbus/dbus"
 
 	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
-var resourceMap = &ItemRepo{*resource.MakeResourceMap("/items")}
-var Items = resource.MakeJsonResourceServer(resourceMap)
+var items = make(map[string]*Item)
+var resourceMap = resource.MakeResourceMap()
+var Items = resource.MakeServer(resourceMap)
 
 func Run() {
 	getOnTheBus()
 	go monitorSignals()
-	var started = time.Now().UnixNano()
 
+	// TODO After a restart, pick up those that where?
+
+	updateCollections()
 	for event := range events {
-		var elapsed = time.Now().UnixNano() - started
-		var secs = elapsed / 1000000000
-		var msecs = (elapsed - secs*1000000000) / 1000000
-		var mysecs = (elapsed - secs*1000000000 - msecs*100000) / 1000
 		var self = itemSelf(event.sender, event.path)
 		switch event.eventType {
-		case ItemUpdated, ItemCreated:
+		case ItemUpdated:
 			var item = buildItem(event.sender, event.path)
-			fmt.Printf("%d.%d.%d:Mapping %s\n", secs, msecs, mysecs, item.Self)
-			resourceMap.Set(item.Self, item)
+			items[item.Self] = item
+			resourceMap.Set(item.Self, resource.MakeJsonResouceWithEtag(item))
+		case MenuUpdated:
+			if itemPath := menuPath2ItemPath(event.sender, event.path); itemPath != "" {
+				var item = buildItem(event.sender, event.path)
+				items[item.Self] = item
+				resourceMap.Set(item.Self, resource.MakeJsonResouceWithEtag(item))
+
+			}
 		case ItemRemoved:
-			resourceMap.Remove(string(self))
+			resourceMap.Remove(self)
+			delete(items, self)
+		}
+		updateCollections()
+		resourceMap.Broadcast()
+	}
+}
+
+func updateCollections() {
+	var list = make(resource.Selfielist, 0, len(items))
+	for _, item := range items {
+		list = append(list, item)
+	}
+	sort.Sort(list)
+	resourceMap.Set("/items", resource.MakeJsonResouceWithEtag(list))
+	resourceMap.Set("/items/brief", resource.MakeJsonResouceWithEtag(list.GetSelfs()))
+}
+
+func menuPath2ItemPath(sender string, menuPath dbus.ObjectPath) dbus.ObjectPath {
+	for _, item := range items {
+		if item.sender == sender && item.menuPath == menuPath {
+			return item.itemPath
 		}
 	}
+
+	return ""
 }

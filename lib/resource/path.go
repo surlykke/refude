@@ -10,7 +10,7 @@ import (
 	"fmt"
 )
 
-/** transform a path to a standardized path
+/** Standardized path
  * Watered down version of path.Clean. Replace any sequence of '/' with single '/'
  * Remove ending '/'
  * We do not resolve '..', (so '/foo/../baa' is different from '/baa')

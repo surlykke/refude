@@ -46,11 +46,10 @@ func senderAndPath(serviceName string, sender dbus.Sender) (string, dbus.ObjectP
 /**
  * serviceId Can be a name of service or a path of object
  */
-func addItem(serviceName string, sender dbus.Sender) *dbus.Error {
-	var event = Event{eventType: ItemCreated}
+func addItem(serviceName string, sender dbus.Sender) {
+	var event = Event{eventType: ItemUpdated}
 	event.sender, event.path = senderAndPath(serviceName, sender)
 	events <- event
-	return nil
 }
 
 func monitorSignals() {
@@ -58,6 +57,7 @@ func monitorSignals() {
 	conn.Signal(dbusSignals)
 	addMatch := "org.freedesktop.DBus.AddMatch"
 	conn.BusObject().Call(addMatch, 0, "type='signal', interface='org.kde.StatusNotifierItem'")
+	conn.BusObject().Call(addMatch, 0, "type='signal', interface='com.canonical.dbusmenu'")
 	conn.BusObject().Call(addMatch, 0, "sender=org.freedesktop.DBus,path=/org/freedesktop/DBus,interface=org.freedesktop.DBus,member=NameOwnerChanged,type=signal")
 	for signal := range dbusSignals {
 		if signal.Name == "org.freedesktop.DBus.NameOwnerChanged" {
@@ -68,14 +68,14 @@ func monitorSignals() {
 			}
 		} else if strings.HasPrefix(signal.Name, "org.kde.StatusNotifierItem.New") {
 			events <- Event{eventType: ItemUpdated, sender: signal.Sender, path: signal.Path}
+		} else if strings.HasPrefix(signal.Name, "com.canonical.dbusmenu.") {
+			events <- Event{eventType: MenuUpdated, sender: signal.Sender, path: signal.Path}
 		}
 	}
 }
 
 func checkItemStatus(sender string) {
-	var items = resourceMap.Get("/items").([]interface{})
-	for _, res := range items {
-		var item = res.(*Item)
+	for _, item := range items {
 		if item.sender == sender {
 			if _, ok := dbuscall.GetSingleProp(conn, item.sender, item.itemPath, ITEM_INTERFACE, "Status"); !ok {
 				events <- Event{eventType: ItemRemoved, sender: item.sender, path: item.itemPath}
@@ -135,9 +135,9 @@ func getOnTheBus() {
 type EventType int
 
 const (
-	ItemCreated EventType = iota
+	ItemUpdated EventType = iota
 	ItemRemoved
-	ItemUpdated
+	MenuUpdated
 )
 
 type Event struct {
@@ -150,8 +150,7 @@ var events = make(chan Event)
 
 func updateWatcherProperties() {
 	ids := make([]string, 0, 20)
-	for _, res := range resourceMap.Get("/items").([]interface{}) {
-		var item = res.(*Item)
+	for _, item := range items {
 		ids = append(ids, item.sender+":"+string(item.itemPath))
 	}
 	watcherProperties.Set(WATCHER_INTERFACE, "RegisteredStatusItems", dbus.MakeVariant(ids))
@@ -170,8 +169,14 @@ func buildItem(sender string, path dbus.ObjectPath) *Item {
 	item.AttentionAccessibleDesc = getStringOr(props, "AttentionAccessibleDesc", "")
 	item.Title = getStringOr(props, "Title", "")
 	item.menuPath = getDbusPath(props, "Menu")
+	if item.menuPath != "" {
+		if menu, err := fetchMenu(sender, item.menuPath); err == nil {
+			item.Menu = menu
+		} else {
+			fmt.Println("error fetching menu:", err)
+		}
+	}
 	item.iconThemePath = getStringOr(props, "IconThemePath", "")
-	item.Menu = menuSelf(sender, item.menuPath)
 
 	if item.IconName == "" {
 		item.IconName = collectPixMap(props, "IconPixmap")
