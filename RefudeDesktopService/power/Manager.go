@@ -7,8 +7,6 @@
 package power
 
 import (
-	"fmt"
-
 	"github.com/godbus/dbus"
 	dbuscall "github.com/surlykke/RefudeServices/lib/dbusutils"
 	"github.com/surlykke/RefudeServices/lib/resource"
@@ -81,7 +79,6 @@ func buildSessionResource() *SessionResource {
 		}
 	}
 
-	fmt.Println("buildSessionResource returning:", session)
 	return session
 }
 

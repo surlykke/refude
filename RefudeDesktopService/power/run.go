@@ -22,7 +22,6 @@ func Run() {
 	var signals = subscribeToDeviceUpdates()
 
 	for _, device := range getDevices() {
-		fmt.Println("Setting device to", device.Self)
 		devices[device.Self] = device
 		powerMap.Set(device.Self, resource.MakeJsonResouceWithEtag(device))
 	}

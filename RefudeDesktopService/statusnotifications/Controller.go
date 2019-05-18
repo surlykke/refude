@@ -46,10 +46,11 @@ func senderAndPath(serviceName string, sender dbus.Sender) (string, dbus.ObjectP
 /**
  * serviceId Can be a name of service or a path of object
  */
-func addItem(serviceName string, sender dbus.Sender) {
+func addItem(serviceName string, sender dbus.Sender) *dbus.Error {
 	var event = Event{eventType: ItemUpdated}
 	event.sender, event.path = senderAndPath(serviceName, sender)
 	events <- event
+	return nil
 }
 
 func monitorSignals() {

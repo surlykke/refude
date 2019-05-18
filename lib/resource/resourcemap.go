@@ -29,7 +29,6 @@ func MakeResourceMap() *ResourceMap {
 func (rm *ResourceMap) Get(path string) Res {
 	rm.Lock()
 	defer rm.Unlock()
-
 	return rm.resources[path]
 }
 

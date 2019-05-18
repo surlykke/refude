@@ -69,7 +69,6 @@ func getDefaultApp(mimetypeid string) (string, error) {
 		fmt.Printf("Error getting mimetype : %v", err)
 		return "", err
 	} else {
-		fmt.Println("Mimetype:", mimetype)
 		return mimetype.DefaultApp, nil
 	}
 }

@@ -49,7 +49,6 @@ func itemSelf(sender string, path dbus.ObjectPath) string {
 }
 
 func (item *Item) POST(w http.ResponseWriter, r *http.Request) {
-
 	action := requests.GetSingleQueryParameter(r, "action", "left")
 	x, _ := strconv.Atoi(requests.GetSingleQueryParameter(r, "x", "0"))
 	y, _ := strconv.Atoi(requests.GetSingleQueryParameter(r, "y", "0"))

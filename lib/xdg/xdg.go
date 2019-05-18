@@ -7,12 +7,12 @@
 package xdg
 
 import (
-	"fmt"
-	"github.com/surlykke/RefudeServices/lib/slice"
 	"log"
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/surlykke/RefudeServices/lib/slice"
 )
 
 var Home string
@@ -42,12 +42,7 @@ func init() {
 	}
 }
 
-
 func RunCmd(argv []string) {
-	fmt.Println("runCmd")
-	for i := 0; i < len(argv); i++ {
-		fmt.Println(i, ":", argv[i])
-	}
 	var cmd = exec.Command(argv[0], argv[1:]...)
 
 	cmd.Dir = Home
@@ -61,7 +56,6 @@ func RunCmd(argv []string) {
 
 	go cmd.Wait() // TODO Transfer parenthood to proc 1
 }
-
 
 func notEmptyOr(primary string, secondary string) string {
 	if primary != "" {

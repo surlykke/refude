@@ -26,7 +26,6 @@ func Run() {
 
 	updateCollections()
 	for event := range events {
-		var self = itemSelf(event.sender, event.path)
 		switch event.eventType {
 		case ItemUpdated:
 			var item = buildItem(event.sender, event.path)
@@ -34,12 +33,13 @@ func Run() {
 			resourceMap.Set(item.Self, resource.MakeJsonResouceWithEtag(item))
 		case MenuUpdated:
 			if itemPath := menuPath2ItemPath(event.sender, event.path); itemPath != "" {
-				var item = buildItem(event.sender, event.path)
+				var item = buildItem(event.sender, itemPath)
 				items[item.Self] = item
 				resourceMap.Set(item.Self, resource.MakeJsonResouceWithEtag(item))
 
 			}
 		case ItemRemoved:
+			var self = itemSelf(event.sender, event.path)
 			resourceMap.Remove(self)
 			delete(items, self)
 		}

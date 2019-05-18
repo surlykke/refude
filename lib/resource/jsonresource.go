@@ -25,10 +25,6 @@ func MakeJsonResouceWithEtag(data interface{}) *JsonResource {
 }
 
 func (jr *JsonResource) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("JsonResource doing", r.Method, r.URL.EscapedPath())
-	if r.Method == "POST" {
-		fmt.Println("JsonResource, posting, data:", jr.data)
-	}
 	if r.Method == "GET" {
 		if statusCode := requests.CheckEtag(r, jr.etag); statusCode != 0 {
 			w.WriteHeader(statusCode)
