@@ -29,6 +29,8 @@ func Run() {
 	var session = buildSessionResource()
 	powerMap.Set(session.Self, resource.MakeJsonResource(session))
 
+	updateCollections()
+
 	for signal := range signals {
 		if signal.Name == "org.freedesktop.DBus.Properties.PropertiesChanged" {
 			var path = deviceSelf(signal.Path)
