@@ -5,28 +5,29 @@
 // Please refer to the GPL2 file for a copy of the license.
 //
 import React from 'react'
-import { monitorUrl} from "../common/monitor";
+import { monitorUrl, postUrl } from "../common/monitor";
 import { publish } from "../common/utils";
-import Axios from 'axios';
 
 export class NotifierItem extends React.Component {
     constructor(props) {
         super(props);
-        this.state = {};
+        console.log("Constructor, props:", props)
+        this.state = { item: props.item };
     }
 
-    componentDidMount = () => {
-        monitorUrl(this.props.path, resp => {
-            this.setState({ item: resp.data })
-        });
-    }
+    componentWillReceiveProps = (props) => {
+        console.log("receiveProps:", props)
+        this.setState({ item: props.item });
+    };
+
 
     render = () => {
         let showMenu = (event) => {
+            console.log("Into showMenu, this.state.item.Menu:", this.state.item.Menu)
             event.preventDefault()
-            if (this.state.item.Menu) {
+            let buildMenu = (jsonMenu) => {
                 let menu = new nw.Menu()
-                this.state.item.Menu.forEach(jsonMenuItem => {
+                jsonMenu.forEach(jsonMenuItem => {
                     let menuItem = new nw.MenuItem({
                         type: jsonMenuItem.Type === "separator" ? "separator" :
                             jsonMenuItem.ToggleType === "checkmark" ? "checkbox" :
@@ -39,14 +40,23 @@ export class NotifierItem extends React.Component {
                         menuItem.submenu = buildMenu(jsonMenuItem.SubMenus)
                     } else if (menuItem.type === "normal" || menuItem.type === "checkbox") {
                         menuItem.click = () => {
-                            Axios.post(this.state.item._self + '?action=menu&id=' + jsonMenuItem.Id);
+                            console.log("Post:", this.state.item._self + '?action=menu&id=' + jsonMenuItem.Id)
+                            postUrl(this.state.item._self + '?action=menu&id=' + jsonMenuItem.Id, resp => {
+                                console.log("resp:", resp)
+                            })
                         }
                     }
                     menu.append(menuItem)
                 })
-                menu.popup(event.clientX, event.clientY)
+                
+                return menu
             }
-        };
+
+            if (this.state.item.Menu) {
+                let m = buildMenu(this.state.item.Menu)
+                m.popup(event.clientX, event.clientY)
+            }
+        }
 
         let getXY = (event) => {
             return {
@@ -61,12 +71,12 @@ export class NotifierItem extends React.Component {
 
             let { x, y } = getXY(event)
             if (event.button === 0) {
-                let postUrl = this.state.item._self + '?action=left&x=' + x + '&y=' + y;
-                console.log("POST against", postUrl);
-                Axios.post(postUrl);
+                let url = this.state.item._self + '?action=left&x=' + x + '&y=' + y;
+                console.log("POST against", url);
+                postUrl(url);
             } else if (event.button === 1) {
                 console.log("POST against", this.state.item._self + '?action=middle&x=' + x + '&y=' + y)
-                Axios.post(this.state.item._self + '?action=middle&x=' + x + '&y=' + y);
+                postUrl(this.state.item._self + '?action=middle&x=' + x + '&y=' + y);
             }
         }
 
@@ -92,13 +102,13 @@ export class NotifierItem extends React.Component {
 export class NotifierItems extends React.Component {
     constructor(props) {
         super(props)
-        this.state = { itemPaths: [] };
+        this.state = { items: [] };
         this.style = Object.assign({}, props.style);
         this.style.margin = "0px";
     }
 
     componentDidMount = () => {
-        monitorUrl("/items/brief", resp => this.setState({ itemPaths: resp.data }));
+        monitorUrl("/items", resp => this.setState({ items: resp.data }), err => this.setState({ items: [] }));
     };
 
     componentDidUpdate = () => {
@@ -107,7 +117,7 @@ export class NotifierItems extends React.Component {
 
     render = () => {
         return <div style={this.style}>
-            {this.state.itemPaths.map(path => (<NotifierItem key={path} path={path} />))}
+            {this.state.items.map(item => (<NotifierItem key={item._self} item={item} />))}
         </div>
     }
 

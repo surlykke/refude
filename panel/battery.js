@@ -15,8 +15,6 @@ import React from 'react'
 import { publish } from "../common/utils";
 import { monitorUrl } from '../common/monitor';
 
-const axios = require('axios')
-
 /**
  * We represent charge by a circle segment (cf https://en.wikipedia.org/wiki/Circular_segment)
  * The segment is constructed so that:

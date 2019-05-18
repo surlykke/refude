@@ -12,14 +12,16 @@
  * Please refer to the LICENSE file for a copy of the license.
  */
 import React from 'react'
-import {devtools, managePosition, subscribe} from '../common/utils'
-import {Clock} from './clock'
-import {Battery} from './battery'
-import {NotifierItems} from './notifieritems'
-import {Notificationalert} from "./notificationalert";
-import {DragField} from './dragfield'
-import {CloseButton} from "./closebutton";
-import {Do} from './do'
+import { devtools, managePosition, subscribe } from '../common/utils'
+import { Clock } from './clock'
+import { Battery } from './battery'
+import { NotifierItems } from './notifieritems'
+import { Notificationalert } from "./notificationalert";
+import { DragField } from './dragfield'
+import { CloseButton } from "./closebutton";
+import { Do } from './do'
+
+const http = require('http');
 
 const Window = nw.Window.get();
 
@@ -60,7 +62,7 @@ export default class Panel extends React.Component {
     adjustSize = () => {
         setTimeout(
             () => {
-                let {width, height} = this.content.getBoundingClientRect()
+                let { width, height } = this.content.getBoundingClientRect()
                 Window.resizeTo(Math.round(width) - 1, Math.round(height))
             },
             10
@@ -68,14 +70,14 @@ export default class Panel extends React.Component {
     };
 
     render = () => {
-        return <div style={{width: "500px"}}>
+        return <div style={{ width: "500px" }}>
             <div style={style} id="content" ref={div => { this.content = div }}>
-                <Clock style={pluginStyle}/>
-                <NotifierItems style={pluginStyle}/>
-                <Battery style={pluginStyle}/>
-                <DragField style={pluginStyle}/>
-                <CloseButton style={pluginStyle}/>
-                <Do/>
+                <Clock style={pluginStyle} />
+                <NotifierItems style={pluginStyle} />
+                <Battery style={pluginStyle} />
+                <DragField style={pluginStyle} />
+                <CloseButton style={pluginStyle} />
+                <Do />
             </div>
         </div>
     }

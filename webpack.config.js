@@ -1,6 +1,7 @@
 const WebpackShellPlugin = require('webpack-shell-plugin');
 
 module.exports = {
+	devtool: "source-map",
     module: {
         rules: [
             {
@@ -24,7 +25,7 @@ module.exports = {
     entry: {
         panel: './panel/index.js',
         appchooser: './appchooser/index.js',
-        /*test: './test/index.js'*/
+//        test: './test/index.js'
     },
     target: 'node',
     output: {

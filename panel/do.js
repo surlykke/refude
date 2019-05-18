@@ -11,15 +11,14 @@ import { ItemList } from "../common/itemlist"
 import { Item } from "../common/item"
 import { Indicator } from "./indicator";
 import { T } from "../common/translate";
-import { monitorUrl } from '../common/monitor';
-import Axios from 'axios';
+import { monitorUrl, getUrl, postUrl } from '../common/monitor';
 
-Axios.defaults.baseURL = "http://localhost:7938"
+const http = require('http');
 
 const windowSearch = "/windows?q=" + encodeURIComponent('not r.States[%] eq _NET_WM_STATE_ABOVE')
 const applicationSearch = "/applications?q=" + encodeURIComponent('not r.NoDisplay eq true')
 
-const http = require('http');
+
 let windowIconStyle = w => {
     let style = {
         WebkitFilter: "drop-shadow(5px 5px 3px grey)",
@@ -167,18 +166,17 @@ class Do extends React.Component {
     showWin = () => {
         if (!this.state["shown"]) {
             this.resources["windows"] = this.resources["applications"] = this.resources["session"] = [];
-
-            Axios.get("/windows").then(resp => {
+            getUrl("/windows", resp => {
                 this.resources.windows = resp.data.filter(w => w.States.indexOf("_NET_WM_STATE_ABOVE") < 0);
                 this.filterAndSort()
             });
 
-            Axios.get("/applications").then(resp => {
+            getUrl("/applications", resp => {
                 this.resources.applications = resp.data.filter(app => ! app.NoDisplay);
                 this.filterAndSort()
             });
 
-            Axios.get("/session").then(resp => {
+            getUrl("/session", resp => {
                 this.resources.session = resp.data
             });
 
@@ -193,7 +191,7 @@ class Do extends React.Component {
     };
 
     execute = (item) => {
-        Axios.post(item.url).then(response => {
+        postUrl(item.url, response => {
             this.onDismiss();
         })
     };
