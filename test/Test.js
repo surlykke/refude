@@ -16,8 +16,16 @@ export default class Test extends React.Component {
     }
 
     componentDidMount = () => {
-        Axios({socketPath: '/run/user/1000/org.refude.desktop-service', url: "http:/localhost/device/DisplayDevice"}).then(resp => {
-            this.setState({dd: resp.data})
+        Axios.get('http://localhost:7938/device/DisplayDevice').then(resp => {
+            let etag = resp.headers.etag
+            console.log("etag:" + etag)
+            let headers = {"If-None-Match": etag}
+            for (let i = 0; i < 30; i++) {
+                console.log("Getting...")
+                Axios.get('http://localhost:7938/device/DisplayDevice?longpoll', {headers: headers}).then(resp => {
+                    console.log("Got", i)
+                })
+            }
         });
     }
 
