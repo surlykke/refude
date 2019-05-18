@@ -22,7 +22,7 @@ func MakeServer(repo ResourceRepo) Server {
 }
 
 func (jrs Server) ServeHTTP(w http.ResponseWriter, r *http.Request) bool {
-	var path = r.URL.EscapedPath()
+	var path = r.URL.Path
 	var res Res
 	if r.Method == "GET" && requests.HaveParam(r, "longpoll") {
 		res = jrs.LongGet(path, r.Header.Get("If-None-Match"))

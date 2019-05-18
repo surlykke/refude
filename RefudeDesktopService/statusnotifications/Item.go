@@ -11,9 +11,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"net/url"
 	"reflect"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/godbus/dbus"
@@ -45,7 +45,7 @@ func MakeItem(sender string, path dbus.ObjectPath) *Item {
 }
 
 func itemSelf(sender string, path dbus.ObjectPath) string {
-	return fmt.Sprintf("/item/%s", url.PathEscape(sender+string(path)))
+	return fmt.Sprintf("/item/%s", strings.Replace(sender+string(path), "/", "-", -1))
 }
 
 func (item *Item) POST(w http.ResponseWriter, r *http.Request) {
