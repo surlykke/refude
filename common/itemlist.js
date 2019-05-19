@@ -73,7 +73,7 @@ export class ItemList extends React.Component {
 
     setSelected = (item) => {
         this.setState({selectedUrl: item ? item.url : undefined});
-        publish("boundsBecame", item ? item.bounds : undefined);
+        publish("windowSelected", item ? item.w : undefined);
     };
 
     getSelected = () => {

@@ -137,7 +137,7 @@ class Do extends React.Component {
                     description: w.Name,
                     iconName: w._actions['default'].IconName,
                     iconStyle: windowIconStyle(w),
-                    bounds: { X: w.X, Y: w.Y, W: w.W, H: w.H }
+                    w: w
                 });
             });
 

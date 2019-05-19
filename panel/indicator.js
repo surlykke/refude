@@ -12,8 +12,8 @@ export class Indicator extends React.Component {
 
     componentDidMount = () => {
         console.log("Indicator did mount")
-        subscribe("boundsBecame", bounds => {
-            this.setState({bounds: bounds});
+        subscribe("windowSelected", w => {
+            this.setState({window: w});
         });
     }
 
@@ -49,12 +49,12 @@ export class Indicator extends React.Component {
 
 
     render = () => {
-        let {bounds} = this.state;
-        if (bounds) {
+        let {window} = this.state;
+        if (window) {
             let viewBox = `${this.display.x - 3} ${this.display.y - 3} ${this.display.w + 6} ${this.display.h + 6}`;
             let rects = this.screens.map((scr, i) => <rect key={`screenRect_${i}`} x={scr.x} y={scr.y} width={scr.w} height={scr.h} fill="lightgrey"/>);
-            rects.push(<rect key="winRect" x={bounds.X} y={bounds.Y} width={bounds.W} height={bounds.H} fill="grey" />);
-
+            //rects.push(<rect key="winRect" x={window.X} y={window.Y} width={window.W} height={window.H} fill="grey" />);
+            rects.push(<image key="winRect" x={window.X} y={window.Y} width={window.W} height={window.H} xlinkHref={"http://localhost:7938/windmp/" + window.Id}/>);
             return <svg key="windows" xmlns="http://www.w3.org/2000/svg" width="calc(100% - 16px)" style={{margin: "8px"}} viewBox={viewBox}>
                 {rects}
             </svg>;
