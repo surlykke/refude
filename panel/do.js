@@ -37,13 +37,19 @@ let windowIconStyle = w => {
     return style
 };
 
+
+let filterOutOld = (notificationlist) => {
+    let twentySecondsAgo = new Date().getTime() - 20000
+    return notificationlist.filter(n => Date.parse(n.Created) > twentySecondsAgo)
+}
+
 class Do extends React.Component {
     constructor(props) {
         //devtools();
         super(props);
         this.resources = { notifications: [], windows: [], applications: [] };
         this.term = "";
-        this.state = { items: [], flashNotifications: [] };
+        this.state = { items: [], notifications: [] };
         this.display = { x: 0, y: 0, w: 100, h: 100 };
 
         this.listenForUpDown();
@@ -55,25 +61,29 @@ class Do extends React.Component {
         subscribe("itemLaunched", this.execute);
         subscribe("dismiss", this.onDismiss);
 
-
-        let updateFlashNotifications = () => {
-            let fiveSecondsAgo = new Date().getTime() - 5000
-            let tmp = this.resources.notifications.filter(n => Date.parse(n.Created) > fiveSecondsAgo)
-            if (tmp.length > 0 || this.state.flashNotifications.length > 0) {
-                this.setState({ flashNotifications: tmp})
-            }
-            setTimeout(updateFlashNotifications, 1000)
-        }
-        updateFlashNotifications()
-
+        console.log("monitorUrl /notifications")
         monitorUrl("/notifications", resp => {
-            this.resources.notifications = resp.data
-            if (this.state.shown) {
-                this.filterAndSort()
-            }
+            console.log("Something happened to notificatoins")
+            this.setState({notifications: filterOutOld(resp.data) })
+            this.state.shown && this.filterAndSort()
+            this.monitorNotifications()
         });
     };
 
+    notificationsAreMonitored = false
+    monitorNotifications = () => {
+        console.log("monitorNotifications")
+        if (this.notificationsAreMonitored || this.state.notifications.length === 0) {
+            return
+        }
+        this.notificationsAreMonitored = true
+        setTimeout(() => {
+            this.notificationsAreMonitored = false
+            this.setState({notifications: filterOutOld(this.state.notifications)})
+            this.monitorNotifications()
+        }, 
+        1000)
+    }
 
     componentDidUpdate = () => {
         publish("componentUpdated");
@@ -218,9 +228,9 @@ class Do extends React.Component {
 
             ];
         }
-        else if (this.state.flashNotifications.length > 0) {
+        else if (this.state.notifications.length > 0) {
             let content = []
-            this.state.flashNotifications.forEach(n => {
+            this.state.notifications.forEach(n => {
                 let item = {url: n._self, description: n.Subject, Comment: n.Body}
                 content.push(<Item key={item.url} item={item}/>)
             })

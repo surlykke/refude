@@ -13,7 +13,6 @@ export let monitorUrl = (path, dataHandler, errorHandler) => {
     let getIfNoneMatch = () => {
         let headers = { "If-None-Match": etag };
         let validateStatus = status => status === 404 || status === 304 || status < 300
-
         Axios.get(`http://localhost:7938${path}?longpoll`, { headers: headers, validateStatus: validateStatus }).then(resp => {
             if (resp.status == 404) {
                 // resource must have gone away - stop monitoring
@@ -25,6 +24,7 @@ export let monitorUrl = (path, dataHandler, errorHandler) => {
             getIfNoneMatch()
         }).catch(err => {
             // Something more wicked - could be RefudeServices are down. We wait a bit befor trying again
+            console.log(err)
             etag = undefined
             errorHandler && errorHandler(err)
             setTimeout(getIfNoneMatch, 10000)
