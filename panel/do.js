@@ -117,7 +117,7 @@ class Do extends React.Component {
         let term = this.term.toLowerCase();
 
         let items = [];
-        this.resources.notifications
+        this.state.notifications
             .filter(n => n.Subject.toLowerCase().indexOf(term) > -1 || n.Body.toLowerCase().indexOf(term) > -1)
             .forEach(n => {
                 items.push({
