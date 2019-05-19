@@ -149,11 +149,11 @@ func makeNotifyFunction(notifications chan *Notification) interface{} {
 
 		if expire_timeout > 0 {
 			notification.Expires = notification.Created.Add(time.Millisecond * time.Duration(expire_timeout))
-			// Problem with seconds and such? Think not.
-			time.AfterFunc(notification.Expires.Sub(notification.Created)+time.Millisecond, func() {
-				removals <- removal{notification.Id, Expired}
-			})
 		}
+
+		time.AfterFunc(time.Minute*61, func() {
+			reaper <- notification.Id
+		})
 
 		// Add a dismiss action
 		var notificationId = notification.Id

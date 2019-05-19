@@ -19,6 +19,7 @@ var notificationsMap = resource.MakeResourceMap()
 var Notifications = resource.MakeServer(notificationsMap)
 
 var removals = make(chan removal)
+var reaper = make(chan uint32)
 
 func Run() {
 	var updates = make(chan *Notification)
@@ -33,9 +34,7 @@ func Run() {
 			updateCollections()
 		case rem := <-removals:
 			var path = string(notificationSelf(rem.id))
-			if notification, ok := notifications[rem.id]; !ok {
-				continue
-			} else if rem.reason == Expired && !notificationIsExpired(notification) {
+			if _, ok := notifications[rem.id]; !ok {
 				continue
 			} else {
 				delete(notifications, rem.id)
@@ -43,19 +42,34 @@ func Run() {
 				updateCollections()
 				conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", rem.id, rem.reason)
 			}
+		case id := <-reaper:
+			if n, ok := notifications[id]; ok {
+				var now = time.Now()
+				var age = now.Sub(n.Created)
+				if age < time.Hour {
+					time.AfterFunc(time.Minute*61-age, func() {
+						reaper <- n.Id
+					})
+				} else {
+					delete(notifications, id)
+					conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", id, Expired)
+				}
+				updateCollections()
+			}
 		}
 		notificationsMap.Broadcast()
 	}
 }
 
 func updateCollections() {
-	var lst = make(resource.Selfielist, 0, len(notifications))
+	var all = make(resource.Selfielist, 0, len(notifications))
 	for _, notification := range notifications {
-		lst = append(lst, notification)
+		all = append(all, notification)
 	}
-	sort.Sort(lst)
-	notificationsMap.Set("/notifications", resource.MakeJsonResouceWithEtag(lst))
-	notificationsMap.Set("/notifications/brief", resource.MakeJsonResouceWithEtag(lst.GetSelfs()))
+	sort.Sort(all)
+	notificationsMap.Set("/notifications", resource.MakeJsonResouceWithEtag(all))
+	notificationsMap.Set("/notifications/brief", resource.MakeJsonResouceWithEtag(all.GetSelfs()))
+
 }
 
 func notificationIsExpired(res interface{}) bool {
