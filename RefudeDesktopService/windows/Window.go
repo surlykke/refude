@@ -8,8 +8,11 @@ package windows
 
 import (
 	"fmt"
+	"net/http"
 	"strconv"
 	"strings"
+
+	"github.com/surlykke/RefudeServices/RefudeDesktopService/windows/xlib"
 
 	"github.com/surlykke/RefudeServices/lib/resource"
 )
@@ -32,6 +35,23 @@ func windowSelf(windowId uint32) string {
 
 type WindowCollection struct{}
 
+type WinDmpResource uint32
+
+func (wdr WinDmpResource) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("Call xlib.GetScreenshotAsPng", wdr)
+	if bytes, err := xlib.GetScreenshotAsPng(uint32(wdr)); err == nil {
+		w.Header().Set("Content-Type", "image/png")
+		w.Write(bytes)
+	} else {
+		fmt.Println("Error getting screenshot:", err)
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+}
+
+func (wdr WinDmpResource) GetEtag() string {
+	return ""
+}
+
 func (wc WindowCollection) Get(path string) resource.Res {
 	if path == "/windows" {
 		if windows, err := getWindows(); err != nil {
@@ -39,16 +59,25 @@ func (wc WindowCollection) Get(path string) resource.Res {
 		} else {
 			return resource.MakeJsonResource(windows)
 		}
-	} else if !strings.HasPrefix(path, "/window/") {
-		return nil
-	} else if id, err := strconv.ParseUint(string(path[len("/window/"):]), 10, 32); err != nil {
-		return nil
-	} else {
-		window, err := getWindow(uint32(id))
-		if err != nil {
+	} else if strings.HasPrefix(path, "/window/") {
+		if id, err := strconv.ParseUint(string(path[len("/window/"):]), 10, 32); err != nil {
 			return nil
+		} else {
+			window, err := getWindow(uint32(id))
+			if err != nil {
+				return nil
+			}
+			return resource.MakeJsonResource(window)
 		}
-		return resource.MakeJsonResource(window)
+	} else if strings.HasPrefix(path, "/windmp/") {
+		fmt.Println("ParseUint on", path[len("/windmp/"):])
+		if id, err := strconv.ParseUint(string(path[len("/windmp/"):]), 10, 32); err != nil {
+			return nil
+		} else {
+			return WinDmpResource(id)
+		}
+	} else {
+		return nil
 	}
 }
 

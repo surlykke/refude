@@ -16,12 +16,15 @@ package xlib
 #include <string.h>
 #include <stdio.h>
 #include <X11/Xlib.h>
+#include <X11/Xutil.h>
+
 // Cant use 'type' in Go, hence...
 inline int getType(XEvent* e) { return e->type; }
 
 // Using C macros in Go seems tricky, so..
 inline int ds(Display* d) { return DefaultScreen(d); }
 inline Window rw(Display *d, int screen) { return RootWindow(d, screen); }
+inline unsigned long gp(XImage* img, int x, int y) {return XGetPixel(img, x, y); }
 
 // Accessing a field inside a union inside a struct from Go is messy. Hence these helpers
 inline XConfigureEvent* xconfigure(XEvent* e) { return &(e->xconfigure); }
@@ -59,8 +62,12 @@ int forgiving_X_error_handler(Display *d, XErrorEvent *e)
 */
 import "C"
 import (
+	"bytes"
 	"errors"
 	"fmt"
+	"image"
+	"image/color"
+	"image/png"
 	"log"
 	"sync"
 	"unsafe"
@@ -291,6 +298,7 @@ func GetParent(wId uint32) (uint32, error) {
 	return getParent(wId)
 }
 
+// returns X,Y,W,H
 func GetGeometry(wId uint32) (int32, int32, uint32, uint32, error) {
 	mutex.Lock()
 	defer mutex.Unlock()
@@ -334,6 +342,33 @@ func RaiseAndFocusWindow(wId uint32) {
 	var mask C.long = C.SubstructureRedirectMask | C.SubstructureNotifyMask
 	C.XSendEvent(display, rootWindow, 0, mask, &event)
 	C.XFlush(display)
+}
+
+func GetScreenshotAsPng(wId uint32) ([]byte, error) {
+	var _, _, w, h, err = getGeometry(wId)
+	if err != nil {
+		return nil, err
+	}
+
+	var ximage = C.XGetImage(display, C.ulong(wId), C.int(0), C.int(0), C.uint(w), C.uint(h), C.AllPlanes, C.ZPixmap)
+	if ximage == nil {
+		return nil, fmt.Errorf("Unable to retrieve screendump for %d", wId)
+	}
+	pngData := image.NewRGBA(image.Rect(0, 0, int(w), int(h)))
+
+	for i := 0; i < int(w); i++ {
+		for j := 0; j < int(h); j++ {
+			var pixel = C.gp(ximage, C.int(i), C.int(j))
+			pngData.Set(i, j, color.RGBA{R: uint8((pixel >> 16) & 255), G: uint8((pixel >> 8) & 255), B: uint8(pixel & 255), A: 255})
+		}
+	}
+
+	buf := &bytes.Buffer{}
+	if err := png.Encode(buf, pngData); err == nil {
+		return buf.Bytes(), nil
+	} else {
+		return nil, err
+	}
 }
 
 func CheckError(error C.int) error {
