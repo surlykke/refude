@@ -38,7 +38,6 @@ type WindowCollection struct{}
 type WinDmpResource uint32
 
 func (wdr WinDmpResource) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Call xlib.GetScreenshotAsPng", wdr)
 	if bytes, err := xlib.GetScreenshotAsPng(uint32(wdr)); err == nil {
 		w.Header().Set("Content-Type", "image/png")
 		w.Write(bytes)
@@ -70,7 +69,6 @@ func (wc WindowCollection) Get(path string) resource.Res {
 			return resource.MakeJsonResource(window)
 		}
 	} else if strings.HasPrefix(path, "/windmp/") {
-		fmt.Println("ParseUint on", path[len("/windmp/"):])
 		if id, err := strconv.ParseUint(string(path[len("/windmp/"):]), 10, 32); err != nil {
 			return nil
 		} else {

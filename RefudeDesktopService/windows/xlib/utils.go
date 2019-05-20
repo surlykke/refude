@@ -345,6 +345,9 @@ func RaiseAndFocusWindow(wId uint32) {
 }
 
 func GetScreenshotAsPng(wId uint32) ([]byte, error) {
+	mutex.Lock()
+	defer mutex.Unlock()
+
 	var _, _, w, h, err = getGeometry(wId)
 	if err != nil {
 		return nil, err
@@ -354,17 +357,40 @@ func GetScreenshotAsPng(wId uint32) ([]byte, error) {
 	if ximage == nil {
 		return nil, fmt.Errorf("Unable to retrieve screendump for %d", wId)
 	}
-	pngData := image.NewRGBA(image.Rect(0, 0, int(w), int(h)))
+	pngData := image.NewRGBA(image.Rect(0, 0, int(w/3), int(h/3)))
 
-	for i := 0; i < int(w); i++ {
-		for j := 0; j < int(h); j++ {
+	/*var fingerPrint = make([]byte, 0, w*h/10)
+	var count = 0
+	for x := 0; x < int(w); x++ {
+
+		for y := 0; y < int(h); y++ {
+			if count == 0 {
+				var pixel = C.gp(ximage, C.int(x), C.int(y))
+				fingerPrint = append(fingerPrint, uint8((pixel>>16)&255))
+				fingerPrint = append(fingerPrint, uint8((pixel>>8)&255))
+				fingerPrint = append(fingerPrint, uint8(pixel&255))
+			}
+			count++
+			if count >= 30 {
+				count = 0
+			}
+		}
+	}
+
+	var sha = fmt.Sprintf("%X", sha1.Sum(fingerPrint))*/
+
+	for i := 0; i < int(w); i = i + 3 {
+		for j := 0; j < int(h); j = j + 3 {
 			var pixel = C.gp(ximage, C.int(i), C.int(j))
-			pngData.Set(i, j, color.RGBA{R: uint8((pixel >> 16) & 255), G: uint8((pixel >> 8) & 255), B: uint8(pixel & 255), A: 255})
+			pngData.Set(i/3, j/3, color.RGBA{R: uint8((pixel >> 16) & 255), G: uint8((pixel >> 8) & 255), B: uint8(pixel & 255), A: 255})
 		}
 	}
 
 	buf := &bytes.Buffer{}
-	if err := png.Encode(buf, pngData); err == nil {
+	var encoder = &png.Encoder{
+		CompressionLevel: png.NoCompression,
+	}
+	if err := encoder.Encode(buf, pngData); err == nil {
 		return buf.Bytes(), nil
 	} else {
 		return nil, err
