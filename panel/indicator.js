@@ -10,11 +10,14 @@ export class Indicator extends React.Component {
         this.getScreenLayout();
     }
 
+    selectorShown = 0
+
     componentDidMount = () => {
         console.log("Indicator did mount")
         subscribe("windowSelected", w => {
             this.setState({window: w});
         });
+        subscribe("selectorShown", ss => this.selectorShown = ss)
     }
 
     getScreenLayout = () => {
@@ -54,7 +57,9 @@ export class Indicator extends React.Component {
             let viewBox = `${this.display.x - 3} ${this.display.y - 3} ${this.display.w + 6} ${this.display.h + 6}`;
             let rects = this.screens.map((scr, i) => <rect key={`screenRect_${i}`} x={scr.x} y={scr.y} width={scr.w} height={scr.h} fill="lightgrey"/>);
             //rects.push(<rect key="winRect" x={window.X} y={window.Y} width={window.W} height={window.H} fill="grey" />);
-            rects.push(<image key="winRect" x={window.X} y={window.Y} width={window.W} height={window.H} xlinkHref={"http://localhost:7938/windmp/" + window.Id}/>);
+            let {X, Y, W, H} = window
+            let imgUrl=`http://localhost:7938/windmp/${window.Id}?${this.selectorShown}`
+            rects.push(<image key="winRect" x={X} y={Y} width={W} height={H} xlinkHref={imgUrl}/>);
             return <svg key="windows" xmlns="http://www.w3.org/2000/svg" width="calc(100% - 16px)" style={{margin: "8px"}} viewBox={viewBox}>
                 {rects}
             </svg>;

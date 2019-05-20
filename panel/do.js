@@ -173,6 +173,7 @@ class Do extends React.Component {
         this.setState({ items: items });
     };
 
+    selectorShown = 0
     showWin = () => {
         if (!this.state["shown"]) {
             this.resources["windows"] = this.resources["applications"] = this.resources["session"] = [];
@@ -191,6 +192,8 @@ class Do extends React.Component {
             });
 
             this.setState({ "shown": true });
+            this.selectorShown = new Date().getTime()
+            publish("selectorShown", this.selectorShown)
         }
         WIN.focus();
     };
@@ -218,8 +221,14 @@ class Do extends React.Component {
 
     render = () => {
         let itemListStyle = { maxWidth: "300px", maxHeight: "300px" };
+        let prefetch = this.resources.windows.map(w => {
+            let imgUrl = `http://localhost:7938/windmp/${w.Id}?${this.selectorShown}`
+            return <link rel="prefetch" href={imgUrl}/>
+        }
+)
         if (this.state.shown) {
             return [
+                ...prefetch, 
                 <ItemList key="itemlist"
                     style={itemListStyle}
                     items={this.state.items}
