@@ -52,7 +52,17 @@ func (wdr WinDmpResource) GetEtag() string {
 }
 
 func (wc WindowCollection) Get(path string) resource.Res {
-	if path == "/windows" {
+	if path == "/windows/brief" {
+		if wIds, err := xlib.GetStack(); err != nil {
+			return nil
+		} else {
+			var paths = make([]string, 0, len(wIds))
+			for _, wId := range wIds {
+				paths = append(paths, windowSelf(wId))
+			}
+			return resource.MakeJsonResource(paths)
+		}
+	} else if path == "/windows" {
 		if windows, err := getWindows(); err != nil {
 			return nil
 		} else {
