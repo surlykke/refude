@@ -7,6 +7,7 @@
 package notifications
 
 import (
+	"fmt"
 	"sort"
 	"time"
 
@@ -18,27 +19,38 @@ var notifications = make(map[uint32]*Notification)
 var notificationsMap = resource.MakeResourceMap()
 var Notifications = resource.MakeServer(notificationsMap)
 
+var incomingNotifications = make(chan *Notification)
+
 var removals = make(chan removal)
 var reaper = make(chan uint32)
 
 func Run() {
-	var updates = make(chan *Notification)
-	go DoDBus(updates, removals)
+	go DoDBus()
 
 	updateCollections()
 	for {
 		select {
-		case notification := <-updates:
+		case notification := <-incomingNotifications:
 			notifications[notification.Id] = notification
+			var notificationImagePath = fmt.Sprintf("/notification-image/%d", notification.Id)
+			if "" != notification.imagePath {
+				notification.Image = notificationImagePath
+				var notificationImage = &NotificationImage{notification.imagePath}
+				fmt.Println("Mapping", notificationImagePath, notificationImage)
+				notificationsMap.Set(notificationImagePath, notificationImage)
+			} else {
+				notificationsMap.Remove(notificationImagePath)
+			}
 			notificationsMap.Set(notificationSelf(notification.Id), resource.MakeJsonResouceWithEtag(notification))
 			updateCollections()
 		case rem := <-removals:
-			var path = string(notificationSelf(rem.id))
-			if _, ok := notifications[rem.id]; !ok {
+			var path = notificationSelf(rem.id)
+			if n, ok := notifications[rem.id]; !ok {
 				continue
 			} else {
 				delete(notifications, rem.id)
 				notificationsMap.Remove(path)
+				notificationsMap.Remove(n.Image)
 				updateCollections()
 				conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", rem.id, rem.reason)
 			}

@@ -359,26 +359,6 @@ func GetScreenshotAsPng(wId uint32) ([]byte, error) {
 	}
 	pngData := image.NewRGBA(image.Rect(0, 0, int(w/3), int(h/3)))
 
-	/*var fingerPrint = make([]byte, 0, w*h/10)
-	var count = 0
-	for x := 0; x < int(w); x++ {
-
-		for y := 0; y < int(h); y++ {
-			if count == 0 {
-				var pixel = C.gp(ximage, C.int(x), C.int(y))
-				fingerPrint = append(fingerPrint, uint8((pixel>>16)&255))
-				fingerPrint = append(fingerPrint, uint8((pixel>>8)&255))
-				fingerPrint = append(fingerPrint, uint8(pixel&255))
-			}
-			count++
-			if count >= 30 {
-				count = 0
-			}
-		}
-	}
-
-	var sha = fmt.Sprintf("%X", sha1.Sum(fingerPrint))*/
-
 	for i := 0; i < int(w); i = i + 3 {
 		for j := 0; j < int(h); j = j + 3 {
 			var pixel = C.gp(ximage, C.int(i), C.int(j))

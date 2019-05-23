@@ -8,6 +8,7 @@ package notifications
 
 import (
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/surlykke/RefudeServices/lib/resource"
@@ -15,12 +16,35 @@ import (
 
 type Notification struct {
 	resource.Links
-	Id      uint32
-	Sender  string
-	Subject string
-	Body    string
-	Created time.Time
-	Expires time.Time `json:",omitempty"`
+	Id        uint32
+	Sender    string
+	Subject   string
+	Body      string
+	Image     string `json:",omitempty"`
+	imagePath string
+	Created   time.Time
+	Expires   time.Time `json:",omitempty"`
+}
+
+type NotificationImage struct {
+	imagePath string
+}
+
+func (ni *NotificationImage) GetSelf() string {
+	return ""
+}
+
+func (ni *NotificationImage) GetEtag() string {
+	return ""
+}
+
+func (ni *NotificationImage) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if "GET" != r.Method {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	} else {
+		fmt.Println("Serving", ni.imagePath)
+		http.ServeFile(w, r, ni.imagePath)
+	}
 }
 
 func notificationSelf(id uint32) string {
