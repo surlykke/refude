@@ -124,7 +124,8 @@ class Do extends React.Component {
                     group: T("Notifications"),
                     url: n._self,
                     description: n.Subject,
-                    Comment: n.Body
+                    comment: n.Body,
+                    image: "http://localhost:7938/" + n.Image 
                 });
             });
         this.resources.windows
@@ -135,7 +136,7 @@ class Do extends React.Component {
                     group: T("Open windows"),
                     url: w._self,
                     description: w.Name,
-                    iconName: w._actions['default'].IconName,
+                    image: 'http://localhost:7938/icon/' + w.IconName + "/img",
                     iconStyle: windowIconStyle(w),
                     w: w
                 });
@@ -151,7 +152,7 @@ class Do extends React.Component {
                         group: T("Applications"),
                         url: a._self,
                         description: a.Name + (a.Comment ? ' - ' + a.Comment : ''),
-                        iconName: a.IconName,
+                        image: 'http://localhost:7938/icon/' + a.IconName + "/img"
                     })
                 });
         }
@@ -163,7 +164,7 @@ class Do extends React.Component {
                         group: T("Leave"),
                         url: this.resources.session._self + "?action=" + id,
                         description: a.Description,
-                        iconName: a.IconName
+                        image: 'http://localhost:7938/icon/' + a.IconName + "/img"
                     };
                     items.push(item);
                 }
@@ -240,7 +241,7 @@ class Do extends React.Component {
         else if (this.state.notifications.length > 0) {
             let content = []
             this.state.notifications.forEach(n => {
-                let item = {url: n._self, description: n.Subject, Comment: n.Body}
+                let item = {url: n._self, description: n.Subject, Comment: n.Body, image: "http://localhost:7938" + n.Image}
                 content.push(<Item key={item.url} item={item}/>)
             })
             return <div>
