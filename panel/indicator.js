@@ -58,7 +58,7 @@ export class Indicator extends React.Component {
             let rects = this.screens.map((scr, i) => <rect key={`screenRect_${i}`} x={scr.x} y={scr.y} width={scr.w} height={scr.h} fill="lightgrey"/>);
             //rects.push(<rect key="winRect" x={window.X} y={window.Y} width={window.W} height={window.H} fill="grey" />);
             let {X, Y, W, H} = window
-            let imgUrl=`http://localhost:7938/windmp/${window.Id}?${this.selectorShown}`
+            let imgUrl=`http://localhost:7938/windmp/${window.Id}?downscale=3&${this.selectorShown}`
             rects.push(<image key="winRect" x={X} y={Y} width={W} height={H} xlinkHref={imgUrl}/>);
             return <svg key="windows" xmlns="http://www.w3.org/2000/svg" width="calc(100% - 16px)" style={{margin: "8px"}} viewBox={viewBox}>
                 {rects}
