@@ -344,7 +344,7 @@ func RaiseAndFocusWindow(wId uint32) {
 	C.XFlush(display)
 }
 
-func GetScreenshotAsPng(wId uint32) ([]byte, error) {
+func GetScreenshotAsPng(wId uint32, downscale uint8) ([]byte, error) {
 	mutex.Lock()
 	defer mutex.Unlock()
 
@@ -357,12 +357,12 @@ func GetScreenshotAsPng(wId uint32) ([]byte, error) {
 	if ximage == nil {
 		return nil, fmt.Errorf("Unable to retrieve screendump for %d", wId)
 	}
-	pngData := image.NewRGBA(image.Rect(0, 0, int(w/3), int(h/3)))
+	pngData := image.NewRGBA(image.Rect(0, 0, int(w/uint32(downscale)), int(h/uint32(downscale))))
 
-	for i := 0; i < int(w); i = i + 3 {
-		for j := 0; j < int(h); j = j + 3 {
+	for i := 0; i < int(w); i = i + int(downscale) {
+		for j := 0; j < int(h); j = j + int(downscale) {
 			var pixel = C.gp(ximage, C.int(i), C.int(j))
-			pngData.Set(i/3, j/3, color.RGBA{R: uint8((pixel >> 16) & 255), G: uint8((pixel >> 8) & 255), B: uint8(pixel & 255), A: 255})
+			pngData.Set(i/int(downscale), j/int(downscale), color.RGBA{R: uint8((pixel >> 16) & 255), G: uint8((pixel >> 8) & 255), B: uint8(pixel & 255), A: 255})
 		}
 	}
 

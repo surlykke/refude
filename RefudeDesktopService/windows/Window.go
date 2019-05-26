@@ -12,6 +12,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/surlykke/RefudeServices/lib/requests"
+
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/windows/xlib"
 
 	"github.com/surlykke/RefudeServices/lib/resource"
@@ -38,7 +40,11 @@ type WindowCollection struct{}
 type WinDmpResource uint32
 
 func (wdr WinDmpResource) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if bytes, err := xlib.GetScreenshotAsPng(uint32(wdr)); err == nil {
+	var downscaleS = requests.GetSingleQueryParameter(r, "downscale", "1")
+	var downscale = downscaleS[0] - '0'
+	if downscale < 1 || downscale > 5 {
+		requests.ReportUnprocessableEntity(w, fmt.Errorf("downscale should be >= 1 and <= 5"))
+	} else if bytes, err := xlib.GetScreenshotAsPng(uint32(wdr), downscale); err == nil {
 		w.Header().Set("Content-Type", "image/png")
 		w.Write(bytes)
 	} else {
