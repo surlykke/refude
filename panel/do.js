@@ -206,19 +206,27 @@ class Do extends React.Component {
 
     execute = (item) => {
         postUrl(item.url, response => {
-            this.onDismiss();
+            this.cleanUp();
         })
     };
 
     onDismiss = () => {
         if (this.state.shown) {
+            // Return focus to whatever was at the top of the (normal) stack
+            this.resources.windows[0] && postUrl(this.resources.windows[0]._self)
+
+            this.cleanUp()
+        }
+    };
+
+    cleanUp = () => {
             this.resources.windows = [];
             this.resources.applications = [];
             this.term = "";
             this.setState({ items: [] });
             this.setState({ "shown": undefined });
-        }
-    };
+    }
+
 
     render = () => {
         let itemListStyle = { maxWidth: "300px", maxHeight: "300px" };
