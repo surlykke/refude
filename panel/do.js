@@ -100,7 +100,7 @@ class Do extends React.Component {
             this.hasfocus = false;
             // TAB momentarily unfocuses window - so we wait a bit to see if it's for real
             setTimeout(() => {
-                if (!this.hasfocus) publish("dismiss");
+                if (!this.hasfocus) this.dismiss(true);
             }, 100);
         });
     };
@@ -126,8 +126,8 @@ class Do extends React.Component {
         })
     };
 
-    dismiss = () => {
-        if (this.state.shown) {
+    dismiss = (blur) => {
+        if (this.state.shown && !blur) {
             // Return focus to whatever was at the top of the (normal) stack
             this.state.windows[0] && postUrl(this.state.windows[0]._self)
         }
