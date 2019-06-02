@@ -34,7 +34,6 @@ export let monitorUrl = (path, dataHandler, errorHandler) => {
 }
 
 export let getUrl = (path, handler) => {
-    console.log("Getting url:", `http://localhost:7938${path}`)
     Axios.get(`http://localhost:7938${path}`).then(resp => handler(resp)).catch(err => console.error(err))
 }
 

@@ -13,7 +13,6 @@ export class Indicator extends React.Component {
     selectorShown = 0
 
     componentDidMount = () => {
-        console.log("Indicator did mount")
         subscribe("windowSelected", w => {
             this.setState({window: w});
         });

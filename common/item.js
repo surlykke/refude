@@ -5,11 +5,10 @@
 // Please refer to the GPL2 file for a copy of the license.
 //
 import React from 'react';
-import {publish} from "./utils";
 
 export let Item = props => {
 
-    let {item, selected} = props;
+    let {item, selected, onClick, onDoubleClick} = props;
 
     let style = {
         marginRight: "5px",
@@ -45,10 +44,10 @@ export let Item = props => {
     };
 
     return (
-        <div id={props.item.url} style={style} onClick={() => publish("click", props.item)} onDoubleClick={() => publish("doubleclick", props.item)}>
+        <div id={item.url} style={style} onClick={() => onClick(item)} onDoubleClick={() => onDoubleClick(item)}>
             <img width="24px" height="24px" style={iconStyle} src={item.image} alt=""/>
-            <div style={nameStyle}>{item.description}</div>
-            <div style={commentStyle}>{item.Comment}</div>
+            <div style={nameStyle}>{item.name}</div>
+            <div style={commentStyle}>{item.comment}</div>
         </div>
     )
 }

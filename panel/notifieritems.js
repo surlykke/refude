@@ -11,7 +11,6 @@ import { publish } from "../common/utils";
 export class NotifierItem extends React.Component {
     constructor(props) {
         super(props);
-        console.log("Constructor, props:", props)
         this.state = { item: props.item };
     }
 

@@ -5,20 +5,38 @@
 // Please refer to the GPL2 file for a copy of the license.
 //
 import React from 'react';
-import {Item} from './item'
-import {publish, subscribe} from "./utils";
+import { Item } from './item'
+import { publish, subscribe } from "./utils";
+import { timingSafeEqual } from 'crypto';
+
+let match = (item, term) => {
+    return     term === "" ? item.showInitially : item.name.toLocaleLowerCase().indexOf(term) > -1 || item.comment.toLocaleLowerCase().indexOf(term) > -1
+}
+
+let rank = (item , lowercaseTerm) => {
+    let baserank = item.rank || 0
+    let tmp;
+    if ((tmp = item.name.toLowerCase().indexOf(lowercaseTerm)) > -1) {
+        return baserank -tmp;
+    } else if (item.comment && (tmp = item.comment.toLowerCase().indexOf(lowercaseTerm)) > -1) {
+        return baserank -tmp - 100;
+    } else {
+        return 1;
+    }
+};
+
+
 
 export class ItemList extends React.Component {
 
     constructor(props) {
         super(props)
-        this.state = {items: [], selectedUrl: null};
+        this.state = { items: [], selectedUrl: null };
     }
 
     componentDidMount = () => {
+        subscribe("reset", this.reset)
         subscribe("moveRequested", this.move);
-        subscribe("click", this.setSelected);
-        subscribe("doubleclick", item => publish("itemLaunched", item));
     };
 
     componentDidUpdate = () => {
@@ -28,8 +46,8 @@ export class ItemList extends React.Component {
             let selectedDiv = document.getElementById(this.state.selectedUrl);
             if (selectedDiv) {
                 let listDiv = document.getElementById("itemListDiv");
-                let {top: listTop, bottom: listBottom} = listDiv.getBoundingClientRect();
-                let {top: selectedTop, bottom: selectedBottom} = selectedDiv.getBoundingClientRect();
+                let { top: listTop, bottom: listBottom } = listDiv.getBoundingClientRect();
+                let { top: selectedTop, bottom: selectedBottom } = selectedDiv.getBoundingClientRect();
                 if (selectedTop < listTop) listDiv.scrollTop -= (listTop - selectedTop + 25)
                 else if (selectedBottom > listBottom) listDiv.scrollTop += (selectedBottom - listBottom + 10)
             }
@@ -38,22 +56,44 @@ export class ItemList extends React.Component {
     };
 
     componentWillReceiveProps = (props) => {
-        if (!(this.state.selectedUrl && props.items.findIndex(i => this.state.selectedUrl === i.url) > -1)) {
-            this.setSelected(props.items[0]);
-        }
-        this.setState({items: props.items});
+        document.getElementById("input").value = ""
+        let items = this.filter(props.items)
+        this.setState({ items: items});
+        this.ensureSelection(items)
     };
 
+    filter = items => {
+        let term = document.getElementById("input").value.toLocaleLowerCase()
+        return items.filter(item => match(item, term)).sort((i1, i2) => rank(i2, term) - rank(i1, term))
+    }
+
+    onTermChange = () => {
+        let items = this.filter(this.props.items)
+        this.setState({ items: items })
+        this.ensureSelection(items)   
+    }
+
+    ensureSelection = items => {
+        if (!(this.state.selectedUrl && items.findIndex(i => this.state.selectedUrl === i.url) > -1)) {
+            this.setSelected(items[0])
+        }
+    }
+
+    reset = () => {
+        document.getElementById("input").value = ""
+        this.setState({items: [], selectedUrl: undefined})
+    }
+
     keyDown = (event) => {
-        let {key, ctrlKey, shiftKey, altKey, metaKey} = event;
+        let { key, ctrlKey, shiftKey, altKey, metaKey } = event;
 
         if (key === "Tab" && !ctrlKey && shiftKey && !altKey && !metaKey) this.move(false);
         else if (key === "Tab" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.move(true);
         else if (key === "ArrowUp" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.move(false);
         else if (key === "ArrowDown" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.move(true);
-        else if (key === "Enter" && !ctrlKey && !shiftKey && !altKey && !metaKey) publish("itemLaunched", this.getSelected());
-        else if (key === " " && !ctrlKey && !shiftKey && !altKey && !metaKey) publish("itemLaunched", this.getSelected());
-        else if (key === "Escape" && !ctrlKey && !shiftKey && !altKey && !metaKey) publish("dismiss");
+        else if (key === "Enter" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.props.activate(this.getSelected());
+        else if (key === " " && !ctrlKey && !shiftKey && !altKey && !metaKey) this.props.activate(this.getSelected());
+        else if (key === "Escape" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.props.dismiss();
         else {
             return;
         }
@@ -61,19 +101,20 @@ export class ItemList extends React.Component {
     };
 
     move = (down) => {
-        if (this.state.selectedUrl) {
-            let index = this.state.items.findIndex(i => this.state.selectedUrl === i.url);
-            if (index > -1) {
-                let numItems = this.state.items.length;
-                index = (index + numItems + (down ? 1 : -1)) % numItems;
-                this.setSelected(this.state.items[index]);
-            }
+        let index = this.state.items.findIndex(i => this.state.selectedUrl === i.url);
+        if (index > -1) {
+            let numItems = this.state.items.length;
+            index = (index + numItems + (down ? 1 : -1)) % numItems;
+        } else {
+            index = 0
         }
+        this.setSelected(this.state.items[index]);
     };
 
     setSelected = (item) => {
-        this.setState({selectedUrl: item ? item.url : undefined});
-        publish("windowSelected", item ? item.w : undefined);
+        let selectedUrl = item ? item.url : undefined
+        this.setState({ selectedUrl: selectedUrl });
+        this.props.select(selectedUrl)
     };
 
     getSelected = () => {
@@ -92,7 +133,7 @@ export class ItemList extends React.Component {
             boxSizing: "border-box",
             paddingRight: "5px",
             width: "calc(100% - 16px)",
-            marginTop: "4px",
+            marginTop: "8px"
         };
 
         let inputStyle = {
@@ -103,7 +144,6 @@ export class ItemList extends React.Component {
         };
 
         let innerStyle = {
-            marginTop: "8px",
             overflowY: "scroll"
         };
 
@@ -122,15 +162,17 @@ export class ItemList extends React.Component {
                 content.push(<div key={item.group} style={headingStyle}>{item.group}</div>);
                 prevGroup = item.group;
             }
-            content.push(<Item key={item.url} item={item} selected={item.url === this.state.selectedUrl}/>);
+            content.push(<Item key={item.url}
+                item={item}
+                selected={item.url === this.state.selectedUrl}
+                onClick={this.setSelected}
+                onDoubleClick={this.props.activate} />);
         });
-
-        let onTermChange = (event) => publish("termChanged", event.target.value);
 
         return (
             <div onKeyDown={this.keyDown} style={outerStyle}>
                 <div style={searchBoxStyle}>
-                    <input id="input" style={inputStyle} type="search" onChange={onTermChange} disabled={this.props.disabled} autoComplete="off"/>
+                    <input id="input" value={this.state.term} style={inputStyle} type="search" onChange={this.onTermChange} disabled={this.props.disabled} autoComplete="off" />
                 </div>
                 <div id="itemListDiv" style={innerStyle}>
                     {content}

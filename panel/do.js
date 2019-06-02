@@ -15,10 +15,6 @@ import { monitorUrl, getUrl, postUrl } from '../common/monitor';
 
 const http = require('http');
 
-const windowSearch = "/windows?q=" + encodeURIComponent('not r.States[%] eq _NET_WM_STATE_ABOVE')
-const applicationSearch = "/applications?q=" + encodeURIComponent('not r.NoDisplay eq true')
-
-
 let windowIconStyle = w => {
     let style = {
         WebkitFilter: "drop-shadow(5px 5px 3px grey)",
@@ -37,52 +33,48 @@ let windowIconStyle = w => {
     return style
 };
 
+let timeToExpiry = notification => {
+    return Date.parse(notification.Created) - new Date().getTime() + 20000
+}
 
-let filterOutOld = (notificationlist) => {
-    let twentySecondsAgo = new Date().getTime() - 20000
-    return notificationlist.filter(n => Date.parse(n.Created) > twentySecondsAgo)
+let timeToNextExpiry = notifications => {
+    let t
+    notifications.forEach(n => {
+        if (!(t < timeToExpiry(n))) {
+            t = timeToExpiry(n)
+        }
+
+    })
+    return t
 }
 
 class Do extends React.Component {
     constructor(props) {
         //devtools();
         super(props);
-        this.resources = { notifications: [], windows: [], applications: [] };
-        this.term = "";
-        this.state = { items: [], notifications: [] };
-        this.display = { x: 0, y: 0, w: 100, h: 100 };
+        this.state = { notifications: [], windows: [], applications: [], session: { _actions: {} } };
 
         this.listenForUpDown();
         this.handleBlurEvents();
     };
 
     componentDidMount = () => {
-        subscribe("termChanged", this.termChange);
-        subscribe("itemLaunched", this.execute);
-        subscribe("dismiss", this.onDismiss);
-
-        console.log("monitorUrl /notifications")
         monitorUrl("/notifications", resp => {
-            console.log("Something happened to notificatoins")
-            this.setState({notifications: filterOutOld(resp.data) })
-            this.state.shown && this.filterAndSort()
-            this.monitorNotifications()
+            if (this.state.notifications.length === 0) { 
+                this.notificationFilterScheduler(resp.data)
+            } else { // scheduler will already be running
+                this.setState({notifications: resp.data.filter(n => timeToExpiry(n) > 0)})
+            }
         });
     };
 
-    notificationsAreMonitored = false
-    monitorNotifications = () => {
-        console.log("monitorNotifications")
-        if (this.notificationsAreMonitored || this.state.notifications.length === 0) {
-            return
+    notificationFilterScheduler = notifications => {
+        let filteredNotificatons = notifications.filter(n => timeToExpiry(n) > 0)
+        this.setState({ notifications: filteredNotificatons })
+        if (filteredNotificatons.length > 0) {
+            let delay = timeToNextExpiry(filteredNotificatons) 
+            setTimeout(() => this.notificationFilterScheduler(this.state.notifications), delay + 1000)
         }
-        this.notificationsAreMonitored = true
-        setTimeout(() => {
-            this.notificationsAreMonitored = false
-            this.setState({notifications: filterOutOld(this.state.notifications)})
-            this.monitorNotifications()
-        }, 
-        1000)
     }
 
     componentDidUpdate = () => {
@@ -113,153 +105,99 @@ class Do extends React.Component {
         });
     };
 
-    filterAndSort = () => {
-        let term = this.term.toLowerCase();
-
-        let items = [];
-        this.state.notifications
-            .filter(n => n.Subject.toLowerCase().indexOf(term) > -1 || n.Body.toLowerCase().indexOf(term) > -1)
-            .forEach(n => {
-                items.push({
-                    group: T("Notifications"),
-                    url: n._self,
-                    description: n.Subject,
-                    comment: n.Body,
-                    image: "http://localhost:7938/" + n.Image 
-                });
-            });
-        this.resources.windows
-            .filter(w => w.Name.toLowerCase().indexOf(term) > -1)
-            .sort((w1, w2) => w1.StackOrder - w2.StackOrder)
-            .forEach(w => {
-                items.push({
-                    group: T("Open windows"),
-                    url: w._self,
-                    description: w.Name,
-                    image: 'http://localhost:7938/icon/' + w.IconName + "/img",
-                    iconStyle: windowIconStyle(w),
-                    w: w
-                });
-            });
-
-        if (term.length > 0) {
-            this.resources.applications.forEach(a => a.__rank = applicationRank(a, term));
-            this.resources.applications
-                .filter(a => a.__rank < 1)
-                .sort((a1, a2) => (a2.__rank - a1.__rank))
-                .forEach(a => {
-                    items.push({
-                        group: T("Applications"),
-                        url: a._self,
-                        description: a.Name + (a.Comment ? ' - ' + a.Comment : ''),
-                        image: 'http://localhost:7938/icon/' + a.IconName + "/img"
-                    })
-                });
-        }
-
-        if (term.length > 0 && this.resources.session) {
-            for (let [id, a] of Object.entries(this.resources.session._actions)) {
-                if (a.Description.toLowerCase().indexOf(term) > -1) {
-                    let item = {
-                        group: T("Leave"),
-                        url: this.resources.session._self + "?action=" + id,
-                        description: a.Description,
-                        image: 'http://localhost:7938/icon/' + a.IconName + "/img"
-                    };
-                    items.push(item);
-                }
-            }
-        }
-
-        this.setState({ items: items });
-    };
-
-    selectorShown = 0
     showWin = () => {
         if (!this.state["shown"]) {
-            this.resources["windows"] = this.resources["applications"] = this.resources["session"] = [];
-            getUrl("/windows", resp => {
-                this.resources.windows = resp.data.filter(w => w.States.indexOf("_NET_WM_STATE_ABOVE") < 0);
-                this.filterAndSort()
-            });
-
-            getUrl("/applications", resp => {
-                this.resources.applications = resp.data.filter(app => ! app.NoDisplay);
-                this.filterAndSort()
-            });
-
-            getUrl("/session", resp => {
-                this.resources.session = resp.data
-            });
-
-            this.setState({ "shown": true });
-            this.selectorShown = new Date().getTime()
-            publish("selectorShown", this.selectorShown)
+            getUrl("/windows", resp => this.setState({ windows: resp.data.filter(w => w.States.indexOf("_NET_WM_STATE_ABOVE") < 0) }))
+            getUrl("/applications", resp => this.setState({ applications: resp.data.filter(app => !app.NoDisplay) }))
+            getUrl("/session", resp => this.setState({ session: resp.data }))
+            this.setState({ shown: true });
+            publish("selectorShown", new Date().getTime())
         }
         WIN.focus();
     };
 
-    termChange = term => {
-        this.term = term;
-        this.filterAndSort();
-    };
+    select = (url) => {
+        publish("windowSelected", this.state.windows.find(w => w._self === url))
+    }
 
     execute = (item) => {
         postUrl(item.url, response => {
-            this.cleanUp();
+            this.reset()
         })
     };
 
-    onDismiss = () => {
+    dismiss = () => {
         if (this.state.shown) {
             // Return focus to whatever was at the top of the (normal) stack
-            this.resources.windows[0] && postUrl(this.resources.windows[0]._self)
-
-            this.cleanUp()
+            this.state.windows[0] && postUrl(this.state.windows[0]._self)
         }
+        this.reset()
     };
 
-    cleanUp = () => {
-            this.resources.windows = [];
-            this.resources.applications = [];
-            this.term = "";
-            this.setState({ items: [] });
-            this.setState({ "shown": undefined });
+    reset = () => {
+        this.setState({ "shown": undefined })
+        publish("reset")
     }
-
 
     render = () => {
         let itemListStyle = { maxWidth: "300px", maxHeight: "300px" };
-        let prefetch = this.resources.windows.map(w => {
-            let imgUrl = `http://localhost:7938/windmp/${w.Id}?downscale=3&${this.selectorShown}`
-            return <link rel="prefetch" href={imgUrl}/>
-        }
-)
+        let items = this.state.notifications.map((n, i) => {
+            return {
+                group: T("Notifications"),
+                url: n._self,
+                name: n.Subject,
+                comment: n.Body,
+                image: "http://localhost:7938/" + n.Image,
+                showInitially: true,
+                rank: 200000 - i*1000
+            }
+        })
+
+        this.state.windows.forEach((w, i) => items.push({
+            group: T("Open windows"),
+            url: w._self,
+            name: w.Name,
+            comment: "",
+            image: 'http://localhost:7938/icon/' + w.IconName + "/img",
+            iconStyle: windowIconStyle(w),
+            showInitially: true,
+            rank: 100000 - i*1000
+        }))
+        this.state.applications.forEach(a => items.push({
+            group: T("Applications"),
+            url: a._self,
+            name: a.Name,
+            comment: a.Comment || '',
+            image: 'http://localhost:7938/icon/' + a.IconName + "/img",
+            rank: 0
+        }))
+        Object.keys(this.state.session._actions).forEach(key => items.push({
+            group: T("Leave"),
+            url: this.state.session._self + "?action=" + key,
+            name: key,
+            comment: this.state.session._actions[key].Description,
+            image: 'http://localhost:7938/icon/' + this.state.session._actions[key].IconName + "/img",
+            rank: -100000
+        }))
+
+
         if (this.state.shown) {
             return [
-                ...prefetch, 
-                <ItemList key="itemlist"
-                    style={itemListStyle}
-                    items={this.state.items}
-                    ref={this.itemList} />,
+                <ItemList key="itemlist" style={itemListStyle} items={items} select={this.select} activate={this.execute} dismiss={this.dismiss} />,
                 <Indicator key="indicator" />
-
             ];
         }
         else if (this.state.notifications.length > 0) {
-            let content = []
-            this.state.notifications.forEach(n => {
-                let item = {url: n._self, description: n.Subject, Comment: n.Body, image: "http://localhost:7938" + n.Image}
-                content.push(<Item key={item.url} item={item}/>)
-            })
-            return <div>
-                {content}
-            </div>
-
+            return <div> {
+                this.state.notifications.map(n => {
+                    let item = { url: n._self, name: n.Subject, comment: n.Body, image: n.Image && "http://localhost:7938" + n.Image }
+                    return <Item key={item.url} item={item} />
+                })
+            } </div>
         } else {
             return null
         }
-    };
+    }
 }
 
 export { Do }
