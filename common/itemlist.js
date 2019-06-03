@@ -9,23 +9,6 @@ import { Item } from './item'
 import { publish, subscribe } from "./utils";
 import { timingSafeEqual } from 'crypto';
 
-let match = (item, term) => {
-    return     term === "" ? item.showInitially : item.name.toLocaleLowerCase().indexOf(term) > -1 || item.comment.toLocaleLowerCase().indexOf(term) > -1
-}
-
-let rank = (item , lowercaseTerm) => {
-    let baserank = item.rank || 0
-    let tmp;
-    if ((tmp = item.name.toLowerCase().indexOf(lowercaseTerm)) > -1) {
-        return baserank -tmp;
-    } else if (item.comment && (tmp = item.comment.toLowerCase().indexOf(lowercaseTerm)) > -1) {
-        return baserank -tmp - 100;
-    } else {
-        return 1;
-    }
-};
-
-
 
 export class ItemList extends React.Component {
 
@@ -35,7 +18,6 @@ export class ItemList extends React.Component {
     }
 
     componentDidMount = () => {
-        subscribe("reset", this.reset)
         subscribe("moveRequested", this.move);
     };
 
@@ -56,32 +38,14 @@ export class ItemList extends React.Component {
     };
 
     componentWillReceiveProps = (props) => {
-        document.getElementById("input").value = ""
-        let items = this.filter(props.items)
-        this.setState({ items: items});
-        this.ensureSelection(items)
+        this.setState({ items: props.items});
+        this.ensureSelection(props.items)
     };
-
-    filter = items => {
-        let term = document.getElementById("input").value.toLocaleLowerCase()
-        return items.filter(item => match(item, term)).sort((i1, i2) => rank(i2, term) - rank(i1, term))
-    }
-
-    onTermChange = () => {
-        let items = this.filter(this.props.items)
-        this.setState({ items: items })
-        this.ensureSelection(items)   
-    }
 
     ensureSelection = items => {
         if (!(this.state.selectedUrl && items.findIndex(i => this.state.selectedUrl === i.url) > -1)) {
             this.setSelected(items[0])
         }
-    }
-
-    reset = () => {
-        document.getElementById("input").value = ""
-        this.setState({items: [], selectedUrl: undefined})
     }
 
     keyDown = (event) => {
@@ -91,9 +55,9 @@ export class ItemList extends React.Component {
         else if (key === "Tab" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.move(true);
         else if (key === "ArrowUp" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.move(false);
         else if (key === "ArrowDown" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.move(true);
-        else if (key === "Enter" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.props.activate(this.getSelected());
-        else if (key === " " && !ctrlKey && !shiftKey && !altKey && !metaKey) this.props.activate(this.getSelected());
-        else if (key === "Escape" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.props.dismiss();
+        else if (key === "Enter" && !ctrlKey && !shiftKey && !altKey && !metaKey) publish("itemActivated", this.getSelected());
+        else if (key === " " && !ctrlKey && !shiftKey && !altKey && !metaKey) publish("itemActivated", this.getSelected());
+        else if (key === "Escape" && !ctrlKey && !shiftKey && !altKey && !metaKey) publish("dismiss");
         else {
             return;
         }
@@ -114,7 +78,7 @@ export class ItemList extends React.Component {
     setSelected = (item) => {
         let selectedUrl = item ? item.url : undefined
         this.setState({ selectedUrl: selectedUrl });
-        this.props.select(selectedUrl)
+        publish("itemSelected", selectedUrl)
     };
 
     getSelected = () => {
@@ -167,13 +131,15 @@ export class ItemList extends React.Component {
                 item={item}
                 selected={item.url === this.state.selectedUrl}
                 onClick={this.setSelected}
-                onDoubleClick={this.props.activate} />);
+                onDoubleClick={() => publish("itemActivated", this.getSelected())} />);
         });
 
         return (
             <div onKeyDown={this.keyDown} style={outerStyle}>
                 <div style={searchBoxStyle}>
-                    <input id="input" value={this.state.term} style={inputStyle} type="search" onChange={this.onTermChange} disabled={this.props.disabled} autoComplete="off" />
+                    <input id="input" value={this.state.term} style={inputStyle} type="search" 
+                            onChange={(event) => publish("termChanged", event.target.value)} 
+                            autoComplete="off" />
                 </div>
                 <div id="itemListDiv" style={innerStyle}>
                     {content}

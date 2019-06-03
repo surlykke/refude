@@ -6,7 +6,7 @@
 
 
 import React from 'react'
-import { WIN, applicationRank, publish, subscribe } from "../common/utils";
+import { WIN, publish, subscribe } from "../common/utils";
 import { ItemList } from "../common/itemlist"
 import { Item } from "../common/item"
 import { Indicator } from "./indicator";
@@ -14,6 +14,16 @@ import { T } from "../common/translate";
 import { monitorUrl, getUrl, postUrl } from '../common/monitor';
 
 const http = require('http');
+
+let rank = (name, comment, lowercaseTerm) => {
+    let tmp
+    if (tmp = name.toLowerCase().indexOf(lowercaseTerm) > -1){
+        return tmp
+    } else if (comment && (tmp = comment.toLowerCase().indexOf(lowercaseTerm) > -1)) {
+        return 100 + tmp
+    }
+};
+
 
 let windowIconStyle = w => {
     let style = {
@@ -39,12 +49,7 @@ let timeToExpiry = notification => {
 
 let timeToNextExpiry = notifications => {
     let t
-    notifications.forEach(n => {
-        if (!(t < timeToExpiry(n))) {
-            t = timeToExpiry(n)
-        }
-
-    })
+    notifications.forEach(n => t = !(t < timeToExpiry(n)) ? timeToExpiry(n) : t)
     return t
 }
 
@@ -52,18 +57,23 @@ class Do extends React.Component {
     constructor(props) {
         //devtools();
         super(props);
-        this.state = { notifications: [], windows: [], applications: [], session: { _actions: {} } };
+        this.state = { notifications: [], windows: [], applications: [], session: { _actions: {} }, term: "" };
 
         this.listenForUpDown();
         this.handleBlurEvents();
+
+        subscribe("termChanged", newTerm => this.setState({term: newTerm.toLocaleLowerCase()}))
+        subscribe("itemSelected", url => publish("windowSelected", this.state.windows.find(w => w._self === url)))
+        subscribe("itemActivated", item => postUrl(item.url, response => { this.reset()}))
+        subscribe("dismiss", this.dismiss)
     };
 
     componentDidMount = () => {
         monitorUrl("/notifications", resp => {
-            if (this.state.notifications.length === 0) { 
+            if (this.state.notifications.length === 0) {
                 this.notificationFilterScheduler(resp.data)
             } else { // scheduler will already be running
-                this.setState({notifications: resp.data.filter(n => timeToExpiry(n) > 0)})
+                this.setState({ notifications: resp.data.filter(n => timeToExpiry(n) > 0) })
             }
         });
     };
@@ -72,7 +82,7 @@ class Do extends React.Component {
         let filteredNotificatons = notifications.filter(n => timeToExpiry(n) > 0)
         this.setState({ notifications: filteredNotificatons })
         if (filteredNotificatons.length > 0) {
-            let delay = timeToNextExpiry(filteredNotificatons) 
+            let delay = timeToNextExpiry(filteredNotificatons)
             setTimeout(() => this.notificationFilterScheduler(this.state.notifications), delay + 1000)
         }
     }
@@ -116,15 +126,6 @@ class Do extends React.Component {
         WIN.focus();
     };
 
-    select = (url) => {
-        publish("windowSelected", this.state.windows.find(w => w._self === url))
-    }
-
-    execute = (item) => {
-        postUrl(item.url, response => {
-            this.reset()
-        })
-    };
 
     dismiss = (blur) => {
         if (this.state.shown && !blur) {
@@ -135,59 +136,66 @@ class Do extends React.Component {
     };
 
     reset = () => {
-        this.setState({ "shown": undefined })
+        this.setState({ "shown": undefined, term: ""})
         publish("reset")
     }
 
     render = () => {
         let itemListStyle = { maxWidth: "300px", maxHeight: "300px" };
-        let items = this.state.notifications.map((n, i) => {
-            return {
+        let term = this.state.term
+        let items = []
+        this.state.notifications.
+            filter(n => rank(n.Subject, n.Body, term)).
+            forEach(n => items.push({
                 group: T("Notifications"),
                 url: n._self,
                 name: n.Subject,
                 comment: n.Body,
-                image: "http://localhost:7938/" + n.Image,
-                showInitially: true,
-                rank: 200000 - i*1000
-            }
-        })
+                image: "http://localhost:7938" + n.Image,
+            }))
 
-        this.state.windows.forEach((w, i) => items.push({
-            group: T("Open windows"),
-            url: w._self,
-            name: w.Name,
-            comment: "",
-            image: 'http://localhost:7938/icon/' + w.IconName + "/img",
-            iconStyle: windowIconStyle(w),
-            showInitially: true,
-            rank: 100000 - i*1000
-        }))
-        this.state.applications.forEach(a => items.push({
-            group: T("Applications"),
-            url: a._self,
-            name: a.Name,
-            comment: a.Comment || '',
-            image: 'http://localhost:7938/icon/' + a.IconName + "/img",
-            rank: 0
-        }))
-        Object.keys(this.state.session._actions).forEach(key => items.push({
-            group: T("Leave"),
-            url: this.state.session._self + "?action=" + key,
-            name: key,
-            comment: this.state.session._actions[key].Description,
-            image: 'http://localhost:7938/icon/' + this.state.session._actions[key].IconName + "/img",
-            rank: -100000
-        }))
+        this.state.windows.
+            filter(w => rank(w.Name, undefined, term)).
+            forEach(w => items.push({
+                group: T("Open windows"),
+                url: w._self,
+                name: w.Name,
+                comment: "",
+                image: 'http://localhost:7938/icon/' + w.IconName + "/img",
+                iconStyle: windowIconStyle(w),
+            }))
 
+        if (term !== '') {
+            this.state.applications.
+                filter(a => rank(a.Name, a.Comment, term)).
+                sort((a1, a2) => rank(a1.Name, a1.Comment, term) - rank(a2.Name, a2.Comment, term)).
+                forEach(a => items.push({
+                    group: T("Applications"),
+                    url: a._self,
+                    name: a.Name,
+                    comment: a.Comment || '',
+                    image: 'http://localhost:7938/icon/' + a.IconName + "/img"
+                }))
+
+            let desc = key => this.state.session._actions[key].Description
+            Object.keys(this.state.session._actions).
+                filter(key => rank(key, desc(key), term)).
+                sort((k1, k2) => rank(k1, desc(k1), term) - rank(k2, desc(k2), term)).
+                forEach(key => items.push({
+                    group: T("Leave"),
+                    url: this.state.session._self + "?action=" + key,
+                    name: key,
+                    comment: this.state.session._actions[key].Description,
+                    image: 'http://localhost:7938/icon/' + this.state.session._actions[key].IconName + "/img",
+                }))
+        }
 
         if (this.state.shown) {
             return [
-                <ItemList key="itemlist" style={itemListStyle} items={items} select={this.select} activate={this.execute} dismiss={this.dismiss} />,
+                <ItemList key="itemlist" style={itemListStyle} items={items} />,
                 <Indicator key="indicator" />
             ];
-        }
-        else if (this.state.notifications.length > 0) {
+        } else if (this.state.notifications.length > 0) {
             return <div> {
                 this.state.notifications.map(n => {
                     let item = { url: n._self, name: n.Subject, comment: n.Body, image: n.Image && "http://localhost:7938" + n.Image }

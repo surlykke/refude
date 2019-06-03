@@ -15,7 +15,6 @@ export class NotifierItem extends React.Component {
     }
 
     componentWillReceiveProps = (props) => {
-        console.log("receiveProps:", props)
         this.setState({ item: props.item });
     };
 
