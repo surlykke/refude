@@ -133,7 +133,7 @@ export class ItemList extends React.Component {
             boxSizing: "border-box",
             paddingRight: "5px",
             width: "calc(100% - 16px)",
-            marginTop: "8px"
+            marginTop: "4px",
         };
 
         let inputStyle = {
@@ -144,6 +144,7 @@ export class ItemList extends React.Component {
         };
 
         let innerStyle = {
+            marginTop: "8px",
             overflowY: "scroll"
         };
 
