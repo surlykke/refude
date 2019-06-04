@@ -16,14 +16,22 @@ import { monitorUrl, getUrl, postUrl } from '../common/monitor';
 const http = require('http');
 
 let rank = (name, comment, lowercaseTerm) => {
-    let tmp
-    if (tmp = name.toLowerCase().indexOf(lowercaseTerm) > -1){
+    let tmp = name.toLowerCase().indexOf(lowercaseTerm)
+	if (tmp > -1) {
+		console.log("rank('" + name + "', '" + comment + "', '" + lowercaseTerm + "') returning", tmp)
         return tmp
-    } else if (comment && (tmp = comment.toLowerCase().indexOf(lowercaseTerm) > -1)) {
-        return 100 + tmp
+	}
+    if (comment) {
+		tmp = comment.toLowerCase().indexOf(lowercaseTerm)
+		if (tmp > -1) {
+			console.log("rank('" + name + "', '" + comment + "', '" + lowercaseTerm + "') returning", tmp + 100)
+       	 return 100 + tmp
+		}
     }
+	return -1
 };
 
+let match = (name, comment, lowercaseTerm) => rank(name, comment, lowercaseTerm) > -1
 
 let windowIconStyle = w => {
     let style = {
@@ -145,7 +153,7 @@ class Do extends React.Component {
         let term = this.state.term
         let items = []
         this.state.notifications.
-            filter(n => rank(n.Subject, n.Body, term)).
+            filter(n => match(n.Subject, n.Body, term)).
             forEach(n => items.push({
                 group: T("Notifications"),
                 url: n._self,
@@ -155,7 +163,7 @@ class Do extends React.Component {
             }))
 
         this.state.windows.
-            filter(w => rank(w.Name, undefined, term)).
+            filter(w => match(w.Name, undefined, term)).
             forEach(w => items.push({
                 group: T("Open windows"),
                 url: w._self,
@@ -167,7 +175,7 @@ class Do extends React.Component {
 
         if (term !== '') {
             this.state.applications.
-                filter(a => rank(a.Name, a.Comment, term)).
+                filter(a => match(a.Name, a.Comment, term)).
                 sort((a1, a2) => rank(a1.Name, a1.Comment, term) - rank(a2.Name, a2.Comment, term)).
                 forEach(a => items.push({
                     group: T("Applications"),
@@ -179,7 +187,7 @@ class Do extends React.Component {
 
             let desc = key => this.state.session._actions[key].Description
             Object.keys(this.state.session._actions).
-                filter(key => rank(key, desc(key), term)).
+                filter(key => match(key, desc(key), term)).
                 sort((k1, k2) => rank(k1, desc(k1), term) - rank(k2, desc(k2), term)).
                 forEach(key => items.push({
                     group: T("Leave"),
