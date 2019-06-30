@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "main": "index.html",
   "window": {
+    "id": "org.refude.Panel",
     "frame": false,
     "always_on_top": true,
     "transparent": true

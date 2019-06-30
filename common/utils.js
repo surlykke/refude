@@ -76,6 +76,34 @@ export let managePosition = () => {
     setTimeout(checkPosition, 10000)
 }
 
+export let manageZoom = () => {
+    let zoomLevels = [25, 33, 50, 67, 75, 80, 90, 100, 110, 125, 150, 175, 200, 250, 300, 400, 500] // The ones that chromium have
+                    //-7  -6  -5  -4  -3  -2  -1    0    1    2    3    4    5    6    7    8    9
+    let currentZoom = Math.round(localStorage.bodyZoom || 0)
+    if (currentZoom > 9) currentZoom = 9
+    if (currentZoom < -7) currentZoom = -7
+    document.body.style.zoom = 1.0*zoomLevels[currentZoom + 7]/100
+
+    let zoom = (up) => {
+        console.log("Into zoom, up:", up, "currentZoom:", currentZoom)
+        if (up && currentZoom < 9) currentZoom++
+        else if (!up && currentZoom > -7) currentZoom--
+        console.log("now currentZoom:", currentZoom)
+        localStorage.bodyZoom = currentZoom
+        document.body.style.zoom = 1.0*zoomLevels[currentZoom + 7]/100
+        publish("componentUpdated")
+    }
+
+    window.addEventListener("keydown", function (e) {
+        if (e.ctrlKey && !e.shiftKey && !e.altKey && !e.metaKey && "+" === e.key) {
+            zoom(true)
+        } else if (e.ctrlKey && !e.shiftKey && !e.altKey && !e.metaKey && "-" === e.key) {
+            zoom(false)
+        }
+    });
+}
+
+
 export let applicationRank = (app, lowercaseTerm) => {
     let tmp;
     if ((tmp = app.Name.toLowerCase().indexOf(lowercaseTerm)) > -1) {

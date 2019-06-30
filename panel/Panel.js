@@ -12,7 +12,7 @@
  * Please refer to the LICENSE file for a copy of the license.
  */
 import React from 'react'
-import { devtools, managePosition, subscribe } from '../common/utils'
+import { devtools, manageZoom, subscribe } from '../common/utils'
 import { Clock } from './clock'
 import { Battery } from './battery'
 import { NotifierItems } from './notifieritems'
@@ -49,8 +49,9 @@ export default class Panel extends React.Component {
 
     constructor(props) {
         super(props)
-        managePosition()
-        // devtools();
+        //managePosition()
+        manageZoom()
+        //devtools();
     }
 
     componentDidMount = () => {
@@ -60,10 +61,13 @@ export default class Panel extends React.Component {
 
 
     adjustSize = () => {
+        console.log("Into adjustSize")
         setTimeout(
             () => {
                 let { width, height } = this.content.getBoundingClientRect()
-                Window.resizeTo(Math.round(width) - 1, Math.round(height))
+                let zoomLevel = document.body.style.zoom || 1
+                console.log("document.body.style.zoom:", zoomLevel) 
+                Window.resizeTo(Math.round(zoomLevel*width) - 1, Math.round(zoomLevel*height))
             },
             10
         )
