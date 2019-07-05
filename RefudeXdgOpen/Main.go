@@ -13,6 +13,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -52,8 +53,9 @@ func getMimetype(mimetypeId string) (*MimeType, error) {
 	return mimetype, nil
 }
 
-func launchApp(appId string) error {
-	if request, err := http.NewRequest("POST", "http://localhost/application/"+appId, nil); err != nil {
+func launchApp(appId, filepath string) error {
+	var url = "http://localhost/application/" + appId + "?arg=" + url.QueryEscape(filepath)
+	if request, err := http.NewRequest("POST", url, nil); err != nil {
 		return err
 	} else if response, err := client.Do(request); err != nil {
 		return err
@@ -117,7 +119,7 @@ func main() {
 		log.Fatal("Error querying default app of ", mimetypeId, err)
 	}
 	if appId != "" {
-		if err = launchApp(appId); err != nil {
+		if err = launchApp(appId, arg); err != nil {
 			log.Fatal("Error launching " + appId + " with " + arg)
 		}
 	} else {
