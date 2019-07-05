@@ -8,10 +8,7 @@ import React from 'react';
 import { T } from "../common/translate";
 import { ItemList } from "../common/itemlist"
 import { applicationRank, subscribe, devtools } from "../common/utils";
-import {self} from "../common/monitor"
-import Axios from 'axios';
-
-Axios.defaults.baseURL = 'http://localhost:7938'
+import {getUrl, postUrl, patchUrl} from "../common/monitor"
 
 let gui = window.require('nw.gui');
 let filePath = gui.App.argv[0];
@@ -39,19 +36,18 @@ export default class AppChooser extends React.Component {
             this.term = term.toLowerCase();
             this.filterAndSort();
         });
-        subscribe("itemLaunched", (item) => this.setState({ selected: item.app }));
+        subscribe("itemActivated", (item) => this.setState({ selected: item.app }));
     }
 
     fetchMimetypes = (pos) => {
         if (pos < this.mimetypeIdList.length) {
-            Axios.get(`/mimetype/${this.mimetypeIdList[pos]}`).then(resp => {
+            getUrl(`/mimetype/${this.mimetypeIdList[pos]}`, resp => {
                 let mt = resp.data
                 if (pos === 0) {
                     mimetype = mt
                 }
                 this.mimetypeComment[this.mimetypeIdList[pos]] = mt.Comment;
                 mt.SubClassOf.filter(m => !this.mimetypeIdList.includes(m)).forEach(m => this.mimetypeIdList.push(m));
-            }).then(() => {
                 this.fetchMimetypes(pos + 1)
             });
         } else {
@@ -63,8 +59,10 @@ export default class AppChooser extends React.Component {
     };
 
     fetchApps = () => {
-        Axios.get("/applications?q=" + encodeURIComponent("r.Exec ~i '%f' or r.Exec ~i '%u'")).then(resp => {
-            let apps = resp.data
+        let appTakesArg = a => a.Exec && (a.Exec.toLowerCase().indexOf("%f") > -1 || a.Exec.toLowerCase().indexOf("%u") > -1)
+
+        getUrl("/applications", resp => {
+            let apps = resp.data.filter(a => appTakesArg(a))
             let foundApps = [];
             for (let mimetypeId of this.mimetypeIdList) {
                 this.appMap[mimetypeId] = apps.filter(app => !foundApps.includes(app) && (mimetypeId === 'other' || app.Mimetypes.includes(mimetypeId)))
@@ -86,8 +84,9 @@ export default class AppChooser extends React.Component {
                 items.push({
                     group: mimetypeId === 'other' ? T("Other applications") : T("Applications that handle " + this.mimetypeComment[mimetypeId]),
                     url: app._self,
-                    description: app.Name + (app.Comment ? ' - ' + app.Comment : ''),
-                    iconName: app.IconName,
+                    name: app.Name,
+                    comment: app.Comment || '',
+                    image: 'http://localhost:7938/icon/' + app.IconName + "/img",
                     app: app
                 })
             })
@@ -99,16 +98,13 @@ export default class AppChooser extends React.Component {
     launch = (app, always) => {
         console.log("Launching", app.Name)
         if (always) {
-            Axios.patch(mimetype._self, { DefaultApp: app.Id }).then(resp => {
-               Axios.post(app._slef, { arg: filePath }).then(resp => {
-                    gui.App.quit();
-                }); 
-            });
-        } else {
-            Axios.post(app._self + "?arg=" + encodeURIComponent(filePath)).then(resp => {
-                    gui.App.quit();
-            });
+            patchUrl(mimetype._self, { DefaultApp: app.Id })
+
         }
+
+        postUrl(app._self + "?arg=" + encodeURIComponent(filePath), resp => {
+            gui.App.quit();
+        });    
     };
 
     cancel = () => {

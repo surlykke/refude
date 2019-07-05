@@ -43,4 +43,10 @@ export let postUrl = (path, handler) => {
     }).catch(err => console.error(err))
 }
 
+export let patchUrl = (path, body, handler) => {
+    Axios.patch(`http://localhost:7938${path}`, body).then(resp => {
+        handler && handler(resp)
+    }).catch(err => console.error(err))
+}
+
 
