@@ -77,28 +77,23 @@ export let managePosition = () => {
 }
 
 export let manageZoom = () => {
-    let zoomLevels = [25, 33, 50, 67, 75, 80, 90, 100, 110, 125, 150, 175, 200, 250, 300, 400, 500] // The ones that chromium have
-                    //-7  -6  -5  -4  -3  -2  -1    0    1    2    3    4    5    6    7    8    9
-    let currentZoom = Math.round(localStorage.bodyZoom || 0)
-    if (currentZoom > 9) currentZoom = 9
-    if (currentZoom < -7) currentZoom = -7
-    document.body.style.zoom = 1.0*zoomLevels[currentZoom + 7]/100
+    let zoom = [0.25, 0.33, 0.50, 0.67, 0.75, 0.80, 0.90, 1.00, 1.10, 1.25, 1.50, 1.75, 2.00, 2.50, 3.00, 4.00, 5.00] // The ones that chromium have
 
-    let zoom = (up) => {
-        console.log("Into zoom, up:", up, "currentZoom:", currentZoom)
-        if (up && currentZoom < 9) currentZoom++
-        else if (!up && currentZoom > -7) currentZoom--
-        console.log("now currentZoom:", currentZoom)
-        localStorage.bodyZoom = currentZoom
-        document.body.style.zoom = 1.0*zoomLevels[currentZoom + 7]/100
+    let normalize = level => Number.isInteger(level) ? Math.max(0, Math.min(zoom.length - 1, level)) : 7
+
+    let setZoomLevel = adjustment => {
+        localStorage.zoomLevel = normalize(Number.parseInt(localStorage.zoomLevel) + adjustment)
+        document.body.style.zoom = zoom[localStorage.zoomLevel]
         publish("componentUpdated")
     }
+    
+    setZoomLevel(0)
 
     window.addEventListener("keydown", function (e) {
         if (e.ctrlKey && !e.shiftKey && !e.altKey && !e.metaKey && "+" === e.key) {
-            zoom(true)
+            setZoomLevel(1)
         } else if (e.ctrlKey && !e.shiftKey && !e.altKey && !e.metaKey && "-" === e.key) {
-            zoom(false)
+            setZoomLevel(-1)
         }
     });
 }
