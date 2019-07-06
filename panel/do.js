@@ -17,18 +17,18 @@ const http = require('http');
 
 let rank = (name, comment, lowercaseTerm) => {
     let tmp = name.toLowerCase().indexOf(lowercaseTerm)
-	if (tmp > -1) {
-		console.log("rank('" + name + "', '" + comment + "', '" + lowercaseTerm + "') returning", tmp)
+    if (tmp > -1) {
+        console.log("rank('" + name + "', '" + comment + "', '" + lowercaseTerm + "') returning", tmp)
         return tmp
-	}
-    if (comment) {
-		tmp = comment.toLowerCase().indexOf(lowercaseTerm)
-		if (tmp > -1) {
-			console.log("rank('" + name + "', '" + comment + "', '" + lowercaseTerm + "') returning", tmp + 100)
-       	 return 100 + tmp
-		}
     }
-	return -1
+    if (comment) {
+        tmp = comment.toLowerCase().indexOf(lowercaseTerm)
+        if (tmp > -1) {
+            console.log("rank('" + name + "', '" + comment + "', '" + lowercaseTerm + "') returning", tmp + 100)
+            return 100 + tmp
+        }
+    }
+    return -1
 };
 
 let match = (name, comment, lowercaseTerm) => rank(name, comment, lowercaseTerm) > -1
@@ -70,9 +70,9 @@ class Do extends React.Component {
         this.listenForUpDown();
         this.handleBlurEvents();
 
-        subscribe("termChanged", newTerm => this.setState({term: newTerm.toLocaleLowerCase()}))
+        subscribe("termChanged", newTerm => this.setState({ term: newTerm.toLocaleLowerCase() }))
         subscribe("itemSelected", url => publish("windowSelected", this.state.windows.find(w => w._self === url)))
-        subscribe("itemActivated", item => postUrl(item.url, response => { this.reset()}))
+        subscribe("itemActivated", item => postUrl(item.url, response => { this.reset() }))
         subscribe("dismiss", this.dismiss)
     };
 
@@ -144,7 +144,7 @@ class Do extends React.Component {
     };
 
     reset = () => {
-        this.setState({ "shown": undefined, term: ""})
+        this.setState({ "shown": undefined, term: "" })
         publish("reset")
     }
 
@@ -154,13 +154,16 @@ class Do extends React.Component {
         let items = []
         this.state.notifications.
             filter(n => match(n.Subject, n.Body, term)).
-            forEach(n => items.push({
-                group: T("Notifications"),
-                url: n._self,
-                name: n.Subject,
-                comment: n.Body,
-                image: "http://localhost:7938" + n.Image,
-            }))
+            forEach(n => {
+                items.push({
+                    group: T("Notifications"),
+                    url: n._self,
+                    name: n.Subject,
+                    comment: n.Body,
+                    image: n.Image ? "http://localhost:7938" + n.Image :
+                        "http://localhost:7938/icon/" + n.IconName + "/img",
+                })
+            })
 
         this.state.windows.
             filter(w => match(w.Name, undefined, term)).
@@ -206,7 +209,13 @@ class Do extends React.Component {
         } else if (this.state.notifications.length > 0) {
             return <div> {
                 this.state.notifications.map(n => {
-                    let item = { url: n._self, name: n.Subject, comment: n.Body, image: n.Image && "http://localhost:7938" + n.Image }
+                    let item = {
+                        url: n._self,
+                        name: n.Subject,
+                        comment: n.Body,
+                        image: n.Image ? "http://localhost:7938" + n.Image :
+                            "http://localhost:7938/icon/" + n.IconName + "/img"
+                    }
                     return <Item key={item.url} item={item} />
                 })
             } </div>
