@@ -20,6 +20,7 @@ type Notification struct {
 	Sender    string
 	Subject   string
 	Body      string
+	IconName  string `json:",omitempty"`
 	Image     string `json:",omitempty"`
 	imagePath string
 	Created   time.Time

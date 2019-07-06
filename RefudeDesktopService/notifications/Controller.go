@@ -264,6 +264,7 @@ func notify(app_name string,
 	notification.Id = id
 	notification.Sender = app_name
 	notification.Created = time.Now()
+	notification.IconName = app_icon
 	notification.Subject = sanitize(summary, []string{}, []string{})
 	notification.Body = sanitize(body, allowedTags, allowedEscapes)
 
