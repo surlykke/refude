@@ -32,32 +32,7 @@ type IconImage struct {
 
 type ImageList []IconImage
 
-type Theme struct {
-	resource.Links
-	Id       string
-	Name     string
-	Comment  string
-	Inherits []string
-	Dirs     map[string]IconDir
-}
-
-type IconDir struct {
-	Path    string
-	MinSize uint32
-	MaxSize uint32
-	Context string
-}
-
-type PngSvgPair struct {
-	Png *Icon
-	Svg *Icon
-}
-
-type IconImgResource struct {
-	images ImageList
-}
-
-func (iir IconImgResource) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (i *Icon) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
@@ -76,7 +51,7 @@ func (iir IconImgResource) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var shortestDistanceSoFar = uint32(math.MaxUint32)
 	var candidate IconImage
 
-	for _, img := range iir.images {
+	for _, img := range i.Images {
 		var distance uint32
 		if img.MinSize > size {
 			distance = img.MinSize - size
@@ -99,6 +74,6 @@ func (iir IconImgResource) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, candidate.Path)
 }
 
-func (iir IconImgResource) GetEtag() string {
+func (i *Icon) GetEtag() string {
 	return ""
 }

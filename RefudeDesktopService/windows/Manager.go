@@ -137,7 +137,7 @@ func GetIconName(wId uint32) (string, error) {
 		}
 
 		var icon = image.MakeIconWithHashAsName(images)
-		icons.IconSink <- icon
+		icons.ARGBIconSink <- icon
 		setIconNameInCache(wId, icon.Name)
 		return icon.Name, nil
 	}
