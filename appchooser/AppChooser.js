@@ -86,7 +86,7 @@ export default class AppChooser extends React.Component {
                     url: app._self,
                     name: app.Name,
                     comment: app.Comment || '',
-                    image: 'http://localhost:7938/icon/' + app.IconName + "/img",
+                    image: 'http://localhost:7938/icon/' + app.IconName,
                     app: app
                 })
             })

@@ -161,7 +161,7 @@ class Do extends React.Component {
                     name: n.Subject,
                     comment: n.Body,
                     image: n.Image ? "http://localhost:7938" + n.Image :
-                        "http://localhost:7938/icon/" + n.IconName + "/img",
+                        "http://localhost:7938/icon/" + n.IconName,
                 })
             })
 
@@ -172,7 +172,7 @@ class Do extends React.Component {
                 url: w._self,
                 name: w.Name,
                 comment: "",
-                image: 'http://localhost:7938/icon/' + w.IconName + "/img",
+                image: 'http://localhost:7938/icon/' + w.IconName,
                 iconStyle: windowIconStyle(w),
             }))
 
@@ -185,7 +185,7 @@ class Do extends React.Component {
                     url: a._self,
                     name: a.Name,
                     comment: a.Comment || '',
-                    image: 'http://localhost:7938/icon/' + a.IconName + "/img"
+                    image: 'http://localhost:7938/icon/' + a.IconName
                 }))
 
             let desc = key => this.state.session._actions[key].Description
@@ -197,7 +197,7 @@ class Do extends React.Component {
                     url: this.state.session._self + "?action=" + key,
                     name: key,
                     comment: this.state.session._actions[key].Description,
-                    image: 'http://localhost:7938/icon/' + this.state.session._actions[key].IconName + "/img",
+                    image: 'http://localhost:7938/icon/' + this.state.session._actions[key].IconName,
                 }))
         }
 
@@ -214,7 +214,7 @@ class Do extends React.Component {
                         name: n.Subject,
                         comment: n.Body,
                         image: n.Image ? "http://localhost:7938" + n.Image :
-                            "http://localhost:7938/icon/" + n.IconName + "/img"
+                            "http://localhost:7938/icon/" + n.IconName
                     }
                     return <Item key={item.url} item={item} />
                 })
