@@ -16,6 +16,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/surlykke/RefudeServices/RefudeDesktopService/icons"
+
 	"github.com/surlykke/RefudeServices/lib/image"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/slice"
@@ -297,11 +299,7 @@ func readDesktopFile(path string) (*DesktopApplication, []string, error) {
 		da.Comment = group.Entries["Comment"]
 		icon := group.Entries["Icon"]
 		if strings.HasPrefix(icon, "/") {
-			if iconName, err := image.CopyIconToSessionIconDir(icon); err != nil {
-				log.Printf("Problem with iconpath %s in %s: %s", icon, da.Id, err.Error())
-			} else {
-				da.IconName = iconName
-			}
+			da.IconName = icons.AddPngFromFile(icon)
 		} else {
 			da.IconName = icon
 		}

@@ -307,9 +307,8 @@ func collectPixMap(m map[string]dbus.Variant, key string) string {
 					arr = arr[3:]
 				}
 			}
-			var argbIcon = image.MakeIconWithHashAsName(images)
-			icons.ARGBIconSink <- argbIcon
-			return argbIcon.Name
+			var argbIcon = image.ARGBIcon{Images: images}
+			return icons.AddPngFromARGB(argbIcon)
 		}
 	}
 	return ""

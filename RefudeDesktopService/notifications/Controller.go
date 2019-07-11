@@ -7,18 +7,14 @@
 package notifications
 
 import (
-	"bytes"
-	"crypto/sha1"
 	"errors"
 	"fmt"
-	"image"
-	"image/color"
-	"image/png"
-	"io/ioutil"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/surlykke/RefudeServices/RefudeDesktopService/icons"
+	"github.com/surlykke/RefudeServices/lib/image"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 
 	"github.com/godbus/dbus"
@@ -136,113 +132,6 @@ func GetCapabilities() ([]string, *dbus.Error) {
 		nil
 }
 
-type ImageData struct {
-	width        int32
-	height       int32
-	rowstride    int32
-	hasAlpha     bool
-	bitsPrSample int32
-	channels     int32
-	data         []uint8
-}
-
-func (id ImageData) AsPng() ([]byte, error) {
-	if id.channels != 3 && id.channels != 4 {
-		return nil, fmt.Errorf("Don't know how to deal with %d", id.channels)
-	} else if id.channels == 4 && !id.hasAlpha {
-		return nil, fmt.Errorf("hasAlpha, but not 4 channels")
-	}
-
-	pngData := image.NewRGBA(image.Rect(0, 0, int(id.width), int(id.height)))
-	pixelStride := id.rowstride / id.width
-	fmt.Println("rowstride:", id.rowstride, ", pixelstride:", pixelStride)
-	var count = 0
-
-	for y := int32(0); y < id.height; y++ {
-		for x := int32(0); x < id.width; x++ {
-			count++
-			pos := int(y*id.rowstride + x*pixelStride)
-			var alpha = uint8(255)
-			if id.hasAlpha {
-				alpha = id.data[pos+3]
-			}
-			pngData.Set(int(x), int(y), color.RGBA{R: id.data[pos], G: id.data[pos+1], B: id.data[pos+2], A: alpha})
-		}
-	}
-
-	buf := &bytes.Buffer{}
-	err := png.Encode(buf, pngData)
-	if err != nil {
-		return nil, err
-	} else {
-		return buf.Bytes(), nil
-	}
-}
-
-func getRawImage(v dbus.Variant) string {
-	var id ImageData
-	var err error = nil
-
-	// I'll never be a fan of dbus...
-	if v.Signature().String() != "av" {
-		err = fmt.Errorf("Not an array of variants")
-	} else if ifarray, ok := v.Value().([]interface{}); !ok {
-		err = fmt.Errorf("Value not an array of interface{}")
-	} else if len(ifarray) != 7 {
-		err = fmt.Errorf("len not 7")
-	} else if id.width, ok = ifarray[0].(int32); !ok {
-		err = fmt.Errorf("arr[0] not an int32")
-	} else if id.height, ok = ifarray[1].(int32); !ok {
-		err = fmt.Errorf("arr[1] not an int32")
-	} else if id.rowstride, ok = ifarray[2].(int32); !ok {
-		err = fmt.Errorf("arr[2] not an int32")
-	} else if id.hasAlpha, ok = ifarray[3].(bool); !ok {
-		err = fmt.Errorf("arr[3] not a bool")
-	} else if id.bitsPrSample, ok = ifarray[4].(int32); !ok {
-		err = fmt.Errorf("arr[4] not an int32")
-	} else if id.channels, ok = ifarray[5].(int32); !ok {
-		err = fmt.Errorf("arr[5] not an int32")
-	} else if id.data, ok = ifarray[6].([]uint8); !ok {
-		err = fmt.Errorf("arr[6] not an []uint8")
-	}
-
-	bytes, err := id.AsPng()
-
-	if err != nil {
-		fmt.Println(err)
-		return ""
-	} else {
-		var pngName = fmt.Sprintf("%X", sha1.Sum(bytes))
-		var pngPath = fmt.Sprintf("%s%s.png", imageDir, pngName)
-		if err = ioutil.WriteFile(pngPath, bytes, 0700); err != nil {
-			fmt.Println(err)
-			return ""
-		} else {
-			return imageDir + pngName + ".png"
-		}
-	}
-}
-
-func getFile(v dbus.Variant) string {
-	var err error
-	var pngName string
-
-	if str, ok := v.Value().(string); !ok {
-		err = fmt.Errorf("Value not a string")
-	} else if bytes, err := ioutil.ReadFile(str); err == nil {
-		pngName = fmt.Sprintf("%X", sha1.Sum(bytes))
-		var pngPath = fmt.Sprintf("%s%s.png", imageDir, pngName)
-		err = ioutil.WriteFile(pngPath, bytes, 0700)
-	}
-
-	if err != nil {
-		fmt.Println(err)
-		return ""
-	} else {
-		return imageDir + pngName + ".png"
-	}
-}
-
 func notify(app_name string,
 	replaces_id uint32,
 	app_icon string,
@@ -269,16 +158,19 @@ func notify(app_name string,
 	notification.Body = sanitize(body, allowedTags, allowedEscapes)
 
 	// Get image
-	if v, ok := hints["image-data"]; ok {
-		notification.imagePath = getRawImage(v)
-	} else if v, ok := hints["image_data"]; ok {
-		notification.imagePath = getRawImage(v)
-	} else if v, ok := hints["image-path"]; ok {
-		notification.imagePath = getFile(v)
-	} else if v, ok := hints["image_path"]; ok {
-		notification.imagePath = getFile(v)
-	} else if v, ok := hints["icon_data"]; ok {
-		notification.imagePath = getRawImage(v)
+	var ok bool
+	if notification.IconName, ok = installRawImageIcon(hints, "image-data"); !ok {
+		if notification.IconName, ok = installRawImageIcon(hints, "image_data"); !ok {
+			if notification.IconName, ok = installFileIcon(hints, "image-path"); !ok {
+				if notification.IconName, ok = installFileIcon(hints, "image_path"); !ok {
+					if "" != app_icon {
+						notification.IconName = app_icon
+					} else {
+						notification.IconName, _ = installRawImageIcon(hints, "icon_data")
+					}
+				}
+			}
+		}
 	}
 
 	if expire_timeout == 0 {
@@ -315,6 +207,58 @@ func notify(app_name string,
 
 	incomingNotifications <- notification
 	return id, nil
+}
+
+func installRawImageIcon(hints map[string]dbus.Variant, key string) (string, bool) {
+	if v, ok := hints[key]; !ok {
+		return "", false
+	} else if imageData, err := getRawImage(v); err != nil {
+		fmt.Println("Error converting variant to image data:", err)
+		return "", true
+	} else {
+		return icons.AddPngFromRawImage(imageData), false
+	}
+}
+
+func getRawImage(v dbus.Variant) (image.ImageData, error) {
+	var id image.ImageData
+	var err error = nil
+
+	// I'll never be a fan of dbus...
+	if v.Signature().String() != "av" {
+		return id, errors.New("Not an array of variants")
+	} else if ifarray, ok := v.Value().([]interface{}); !ok {
+		return id, errors.New("Value not an array of interface{}")
+	} else if len(ifarray) != 7 {
+		return id, errors.New("len not 7")
+	} else if id.Width, ok = ifarray[0].(int32); !ok {
+		return id, errors.New("arr[0] not an int32")
+	} else if id.Height, ok = ifarray[1].(int32); !ok {
+		return id, errors.New("arr[1] not an int32")
+	} else if id.Rowstride, ok = ifarray[2].(int32); !ok {
+		return id, errors.New("arr[2] not an int32")
+	} else if id.HasAlpha, ok = ifarray[3].(bool); !ok {
+		return id, errors.New("arr[3] not a bool")
+	} else if id.BitsPrSample, ok = ifarray[4].(int32); !ok {
+		return id, errors.New("arr[4] not an int32")
+	} else if id.Channels, ok = ifarray[5].(int32); !ok {
+		return id, errors.New("arr[5] not an int32")
+	} else if id.Data, ok = ifarray[6].([]uint8); !ok {
+		return id, errors.New("arr[6] not an []uint8")
+	} else {
+		return id, err
+	}
+}
+
+func installFileIcon(hints map[string]dbus.Variant, key string) (string, bool) {
+	if v, ok := hints[key]; !ok {
+		return "", false
+	} else if path, ok := v.Value().(string); !ok {
+		fmt.Println("Value not a string")
+		return "", true
+	} else {
+		return icons.AddPngFromFile(path), true
+	}
 }
 
 func makeCloseFuntion(removals chan removal) interface{} {

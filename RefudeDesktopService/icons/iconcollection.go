@@ -13,6 +13,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -123,30 +124,68 @@ func (ic *IconCollection) addBasedir(basedir string) {
 //
 // Adds the icon to hicolor
 //
-func (ic *IconCollection) addARGBIcon(argbIcon image.ARGBIcon) {
-	if _, ok := ic.themeIcons["hicolor"][argbIcon.Name]; ok {
+func (ic *IconCollection) addARGBIcon(iconName string, argbIcon image.ARGBIcon) {
+	if _, ok := ic.themeIcons["hicolor"][iconName]; ok {
 		return
 	}
 
-	var icon = Icon{Name: argbIcon.Name, Theme: "hicolor"}
+	var icon = Icon{Name: iconName, Theme: "hicolor"}
 
 	for _, pixMap := range argbIcon.Images {
 		if pixMap.Width != pixMap.Height {
 		} else {
-			var path = fmt.Sprintf("%s/%d/%s.png", refudeSessionIconsDir, pixMap.Width, argbIcon.Name)
+			var dir = fmt.Sprintf("%s/%d", refudeSessionIconsDir, pixMap.Width)
+			var fileName = iconName + ".png"
 			icon.Images = append(icon.Images, IconImage{
 				Type:    "png",
 				MinSize: pixMap.Height,
 				MaxSize: pixMap.Height,
-				Path:    fmt.Sprintf("%s/%d/%s.png", refudeSessionIconsDir, pixMap.Width, argbIcon.Name),
+				Path:    dir + "/" + fileName,
 			})
-			go savePng(path, pixMap)
+			go saveAsPng(dir, fileName, &pixMap)
 		}
 	}
 	if len(icon.Images) > 0 {
 		ic.Lock()
 		defer ic.Unlock()
 		ic.themeIcons["hicolor"][icon.Name] = &icon
+	}
+}
+
+//
+// Adds the icon to other icons
+//
+func (ic *IconCollection) addImageDataIcon(name string, imageData image.ImageData) {
+	go saveAsPng(refudeSessionIconsDir, name+".png", imageData)
+	var icon = Icon{Name: name, Images: []IconImage{{
+		Type: "png",
+		Path: refudeSessionIconsDir + "/" + name + ".png",
+	}}}
+
+	ic.Lock()
+	defer ic.Unlock()
+	ic.otherIcons[name] = &icon
+}
+
+func (ic *IconCollection) addPngFileIcon(name string, filePath string) {
+	filePath = path.Clean(filePath)
+
+	if fileInfo, err := os.Stat(filePath); err != nil {
+		fmt.Println("error stat'ing:", filePath, err)
+	} else if !fileInfo.Mode().IsRegular() {
+		fmt.Println("Not a regular file:", filePath)
+	} else if !strings.HasSuffix(filePath, ".png") {
+		fmt.Println("Not a png file", filePath)
+	} else {
+		ic.Lock()
+		defer ic.Unlock()
+		ic.otherIcons[name] = &Icon{
+			Name: name,
+			Images: []IconImage{{
+				Type: "png",
+				Path: filePath,
+			}},
+		}
 	}
 }
 
@@ -266,15 +305,17 @@ func (ic *IconCollection) collectOtherIcons(basedir string) {
 	}
 }
 
-func savePng(path string, pixMap image.ARGBImage) {
-	if png, err := pixMap.AsPng(); err != nil {
-		log.Println("Error converting pixmap to png:", err)
+type convertibleToPng interface {
+	AsPng() ([]byte, error)
+}
+
+func saveAsPng(dir string, name string, image convertibleToPng) {
+	if png, err := image.AsPng(); err != nil {
+		log.Println("Error converting image to png:", err)
 	} else {
-		var lastSlashPos = strings.LastIndex(path, "/")
-		var dir = path[0:lastSlashPos]
 		if err = os.MkdirAll(dir, os.ModePerm); err != nil {
 			log.Println("Unable to create", dir, err)
-		} else if err = ioutil.WriteFile(path, png, 0700); err != nil {
+		} else if err = ioutil.WriteFile(dir+"/"+name, png, 0700); err != nil {
 			log.Println("Unable to write file", err)
 		}
 	}

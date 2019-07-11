@@ -136,9 +136,9 @@ func GetIconName(wId uint32) (string, error) {
 			pixelArray = pixelArray[width*height:]
 		}
 
-		var icon = image.MakeIconWithHashAsName(images)
-		icons.ARGBIconSink <- icon
-		setIconNameInCache(wId, icon.Name)
-		return icon.Name, nil
+		var icon = image.ARGBIcon{Images: images}
+		var iconName = icons.AddPngFromARGB(icon)
+		setIconNameInCache(wId, iconName)
+		return iconName, nil
 	}
 }
