@@ -7,7 +7,6 @@
 package icons
 
 import (
-	"crypto/sha1"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -25,9 +24,7 @@ import (
 )
 
 /** Urls
- * /icons   list of icons for curren default theme
- * /allicons list of all icons for all installed themes
- * /icon/<name> json representation of icon <name>
+ * TODO
  */
 
 /**
@@ -35,7 +32,7 @@ import (
  *
  * /usr/share/icons/oxygen/base/32x32/actions/
  * |-datadir-|
- * |----basedir----|
+ * |----icondir----|
  * |--------themedir------|
  * |----------------themesubdir--------------|
  */
@@ -56,7 +53,7 @@ func init() {
 
 type IconCollection struct {
 	sync.Mutex
-	basedirs   []string
+	icondirs   []string
 	themes     map[string]*Theme
 	themeIcons map[string]map[string]*Icon
 	otherIcons map[string]*Icon
@@ -83,16 +80,16 @@ func (ic *IconCollection) ServeHTTP(w http.ResponseWriter, r *http.Request) bool
 
 func MakeIconCollection() *IconCollection {
 	var ic = IconCollection{
-		basedirs:   []string{xdg.Home + "/.icons", xdg.Home + "/.local/share/icons"},
+		icondirs:   []string{xdg.Home + "/.icons", xdg.Home + "/.local/share/icons"},
 		themes:     make(map[string]*Theme),
 		themeIcons: make(map[string]map[string]*Icon),
 		otherIcons: make(map[string]*Icon),
 	}
 
 	for _, datadir := range xdg.DataDirs {
-		ic.basedirs = append(ic.basedirs, datadir+"/icons")
+		ic.icondirs = append(ic.icondirs, datadir+"/icons")
 	}
-	ic.basedirs = append(ic.basedirs, "/usr/share/pixmaps")
+	ic.icondirs = append(ic.icondirs, "/usr/share/pixmaps")
 	return &ic
 }
 
@@ -100,24 +97,24 @@ func (ic *IconCollection) collect() {
 	ic.Lock()
 	defer ic.Unlock()
 
-	for _, basedir := range ic.basedirs {
-		ic.collectThemes(basedir)
+	for _, icondir := range ic.icondirs {
+		ic.collectThemes(icondir)
 	}
 
-	for _, basedir := range ic.basedirs {
-		ic.collectThemeicons(basedir)
-		ic.collectOtherIcons(basedir)
+	for _, icondir := range ic.icondirs {
+		ic.collectThemeicons(icondir)
+		ic.collectOtherIcons(icondir)
 	}
 }
 
-func (ic *IconCollection) addBasedir(basedir string) {
+func (ic *IconCollection) addIcondir(icondir string) {
 	ic.Lock()
 	defer ic.Unlock()
 
-	if !slice.Contains(ic.basedirs, basedir) {
-		ic.basedirs = append(ic.basedirs, basedir)
-		ic.collectThemeicons(basedir)
-		ic.collectOtherIcons(basedir)
+	if !slice.Contains(ic.icondirs, icondir) {
+		ic.icondirs = append(ic.icondirs, icondir)
+		ic.collectThemeicons(icondir)
+		ic.collectOtherIcons(icondir)
 	}
 }
 
@@ -190,18 +187,17 @@ func (ic *IconCollection) addPngFileIcon(name string, filePath string) {
 }
 
 // Caller holds lock
-func (ic *IconCollection) collectThemes(basedir string) {
-	fmt.Println("Collecting themes in", basedir)
-	basesubdirs, err := getVisibleSubdirs(basedir)
-	fmt.Println("basesubdirs:", basesubdirs)
+func (ic *IconCollection) collectThemes(icondir string) {
+	subdirs, err := getVisibleSubdirs(icondir)
 	if err != nil {
-		fmt.Println("err:", err)
+		if !os.IsNotExist(err) {
+			fmt.Println("Error getting visible subdirs:", err)
+		}
 		return
 	}
-	for _, basesubdir := range basesubdirs {
-		var themedir = basedir + "/" + basesubdir
+	for _, subdir := range subdirs {
+		var themedir = icondir + "/" + subdir
 		var themeName = filepath.Base(themedir)
-		fmt.Println("themeName:", themeName)
 		if _, ok := ic.themes[themeName]; ok {
 			continue
 		}
@@ -209,7 +205,6 @@ func (ic *IconCollection) collectThemes(basedir string) {
 		var themeIndexPath = themedir + "/index.theme"
 		_, err := os.Stat(themeIndexPath)
 		if err != nil {
-			fmt.Println("err:", err)
 			if !os.IsNotExist(err) {
 				fmt.Println("Error accessing", themeIndexPath, ":", err)
 			}
@@ -221,7 +216,6 @@ func (ic *IconCollection) collectThemes(basedir string) {
 			fmt.Println("Error reading", themeIndexPath, ":", err)
 			continue
 		}
-		fmt.Println("Adding theme", themeName)
 		ic.themes[themeName] = theme
 		ic.themeIcons[themeName] = make(map[string]*Icon)
 	}
@@ -250,7 +244,12 @@ func (ic *IconCollection) collectThemeicons(icondir string) {
 				var iconFilePath = themesubdir + "/" + iconFileName
 				var name = iconFileName[0 : len(iconFileName)-4]
 				if strings.HasSuffix(iconFilePath, ".xpm") {
-					if iconFilePath, err = getPathToConverted(iconFilePath); err != nil {
+					if _, err := os.Stat(iconFilePath[0:len(iconFilePath)-4] + ".png"); err == nil {
+						continue
+					}
+					var convertedPath = refudeConvertedIconsDir + "/" + themename + "/" + dir.Path + "/" + name + ".png"
+					if err = convertAndSave(iconFilePath, convertedPath); err != nil {
+						fmt.Println("Problem converting and saving", iconFilePath, ":", err)
 						continue
 					}
 				}
@@ -273,23 +272,28 @@ func (ic *IconCollection) collectThemeicons(icondir string) {
 }
 
 // Caller holds lock
-func (ic *IconCollection) collectOtherIcons(basedir string) {
+func (ic *IconCollection) collectOtherIcons(icondir string) {
 
-	if !dirExists(basedir) {
+	if !dirExists(icondir) {
 		return
 	}
 
-	iconFileNames, err := getIcons(basedir)
+	iconFileNames, err := getIcons(icondir)
 	if err != nil {
-		log.Println("Error reading icons in", basedir, err)
+		log.Println("Error reading icons in", icondir, err)
 	}
 
 	for _, iconFileName := range iconFileNames {
-		var iconFilePath = basedir + "/" + iconFileName
+		var iconFilePath = icondir + "/" + iconFileName
+		var err error
 		var name = iconFileName[0 : len(iconFileName)-4]
 
 		if strings.HasSuffix(iconFilePath, ".xpm") {
-			if iconFilePath, err := getPathToConverted(iconFilePath); err != nil {
+			if _, err := os.Stat(iconFilePath[:len(iconFilePath)-4] + ".png"); err == nil {
+				continue
+			}
+			var pngFilePath = refudeConvertedIconsDir + "/" + name + ".png"
+			if err = convertAndSave(iconFilePath, pngFilePath); err != nil {
 				log.Println("Problem converting", iconFilePath, err)
 				continue
 			}
@@ -390,10 +394,33 @@ func readIndexTheme(themeId string, indexThemeFilePath string) (*Theme, error) {
 	return theme, nil
 }
 
-func getPathToConverted(pathToXpm string) (string, error) {
+func convertAndSave(pathToXpm string, pathToPng string) error {
+	if xpmBytes, err := ioutil.ReadFile(pathToXpm); err != nil {
+		return err
+	} else {
+		var pathToPngDir = filepath.Dir(pathToPng)
+		if err := os.MkdirAll(pathToPngDir, 0700); err != nil {
+			return err
+		}
+		if _, err := os.Stat(pathToPng); os.IsNotExist(err) {
+			if pngBytes, err := image.Xpm2png(xpmBytes); err != nil {
+				return err
+			} else if err = ioutil.WriteFile(pathToPng, pngBytes, 0700); err != nil {
+				return err
+			}
+		} else if err != nil {
+			return err
+		}
+
+		return nil
+	}
+}
+
+/*func getPathToConverted(pathToXpm string) (string, error) {
 	if xpmBytes, err := ioutil.ReadFile(pathToXpm); err != nil {
 		return "", err
 	} else {
+
 		pngPath := fmt.Sprintf("%s/%x.png", refudeConvertedIconsDir, sha1.Sum(xpmBytes))
 		if _, err := os.Stat(pngPath); os.IsNotExist(err) {
 			if pngBytes, err := image.Xpm2png(xpmBytes); err != nil {
@@ -407,7 +434,7 @@ func getPathToConverted(pathToXpm string) (string, error) {
 
 		return pngPath, nil
 	}
-}
+}*/
 
 func readUint32(uintAsString string) (uint32, bool) {
 	res, err := strconv.ParseUint(uintAsString, 10, 32)

@@ -24,7 +24,7 @@ func Run() {
 	for {
 		select {
 		case basedir := <-BasedirSink:
-			Icons.addBasedir(basedir)
+			Icons.addIcondir(basedir)
 		case nIcon := <-iconSink:
 			switch icon := nIcon.icon.(type) {
 			case image.ARGBIcon:
