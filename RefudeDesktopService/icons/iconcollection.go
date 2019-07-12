@@ -12,7 +12,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -165,24 +164,15 @@ func (ic *IconCollection) addImageDataIcon(name string, imageData image.ImageDat
 }
 
 func (ic *IconCollection) addPngFileIcon(name string, filePath string) {
-	filePath = path.Clean(filePath)
-
-	if fileInfo, err := os.Stat(filePath); err != nil {
-		fmt.Println("error stat'ing:", filePath, err)
-	} else if !fileInfo.Mode().IsRegular() {
-		fmt.Println("Not a regular file:", filePath)
-	} else if !strings.HasSuffix(filePath, ".png") {
-		fmt.Println("Not a png file", filePath)
-	} else {
-		ic.Lock()
-		defer ic.Unlock()
-		ic.otherIcons[name] = &Icon{
-			Name: name,
-			Images: []IconImage{{
-				Type: "png",
-				Path: filePath,
-			}},
-		}
+	var iconType = filePath[len(filePath)-3:]
+	ic.Lock()
+	defer ic.Unlock()
+	ic.otherIcons[name] = &Icon{
+		Name: name,
+		Images: []IconImage{{
+			Type: iconType,
+			Path: filePath,
+		}},
 	}
 }
 

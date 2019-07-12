@@ -2,6 +2,7 @@ package icons
 
 import (
 	"fmt"
+	"os"
 	"path"
 	"strings"
 
@@ -45,14 +46,23 @@ func AddPngFromARGB(argbIcon image.ARGBIcon) string {
 }
 
 func AddPngFromFile(filePath string) string {
-	if !strings.HasSuffix(filePath, ".png") {
-		fmt.Println("Not a png icon-file:", filePath)
+
+	if fileInfo, err := os.Stat(filePath); err != nil {
+		fmt.Println("error stat'ing:", filePath, err)
 		return ""
+	} else if !fileInfo.Mode().IsRegular() {
+		fmt.Println("Not a regular file:", filePath)
+		return ""
+	} else if !(strings.HasSuffix(filePath, ".png") || strings.HasSuffix(filePath, ".svg")) {
+		fmt.Println("Not an icon  file", filePath)
+		return ""
+	} else {
+
+		filePath = path.Clean(filePath)
+		var name = strings.Replace(filePath[1:len(filePath)-4], "/", ".", -1)
+		iconSink <- namedIcon{name, filePath}
+		return name
 	}
-	filePath = path.Clean(filePath)
-	var name = strings.Replace(filePath[1:len(filePath)-4], "/", ".", -1)
-	iconSink <- namedIcon{name, filePath}
-	return name
 }
 
 func AddPngFromRawImage(imageData image.ImageData) string {
