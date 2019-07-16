@@ -13,7 +13,7 @@ for appdir in $apps; do
 done
 
 if [[ "-d" == "$1" ]]; then
-    webpack -d
+    ./node_modules/.bin/webpack -d
 else
-    webpack -p
+    ./node_modules/.bin/webpack -p
 fi
