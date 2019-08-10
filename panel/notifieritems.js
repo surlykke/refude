@@ -5,7 +5,7 @@
 // Please refer to the GPL2 file for a copy of the license.
 //
 import React from 'react'
-import { monitorUrl, postUrl } from "../common/monitor";
+import { monitorUrl, getUrl, postUrl } from "../common/monitor";
 import { publish } from "../common/utils";
 
 export class NotifierItem extends React.Component {
@@ -23,9 +23,9 @@ export class NotifierItem extends React.Component {
         let showMenu = (event) => {
             console.log("Into showMenu, this.state.item.Menu:", this.state.item.Menu)
             event.preventDefault()
-            let buildMenu = (jsonMenu) => {
+            let buildMenu = jsonMenu => {
                 let menu = new nw.Menu()
-                jsonMenu.forEach(jsonMenuItem => {
+                jsonMenu.Entries.forEach(jsonMenuItem => {
                     let menuItem = new nw.MenuItem({
                         type: jsonMenuItem.Type === "separator" ? "separator" :
                             jsonMenuItem.ToggleType === "checkmark" ? "checkbox" :
@@ -38,8 +38,8 @@ export class NotifierItem extends React.Component {
                         menuItem.submenu = buildMenu(jsonMenuItem.SubMenus)
                     } else if (menuItem.type === "normal" || menuItem.type === "checkbox") {
                         menuItem.click = () => {
-                            console.log("Post:", this.state.item._self + '?action=menu&id=' + jsonMenuItem.Id)
-                            postUrl(this.state.item._self + '?action=menu&id=' + jsonMenuItem.Id, resp => {
+                            console.log("Post:", jsonMenu._self + '?id=' + jsonMenuItem.Id)
+                            postUrl(jsonMenu._self + '?id=' + jsonMenuItem.Id, resp => {
                                 console.log("resp:", resp)
                             })
                         }
@@ -51,8 +51,10 @@ export class NotifierItem extends React.Component {
             }
 
             if (this.state.item.Menu) {
-                let m = buildMenu(this.state.item.Menu)
-                m.popup(event.clientX, event.clientY)
+                getUrl(this.state.item.Menu, resp => {
+                    let m = buildMenu(resp.data)
+                    m.popup(event.clientX, event.clientY)
+                })
             }
         }
 
