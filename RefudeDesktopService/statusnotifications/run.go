@@ -7,9 +7,8 @@
 package statusnotifications
 
 import (
+	"fmt"
 	"sort"
-
-	"github.com/godbus/dbus"
 
 	"github.com/surlykke/RefudeServices/lib/resource"
 )
@@ -26,22 +25,48 @@ func Run() {
 
 	updateCollections()
 	for event := range events {
-		switch event.eventType {
-		case ItemUpdated:
+		fmt.Println("Event: ", event)
+		switch event.eventName {
+		case "ItemCreated":
 			var item = buildItem(event.sender, event.path)
 			items[item.Self] = item
 			resourceMap.Set(item.Self, resource.MakeJsonResouceWithEtag(item))
-		case MenuUpdated:
-			if itemPath := menuPath2ItemPath(event.sender, event.path); itemPath != "" {
-				var item = buildItem(event.sender, itemPath)
-				items[item.Self] = item
-				resourceMap.Set(item.Self, resource.MakeJsonResouceWithEtag(item))
+			if item.Menu != "" {
+				resourceMap.Set(item.Menu, item.menu)
+			}
+		case "ItemRemoved":
+			if item, ok := items[itemSelf(event.sender, event.path)]; ok {
+				resourceMap.Remove(item.Self)
+				delete(items, item.Self)
+				if item.Menu != "" {
+					resourceMap.Remove(item.Menu)
+				}
+			}
+		default:
+			if item, ok := items[itemSelf(event.sender, event.path)]; ok {
+				var itemCopy = &(*item)
+
+				switch event.eventName {
+				case "org.kde.StatusNotifierItem.NewTitle":
+					updateTitle(itemCopy)
+				case "org.kde.StatusNotifierItem.NewStatus":
+					updateStatus(itemCopy)
+				case "org.kde.StatusNotifierItem.NewToolTip":
+					updateToolTip(itemCopy)
+				case "org.kde.StatusNotifierItem.NewIcon":
+					updateIcon(itemCopy)
+				case "org.kde.StatusNotifierItem.NewAttentionIcon":
+					updateAttentionIcon(itemCopy)
+				case "org.kde.StatusNotifierItem.NewOverlayIcon":
+					updateOverlayIcon(itemCopy)
+				default:
+					continue
+				}
+				resourceMap.Set(itemCopy.Self, resource.MakeJsonResouceWithEtag(itemCopy))
+			} else {
+				fmt.Println("Item event on unknown item: ", event.sender, event.path)
 
 			}
-		case ItemRemoved:
-			var self = itemSelf(event.sender, event.path)
-			resourceMap.Remove(self)
-			delete(items, self)
 		}
 		updateCollections()
 		resourceMap.Broadcast()
@@ -56,14 +81,4 @@ func updateCollections() {
 	sort.Sort(list)
 	resourceMap.Set("/items", resource.MakeJsonResouceWithEtag(list))
 	resourceMap.Set("/items/brief", resource.MakeJsonResouceWithEtag(list.GetSelfs()))
-}
-
-func menuPath2ItemPath(sender string, menuPath dbus.ObjectPath) dbus.ObjectPath {
-	for _, item := range items {
-		if item.sender == sender && item.menuPath == menuPath {
-			return item.itemPath
-		}
-	}
-
-	return ""
 }

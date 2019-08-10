@@ -7,6 +7,7 @@
 package statusnotifications
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -27,9 +28,9 @@ type Item struct {
 	key                     string
 	sender                  string
 	itemPath                dbus.ObjectPath
-	menuPath                dbus.ObjectPath
+	menu                    *MenuResource
 	Id                      string
-	Menu                    []MenuItem
+	Menu                    string `json:",omitempty"`
 	Category                string
 	Status                  string
 	IconName                string
@@ -37,6 +38,7 @@ type Item struct {
 	AttentionIconName       string
 	AttentionAccessibleDesc string
 	Title                   string
+	ToolTip                 string
 	iconThemePath           string
 }
 
@@ -48,23 +50,20 @@ func itemSelf(sender string, path dbus.ObjectPath) string {
 	return fmt.Sprintf("/item/%s", strings.Replace(sender+string(path), "/", "-", -1))
 }
 
+func menuSelf(sender string, path dbus.ObjectPath) string {
+	return fmt.Sprintf("/itemmenu/%s", strings.Replace(sender+string(path), "/", "-", -1))
+}
+
 func (item *Item) POST(w http.ResponseWriter, r *http.Request) {
 	action := requests.GetSingleQueryParameter(r, "action", "left")
 	x, _ := strconv.Atoi(requests.GetSingleQueryParameter(r, "x", "0"))
 	y, _ := strconv.Atoi(requests.GetSingleQueryParameter(r, "y", "0"))
-	id := requests.GetSingleQueryParameter(r, "id", "")
 
 	var call *dbus.Call
 	if slice.Among(action, "left", "middle", "right") {
 		action2method := map[string]string{"left": "Activate", "middle": "SecondaryActivate", "right": "ContextMenu"}
 		dbusObj := conn.Object(item.sender, item.itemPath)
 		call = dbusObj.Call("org.kde.StatusNotifierItem."+action2method[action], dbus.Flags(0), x, y)
-	} else if action == "menu" && item.menuPath != "" {
-		idAsInt, _ := strconv.Atoi(id)
-		data := dbus.MakeVariant("")
-		time := uint32(time.Now().Unix())
-		dbusObj := conn.Object(item.sender, item.menuPath)
-		call = dbusObj.Call("com.canonical.dbusmenu.Event", dbus.Flags(0), idAsInt, "clicked", data, time)
 	} else {
 		w.WriteHeader(http.StatusUnprocessableEntity)
 		return
@@ -81,6 +80,60 @@ type ItemRepo struct {
 	resource.ResourceMap
 }
 
+type MenuResource struct {
+	self   string
+	sender string
+	path   dbus.ObjectPath
+}
+
+func MakeMenuResource(sender string, path dbus.ObjectPath) *MenuResource {
+	return &MenuResource{
+		self:   menuSelf(sender, path),
+		sender: sender,
+		path:   path,
+	}
+}
+
+func (mr *MenuResource) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
+		var menu = &Menu{}
+		menu.Links.Init(mr.self, "itemmenu")
+		var err error
+		if menu.Entries, err = fetchMenu(mr.sender, mr.path); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		} else if bytes, err := json.Marshal(menu); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		} else {
+			w.Header().Set("Content-Type", "application/json")
+			w.Write(bytes)
+		}
+	} else if r.Method == "POST" {
+		id := requests.GetSingleQueryParameter(r, "id", "")
+		idAsInt, _ := strconv.Atoi(id)
+		data := dbus.MakeVariant("")
+		time := uint32(time.Now().Unix())
+		dbusObj := conn.Object(mr.sender, mr.path)
+		call := dbusObj.Call("com.canonical.dbusmenu.Event", dbus.Flags(0), idAsInt, "clicked", data, time)
+		if call.Err != nil {
+			log.Println(call.Err)
+			w.WriteHeader(http.StatusInternalServerError)
+		} else {
+			w.WriteHeader(http.StatusAccepted)
+		}
+	} else {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	}
+}
+
+func (mr *MenuResource) GetEtag() string {
+	return ""
+}
+
+type Menu struct {
+	resource.Links
+	Entries []MenuItem
+}
+
 type MenuItem struct {
 	Id          string
 	Type        string
@@ -91,7 +144,7 @@ type MenuItem struct {
 	Shortcuts   [][]string `json:",omitempty"`
 	ToggleType  string     `json:",omitempty"`
 	ToggleState int32
-	SubMenus    []MenuItem `json:",omitempty"`
+	SubEntries  []MenuItem `jsoControllern:",omitempty"`
 }
 
 func fetchMenu(sender string, path dbus.ObjectPath) ([]MenuItem, error) {
@@ -106,8 +159,8 @@ func fetchMenu(sender string, path dbus.ObjectPath) ([]MenuItem, error) {
 		return nil, errors.New(fmt.Sprint("Expected []interface{} as second return argument, got:", reflect.TypeOf(call.Body[1])))
 	} else if menu, err := parseMenu(interfaces); err != nil {
 		return nil, err
-	} else if len(menu.SubMenus) > 0 {
-		return menu.SubMenus, nil
+	} else if len(menu.SubEntries) > 0 {
+		return menu.SubEntries, nil
 	} else {
 		return []MenuItem{menu}, nil
 	}
