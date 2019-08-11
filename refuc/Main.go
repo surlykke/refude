@@ -13,14 +13,30 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/surlykke/RefudeServices/lib/xdg"
 	"io/ioutil"
 	"net"
 	"net/http"
 	"net/textproto"
 	"os"
+	"regexp"
 	"strings"
+
+	"github.com/surlykke/RefudeServices/lib/xdg"
 )
+
+const operators = "GET POST PATCH DELETE"
+
+// Urls to consult for completions for a given prefix
+var collectionPaths = []string{"/windows/brief", "/applications/brief", "/mimetypes/brief", "/items/brief", "/devices/brief", "/notifications/brief"}
+
+var basisPaths = []string{
+	"/windows", "/windows/brief", "/window/",
+	"/applications", "/applications/brief", "/application/",
+	"/mimetypes", "/mimetypes/brief", "/mimetype",
+	"/items", "/items/brief", "/item/",
+	"/notifications", "/notifications/brief", "/notification/",
+	"/devices", "/devices/brief", "/device",
+}
 
 type HeaderMap map[string]string
 
@@ -45,18 +61,135 @@ func (hm *HeaderMap) Set(s string) error {
 }
 
 func fail(msg string) {
-	_,_ = fmt.Fprintln(os.Stderr, msg)
+	_, _ = fmt.Fprintln(os.Stderr, msg)
 	os.Exit(1)
 }
 
 func usage() {
-	_,_ = fmt.Fprintln(flag.CommandLine.Output(), "Usage: RefudeReq [options] path")
-	_,_ = fmt.Fprintln(flag.CommandLine.Output(), "options:")
+	_, _ = fmt.Fprintln(flag.CommandLine.Output(), "Usage: RefudeReq [options] path")
+	_, _ = fmt.Fprintln(flag.CommandLine.Output(), "options:")
 	flag.PrintDefaults()
-	_,_ = fmt.Fprintln(flag.CommandLine.Output(), "path: path to resource (eg. /application/firefox.desktop)")
+	_, _ = fmt.Fprintln(flag.CommandLine.Output(), "path: path to resource (eg. /application/firefox.desktop)")
+}
+
+/**
+ * returns:
+ *  - proto and status (as one string)
+ *  - response headers
+ *  - fully read response body
+ *  - error, if any, in which case other return values are nil/zero
+ */
+func perform(method string, headerMap map[string]string, path string) (string, map[string][]string, []byte, error) {
+	var client = http.Client{
+		Transport: &http.Transport{
+			DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
+				return net.Dial("unix", xdg.RuntimeDir+"/org.refude.desktop-service")
+			},
+		},
+	}
+	var url = "http://localhost" + path
+
+	var request, err = http.NewRequest(method, url, nil)
+	if err != nil {
+		return "", nil, nil, err
+	}
+
+	if headerMap != nil {
+		for key, value := range headerMap {
+			request.Header.Set(key, value)
+		}
+	}
+
+	response, err := client.Do(request)
+	if err != nil {
+		return "", nil, nil, err
+	}
+
+	body, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		fail(err.Error())
+	}
+
+	return response.Proto + " " + response.Status, response.Header, body, nil
+}
+
+// Assumes the resource sitting at collectionPath returns a list of strings
+func getStringlist(collectionPath string) []string {
+	_, _, body, err := perform("GET", nil, collectionPath)
+	if err != nil {
+		return nil
+	}
+
+	var collectionPaths = make([]string, 0, 100)
+	err = json.Unmarshal(body, &collectionPaths)
+	if err != nil {
+		return nil
+	}
+
+	return collectionPaths
+}
+
+var argReg = regexp.MustCompile("\\s+")
+
+func completions(argStr string, filter bool) []string {
+	var args = argReg.Split(argStr, -1)
+	var argc = len(args)
+	if argc < 2 {
+		return []string{} // Probably newer happening
+	}
+
+	var lastArg = args[argc-2]
+	var curArg = args[argc-1]
+	var hasX bool
+	for i := 1; i < argc-1; i++ {
+		hasX = hasX || "-X" == args[i]
+	}
+
+	switch lastArg {
+	case "-X":
+		return []string{"GET", "POST", "PATCH", "DELETE"}
+	case "-H":
+		return []string{} // FIXME offer common http request headers
+	default:
+		var comp = make([]string, 0, 2000)
+		comp = append(comp, "-H")
+		if !hasX {
+			comp = append(comp, "-X")
+		}
+		if !strings.HasPrefix(curArg, "-") {
+			comp = append(comp, basisPaths...)
+			for _, collectionPath := range collectionPaths {
+				comp = append(comp, getStringlist(collectionPath)...)
+			}
+		}
+
+		if filter {
+			var filtered = 0
+			for _, completion := range comp {
+				if strings.HasPrefix(completion, curArg) {
+					comp[filtered] = completion
+					filtered++
+				}
+			}
+			comp = comp[0:filtered]
+		}
+
+		return comp
+	}
+}
+
+func printCompletions(argStr string, filter bool) {
+	for _, completion := range completions(argStr, filter) {
+		fmt.Println(completion)
+	}
 }
 
 func main() {
+	if len(os.Args) > 2 && ("--_completion" == os.Args[1] || "--_completion_filtered" == os.Args[1]) {
+		printCompletions(os.Args[2], os.Args[1] == "--_completion_filtered")
+		os.Exit(0)
+	}
+
 	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	flag.Usage = usage
 	var headerMap = make(HeaderMap)
@@ -68,47 +201,30 @@ func main() {
 		os.Exit(1)
 	}
 
-	var client = http.Client{
-		Transport: &http.Transport{
-			DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
-				return net.Dial("unix", xdg.RuntimeDir+"/org.refude.desktop-service")
-			},
-		},
-	}
-	var url = "http://localhost" + flag.Arg(0)
+	protoAndStatus, headers, body, err := perform(*method, headerMap, flag.Arg(0))
 
-	var request, err = http.NewRequest(*method, url, nil);
 	if err != nil {
 		fail(err.Error())
 	}
-	for key, value := range headerMap {
-		request.Header.Set(key, value)
-	}
 
-	if response, err := client.Do(request); err != nil {
-		fail(err.Error())
-	} else if body, err := ioutil.ReadAll(response.Body); err != nil {
-		fail(err.Error())
-	} else {
-		fmt.Fprint(os.Stderr, response.Proto, " ", response.Status, "\r\n")
-		var isJson bool
-		for name, values := range response.Header {
-			for _,val := range values {
-				fmt.Fprint(os.Stderr, name, ":", val, "\r\n")
-				if (name == "Content-Type" && (val == "application/json" || strings.HasSuffix(val, "+json"))) {
-					isJson = true
-				}
+	fmt.Fprint(os.Stderr, protoAndStatus, "\r\n")
+	var isJson bool
+	for name, values := range headers {
+		for _, val := range values {
+			fmt.Fprint(os.Stderr, name, ":", val, "\r\n")
+			if name == "Content-Type" && (val == "application/json" || strings.HasSuffix(val, "+json")) {
+				isJson = true
 			}
 		}
-
-		fmt.Fprint(os.Stderr, "\r\n")
-		if isJson {
-			var buf bytes.Buffer
-			if json.Indent(&buf, body, "", "    "); err == nil {
-				body = buf.Bytes()
-			}
-		}
-
-		fmt.Println(string(body))
 	}
+
+	fmt.Fprint(os.Stderr, "\r\n")
+	if isJson {
+		var buf bytes.Buffer
+		if json.Indent(&buf, body, "", "    "); err == nil {
+			body = buf.Bytes()
+		}
+	}
+
+	fmt.Println(string(body))
 }

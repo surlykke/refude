@@ -1,0 +1,1 @@
+complete --command refuc --arguments '(refuc --_completion (commandline -cp))' -f

@@ -1,0 +1,8 @@
+function _refuc_complete {
+   COMPREPLY=($(refuc --_completion_filtered "$COMP_LINE"))
+}
+
+complete  -F _refuc_complete $COMP_LINE refuc
+
+
+
