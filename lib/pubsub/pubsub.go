@@ -1,73 +1,60 @@
 package pubsub
 
-import "sync"
+import (
+	"sync"
+)
 
-type Event struct {
-    next *Event
-    data interface{}
+type event struct {
+	path string
+	next *event
 }
 
-type endOfStream struct {}
-
-
-type Publisher struct {
+type Subscription struct {
+	lock    *sync.RWMutex
 	cond    *sync.Cond
-    mutex   *sync.RWMutex
-    current *Event
+	current *event
 }
 
-type Subscribtion struct {
-	p       *Publisher
-    current *Event
+type PubSub struct {
+	event *event
+	lock  *sync.RWMutex
+	cond  *sync.Cond
 }
 
-func (p *Publisher) Publish(data interface{}) {
-	p.mutex.Lock()
-	defer p.cond.Broadcast()
-    defer p.mutex.Unlock()
-   	 
-	p.current.next = &Event{data: data}
-    p.current = p.current.next
+func MakePubSub() *PubSub {
+	var ps = &PubSub{}
+	ps.event = &event{path: "", next: nil}
+	ps.lock = &sync.RWMutex{}
+	ps.cond = &sync.Cond{L: ps.lock}
+	return ps
 }
 
-func (p *Publisher) Close() {
-	p.Publish(endOfStream{})
+func (ps *PubSub) Publish(path string) {
+	ps.lock.Lock()
+	ps.event.next = &event{path, nil}
+	ps.event = ps.event.next
+	ps.lock.Unlock()
+	ps.cond.Broadcast()
 }
 
-
-func MakePublisher() Publisher {
-	mutex := & sync.RWMutex{}
-    return Publisher {
-       current: &Event{},
-       mutex: mutex,
-       cond: sync.NewCond(mutex.RLocker()),
-    }
+func (ps *PubSub) Subscribe() *Subscription {
+	ps.lock.RLock()
+	defer ps.lock.RUnlock()
+	return &Subscription{ps.lock, ps.cond, ps.event}
 }
 
-func (p *Publisher) MakeSubscriber() Subscribtion {
-	p.mutex.Lock()
-	defer p.mutex.Unlock()
-	return Subscribtion{p, p.current}
-}
+func (s *Subscription) WaitFor(path string) {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
 
+	for {
+		for s.current.next == nil {
+			s.cond.Wait()
+		}
 
-func (s *Subscribtion) Next() (interface{}, bool) {
-	if s.current == nil {
-		panic("Calling Get on a closed publisher")
-	}
-
-	s.p.mutex.RLock()
-	defer s.p.mutex.RUnlock()
-
-	for s.current.next == nil {
-		s.p.cond.Wait()
-	}
-
-	s.current = s.current.next
-	if _,ok := s.current.data.(endOfStream); ok {
-		s.current = nil
-		return nil, false
-	} else {
-		return s.current.data, true
+		s.current = s.current.next
+		if s.current.path == path {
+			return
+		}
 	}
 }
