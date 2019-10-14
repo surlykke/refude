@@ -15,12 +15,9 @@ import (
 )
 
 var notifications = make(map[uint32]*Notification)
-
-var notificationsMap = resource.MakeResourceMap()
-var Notifications = resource.MakeServer(notificationsMap)
+var notificationImages = make(map[string]*NotificationImage)
 
 var incomingNotifications = make(chan *Notification)
-
 var removals = make(chan removal)
 var reaper = make(chan uint32)
 
@@ -31,26 +28,20 @@ func Run() {
 	for {
 		select {
 		case notification := <-incomingNotifications:
+			fmt.Println("Notification")
 			notifications[notification.Id] = notification
-			var notificationImagePath = fmt.Sprintf("/notification-image/%d", notification.Id)
+			var notificationImagePath = fmt.Sprintf("/notificationimage/%d", notification.Id)
 			if "" != notification.imagePath {
 				notification.Image = notificationImagePath
-				var notificationImage = &NotificationImage{notification.imagePath}
-				fmt.Println("Mapping", notificationImagePath, notificationImage)
-				notificationsMap.Set(notificationImagePath, notificationImage)
-			} else {
-				notificationsMap.Remove(notificationImagePath)
+				notificationImages[notificationImagePath] = &NotificationImage{notification.imagePath}
 			}
-			notificationsMap.Set(notificationSelf(notification.Id), resource.MakeJsonResouceWithEtag(notification))
 			updateCollections()
 		case rem := <-removals:
-			var path = notificationSelf(rem.id)
 			if n, ok := notifications[rem.id]; !ok {
 				continue
 			} else {
 				delete(notifications, rem.id)
-				notificationsMap.Remove(path)
-				notificationsMap.Remove(n.Image)
+				delete(notificationImages, n.Image)
 				updateCollections()
 				conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", rem.id, rem.reason)
 			}
@@ -64,24 +55,34 @@ func Run() {
 					})
 				} else {
 					delete(notifications, id)
+					delete(notificationImages, n.Image)
 					conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", id, Expired)
 				}
 				updateCollections()
 			}
 		}
-		notificationsMap.Broadcast()
 	}
 }
 
 func updateCollections() {
-	var all = make(resource.Selfielist, 0, len(notifications))
-	for _, notification := range notifications {
-		all = append(all, notification)
+	var resources = make(map[string]resource.Resource)
+	for path, notificationImage := range notificationImages {
+		resources[path] = notificationImage
 	}
-	sort.Sort(all)
-	notificationsMap.Set("/notifications", resource.MakeJsonResouceWithEtag(all))
-	notificationsMap.Set("/notifications/brief", resource.MakeJsonResouceWithEtag(all.GetSelfs()))
+	var notificationList = make(resource.ResourceList, 0, len(notifications))
+	var notificationPaths = make(resource.BriefList, 0, len(notifications))
+	for _, notification := range notifications {
+		var path = notificationSelf(notification.Id)
+		resources[path] = notification
+		notificationList = append(notificationList, notification)
+		notificationPaths = append(notificationPaths, path)
+	}
+	sort.Sort(notificationList)
+	resources["/notifications"] = notificationList
+	sort.Sort(notificationPaths)
+	resources["/notificationpaths"] = notificationPaths
 
+	resource.MapCollection(&resources, "notifications")
 }
 
 func notificationIsExpired(res interface{}) bool {

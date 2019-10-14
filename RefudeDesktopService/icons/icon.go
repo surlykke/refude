@@ -7,73 +7,51 @@
 package icons
 
 import (
-	"fmt"
-	"math"
+	"errors"
 	"net/http"
+	"strconv"
 
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
 type Icon struct {
-	resource.Links
 	Name   string
 	Theme  string
-	Images ImageList
+	Images []IconImage
 }
 
 type IconImage struct {
-	Type    string
 	Context string
 	MinSize uint32
 	MaxSize uint32
 	Path    string
 }
 
-type ImageList []IconImage
-
-func (i *Icon) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
-
-	var size = uint32(32)
-
-	if len(r.URL.Query()["size"]) > 0 {
-		var ok bool
-		if size, ok = readUint32(r.URL.Query()["size"][0]); !ok {
-			requests.ReportUnprocessableEntity(w, fmt.Errorf("Invalid size"))
-			return
-		}
-	}
-
-	var shortestDistanceSoFar = uint32(math.MaxUint32)
-	var candidate IconImage
-
-	for _, img := range i.Images {
-		var distance uint32
-		if img.MinSize > size {
-			distance = img.MinSize - size
-		} else if img.MaxSize < size {
-			distance = size - img.MaxSize
-		} else {
-			distance = 0
-		}
-
-		if distance < shortestDistanceSoFar {
-			shortestDistanceSoFar = distance
-			candidate = img
-		}
-		if distance == 0 {
-			break
-		}
-
-	}
-
-	http.ServeFile(w, r, candidate.Path)
+type IconResource struct {
+	resource.Links
 }
 
-func (i *Icon) GetEtag() string {
-	return ""
+func (ir *IconResource) GET(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	} else if name := requests.GetSingleQueryParameter(r, "name", ""); name == "" {
+		requests.ReportUnprocessableEntity(w, errors.New("no name given"))
+	} else {
+		var themeId = requests.GetSingleQueryParameter(r, "theme", "hicolor")
+		var size = uint64(32)
+		var err error
+		if len(r.URL.Query()["size"]) > 0 {
+			size, err = strconv.ParseUint(r.URL.Query()["size"][0], 10, 32)
+			if err != nil {
+				requests.ReportUnprocessableEntity(w, errors.New("Invalid size given:"+r.URL.Query()["size"][0]))
+			}
+		}
+
+		if image, ok := findImage(themeId, name, uint32(size)); !ok {
+			w.WriteHeader(http.StatusNotFound)
+		} else {
+			http.ServeFile(w, r, image.Path)
+		}
+	}
 }

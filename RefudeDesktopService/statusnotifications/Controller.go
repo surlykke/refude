@@ -162,18 +162,23 @@ func updateWatcherProperties() {
 }
 
 func buildItem(sender string, path dbus.ObjectPath) *Item {
+	fmt.Println("MakeItem")
 	var item = MakeItem(sender, path)
+	fmt.Println("Init")
 	item.Init(itemSelf(sender, path), "statusnotifieritem")
 
 	var val dbus.Variant
 	var ok bool
+	fmt.Println("Get ID")
 	if val, ok = dbuscall.GetSingleProp(conn, item.sender, item.itemPath, ITEM_INTERFACE, "ID"); ok {
 		item.Id = getStringOr(val)
 	}
+	fmt.Println("Get Category")
 	if val, ok := dbuscall.GetSingleProp(conn, item.sender, item.itemPath, ITEM_INTERFACE, "Category"); ok {
 		item.Category = getStringOr(val)
 	}
 
+	fmt.Println("Get Menu")
 	if val, ok := dbuscall.GetSingleProp(conn, item.sender, item.itemPath, ITEM_INTERFACE, "Menu"); ok {
 		var menuPath = getDbusPath(val)
 		if menuPath != "" {
@@ -211,18 +216,14 @@ func updateStatus(item *Item) {
 }
 
 func updateIcon(item *Item) {
-	fmt.Println("updateIcon")
 	if v, ok := getProp(item, "IconThemePath"); ok {
 		item.iconThemePath = getStringOr(v)
 		if item.iconThemePath != "" {
-			icons.BasedirSink <- item.iconThemePath
+			//icons.BasedirSink <- item.iconThemePath
 		}
-		fmt.Println("Got themepath", item.iconThemePath)
 	}
 	if v, ok := getProp(item, "IconName"); ok {
-		fmt.Println("Got IconName", v)
 		if item.IconName = getStringOr(v); item.IconName == "" {
-			fmt.Println("No name, going fro pixmap..")
 			v, ok = getProp(item, "IconPixmap")
 			item.IconName = collectPixMap(v)
 		}
@@ -349,7 +350,7 @@ func collectPixMap(variant dbus.Variant) string {
 			}
 		}
 		var argbIcon = image.ARGBIcon{Images: images}
-		return icons.AddPngFromARGB(argbIcon)
+		return icons.AddARGBIcon(argbIcon)
 	}
 	return ""
 }

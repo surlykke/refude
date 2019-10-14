@@ -14,11 +14,10 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/icons"
-
-	"github.com/surlykke/RefudeServices/lib/image"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/slice"
 	"github.com/surlykke/RefudeServices/lib/xdg"
@@ -32,7 +31,10 @@ type collection struct {
 	defaultApps  map[string][]string // Maps from mimetypeid to a list of app ids
 }
 
-func Collect() (map[string]*Mimetype, map[string]*DesktopApplication) {
+/**
+ * Return a map path->mimetype and a map path->application
+ */
+func Collect() (map[string]resource.Resource, map[string]resource.Resource) {
 	var c collection
 	c.mimetypes = CollectMimeTypes()
 	c.applications = make(map[string]*DesktopApplication)
@@ -70,8 +72,33 @@ func Collect() (map[string]*Mimetype, map[string]*DesktopApplication) {
 			}
 		}
 	}
+	var mimetypeResources = make(map[string]resource.Resource)
+	var mimetypeList = make(resource.ResourceList, 0, len(c.mimetypes))
+	var mimetypePaths = make(resource.BriefList, 0, len(c.mimetypes))
+	for path, mt := range c.mimetypes {
+		mimetypeResources[path] = mt
+		mimetypeList = append(mimetypeList, mt)
+		mimetypePaths = append(mimetypePaths, path)
+	}
+	sort.Sort(mimetypeList)
+	mimetypeResources["/mimetypes"] = mimetypeList
+	sort.Sort(mimetypePaths)
+	mimetypeResources["/mimetypepaths"] = mimetypePaths
 
-	return c.mimetypes, c.applications
+	var applicationResources = make(map[string]resource.Resource)
+	var applicationList = make(resource.ResourceList, 0, len(c.applications))
+	var applicationPaths = make(resource.BriefList, 0, len(c.applications))
+	for path, app := range c.applications {
+		applicationResources[path] = app
+		applicationList = append(applicationList, app)
+		applicationPaths = append(applicationPaths, path)
+	}
+	sort.Sort(applicationList)
+	applicationResources["/applications"] = applicationList
+	sort.Sort(applicationPaths)
+	applicationResources["/applicationpaths"] = applicationPaths
+
+	return mimetypeResources, applicationResources
 }
 
 func (c *collection) removeAssociations(app *DesktopApplication) {
@@ -299,7 +326,7 @@ func readDesktopFile(path string) (*DesktopApplication, []string, error) {
 		da.Comment = group.Entries["Comment"]
 		icon := group.Entries["Icon"]
 		if strings.HasPrefix(icon, "/") {
-			da.IconName = icons.AddPngFromFile(icon)
+			da.IconName = icons.AddFileIcon(icon)
 		} else {
 			da.IconName = icon
 		}
@@ -332,11 +359,7 @@ func readDesktopFile(path string) (*DesktopApplication, []string, error) {
 				}
 				icon = actionGroup.Entries["icon"]
 				if strings.HasPrefix(icon, "/") {
-					if iconName, err := image.CopyIconToSessionIconDir(icon); err != nil {
-						log.Printf("Problem with iconpath %s in %s: %s", icon, da.Id, err.Error())
-					} else {
-						action.IconName = iconName
-					}
+					action.IconName = icons.AddFileIcon(icon)
 				} else {
 					action.IconName = icon
 				}

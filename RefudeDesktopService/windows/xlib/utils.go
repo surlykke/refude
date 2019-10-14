@@ -77,12 +77,14 @@ func init() {
 	C.XSetErrorHandler(C.XErrorHandler(C.forgiving_X_error_handler))
 }
 
-var display = C.XOpenDisplay(nil)
-var defaultScreen = C.ds(display)
-var rootWindow = C.rw(display, defaultScreen)
-
-var atomCache = make(map[string]C.Atom)
-var atomNameCache = make(map[C.Atom]string)
+const (
+	NET_WM_VISIBLE_NAME      = "_NET_WM_VISIBLE_NAME"
+	NET_WM_NAME              = "_NET_WM_NAME"
+	WM_NAME                  = "WM_NAME"
+	NET_WM_ICON              = "_NET_WM_ICON"
+	NET_CLIENT_LIST_STACKING = "_NET_CLIENT_LIST_STACKING"
+	NET_WM_STATE             = "_NET_WM_STATE"
+)
 
 // Either 'Property' or X,Y,W,H will be set
 type Event struct {
@@ -91,39 +93,77 @@ type Event struct {
 	X, Y, W, H int
 }
 
-func atom(name string) C.Atom {
-	if val, ok := atomCache[name]; ok {
+/**
+ * Wrapper around connections to X11. Not threadsafe, caller must take lock
+ */
+type Connection struct {
+	sync.Mutex
+	display    *C.Display
+	rootWindow C.Window
+
+	atomCache     map[string]C.Atom
+	atomNameCache map[C.Atom]string
+}
+
+func MakeConnection() *Connection {
+	var conn = Connection{}
+	conn.display = C.XOpenDisplay(nil)
+	var defaultScreen = C.ds(conn.display)
+	conn.rootWindow = C.rw(conn.display, defaultScreen)
+	conn.atomCache = make(map[string]C.Atom)
+	conn.atomNameCache = make(map[C.Atom]string)
+	return &conn
+}
+
+func (c *Connection) SubscribeToStackEvents() {
+	C.XSelectInput(c.display, c.rootWindow, C.PropertyChangeMask)
+}
+
+// Will hang until a _NET_CLIENT_LIST_STACKING events arrives
+func (c *Connection) WaitforStackEvent() {
+	var event C.XEvent
+	for {
+		if err := CheckError(C.XNextEvent(c.display, &event)); err != nil {
+			fmt.Println("WARN error getting event from X:", err)
+		} else if C.getType(&event) == C.PropertyNotify && c.atomName(C.xproperty(&event).atom) == NET_CLIENT_LIST_STACKING {
+			return
+		}
+	}
+}
+
+func (c *Connection) atom(name string) C.Atom {
+	if val, ok := c.atomCache[name]; ok {
 		return val
 	} else {
 		var cName = C.CString(name)
 		defer C.free(unsafe.Pointer(cName))
-		val = C.XInternAtom(display, cName, 1)
+		val = C.XInternAtom(c.display, cName, 1)
 		if val == C.None {
 			log.Fatal(fmt.Sprintf("Atom %s does not exist", name))
 		}
-		atomCache[name] = val
+		c.atomCache[name] = val
 		return val
 	}
+
 }
 
-func atomName(atom C.Atom) string {
-	if name, ok := atomNameCache[atom]; ok {
+func (c *Connection) atomName(atom C.Atom) string {
+	if name, ok := c.atomNameCache[atom]; ok {
 		return name
 	} else {
-		var tmp = C.XGetAtomName(display, atom)
+		var tmp = C.XGetAtomName(c.display, atom)
 		defer C.XFree(unsafe.Pointer(tmp))
-		atomNameCache[atom] = C.GoString(tmp)
-		return atomNameCache[atom]
+		c.atomNameCache[atom] = C.GoString(tmp)
+		return c.atomNameCache[atom]
 	}
 }
 
-func getBytes(window uint32, property string) ([]byte, error) {
-
+func (c *Connection) GetBytes(window uint32, property string) ([]byte, error) {
 	var ulong_window = C.ulong(window)
 	if ulong_window == 0 {
-		ulong_window = rootWindow
+		ulong_window = c.rootWindow
 	}
-	var prop = atom(property)
+	var prop = c.atom(property)
 	var long_offset C.long
 	var long_length = C.long(256)
 
@@ -134,7 +174,7 @@ func getBytes(window uint32, property string) ([]byte, error) {
 	var bytes_after_return C.ulong
 	var prop_return *C.uchar
 	for {
-		var status = C.XGetWindowProperty(display, ulong_window, prop, long_offset, long_length, 0, C.AnyPropertyType,
+		var status = C.XGetWindowProperty(c.display, ulong_window, prop, long_offset, long_length, 0, C.AnyPropertyType,
 			&actual_type_return, &actual_format_return, &nitems_return, &bytes_after_return, &prop_return)
 
 		if err := CheckError(status); err != nil {
@@ -169,12 +209,17 @@ func getBytes(window uint32, property string) ([]byte, error) {
 	}
 }
 
-func getUint32s(window uint32, property string) ([]uint32, error) {
+func (c *Connection) GetPropStr(wId uint32, property string) (string, error) {
+	bytes, err := c.GetBytes(wId, property)
+	return string(bytes), err
+}
+
+func (c *Connection) GetUint32s(window uint32, property string) ([]uint32, error) {
 	var ulong_window = C.ulong(window)
 	if ulong_window == 0 {
-		ulong_window = rootWindow
+		ulong_window = c.rootWindow
 	}
-	var prop = atom(property)
+	var prop = c.atom(property)
 	var long_offset C.long
 	var long_length = C.long(256)
 
@@ -185,7 +230,7 @@ func getUint32s(window uint32, property string) ([]uint32, error) {
 	var bytes_after_return C.ulong
 	var prop_return *C.uchar
 	for {
-		var error = C.XGetWindowProperty(display, ulong_window, prop, long_offset, long_length, 0, C.AnyPropertyType,
+		var error = C.XGetWindowProperty(c.display, ulong_window, prop, long_offset, long_length, 0, C.AnyPropertyType,
 			&actual_type_return, &actual_format_return, &nitems_return, &bytes_after_return, &prop_return)
 
 		if err := CheckError(error); err != nil {
@@ -221,33 +266,31 @@ func getUint32s(window uint32, property string) ([]uint32, error) {
 	}
 }
 
-func getAtoms(wId uint32, property string) ([]string, error) {
-	if atoms, err := getUint32s(wId, property); err != nil {
+func (c *Connection) GetAtoms(wId uint32, property string) ([]string, error) {
+	if atoms, err := c.GetUint32s(wId, property); err != nil {
 		return nil, err
 	} else {
 		var states = make([]string, len(atoms), len(atoms))
 		for i, atom := range atoms {
-			states[i] = atomName(C.ulong(atom))
+			states[i] = c.atomName(C.ulong(atom))
 		}
 		return states, nil
 	}
 }
 
-// Search up the tree, via parent relation, till we find a window whos parent is the root window.
-// Return that
-func getParent(wId uint32) (uint32, error) {
+func (c *Connection) GetParent(wId uint32) (uint32, error) {
 	var root_return C.ulong
 	var parent_return C.ulong
 	var children_return *C.ulong
 	var nchildren_return C.uint
 	for {
-		if C.XQueryTree(display, C.ulong(wId), &root_return, &parent_return, &children_return, &nchildren_return) == 0 {
+		if C.XQueryTree(c.display, C.ulong(wId), &root_return, &parent_return, &children_return, &nchildren_return) == 0 {
 			return 0, errors.New("Error from XQueryTree")
 		} else {
 			if children_return != nil {
 				C.XFree(unsafe.Pointer(children_return))
 			}
-			if parent_return == rootWindow {
+			if parent_return == c.rootWindow {
 				return wId, nil
 			} else {
 				wId = uint32(parent_return)
@@ -256,7 +299,7 @@ func getParent(wId uint32) (uint32, error) {
 	}
 }
 
-func getGeometry(wId uint32) (int32, int32, uint32, uint32, error) {
+func (c *Connection) GetGeometry(wId uint32) (int32, int32, uint32, uint32, error) {
 	var root C.ulong
 	var x C.int
 	var y C.int
@@ -265,7 +308,7 @@ func getGeometry(wId uint32) (int32, int32, uint32, uint32, error) {
 	var border_width C.uint
 	var depth C.uint
 
-	var status = C.XGetGeometry(display, C.ulong(wId), &root, &x, &y, &width, &height, &border_width, &depth)
+	var status = C.XGetGeometry(c.display, C.ulong(wId), &root, &x, &y, &width, &height, &border_width, &depth)
 	if status != 0 {
 		return int32(x), int32(y), uint32(width), uint32(height), nil
 	} else {
@@ -274,86 +317,45 @@ func getGeometry(wId uint32) (int32, int32, uint32, uint32, error) {
 }
 
 // ---------------------------------------------------------------------------------------------
-const (
-	NET_WM_VISIBLE_NAME      = "_NET_WM_VISIBLE_NAME"
-	NET_WM_NAME              = "_NET_WM_NAME"
-	WM_NAME                  = "WM_NAME"
-	NET_WM_ICON              = "_NET_WM_ICON"
-	NET_CLIENT_LIST_STACKING = "_NET_CLIENT_LIST_STACKING"
-	NET_WM_STATE             = "_NET_WM_STATE"
-)
 
-var mutex sync.Mutex
-
-func GetStack() ([]uint32, error) {
-	mutex.Lock()
-	defer mutex.Unlock()
-	return getUint32s(0, NET_CLIENT_LIST_STACKING)
+func (c *Connection) GetStack() ([]uint32, error) {
+	return c.GetUint32s(0, NET_CLIENT_LIST_STACKING)
 }
 
-func GetParent(wId uint32) (uint32, error) {
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	return getParent(wId)
-}
-
-// returns X,Y,W,H
-func GetGeometry(wId uint32) (int32, int32, uint32, uint32, error) {
-	mutex.Lock()
-	defer mutex.Unlock()
-	return getGeometry(wId)
-}
-
-func GetName(wId uint32) (string, error) {
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	if bytes, err := getBytes(wId, NET_WM_VISIBLE_NAME); err == nil {
+func (c *Connection) GetName(wId uint32) (string, error) {
+	if bytes, err := c.GetBytes(wId, NET_WM_VISIBLE_NAME); err == nil {
 		return string(bytes), nil
-	} else if bytes, err = getBytes(wId, NET_WM_NAME); err == nil {
+	} else if bytes, err = c.GetBytes(wId, NET_WM_NAME); err == nil {
 		return string(bytes), nil
-	} else if bytes, err = getBytes(wId, WM_NAME); err == nil {
+	} else if bytes, err = c.GetBytes(wId, WM_NAME); err == nil {
 		return string(bytes), nil
 	} else {
 		return "", errors.New("Neither '_NET_WM_VISIBLE_NAME', '_NET_WM_NAME' nor 'WM_NAME' set")
 	}
 }
 
-func GetIcon(wId uint32) ([]uint32, error) {
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	return getUint32s(wId, NET_WM_ICON)
+func (c *Connection) GetIcon(wId uint32) ([]uint32, error) {
+	return c.GetUint32s(wId, NET_WM_ICON)
 }
 
-func GetState(wId uint32) ([]string, error) {
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	return getAtoms(wId, NET_WM_STATE)
+func (c *Connection) GetState(wId uint32) ([]string, error) {
+	return c.GetAtoms(wId, NET_WM_STATE)
 }
 
-func RaiseAndFocusWindow(wId uint32) {
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	var event = C.createClientMessage32(C.Window(wId), atom("_NET_ACTIVE_WINDOW"), 2, 0, 0, 0, 0)
+func (c *Connection) RaiseAndFocusWindow(wId uint32) {
+	var event = C.createClientMessage32(C.Window(wId), c.atom("_NET_ACTIVE_WINDOW"), 2, 0, 0, 0, 0)
 	var mask C.long = C.SubstructureRedirectMask | C.SubstructureNotifyMask
-	C.XSendEvent(display, rootWindow, 0, mask, &event)
-	C.XFlush(display)
+	C.XSendEvent(c.display, c.rootWindow, 0, mask, &event)
+	C.XFlush(c.display)
 }
 
-func GetScreenshotAsPng(wId uint32, downscale uint8) ([]byte, error) {
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	var _, _, w, h, err = getGeometry(wId)
+func (c *Connection) GetScreenshotAsPng(wId uint32, downscale uint8) ([]byte, error) {
+	var _, _, w, h, err = c.GetGeometry(wId)
 	if err != nil {
 		return nil, err
 	}
 
-	var ximage = C.XGetImage(display, C.ulong(wId), C.int(0), C.int(0), C.uint(w), C.uint(h), C.AllPlanes, C.ZPixmap)
+	var ximage = C.XGetImage(c.display, C.ulong(wId), C.int(0), C.int(0), C.uint(w), C.uint(h), C.AllPlanes, C.ZPixmap)
 	if ximage == nil {
 		return nil, fmt.Errorf("Unable to retrieve screendump for %d", wId)
 	}

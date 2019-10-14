@@ -7,7 +7,7 @@
 package power
 
 import (
-	"fmt"
+	"log"
 	"sort"
 
 	dbuscall "github.com/surlykke/RefudeServices/lib/dbusutils"
@@ -15,47 +15,44 @@ import (
 )
 
 var devices = make(map[string]*Device)
-var powerMap = resource.MakeResourceMap()
-var PowerResources = resource.MakeServer(powerMap)
 
 func Run() {
+	var session = buildSessionResource()
+	resource.MapSingle(session.Self, session)
+
 	var signals = subscribeToDeviceUpdates()
 
 	for _, device := range getDevices() {
 		devices[device.Self] = device
-		powerMap.Set(device.Self, resource.MakeJsonResouceWithEtag(device))
 	}
-
-	var session = buildSessionResource()
-	powerMap.Set(session.Self, resource.MakeJsonResource(session))
-
-	updateCollections()
+	updateDeviceList()
 
 	for signal := range signals {
 		if signal.Name == "org.freedesktop.DBus.Properties.PropertiesChanged" {
 			var path = deviceSelf(signal.Path)
 			if device, ok := devices[path]; ok {
-				var copy = *device
-				// Brute force here, we update all, as I've seen some problems with getting out of sync after suspend..
-				updateDevice(&copy, dbuscall.GetAllProps(dbusConn, UPowService, signal.Path, UPowerDeviceInterface))
-				powerMap.Set(copy.Self, resource.MakeJsonResouceWithEtag(&copy))
-				powerMap.Broadcast()
+				updateDevice(device, dbuscall.GetAllProps(dbusConn, UPowService, signal.Path, UPowerDeviceInterface))
+				updateDeviceList()
 			} else {
-				fmt.Println("Update on unknown device: ", signal.Path)
+				log.Println("Warn: Update on unknown device: ", signal.Path)
 			}
-
-			// TODO Handle device added/removed
-			// (need hardware to test)
 		}
 	}
 }
 
-func updateCollections() {
-	var list = make(resource.Selfielist, 0, len(devices))
+func updateDeviceList() {
+	var deviceList = make(resource.ResourceList, 0, len(devices))
+	var devicePaths = make(resource.BriefList, 0, len(devices))
+	var collection = make(map[string]resource.Resource)
 	for _, device := range devices {
-		list = append(list, device)
+		var copy = &(*device)
+		collection[copy.Self] = copy
+		deviceList = append(deviceList, copy)
+		devicePaths = append(devicePaths, copy.Self)
 	}
-	sort.Sort(list)
-	powerMap.Set("/devices", resource.MakeJsonResource(list))
-	powerMap.Set("/devices/brief", resource.MakeJsonResource(list.GetSelfs()))
+	sort.Sort(deviceList)
+	collection["/devices"] = deviceList
+	sort.Sort(devicePaths)
+	collection["/devicepaths"] = devicePaths
+	resource.MapCollection(&collection, "devices")
 }

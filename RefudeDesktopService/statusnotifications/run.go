@@ -14,8 +14,6 @@ import (
 )
 
 var items = make(map[string]*Item)
-var resourceMap = resource.MakeResourceMap()
-var Items = resource.MakeServer(resourceMap)
 
 func Run() {
 	getOnTheBus()
@@ -30,20 +28,11 @@ func Run() {
 		case "ItemCreated":
 			var item = buildItem(event.sender, event.path)
 			items[item.Self] = item
-			resourceMap.Set(item.Self, resource.MakeJsonResouceWithEtag(item))
-			if item.Menu != "" {
-				resourceMap.Set(item.Menu, item.menu)
-			}
 		case "ItemRemoved":
-			if item, ok := items[itemSelf(event.sender, event.path)]; ok {
-				resourceMap.Remove(item.Self)
-				delete(items, item.Self)
-				if item.Menu != "" {
-					resourceMap.Remove(item.Menu)
-				}
-			}
+			delete(items, itemSelf(event.sender, event.path))
 		default:
-			if item, ok := items[itemSelf(event.sender, event.path)]; ok {
+			var path = itemSelf(event.sender, event.path)
+			if item, ok := items[path]; ok {
 				var itemCopy = &(*item)
 
 				switch event.eventName {
@@ -62,23 +51,29 @@ func Run() {
 				default:
 					continue
 				}
-				resourceMap.Set(itemCopy.Self, resource.MakeJsonResouceWithEtag(itemCopy))
+				items[path] = itemCopy
 			} else {
 				fmt.Println("Item event on unknown item: ", event.sender, event.path)
-
+				continue
 			}
 		}
 		updateCollections()
-		resourceMap.Broadcast()
 	}
 }
 
 func updateCollections() {
-	var list = make(resource.Selfielist, 0, len(items))
+	var resources = make(map[string]resource.Resource)
+	var itemList = make(resource.ResourceList, 0, len(items))
+	var pathList = make(resource.BriefList, 0, len(items))
 	for _, item := range items {
-		list = append(list, item)
+		resources[item.Self] = item
+		itemList = append(itemList, item)
+		pathList = append(pathList, item.Self)
 	}
-	sort.Sort(list)
-	resourceMap.Set("/items", resource.MakeJsonResouceWithEtag(list))
-	resourceMap.Set("/items/brief", resource.MakeJsonResouceWithEtag(list.GetSelfs()))
+	sort.Sort(itemList)
+	resources["/items"] = itemList
+	sort.Sort(pathList)
+	resources["/itempaths"] = pathList
+	fmt.Println("Mapping", len(resources), "items")
+	resource.MapCollection(&resources, "items")
 }

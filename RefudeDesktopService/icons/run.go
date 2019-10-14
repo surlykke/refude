@@ -5,68 +5,96 @@ import (
 	"os"
 	"path"
 	"strings"
+	"sync"
+
+	"github.com/surlykke/RefudeServices/lib/xdg"
 
 	"github.com/surlykke/RefudeServices/lib/image"
 )
 
-var Icons = MakeIconCollection()
+func Run() {
+	var baseDirs = []string{xdg.Home + "/.icons"}
+	for _, dataDir := range xdg.DataDirs {
+		baseDirs = append(baseDirs, dataDir+"/icons")
+	}
+	baseDirs = append(baseDirs, "/usr/share/pixmaps")
 
-var BasedirSink = make(chan string)
+	initIconCollection(baseDirs)
+	go recieveImages()
+	go receiveIconDirs()
 
-type namedIcon struct {
-	name string
-	icon interface{} // ARGBIcon, ImageData or pngfile path
+	fmt.Println("Adding basedirs", baseDirs)
+	for _, baseDir := range baseDirs {
+		baseDirSink <- baseDir
+	}
+	fmt.Println("Done")
 }
 
-var iconSink = make(chan namedIcon)
-
-func Run() {
-	Icons.collect()
-	for {
-		select {
-		case basedir := <-BasedirSink:
-			Icons.addIcondir(basedir)
-		case nIcon := <-iconSink:
-			switch icon := nIcon.icon.(type) {
-			case image.ARGBIcon:
-				Icons.addARGBIcon(nIcon.name, icon)
-			case image.ImageData:
-				Icons.addImageDataIcon(nIcon.name, icon)
-			case string:
-				Icons.addPngFileIcon(nIcon.name, icon)
+func AddARGBIcon(argbIcon image.ARGBIcon) string {
+	var iconName = image.ARGBIconHashName(argbIcon)
+	if reg.haveNotAdded(iconName) {
+		for _, pixMap := range argbIcon.Images {
+			if pixMap.Width != pixMap.Height {
+			} else {
+				var dir = fmt.Sprintf("%s/%d", refudeSessionIconsDir, pixMap.Width)
+				go saveAsPng(dir, iconName, &pixMap)
+				sessionIconImages <- sessionIconImage{
+					name: iconName,
+					size: pixMap.Width,
+				}
 			}
 		}
 	}
+	return iconName
 }
 
-func AddPngFromARGB(argbIcon image.ARGBIcon) string {
-	var name = image.ARGBIconHashName(argbIcon)
-	iconSink <- namedIcon{name, argbIcon}
+func AddFileIcon(filePath string) string {
+	filePath = path.Clean(filePath)
+	var name = strings.Replace(filePath[1:len(filePath)-4], "/", ".", -1)
+	if reg.haveNotAdded(name) {
+		if fileInfo, err := os.Stat(filePath); err != nil {
+			fmt.Println("error stat'ing:", filePath, err)
+			return ""
+		} else if !fileInfo.Mode().IsRegular() {
+			fmt.Println("Not a regular file:", filePath)
+			return ""
+		} else if !(strings.HasSuffix(filePath, ".png") || strings.HasSuffix(filePath, ".svg")) {
+			fmt.Println("Not an icon  file", filePath)
+			return ""
+		} else {
+			otherIconImages <- otherIconImage{name: name, path: filePath}
+			return name
+		}
+	}
 	return name
 }
 
-func AddPngFromFile(filePath string) string {
+func AddRawImageIcon(imageData image.ImageData) string {
+	var name = image.ImageDataHashName(imageData)
+	if reg.haveNotAdded(name) {
+		go saveAsPng(refudeSessionIconsDir, name, imageData)
+		otherIconImages <- otherIconImage{
+			name: name,
+			path: refudeSessionIconsDir + "/" + name + ".png",
+		}
+	}
+	return name
+}
 
-	if fileInfo, err := os.Stat(filePath); err != nil {
-		fmt.Println("error stat'ing:", filePath, err)
-		return ""
-	} else if !fileInfo.Mode().IsRegular() {
-		fmt.Println("Not a regular file:", filePath)
-		return ""
-	} else if !(strings.HasSuffix(filePath, ".png") || strings.HasSuffix(filePath, ".svg")) {
-		fmt.Println("Not an icon  file", filePath)
-		return ""
+type ConcurrentStringSet struct {
+	sync.Mutex
+	added map[string]bool
+}
+
+func (css *ConcurrentStringSet) haveNotAdded(val string) bool {
+	css.Lock()
+	defer css.Unlock()
+	if css.added[val] {
+		return false
 	} else {
-
-		filePath = path.Clean(filePath)
-		var name = strings.Replace(filePath[1:len(filePath)-4], "/", ".", -1)
-		iconSink <- namedIcon{name, filePath}
-		return name
+		css.added[val] = true
+		return true
 	}
 }
 
-func AddPngFromRawImage(imageData image.ImageData) string {
-	var name = image.ImageDataHashName(imageData)
-	iconSink <- namedIcon{name, imageData}
-	return name
-}
+var reg = &ConcurrentStringSet{added: make(map[string]bool)}

@@ -76,10 +76,6 @@ func (item *Item) POST(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-type ItemRepo struct {
-	resource.ResourceMap
-}
-
 type MenuResource struct {
 	self   string
 	sender string

@@ -35,11 +35,19 @@ func (ni *NotificationImage) GetSelf() string {
 	return ""
 }
 
-func (ni *NotificationImage) GetEtag() string {
-	return ""
+func (ni *NotificationImage) POST(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusMethodNotAllowed)
 }
 
-func (ni *NotificationImage) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (ni *NotificationImage) PATCH(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusMethodNotAllowed)
+}
+
+func (ni *NotificationImage) DELETE(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusMethodNotAllowed)
+}
+
+func (ni *NotificationImage) GET(w http.ResponseWriter, r *http.Request) {
 	if "GET" != r.Method {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	} else {

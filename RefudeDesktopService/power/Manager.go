@@ -40,15 +40,19 @@ func getDevices() []*Device {
 	enumCall := dbusConn.Object(UPowService, UPowPath).Call(UPowerInterface+".EnumerateDevices", dbus.Flags(0))
 	devicePaths := append(enumCall.Body[0].([]dbus.ObjectPath), DisplayDevicePath)
 	for _, path := range devicePaths {
-		var device = &Device{}
-		device.Init(deviceSelf(path), "powerdevice")
-		device.DisplayDevice = path == DisplayDevicePath
-		device.DbusPath = path
-		updateDevice(device, dbuscall.GetAllProps(dbusConn, UPowService, path, UPowerDeviceInterface))
-		devices = append(devices, device)
+		devices = append(devices, getDevice(path))
 	}
 
 	return devices
+}
+
+func getDevice(path dbus.ObjectPath) *Device {
+	var device = &Device{}
+	device.Init(deviceSelf(path), "powerdevice")
+	device.DisplayDevice = path == DisplayDevicePath
+	device.DbusPath = path
+	updateDevice(device, dbuscall.GetAllProps(dbusConn, UPowService, path, UPowerDeviceInterface))
+	return device
 }
 
 var dbusConn = func() *dbus.Conn {

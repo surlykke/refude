@@ -73,3 +73,7 @@ func (l *Links) DELETE(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusAccepted)
 	}
 }
+
+func (l *Links) PATCH(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusMethodNotAllowed)
+}

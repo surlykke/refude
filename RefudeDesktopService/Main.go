@@ -9,46 +9,34 @@ package main
 import (
 	"net/http"
 
+	"github.com/surlykke/RefudeServices/RefudeDesktopService/applications"
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/icons"
-
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/notifications"
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/power"
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/statusnotifications"
-
-	"github.com/surlykke/RefudeServices/RefudeDesktopService/applications"
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/windows"
 	"github.com/surlykke/RefudeServices/lib"
+	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
-type ResourceCollection interface {
-	ServeHTTP(w http.ResponseWriter, r *http.Request) bool
-}
-
-var repos = []ResourceCollection{
+/*var repos = []ResourceCollection{
 	windows.Windows,
 	applications.Resources,
 	notifications.Notifications,
 	statusnotifications.Items,
 	power.PowerResources,
 	icons.Icons,
-}
-
-func serveHttp(w http.ResponseWriter, r *http.Request) {
-	for _, repo := range repos {
-		if repo.ServeHTTP(w, r) {
-			return
-		}
-	}
-	w.WriteHeader(http.StatusNotFound)
-}
+}*/
 
 func main() {
+	go windows.Run()
 	go applications.Run()
 	go notifications.Run()
 	go power.Run()
 	go statusnotifications.Run()
 	go icons.Run()
-
-	go lib.Serve("org.refude.desktop-service", http.HandlerFunc(serveHttp))
-	_ = http.ListenAndServe(":7938", http.HandlerFunc(serveHttp))
+	//
+	var handler = http.HandlerFunc(resource.ServeHTTP)
+	go lib.Serve("org.refude.desktop-service", handler)
+	_ = http.ListenAndServe(":7938", handler)
 }

@@ -9,17 +9,14 @@ package applications
 import (
 	"fmt"
 	"os"
-	"sort"
 
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 	"golang.org/x/sys/unix"
 )
 
-var resourceMap = resource.MakeResourceMap()
-var Resources = resource.MakeServer(resourceMap)
-
 func Run() {
+	fmt.Println("Ind i applications.Run")
 	fd, err := unix.InotifyInit()
 
 	if err != nil {
@@ -47,27 +44,13 @@ func Run() {
 
 	dummy := make([]byte, 100)
 	for {
-		var mtc, apps = Collect()
-		var collection = make(map[string]resource.Res, len(mtc)+len(apps)+4)
-		var mtlist = make(resource.Selfielist, 0, len(mtc))
-		for _, mt := range mtc {
-			collection[mt.Self] = resource.MakeJsonResource(mt)
-			mtlist = append(mtlist, mt)
-		}
-		sort.Sort(mtlist)
-		collection["/mimetypes"] = resource.MakeJsonResource(mtlist)
-		collection["/mimetypes/brief"] = resource.MakeJsonResource(mtlist.GetSelfs())
+		fmt.Println("collect mimetypes and applicatons")
+		var mimetypeResources, applicationResources = Collect()
 
-		var applist = make(resource.Selfielist, 0, len(apps))
-		for _, app := range apps {
-			collection[app.Self] = resource.MakeJsonResource(app)
-			applist = append(applist, app)
-		}
-		sort.Sort(applist)
-		collection["/applications"] = resource.MakeJsonResource(applist)
-		collection["/applications/brief"] = resource.MakeJsonResource(applist.GetSelfs())
+		fmt.Println("found", len(mimetypeResources), "mimetypes and", len(applicationResources), "applications")
 
-		resourceMap.ReplaceAll(collection)
+		resource.MapCollection(&mimetypeResources, "mimetypes")
+		resource.MapCollection(&applicationResources, "applications")
 
 		if _, err := unix.Read(fd, dummy); err != nil {
 			panic(err)

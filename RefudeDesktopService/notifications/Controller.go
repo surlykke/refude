@@ -166,7 +166,7 @@ func notify(app_name string,
 					if "" != app_icon {
 						notification.IconName = app_icon
 					} else {
-						notification.IconName, _ = installRawImageIcon(hints, "icon_data")
+						// FIXME notification.IconName, _ = installRawImageIcon(hints, "icon_data")
 					}
 				}
 			}
@@ -216,7 +216,7 @@ func installRawImageIcon(hints map[string]dbus.Variant, key string) (string, boo
 		fmt.Println("Error converting variant to image data:", err)
 		return "", true
 	} else {
-		return icons.AddPngFromRawImage(imageData), false
+		return icons.AddRawImageIcon(imageData), false
 	}
 }
 
@@ -257,7 +257,7 @@ func installFileIcon(hints map[string]dbus.Variant, key string) (string, bool) {
 		fmt.Println("Value not a string")
 		return "", true
 	} else {
-		return icons.AddPngFromFile(path), true
+		return icons.AddFileIcon(path), true
 	}
 }
 
