@@ -7,8 +7,9 @@
 package windows
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"sync"
 
@@ -47,109 +48,96 @@ func MakeWindow(wId uint32) *Window {
 		wId: wId,
 	}
 	w.Init(windowSelf(wId), "window")
+	w.AddAction("default", resource.ResourceAction{Description: "Raise and focus", Executer: makeExecuter(w.wId)})
 	return w
 }
 
-type Windows struct {
+type ScreenShot struct {
 	resource.Links
-	wIds []uint32
+	wId uint32
 }
 
-func MakeWindows(wIds []uint32) *Windows {
-	var windows = &Windows{
-		wIds: wIds,
-	}
-	windows.Init("/windows", "windows")
-	return windows
+func MakeScreenShot(wId uint32) *ScreenShot {
+	var shot = &ScreenShot{wId: wId}
+	shot.Init(fmt.Sprintf("/window/%d/screenshot", wId), "windowscreenshot")
+	return shot
 }
 
-func (wdr Window) GET(w http.ResponseWriter, r *http.Request) {
-	if requests.HaveParam(r, "screenshot") {
-		var downscaleS = requests.GetSingleQueryParameter(r, "downscale", "1")
-		var downscale = downscaleS[0] - '0'
-		if downscale < 1 || downscale > 5 {
-			requests.ReportUnprocessableEntity(w, fmt.Errorf("downscale should be >= 1 and <= 5"))
-		} else if bytes, err := getScreenshot(wdr.wId, downscale); err == nil {
-			w.Header().Set("Content-Type", "image/png")
-			w.Write(bytes)
-		} else {
-			fmt.Println("Error getting screenshot:", err)
-			w.WriteHeader(http.StatusInternalServerError)
-		}
+func (ss *ScreenShot) GET(w http.ResponseWriter, r *http.Request) {
+	var downscaleS = requests.GetSingleQueryParameter(r, "downscale", "1")
+	var downscale = downscaleS[0] - '0'
+	if downscale < 1 || downscale > 5 {
+		requests.ReportUnprocessableEntity(w, fmt.Errorf("downscale should be >= 1 and <= 5"))
+	} else if bytes, err := getScreenshot(ss.wId, downscale); err == nil {
+		w.Header().Set("Content-Type", "image/png")
+		w.Write(bytes)
 	} else {
-		window, err := getWindow(wdr.wId)
-		if err != nil {
-			w.WriteHeader(http.StatusNotFound)
-		} else {
-			resource.ServeAsJson(w, r, window)
-		}
-	}
-}
-
-func (ws Windows) GET(w http.ResponseWriter, r *http.Request) {
-	if requests.HaveParam(r, "brief") {
-		var paths = make([]string, 0, len(ws.wIds))
-		for _, wId := range ws.wIds {
-			paths = append(paths, windowSelf(wId))
-		}
-		resource.ServeAsJson(w, r, paths)
-	} else {
-		var windows = make([]*WindowData, 0, len(ws.wIds))
-		for _, wId := range ws.wIds {
-			var window, err = getWindow(wId)
-			if err == nil {
-				windows = append(windows, window)
-			} else {
-				log.Println("WARN unable to retrieve window", wId)
-			}
-		}
-		resource.ServeAsJson(w, r, windows)
+		fmt.Println("Error getting screenshot:", err)
+		w.WriteHeader(http.StatusInternalServerError)
 	}
 }
 
 var dataConnection = xlib.MakeConnection()
 var dataMutex sync.Mutex
 
-func getWindow(wId uint32) (*WindowData, error) {
+func (w *Window) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	var data, err = json.Marshal(w.Links)
+	if err != nil {
+		return nil, err
+	}
+	buf.Write(data[:len(data)-1]) // omit last '}'
+	fmt.Fprintf(&buf, `,"Id":%d`, w.wId)
 	dataConnection.Lock()
 	defer dataConnection.Unlock()
-	window := &WindowData{}
-	window.Id = wId
-	window.Init(windowSelf(wId), "window")
-	var err error
-	window.Parent, err = dataConnection.GetParent(wId)
+	parent, err := dataConnection.GetParent(w.wId)
 	if err != nil {
 		return nil, err
 	}
-	if window.Parent != 0 {
-		window.X, window.Y, window.W, window.H, err = dataConnection.GetGeometry(window.Parent)
+	var X, Y int32
+	var H, W uint32
+	if parent != 0 {
+		X, Y, W, H, err = dataConnection.GetGeometry(parent)
 	} else {
-		window.X, window.Y, window.W, window.H, err = dataConnection.GetGeometry(wId)
+		X, Y, W, H, err = dataConnection.GetGeometry(w.wId)
 	}
 	if err != nil {
 		return nil, err
 	}
-	window.Name, err = dataConnection.GetName(wId)
+	fmt.Fprintf(&buf, `,"X":%d,"Y":%d,"W":%d,"H":%d`, X, Y, W, H)
+	name, err := dataConnection.GetName(w.wId)
 	if err != nil {
 		return nil, err
 	}
-	window.IconName, err = GetIconName(wId)
+	fmt.Fprintf(&buf, `,"Name": "%s"`, name)
+	iconName, err := GetIconName(w.wId)
 	if err != nil {
 		return nil, err
 	}
-	window.States, err = dataConnection.GetState(wId)
+	if iconName != "" {
+		fmt.Fprintf(&buf, `,"IconName":"%s"`, iconName)
+	}
+	states, err := dataConnection.GetState(w.wId)
 	if err != nil {
 		return nil, err
 	}
-	var wIdCopy = wId
-	var executer = func() {
+	fmt.Fprint(&buf, `,"States":[`)
+	if len(states) > 0 {
+		fmt.Fprintf(&buf, `"%s"`, states[0])
+		for i := 1; i < len(states); i++ {
+			fmt.Fprintf(&buf, `,"%s"`, states[i])
+		}
+	}
+	fmt.Fprint(&buf, `]}`)
+	return buf.Bytes(), nil
+}
+
+func makeExecuter(wId uint32) func() {
+	return func() {
 		dataConnection.Lock()
 		defer dataConnection.Unlock()
-		dataConnection.RaiseAndFocusWindow(wIdCopy)
+		dataConnection.RaiseAndFocusWindow(wId)
 	}
-
-	window.AddAction("default", resource.ResourceAction{Description: "Raise and focus", IconName: window.IconName, Executer: executer})
-	return window, nil
 }
 
 // Pulling icons from X11 (as GetIconName below does) is somewhat costly. For example 'Visual Studio Code' has a
