@@ -30,6 +30,10 @@ func Run() {
 	fmt.Println("Done")
 }
 
+func AddBaseDir(baseDir string) {
+	baseDirSink <- baseDir
+}
+
 func AddARGBIcon(argbIcon image.ARGBIcon) string {
 	var iconName = image.ARGBIconHashName(argbIcon)
 	if reg.haveNotAdded(iconName) {

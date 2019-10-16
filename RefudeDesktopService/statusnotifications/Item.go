@@ -95,38 +95,36 @@ func MakeMenuResource(sender string, path dbus.ObjectPath) *MenuResource {
 	}
 }
 
-func (mr *MenuResource) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "GET" {
-		var menu = &Menu{Links: resource.Links{mr.self, "itemmenu"}}
-		var err error
-		if menu.Entries, err = fetchMenu(mr.sender, mr.path); err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-		} else if bytes, err := json.Marshal(menu); err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-		} else {
-			w.Header().Set("Content-Type", "application/json")
-			w.Write(bytes)
-		}
-	} else if r.Method == "POST" {
-		id := requests.GetSingleQueryParameter(r, "id", "")
-		idAsInt, _ := strconv.Atoi(id)
-		data := dbus.MakeVariant("")
-		time := uint32(time.Now().Unix())
-		dbusObj := conn.Object(mr.sender, mr.path)
-		call := dbusObj.Call("com.canonical.dbusmenu.Event", dbus.Flags(0), idAsInt, "clicked", data, time)
-		if call.Err != nil {
-			log.Println(call.Err)
-			w.WriteHeader(http.StatusInternalServerError)
-		} else {
-			w.WriteHeader(http.StatusAccepted)
-		}
+func (m *MenuResource) GetSelf() string {
+	return m.self
+}
+
+func (mr *MenuResource) GET(w http.ResponseWriter, r *http.Request) {
+	var menu = &Menu{Links: resource.Links{Self: mr.self, RefudeType: "itemmenu"}}
+	var err error
+	if menu.Entries, err = fetchMenu(mr.sender, mr.path); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	} else if bytes, err := json.Marshal(menu); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
 	} else {
-		w.WriteHeader(http.StatusMethodNotAllowed)
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(bytes)
 	}
 }
 
-func (mr *MenuResource) GetEtag() string {
-	return ""
+func (mr *MenuResource) POST(w http.ResponseWriter, r *http.Request) {
+	id := requests.GetSingleQueryParameter(r, "id", "")
+	idAsInt, _ := strconv.Atoi(id)
+	data := dbus.MakeVariant("")
+	time := uint32(time.Now().Unix())
+	dbusObj := conn.Object(mr.sender, mr.path)
+	call := dbusObj.Call("com.canonical.dbusmenu.Event", dbus.Flags(0), idAsInt, "clicked", data, time)
+	if call.Err != nil {
+		log.Println(call.Err)
+		w.WriteHeader(http.StatusInternalServerError)
+	} else {
+		w.WriteHeader(http.StatusAccepted)
+	}
 }
 
 type Menu struct {

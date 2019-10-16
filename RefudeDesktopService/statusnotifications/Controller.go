@@ -217,7 +217,7 @@ func updateIcon(item *Item) {
 	if v, ok := getProp(item, "IconThemePath"); ok {
 		item.iconThemePath = getStringOr(v)
 		if item.iconThemePath != "" {
-			//icons.BasedirSink <- item.iconThemePath
+			icons.AddBaseDir(item.iconThemePath)
 		}
 	}
 	if v, ok := getProp(item, "IconName"); ok {
