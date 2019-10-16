@@ -65,7 +65,7 @@ class Do extends React.Component {
     constructor(props) {
         //devtools();
         super(props);
-        this.state = { notifications: [], windows: [], applications: [], session: { _actions: {} }, term: "" };
+        this.state = { notifications: [], windows: [], applications: [], session: { _post: {} }, term: "" };
 
         this.listenForUpDown();
         this.handleBlurEvents();
@@ -188,16 +188,16 @@ class Do extends React.Component {
                     image: 'http://localhost:7938/icon?name=' + a.IconName
                 }))
 
-            let desc = key => this.state.session._actions[key].Description
-            Object.keys(this.state.session._actions).
+            let desc = key => this.state.session._post[key].Description
+            Object.keys(this.state.session._post).
                 filter(key => match(key, desc(key), term)).
                 sort((k1, k2) => rank(k1, desc(k1), term) - rank(k2, desc(k2), term)).
                 forEach(key => items.push({
                     group: T("Leave"),
                     url: this.state.session._self + "?action=" + key,
                     name: key,
-                    comment: this.state.session._actions[key].Description,
-                    image: 'http://localhost:7938/icon?name=' + this.state.session._actions[key].IconName,
+                    comment: this.state.session._post[key].Description,
+                    image: 'http://localhost:7938/icon?name=' + this.state.session._post[key].IconName,
                 }))
         }
 
