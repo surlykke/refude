@@ -88,7 +88,7 @@ export class NotifierItem extends React.Component {
         }
 
         let iconUrl = () => {
-            return 'http://localhost:7938/icon/' + this.state.item.IconName
+            return 'http://localhost:7938/icon?name=' + this.state.item.IconName
         }
 
         return this.state.item ?
