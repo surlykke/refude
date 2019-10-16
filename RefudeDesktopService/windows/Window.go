@@ -87,45 +87,35 @@ func (w *Window) MarshalJSON() ([]byte, error) {
 	fmt.Fprintf(&buf, `,"Id":%d`, w.wId)
 	dataConnection.Lock()
 	defer dataConnection.Unlock()
-	parent, err := dataConnection.GetParent(w.wId)
-	if err != nil {
-		return nil, err
+	if parent, err := dataConnection.GetParent(w.wId); err == nil {
+		var X, Y int32
+		var H, W uint32
+		if parent != 0 {
+			X, Y, W, H, err = dataConnection.GetGeometry(parent)
+		} else {
+			X, Y, W, H, err = dataConnection.GetGeometry(w.wId)
+		}
+		if err == nil {
+			fmt.Fprintf(&buf, `,"X":%d,"Y":%d,"W":%d,"H":%d`, X, Y, W, H)
+		}
 	}
-	var X, Y int32
-	var H, W uint32
-	if parent != 0 {
-		X, Y, W, H, err = dataConnection.GetGeometry(parent)
-	} else {
-		X, Y, W, H, err = dataConnection.GetGeometry(w.wId)
+	if name, err := dataConnection.GetName(w.wId); err == nil {
+		fmt.Fprintf(&buf, `,"Name": "%s"`, name)
 	}
-	if err != nil {
-		return nil, err
-	}
-	fmt.Fprintf(&buf, `,"X":%d,"Y":%d,"W":%d,"H":%d`, X, Y, W, H)
-	name, err := dataConnection.GetName(w.wId)
-	if err != nil {
-		return nil, err
-	}
-	fmt.Fprintf(&buf, `,"Name": "%s"`, name)
-	iconName, err := GetIconName(w.wId)
-	if err != nil {
-		return nil, err
-	}
-	if iconName != "" {
+	if iconName, err := GetIconName(w.wId); err == nil {
 		fmt.Fprintf(&buf, `,"IconName":"%s"`, iconName)
 	}
-	states, err := dataConnection.GetState(w.wId)
-	if err != nil {
-		return nil, err
-	}
-	fmt.Fprint(&buf, `,"States":[`)
-	if len(states) > 0 {
-		fmt.Fprintf(&buf, `"%s"`, states[0])
-		for i := 1; i < len(states); i++ {
-			fmt.Fprintf(&buf, `,"%s"`, states[i])
+	if states, err := dataConnection.GetState(w.wId); err == nil {
+		fmt.Fprint(&buf, `,"States":[`)
+		if len(states) > 0 {
+			fmt.Fprintf(&buf, `"%s"`, states[0])
+			for i := 1; i < len(states); i++ {
+				fmt.Fprintf(&buf, `,"%s"`, states[i])
+			}
 		}
 	}
 	fmt.Fprint(&buf, `]}`)
+
 	return buf.Bytes(), nil
 }
 
