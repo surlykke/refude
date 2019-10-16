@@ -148,8 +148,7 @@ func notify(app_name string,
 		id = <-ids
 	}
 
-	notification := &Notification{}
-	notification.Init(notificationSelf(id), "notification")
+	notification := &Notification{Links: resource.Links{notificationSelf(id), "notification"}, Actions: resource.Actions{}}
 	notification.Id = id
 	notification.Sender = app_name
 	notification.Created = time.Now()
@@ -187,18 +186,17 @@ func notify(app_name string,
 
 	// Add a dismiss action
 	var notificationId = notification.Id
-	notification.SetDeleteAction(
-		&resource.DeleteAction{
-			Description: "dismiss",
-			Executer:    func() { removals <- removal{notificationId, Dismissed} },
-		})
+	notification.DeleteAction = &resource.ResourceAction{
+		Description: "dismiss",
+		Executer:    func() { removals <- removal{notificationId, Dismissed} },
+	}
 
 	// Add actions given in notification (We are aware that one of these may overwrite the dismiss action added above)
 	for i := 0; i+1 < len(actions); i = i + 2 {
 		var notificationId = notification.Id
 		var actionId = actions[i]
 		var actionDescription = actions[i+1]
-		notification.AddAction(actionId, resource.ResourceAction{
+		notification.SetPostAction(actionId, resource.ResourceAction{
 			Description: actionDescription, IconName: "", Executer: func() {
 				conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".ActionInvoked", notificationId, actionId)
 			},

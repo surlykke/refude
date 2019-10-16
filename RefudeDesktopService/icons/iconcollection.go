@@ -53,7 +53,7 @@ func initIconCollection(baseDirs []string) {
 			for _, indexFilePath := range indexFilePaths {
 				if theme, ok := readTheme(indexFilePath); ok {
 					if _, ok = themes[theme.Id]; !ok {
-						theme.Init("/icontheme/"+theme.Id, "icontheme")
+						theme.Links = resource.Links{Self: "/icontheme/" + theme.Id, RefudeType: "icontheme"}
 						themes[theme.Id] = theme
 						themeIcons[theme.Id] = make(map[string][]IconImage)
 					}

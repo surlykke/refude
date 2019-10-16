@@ -14,19 +14,19 @@ import (
 
 // For embedding
 type Links struct {
-	Self         string                    `json:"_self,omitempty"`
-	RefudeType   string                    `json:"_refudetype,omitempty"`
-	Actions      map[string]ResourceAction `json:"_actions"`
-	DeleteAction *DeleteAction             `json:"_delete,omitempty"`
+	Self       string `json:"_self,omitempty"`
+	RefudeType string `json:"_refudetype,omitempty"`
 }
 
-func (l *Links) Init(self string, refudeType string) {
-	l.Self = self
-	l.RefudeType = refudeType
-	l.Actions = make(map[string]ResourceAction)
+func (l *Links) GetSelf() string {
+	return l.Self
 }
 
-type Executer func()
+type Actions struct {
+	PostActions  map[string]ResourceAction `json:"_post,omitempty"`
+	DeleteAction *ResourceAction           `json:"_delete,omitempty"`
+	PatchAction  *ResourceAction           `json:"_patch,omitempty"`
+}
 
 type ResourceAction struct {
 	Description string
@@ -34,29 +34,21 @@ type ResourceAction struct {
 	Executer    Executer `json:"-"`
 }
 
-func (l *Links) GetSelf() string {
-	return l.Self
+type Executer func()
+
+func (a *Actions) SetPostAction(actionId string, action ResourceAction) {
+	if a.PostActions == nil {
+		a.PostActions = make(map[string]ResourceAction)
+	}
+	a.PostActions[actionId] = action
 }
 
-type DeleteAction struct {
-	Description string
-	Executer    Executer `json:"-"`
-}
-
-func (l *Links) AddAction(actionId string, action ResourceAction) {
-	l.Actions[actionId] = action
-}
-
-func (l *Links) SetDeleteAction(deleteAction *DeleteAction) {
-	l.DeleteAction = deleteAction
-}
-
-func (l *Links) POST(w http.ResponseWriter, r *http.Request) {
-	if l.Actions == nil {
+func (a *Actions) POST(w http.ResponseWriter, r *http.Request) {
+	if a.PostActions == nil {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	} else {
 		var actionId = requests.GetSingleQueryParameter(r, "action", "default")
-		if action, ok := l.Actions[actionId]; ok {
+		if action, ok := a.PostActions[actionId]; ok {
 			action.Executer()
 			w.WriteHeader(http.StatusAccepted)
 		} else {
@@ -65,15 +57,20 @@ func (l *Links) POST(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (l *Links) DELETE(w http.ResponseWriter, r *http.Request) {
-	if l.DeleteAction == nil {
+func (a *Actions) DELETE(w http.ResponseWriter, r *http.Request) {
+	if a.DeleteAction == nil {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	} else {
-		l.DeleteAction.Executer()
+		a.DeleteAction.Executer()
 		w.WriteHeader(http.StatusAccepted)
 	}
 }
 
-func (l *Links) PATCH(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusMethodNotAllowed)
+func (a *Actions) PATCH(w http.ResponseWriter, r *http.Request) {
+	if a.PatchAction == nil {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	} else {
+		a.PatchAction.Executer()
+		w.WriteHeader(http.StatusAccepted)
+	}
 }

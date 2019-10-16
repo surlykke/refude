@@ -43,7 +43,7 @@ func Run() {
 		for _, wId := range wIds {
 			var window = MakeWindow(wId)
 			resources[window.GetSelf()] = window
-			var screenshot = MakeScreenShot(wId)
+			var screenshot = ScreenShot(wId)
 			resources[screenshot.GetSelf()] = screenshot
 			windows = append(windows, window)
 			paths = append(paths, window.GetSelf())

@@ -40,35 +40,32 @@ func windowSelf(windowId uint32) string {
 
 type Window struct {
 	resource.Links
+	resource.Actions
 	wId uint32
 }
 
 func MakeWindow(wId uint32) *Window {
 	var w = &Window{
-		wId: wId,
+		resource.Links{windowSelf(wId), "window"},
+		resource.Actions{},
+		wId,
 	}
-	w.Init(windowSelf(wId), "window")
-	w.AddAction("default", resource.ResourceAction{Description: "Raise and focus", Executer: makeExecuter(w.wId)})
+	w.SetPostAction("default", resource.ResourceAction{Description: "Raise and focus", Executer: makeExecuter(w.wId)})
 	return w
 }
 
-type ScreenShot struct {
-	resource.Links
-	wId uint32
+type ScreenShot uint32
+
+func (ss ScreenShot) GetSelf() string {
+	return fmt.Sprintf("/window/%d/screenshot", ss)
 }
 
-func MakeScreenShot(wId uint32) *ScreenShot {
-	var shot = &ScreenShot{wId: wId}
-	shot.Init(fmt.Sprintf("/window/%d/screenshot", wId), "windowscreenshot")
-	return shot
-}
-
-func (ss *ScreenShot) GET(w http.ResponseWriter, r *http.Request) {
+func (ss ScreenShot) GET(w http.ResponseWriter, r *http.Request) {
 	var downscaleS = requests.GetSingleQueryParameter(r, "downscale", "1")
 	var downscale = downscaleS[0] - '0'
 	if downscale < 1 || downscale > 5 {
 		requests.ReportUnprocessableEntity(w, fmt.Errorf("downscale should be >= 1 and <= 5"))
-	} else if bytes, err := getScreenshot(ss.wId, downscale); err == nil {
+	} else if bytes, err := getScreenshot(uint32(ss), downscale); err == nil {
 		w.Header().Set("Content-Type", "image/png")
 		w.Write(bytes)
 	} else {

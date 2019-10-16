@@ -13,13 +13,19 @@ import (
 type (
 	Resource interface {
 		GetSelf() string
-		POST(w http.ResponseWriter, r *http.Request)
-		PATCH(w http.ResponseWriter, r *http.Request)
-		DELETE(w http.ResponseWriter, r *http.Request)
 	}
 
 	GetHandler interface {
 		GET(w http.ResponseWriter, r *http.Request)
+	}
+	PostHandler interface {
+		POST(w http.ResponseWriter, r *http.Request)
+	}
+	DeleteHandler interface {
+		DELETE(w http.ResponseWriter, r *http.Request)
+	}
+	PatchHandler interface {
+		PATCH(w http.ResponseWriter, r *http.Request)
 	}
 )
 
@@ -104,25 +110,26 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if requests.HaveParam(r, "longpoll") {
 		longGet(w, r)
 	} else {
-		if resource, ok := get(r.URL.Path); !ok {
+		var resource, ok = get(r.URL.Path)
+		if !ok {
 			w.WriteHeader(http.StatusNotFound)
-		} else {
-			switch r.Method {
-			case "GET":
-				if getHandler, ok := resource.(GetHandler); ok {
-					getHandler.GET(w, r)
-				} else {
-					ServeAsJson(w, r, resource)
-				}
-			case "POST":
-				resource.POST(w, r)
-			case "PATCH":
-				resource.PATCH(w, r)
-			case "DELETE":
-				resource.DELETE(w, r)
-			default:
-				w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+
+		if r.Method == "GET" {
+			if getHandler, ok := resource.(GetHandler); ok {
+				getHandler.GET(w, r)
+			} else {
+				ServeAsJson(w, r, resource)
 			}
+		} else if postHandler, ok := resource.(PostHandler); ok && r.Method == "POST" {
+			postHandler.POST(w, r)
+		} else if patchHandler, ok := resource.(PatchHandler); ok && r.Method == "PATCH" {
+			patchHandler.PATCH(w, r)
+		} else if deleteHandler, ok := resource.(DeleteHandler); ok && r.Method == "DELETE" {
+			deleteHandler.DELETE(w, r)
+		} else {
+			w.WriteHeader(http.StatusMethodNotAllowed)
 		}
 	}
 }

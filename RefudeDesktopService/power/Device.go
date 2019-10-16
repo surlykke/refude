@@ -77,4 +77,5 @@ func deviceSelf(dbusPath dbus.ObjectPath) string {
 
 type SessionResource struct {
 	resource.Links
+	resource.Actions
 }

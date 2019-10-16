@@ -164,8 +164,6 @@ func updateWatcherProperties() {
 func buildItem(sender string, path dbus.ObjectPath) *Item {
 	fmt.Println("MakeItem")
 	var item = MakeItem(sender, path)
-	fmt.Println("Init")
-	item.Init(itemSelf(sender, path), "statusnotifieritem")
 
 	var val dbus.Variant
 	var ok bool

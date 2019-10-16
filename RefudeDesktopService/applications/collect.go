@@ -232,16 +232,16 @@ func (c *collection) collectApplications(appdir string) {
 		}
 
 		app.Id = strings.Replace(path[len(appdir)+1:len(path)-8], "/", "-", -1)
-		app.Init(appSelf(app.Id), "application")
+		app.Links = resource.Links{Self: appSelf(app.Id), RefudeType: "application"}
 		var exec = app.Exec
 		var inTerminal = app.Terminal
-		app.AddAction("default", resource.ResourceAction{
+		app.SetPostAction("default", resource.ResourceAction{
 			Description: "Launch", IconName: app.IconName, Executer: func() { launch(exec, inTerminal) },
 		})
 		for id, action := range app.DesktopActions {
 			var exec = action.Exec
 			var inTerminal = app.Terminal
-			app.AddAction(id, resource.ResourceAction{
+			app.SetPostAction(id, resource.ResourceAction{
 				Description: action.Name, IconName: action.IconName, Executer: func() { launch(exec, inTerminal) },
 			})
 		}

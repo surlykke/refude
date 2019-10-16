@@ -43,7 +43,12 @@ type Item struct {
 }
 
 func MakeItem(sender string, path dbus.ObjectPath) *Item {
-	return &Item{key: sender + string(path), sender: sender, itemPath: path}
+	return &Item{
+		Links:    resource.Links{Self: itemSelf(sender, path), RefudeType: "statusnotifieritem"},
+		key:      sender + string(path),
+		sender:   sender,
+		itemPath: path,
+	}
 }
 
 func itemSelf(sender string, path dbus.ObjectPath) string {
@@ -92,8 +97,7 @@ func MakeMenuResource(sender string, path dbus.ObjectPath) *MenuResource {
 
 func (mr *MenuResource) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		var menu = &Menu{}
-		menu.Links.Init(mr.self, "itemmenu")
+		var menu = &Menu{Links: resource.Links{mr.self, "itemmenu"}}
 		var err error
 		if menu.Entries, err = fetchMenu(mr.sender, mr.path); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)

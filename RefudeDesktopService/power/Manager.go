@@ -47,8 +47,7 @@ func getDevices() []*Device {
 }
 
 func getDevice(path dbus.ObjectPath) *Device {
-	var device = &Device{}
-	device.Init(deviceSelf(path), "powerdevice")
+	var device = &Device{Links: resource.Links{deviceSelf(path), "powerdevice"}}
 	device.DisplayDevice = path == DisplayDevicePath
 	device.DbusPath = path
 	updateDevice(device, dbuscall.GetAllProps(dbusConn, UPowService, path, UPowerDeviceInterface))
@@ -71,15 +70,14 @@ var possibleActionValues = map[string][]string{
 	"HybridSleep": {"HybridSleep", "Put the machine into hybrid sleep", "system-suspend-hibernate"}}
 
 func buildSessionResource() *SessionResource {
-	var session = &SessionResource{}
-	session.Init("/session", "session")
+	var session = &SessionResource{resource.Links{"/session", "session"}, resource.Actions{}}
 	for id, pv := range possibleActionValues {
 		if "yes" == dbusConn.Object(login1Service, login1Path).Call(managerInterface+".Can"+id, dbus.Flags(0)).Body[0].(string) {
 			var dbusEndPoint = managerInterface + "." + id
 			var executer = func() {
 				dbusConn.Object(login1Service, login1Path).Call(dbusEndPoint, dbus.Flags(0), false)
 			}
-			session.AddAction(id, resource.ResourceAction{Description: pv[1], IconName: pv[2], Executer: executer})
+			session.SetPostAction(id, resource.ResourceAction{Description: pv[1], IconName: pv[2], Executer: executer})
 		}
 	}
 
