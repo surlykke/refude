@@ -42,7 +42,7 @@ func Run() {
 
 func updateDeviceList() {
 	var deviceList = make(resource.ResourceList, 0, len(devices))
-	var devicePaths = make(resource.BriefList, 0, len(devices))
+	var devicePaths = make(resource.PathList, 0, len(devices))
 	var collection = make(map[string]resource.Resource)
 	for _, device := range devices {
 		var copy = &(*device)

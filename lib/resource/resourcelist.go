@@ -1,7 +1,5 @@
 package resource
 
-import "net/http"
-
 type ResourceList []Resource
 
 /* sort.Interface */
@@ -11,31 +9,13 @@ func (rl ResourceList) Less(i, j int) bool { return rl[i].GetSelf() < rl[j].GetS
 
 /* resource.Resource */
 func (ResourceList) GetSelf() string { return "" }
-func (ResourceList) POST(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusMethodNotAllowed)
-}
-func (ResourceList) PATCH(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusMethodNotAllowed)
-}
-func (ResourceList) DELETE(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusMethodNotAllowed)
-}
 
-type BriefList []string
+type PathList []string
 
 /* sort.Interface */
-func (bl BriefList) Len() int               { return len(bl) }
-func (bl BriefList) Swap(i int, j int)      { bl[i], bl[j] = bl[j], bl[i] }
-func (bl BriefList) Less(i int, j int) bool { return bl[i] < bl[j] }
+func (pl PathList) Len() int               { return len(pl) }
+func (pl PathList) Swap(i int, j int)      { pl[i], pl[j] = pl[j], pl[i] }
+func (pl PathList) Less(i int, j int) bool { return pl[i] < pl[j] }
 
 /* resource.Resource */
-func (bl BriefList) GetSelf() string { return "" }
-func (BriefList) POST(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusMethodNotAllowed)
-}
-func (BriefList) PATCH(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusMethodNotAllowed)
-}
-func (BriefList) DELETE(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusMethodNotAllowed)
-}
+func (bl PathList) GetSelf() string { return "" }

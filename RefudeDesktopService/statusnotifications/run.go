@@ -64,7 +64,7 @@ func Run() {
 func updateCollections() {
 	var resources = make(map[string]resource.Resource, 2*len(items)+2)
 	var itemList = make(resource.ResourceList, 0, len(items))
-	var pathList = make(resource.BriefList, 0, len(items))
+	var pathList = make(resource.PathList, 0, len(items))
 	for _, item := range items {
 		resources[item.Self] = item
 		if item.menu != nil {

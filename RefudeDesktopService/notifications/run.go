@@ -70,7 +70,7 @@ func updateCollections() {
 		resources[path] = notificationImage
 	}
 	var notificationList = make(resource.ResourceList, 0, len(notifications))
-	var notificationPaths = make(resource.BriefList, 0, len(notifications))
+	var notificationPaths = make(resource.PathList, 0, len(notifications))
 	for _, notification := range notifications {
 		var path = notificationSelf(notification.Id)
 		resources[path] = notification

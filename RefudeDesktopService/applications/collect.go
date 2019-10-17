@@ -74,7 +74,7 @@ func Collect() (map[string]resource.Resource, map[string]resource.Resource) {
 	}
 	var mimetypeResources = make(map[string]resource.Resource)
 	var mimetypeList = make(resource.ResourceList, 0, len(c.mimetypes))
-	var mimetypePaths = make(resource.BriefList, 0, len(c.mimetypes))
+	var mimetypePaths = make(resource.PathList, 0, len(c.mimetypes))
 	for path, mt := range c.mimetypes {
 		mimetypeResources[path] = mt
 		mimetypeList = append(mimetypeList, mt)
@@ -87,7 +87,7 @@ func Collect() (map[string]resource.Resource, map[string]resource.Resource) {
 
 	var applicationResources = make(map[string]resource.Resource)
 	var applicationList = make(resource.ResourceList, 0, len(c.applications))
-	var applicationPaths = make(resource.BriefList, 0, len(c.applications))
+	var applicationPaths = make(resource.PathList, 0, len(c.applications))
 	for path, app := range c.applications {
 		applicationResources[path] = app
 		applicationList = append(applicationList, app)

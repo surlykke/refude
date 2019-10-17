@@ -38,7 +38,7 @@ func Run() {
 		}
 		var resources = make(map[string]resource.Resource, 2*len(wIds)+2)
 		var windows = make(resource.ResourceList, 0, len(wIds))
-		var paths = make(resource.BriefList, 0, len(wIds))
+		var paths = make(resource.PathList, 0, len(wIds))
 
 		for _, wId := range wIds {
 			var window = MakeWindow(wId)

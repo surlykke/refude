@@ -85,7 +85,7 @@ func initIconCollection(baseDirs []string) {
 
 	var themeResources = make(map[string]resource.Resource)
 	var themeResourceList resource.ResourceList
-	var themePaths resource.BriefList
+	var themePaths resource.PathList
 	for themeId, theme := range themes {
 		themeResources["/icontheme/"+themeId] = theme
 		themeResourceList = append(themeResourceList, theme)
