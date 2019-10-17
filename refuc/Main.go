@@ -27,15 +27,15 @@ import (
 const operators = "GET POST PATCH DELETE"
 
 // Urls to consult for completions for a given prefix
-var collectionPaths = []string{"/windows/brief", "/applications/brief", "/mimetypes/brief", "/items/brief", "/devices/brief", "/notifications/brief"}
+var collectionPaths = []string{"/windowpaths", "/applicationpaths", "/mimetypepaths", "/itempaths", "/devicepaths", "/notificationpaths"}
 
 var basisPaths = []string{
-	"/windows", "/windows/brief", "/window/",
-	"/applications", "/applications/brief", "/application/",
-	"/mimetypes", "/mimetypes/brief", "/mimetype",
-	"/items", "/items/brief", "/item/",
-	"/notifications", "/notifications/brief", "/notification/",
-	"/devices", "/devices/brief", "/device",
+	"/windows", "/windowpaths", "/window/",
+	"/applications", "/applicationpaths", "/application/",
+	"/mimetypes", "/mimetypepaths", "/mimetype",
+	"/items", "/itempaths", "/item/",
+	"/notifications", "/notificationpaths", "/notification/",
+	"/devices", "/devicepaths", "/device",
 }
 
 type HeaderMap map[string]string
