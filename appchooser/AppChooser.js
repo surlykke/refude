@@ -86,7 +86,7 @@ export default class AppChooser extends React.Component {
                     url: app._self,
                     name: app.Name,
                     comment: app.Comment || '',
-                    image: 'http://localhost:7938/icon/' + app.IconName,
+                    image: 'http://localhost:7938/icon?name=' + app.IconName,
                     app: app
                 })
             })
@@ -122,6 +122,10 @@ export default class AppChooser extends React.Component {
             display: "flex",
             flexFlow: "column",
             height: "100%"
+        };
+
+        let itemListStyle = { 
+            maxHeight: "92%"
         };
 
         let headingStyle = {
@@ -185,7 +189,7 @@ export default class AppChooser extends React.Component {
             <div key="heading" style={headingStyle}>
                 <span dangerouslySetInnerHTML={{ __html: T("Open &nbsp;<b>%0</b>&nbsp;with:", fileName) }} />
             </div>
-            <ItemList key="itemlist" items={this.state.items} disabled={this.state.selected} />
+            <ItemList key="itemlist" style={itemListStyle} items={this.state.items} disabled={this.state.selected} />
         </div>
     }
 }
