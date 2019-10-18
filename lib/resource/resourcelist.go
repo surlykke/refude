@@ -6,15 +6,9 @@
 //
 package resource
 
-type ResourceList []Resource
-
-/* sort.Interface */
-func (rl ResourceList) Len() int           { return len(rl) }
-func (rl ResourceList) Swap(i, j int)      { rl[i], rl[j] = rl[j], rl[i] }
-func (rl ResourceList) Less(i, j int) bool { return rl[i].GetSelf() < rl[j].GetSelf() }
-
-/* resource.Resource */
-func (ResourceList) GetSelf() string { return "" }
+import (
+	"sort"
+)
 
 type PathList []string
 
@@ -23,5 +17,19 @@ func (pl PathList) Len() int               { return len(pl) }
 func (pl PathList) Swap(i int, j int)      { pl[i], pl[j] = pl[j], pl[i] }
 func (pl PathList) Less(i int, j int) bool { return pl[i] < pl[j] }
 
-/* resource.Resource */
-func (bl PathList) GetSelf() string { return "" }
+/**
+ * Returns a list of paths and a list of resources, both sorted by path
+ */
+func ExtractPathAndResourceLists(resources map[string]interface{}) ([]string, []interface{}) {
+	var pathList = make([]string, 0, len(resouces))
+	var resourceList = make([]interface{}, 0, len(resources))
+	for path, _ := range resources {
+		pathList = append(pathList, path)
+	}
+	sort.Sort(PathList(pathList))
+	for _, path := range pathList {
+		resourceList = append(resourceList, resources[path])
+	}
+
+	return pathList, resourceList
+}

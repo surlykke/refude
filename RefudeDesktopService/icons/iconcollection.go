@@ -11,7 +11,6 @@ import (
 	"log"
 	"math"
 	"path/filepath"
-	"sort"
 	"sync"
 
 	"github.com/surlykke/RefudeServices/lib/resource"
@@ -59,7 +58,7 @@ func initIconCollection(baseDirs []string) {
 			for _, indexFilePath := range indexFilePaths {
 				if theme, ok := readTheme(indexFilePath); ok {
 					if _, ok = themes[theme.Id]; !ok {
-						theme.Links = resource.Links{Self: "/icontheme/" + theme.Id, RefudeType: "icontheme"}
+						theme.Links = resource.MakeLinks("/icontheme/"+theme.Id, "icontheme")
 						themes[theme.Id] = theme
 						themeIcons[theme.Id] = make(map[string][]IconImage)
 					}
@@ -89,18 +88,13 @@ func initIconCollection(baseDirs []string) {
 		theme.SearchOrder = append(theme.SearchOrder, "hicolor")
 	}
 
-	var themeResources = make(map[string]resource.Resource)
-	var themeResourceList resource.ResourceList
-	var themePaths resource.PathList
+	var themeResources = make(map[string]interface{})
 	for themeId, theme := range themes {
 		themeResources["/icontheme/"+themeId] = theme
-		themeResourceList = append(themeResourceList, theme)
-		themePaths = append(themePaths, theme.GetSelf())
 	}
-	sort.Sort(themeResourceList)
-	sort.Sort(themePaths)
-	themeResources["/iconthemes"] = themeResourceList
+	var themePaths, themeList = resource.ExtractPathAndResourceLists(themeResources)
 	themeResources["/iconthemepaths"] = themePaths
+	themeResources["/iconthemes"] = themeList
 	resource.MapCollection(&themeResources, "iconthemes")
 
 	resource.MapSingle("/icon", &IconResource{})

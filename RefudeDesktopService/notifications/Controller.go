@@ -148,7 +148,7 @@ func notify(app_name string,
 		id = <-ids
 	}
 
-	notification := &Notification{Links: resource.Links{notificationSelf(id), "notification"}, Actions: resource.Actions{}}
+	notification := &Notification{Links: resource.MakeLinks(notificationSelf(id), "notification")}
 	notification.Id = id
 	notification.Sender = app_name
 	notification.Created = time.Now()
@@ -214,7 +214,7 @@ func installRawImageIcon(hints map[string]dbus.Variant, key string) (string, boo
 		fmt.Println("Error converting variant to image data:", err)
 		return "", true
 	} else {
-		return icons.AddRawImageIcon(imageData), false
+		return icons.AddRawImageIcon(imageData), true
 	}
 }
 

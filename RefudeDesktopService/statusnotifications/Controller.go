@@ -123,9 +123,9 @@ func getOnTheBus() {
 		WATCHER_PATH,
 		map[string]map[string]*prop.Prop{
 			WATCHER_INTERFACE: {
-				"IsStatusNotifierHostRegistered": {true, false, prop.EmitTrue, nil},
-				"ProtocolVersion":                {0, false, prop.EmitTrue, nil},
-				"RegisteredStatusItems":          {[]string{}, false, prop.EmitTrue, nil},
+				"IsStatusNotifierHostRegistered": {Value: true, Writable: false, Emit: prop.EmitTrue, Callback: nil},
+				"ProtocolVersion":                {Value: 0, Writable: false, Emit: prop.EmitTrue, Callback: nil},
+				"RegisteredStatusItems":          {Value: []string{}, Writable: false, Emit: prop.EmitTrue, Callback: nil},
 			},
 		},
 	)
@@ -166,22 +166,21 @@ func buildItem(sender string, path dbus.ObjectPath) *Item {
 
 	var val dbus.Variant
 	var ok bool
-	fmt.Println("Get ID")
 	if val, ok = dbuscall.GetSingleProp(conn, item.sender, item.itemPath, ITEM_INTERFACE, "ID"); ok {
 		item.Id = getStringOr(val)
 	}
-	fmt.Println("Get Category")
 	if val, ok := dbuscall.GetSingleProp(conn, item.sender, item.itemPath, ITEM_INTERFACE, "Category"); ok {
 		item.Category = getStringOr(val)
 	}
 
-	fmt.Println("Get Menu")
 	if val, ok := dbuscall.GetSingleProp(conn, item.sender, item.itemPath, ITEM_INTERFACE, "Menu"); ok {
 		var menuPath = getDbusPath(val)
 		if menuPath != "" {
 			item.menu = MakeMenuResource(item.sender, menuPath)
 			item.Menu = item.menu.self
 		}
+	} else {
+		log.Println("Problem getting menu:", val)
 	}
 
 	updateTitle(item)

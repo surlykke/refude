@@ -18,8 +18,11 @@ type Links struct {
 	RefudeType string `json:"_refudetype,omitempty"`
 }
 
-func (l *Links) GetSelf() string {
-	return l.Self
+func MakeLinks(self string, refudeType string) Links {
+	return Links{
+		Self:       self,
+		RefudeType: refudeType,
+	}
 }
 
 type Actions struct {

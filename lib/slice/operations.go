@@ -64,7 +64,7 @@ func AppendIfNotThere(list []string, s string) []string {
 
 func PushFront(s string, list []string) []string {
 	res := make([]string, 1+len(list))
-	res[0] = s;
+	res[0] = s
 	for i, item := range list {
 		res[i+1] = item
 	}

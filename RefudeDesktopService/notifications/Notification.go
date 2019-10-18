@@ -32,10 +32,6 @@ type NotificationImage struct {
 	imagePath string
 }
 
-func (ni *NotificationImage) GetSelf() string {
-	return ""
-}
-
 func (ni *NotificationImage) POST(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusMethodNotAllowed)
 }

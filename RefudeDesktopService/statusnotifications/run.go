@@ -8,7 +8,6 @@ package statusnotifications
 
 import (
 	"fmt"
-	"sort"
 
 	"github.com/surlykke/RefudeServices/lib/resource"
 )
@@ -33,7 +32,6 @@ func Run() {
 			var path = itemSelf(event.sender, event.path)
 			if item, ok := items[path]; ok {
 				var itemCopy = &(*item)
-
 				switch event.eventName {
 				case "org.kde.StatusNotifierItem.NewTitle":
 					updateTitle(itemCopy)
@@ -61,20 +59,19 @@ func Run() {
 }
 
 func updateCollections() {
-	var resources = make(map[string]resource.Resource, 2*len(items)+2)
-	var itemList = make(resource.ResourceList, 0, len(items))
-	var pathList = make(resource.PathList, 0, len(items))
+	var resources = make(map[string]interface{}, 2*len(items)+2)
 	for _, item := range items {
 		resources[item.Self] = item
-		if item.menu != nil {
-			resources[item.menu.GetSelf()] = item.menu
-		}
-		itemList = append(itemList, item)
-		pathList = append(pathList, item.Self)
 	}
-	sort.Sort(itemList)
-	resources["/items"] = itemList
-	sort.Sort(pathList)
+	var pathList, itemList = resource.ExtractPathAndResourceLists(resources)
 	resources["/itempaths"] = pathList
+	resources["/items"] = itemList
+
+	for _, item := range items {
+		if item.menu != nil {
+			resources[menuSelf(item.menu.sender, item.menu.path)] = item.menu
+		}
+	}
+
 	resource.MapCollection(&resources, "items")
 }

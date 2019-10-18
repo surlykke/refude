@@ -46,7 +46,7 @@ type Window struct {
 
 func MakeWindow(wId uint32) *Window {
 	var w = &Window{
-		resource.Links{windowSelf(wId), "window"},
+		resource.MakeLinks(windowSelf(wId), "window"),
 		resource.Actions{},
 		wId,
 	}
@@ -56,8 +56,8 @@ func MakeWindow(wId uint32) *Window {
 
 type ScreenShot uint32
 
-func (ss ScreenShot) GetSelf() string {
-	return fmt.Sprintf("/window/%d/screenshot", ss)
+func ScreenshotSelf(wId uint32) string {
+	return fmt.Sprintf("/window/%d/screenshot", wId)
 }
 
 func (ss ScreenShot) GET(w http.ResponseWriter, r *http.Request) {

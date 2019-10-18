@@ -8,7 +8,6 @@ package notifications
 
 import (
 	"fmt"
-	"sort"
 	"time"
 
 	"github.com/surlykke/RefudeServices/lib/resource"
@@ -28,7 +27,6 @@ func Run() {
 	for {
 		select {
 		case notification := <-incomingNotifications:
-			fmt.Println("Notification")
 			notifications[notification.Id] = notification
 			var notificationImagePath = fmt.Sprintf("/notificationimage/%d", notification.Id)
 			if "" != notification.imagePath {
@@ -65,22 +63,17 @@ func Run() {
 }
 
 func updateCollections() {
-	var resources = make(map[string]resource.Resource)
+	var resources = make(map[string]interface{})
+	for _, notification := range notifications {
+		resources[notificationSelf(notification.Id)] = notification
+	}
+	var pathList, notificationList = resource.ExtractPathAndResourceLists(resources)
+	resources["/notificationpaths"] = pathList
+	resources["/notifications"] = notificationList
+
 	for path, notificationImage := range notificationImages {
 		resources[path] = notificationImage
 	}
-	var notificationList = make(resource.ResourceList, 0, len(notifications))
-	var notificationPaths = make(resource.PathList, 0, len(notifications))
-	for _, notification := range notifications {
-		var path = notificationSelf(notification.Id)
-		resources[path] = notification
-		notificationList = append(notificationList, notification)
-		notificationPaths = append(notificationPaths, path)
-	}
-	sort.Sort(notificationList)
-	resources["/notifications"] = notificationList
-	sort.Sort(notificationPaths)
-	resources["/notificationpaths"] = notificationPaths
 
 	resource.MapCollection(&resources, "notifications")
 }

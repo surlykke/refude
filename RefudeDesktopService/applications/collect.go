@@ -14,7 +14,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/icons"
@@ -34,7 +33,7 @@ type collection struct {
 /**
  * Return a map path->mimetype and a map path->application
  */
-func Collect() (map[string]resource.Resource, map[string]resource.Resource) {
+func Collect() (map[string]interface{}, map[string]interface{}) {
 	var c collection
 	c.mimetypes = CollectMimeTypes()
 	c.applications = make(map[string]*DesktopApplication)
@@ -72,31 +71,22 @@ func Collect() (map[string]resource.Resource, map[string]resource.Resource) {
 			}
 		}
 	}
-	var mimetypeResources = make(map[string]resource.Resource)
-	var mimetypeList = make(resource.ResourceList, 0, len(c.mimetypes))
-	var mimetypePaths = make(resource.PathList, 0, len(c.mimetypes))
+	var mimetypeResources = make(map[string]interface{})
 	for path, mt := range c.mimetypes {
 		mimetypeResources[path] = mt
-		mimetypeList = append(mimetypeList, mt)
-		mimetypePaths = append(mimetypePaths, path)
 	}
-	sort.Sort(mimetypeList)
-	mimetypeResources["/mimetypes"] = mimetypeList
-	sort.Sort(mimetypePaths)
-	mimetypeResources["/mimetypepaths"] = mimetypePaths
 
-	var applicationResources = make(map[string]resource.Resource)
-	var applicationList = make(resource.ResourceList, 0, len(c.applications))
-	var applicationPaths = make(resource.PathList, 0, len(c.applications))
+	var mimetypePathList, mimetypeList = resource.ExtractPathAndResourceLists(mimetypeResources)
+	mimetypeResources["/mimetypepaths"] = mimetypePathList
+	mimetypeResources["/mimetypes"] = mimetypeList
+
+	var applicationResources = make(map[string]interface{})
 	for path, app := range c.applications {
 		applicationResources[path] = app
-		applicationList = append(applicationList, app)
-		applicationPaths = append(applicationPaths, path)
 	}
-	sort.Sort(applicationList)
-	applicationResources["/applications"] = applicationList
-	sort.Sort(applicationPaths)
-	applicationResources["/applicationpaths"] = applicationPaths
+	var appPathList, appList = resource.ExtractPathAndResourceLists(applicationResources)
+	applicationResources["/applicationpaths"] = appPathList
+	applicationResources["/applications"] = appList
 
 	return mimetypeResources, applicationResources
 }
@@ -232,7 +222,7 @@ func (c *collection) collectApplications(appdir string) {
 		}
 
 		app.Id = strings.Replace(path[len(appdir)+1:len(path)-8], "/", "-", -1)
-		app.Links = resource.Links{Self: appSelf(app.Id), RefudeType: "application"}
+		app.Links = resource.MakeLinks(appSelf(app.Id), "application")
 		var exec = app.Exec
 		var inTerminal = app.Terminal
 		app.SetPostAction("default", resource.ResourceAction{

@@ -17,10 +17,6 @@ import (
 )
 
 type (
-	Resource interface {
-		GetSelf() string
-	}
-
 	GetHandler interface {
 		GET(w http.ResponseWriter, r *http.Request)
 	}
@@ -42,17 +38,17 @@ var (
 	 * When a conds[...].L and resourcesLock are to be held conds[...].L must be taken first.
 	 */
 
-	resouces = make(map[string]Resource)
+	resouces = make(map[string]interface{})
 
 	collections   = make(map[string]map[string]bool)
-	resources     = make(map[string]Resource)
+	resources     = make(map[string]interface{})
 	resourcesLock sync.Mutex
 
 	conds     = make(map[string]*sync.Cond)
 	condsLock sync.Mutex
 )
 
-func get(path string) (Resource, bool) {
+func get(path string) (interface{}, bool) {
 	resourcesLock.Lock()
 	var res, ok = resources[path]
 	resourcesLock.Unlock()
@@ -66,7 +62,7 @@ func getCond(path string) (*sync.Cond, bool) {
 	return cond, ok
 }
 
-func MapSingle(path string, res Resource) {
+func MapSingle(path string, res interface{}) {
 	resourcesLock.Lock()
 	resources[path] = res
 	resourcesLock.Unlock()
@@ -82,7 +78,7 @@ func MapSingle(path string, res Resource) {
  * Allows to map a collection of resources, giving that collection a name. Next time a collection
  * is mapped with that name it fully replaces the first collection
  */
-func MapCollection(resourcesToMap *map[string]Resource, collectionName string) {
+func MapCollection(resourcesToMap *map[string]interface{}, collectionName string) {
 	var affectedPaths = make(map[string]bool)
 	resourcesLock.Lock()
 	if oldCollection, ok := collections[collectionName]; ok {

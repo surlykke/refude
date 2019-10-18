@@ -8,7 +8,6 @@ package power
 
 import (
 	"log"
-	"sort"
 
 	dbuscall "github.com/surlykke/RefudeServices/lib/dbusutils"
 	"github.com/surlykke/RefudeServices/lib/resource"
@@ -41,18 +40,12 @@ func Run() {
 }
 
 func updateDeviceList() {
-	var deviceList = make(resource.ResourceList, 0, len(devices))
-	var devicePaths = make(resource.PathList, 0, len(devices))
-	var collection = make(map[string]resource.Resource)
+	var collection = make(map[string]interface{})
 	for _, device := range devices {
-		var copy = &(*device)
-		collection[copy.Self] = copy
-		deviceList = append(deviceList, copy)
-		devicePaths = append(devicePaths, copy.Self)
+		collection[device.Self] = &(*device)
 	}
-	sort.Sort(deviceList)
-	collection["/devices"] = deviceList
-	sort.Sort(devicePaths)
+	var devicePaths, deviceList = resource.ExtractPathAndResourceLists(collection)
 	collection["/devicepaths"] = devicePaths
+	collection["/devices"] = deviceList
 	resource.MapCollection(&collection, "devices")
 }

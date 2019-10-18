@@ -46,7 +46,7 @@ func NewMimetype(id string) (*Mimetype, error) {
 	if !mimetypePattern.MatchString(id) {
 		return nil, errors.New("Incomprehensible mimetype: " + id)
 	} else {
-		mt := &Mimetype{Links: resource.Links{Self: mimetypeSelf(id), RefudeType: "mimetype"}}
+		mt := &Mimetype{Links: resource.MakeLinks(mimetypeSelf(id), "mimetype")}
 		mt.Id = id
 		mt.Aliases = []string{}
 		mt.Globs = []string{}
