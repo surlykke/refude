@@ -103,8 +103,10 @@ func (mr *MenuResource) GET(w http.ResponseWriter, r *http.Request) {
 	var menu = &Menu{Links: resource.Links{Self: mr.self, RefudeType: "itemmenu"}}
 	var err error
 	if menu.Entries, err = fetchMenu(mr.sender, mr.path); err != nil {
+		log.Println("Error retrieving menu for", mr.sender, mr.path, ":", err)
 		w.WriteHeader(http.StatusInternalServerError)
 	} else if bytes, err := json.Marshal(menu); err != nil {
+		log.Println("Error marshalling menu", err)
 		w.WriteHeader(http.StatusInternalServerError)
 	} else {
 		w.Header().Set("Content-Type", "application/json")

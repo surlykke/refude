@@ -59,7 +59,6 @@ func monitorSignals() {
 	conn.BusObject().Call(addMatch, 0, "type='signal', interface='org.kde.StatusNotifierItem'")
 	conn.BusObject().Call(addMatch, 0, "sender=org.freedesktop.DBus,path=/org/freedesktop/DBus,interface=org.freedesktop.DBus,member=NameOwnerChanged,type=signal")
 	for signal := range dbusSignals {
-		fmt.Println("Signal:", signal)
 		if signal.Name == "org.freedesktop.DBus.NameOwnerChanged" {
 			if len(signal.Body) >= 3 {
 				if oldOwner, ok := signal.Body[1].(string); ok {

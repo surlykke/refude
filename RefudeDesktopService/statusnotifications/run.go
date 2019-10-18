@@ -23,7 +23,6 @@ func Run() {
 
 	updateCollections()
 	for event := range events {
-		fmt.Println("Event: ", event)
 		switch event.eventName {
 		case "ItemCreated":
 			var item = buildItem(event.sender, event.path)
@@ -77,6 +76,5 @@ func updateCollections() {
 	resources["/items"] = itemList
 	sort.Sort(pathList)
 	resources["/itempaths"] = pathList
-	fmt.Println("Mapping", len(resources), "items")
 	resource.MapCollection(&resources, "items")
 }

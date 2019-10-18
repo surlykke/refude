@@ -141,7 +141,6 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func longGet(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Doing longpoll")
 	if r.Method != "GET" {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
@@ -159,7 +158,6 @@ func longGet(w http.ResponseWriter, r *http.Request) {
 	}
 	condsLock.Unlock()
 
-	fmt.Println("cond:", cond)
 	cond.L.Lock()
 	for {
 		if res, ok := get(r.URL.Path); !ok {
@@ -173,9 +171,7 @@ func longGet(w http.ResponseWriter, r *http.Request) {
 		} else {
 			var bytes, etag = ToJsonAndEtag(res)
 
-			fmt.Println("Compare", etag, "to", r.Header.Get("If-None-Match"))
 			if etag == "" || !requests.EtagMatch(etag, r.Header.Get("If-None-Match")) {
-				fmt.Println("No match..")
 				cond.L.Unlock()
 				w.Header().Set("Content-Type", "application/json")
 				w.Header().Set("ETag", etag)
