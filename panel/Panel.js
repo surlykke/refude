@@ -12,7 +12,7 @@
  * Please refer to the LICENSE file for a copy of the license.
  */
 import React from 'react'
-import { devtools, manageZoom, subscribe } from '../common/utils'
+import { devtools, manageZoom, subscribe, managePosition } from '../common/utils'
 import { Clock } from './clock'
 import { Battery } from './battery'
 import { NotifierItems } from './notifieritems'
@@ -49,9 +49,9 @@ export default class Panel extends React.Component {
 
     constructor(props) {
         super(props)
-        //managePosition()
+        managePosition()
         manageZoom()
-        //devtools();
+        // devtools();
     }
 
     componentDidMount = () => {

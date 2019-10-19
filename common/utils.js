@@ -48,6 +48,16 @@ let loadPosition = () => {
     }
 };
 
+let savePosition = () => {
+    if (WIN.x !== storedPosition.x || WIN.y !== storedPosition.y) {
+        let id = screenId();
+        let value = JSON.stringify({ x: WIN.x, y: WIN.y, w: WIN.width, h: WIN.height })
+        localStorage.setItem(id, value);
+        storedPosition.x = WIN.x
+        storedPosition.y = WIN.y
+    }
+}
+
 export let managePosition = () => {
     loadPosition()
     let aboutToLoad
@@ -63,18 +73,10 @@ export let managePosition = () => {
         }
     });
 
-    let checkPosition = () => {
-        if (WIN.x !== storedPosition.x || WIN.y !== storedPosition.y) {
-            let id = screenId();
-            let value = JSON.stringify({ x: WIN.x, y: WIN.y, w: WIN.width, h: WIN.height })
-            localStorage.setItem(id, value);
-        }
-
-        setTimeout(checkPosition, 5000)
-    }
-
-    setTimeout(checkPosition, 10000)
+    subscribe("selectorShown", savePosition)    
 }
+
+
 
 export let manageZoom = () => {
     let zoom = [0.25, 0.33, 0.50, 0.67, 0.75, 0.80, 0.90, 1.00, 1.10, 1.25, 1.50, 1.75, 2.00, 2.50, 3.00, 4.00, 5.00] // The ones that chromium have
