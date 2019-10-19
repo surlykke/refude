@@ -6,12 +6,12 @@
 
 
 import React from 'react'
-import { WIN, publish, subscribe } from "../common/utils";
+import { WIN, publish, subscribe} from "../common/utils";
 import { ItemList } from "../common/itemlist"
 import { Item } from "../common/item"
 import { Indicator } from "./indicator";
 import { T } from "../common/translate";
-import { monitorUrl, getUrl, postUrl } from '../common/monitor';
+import { monitorUrl, getUrl, postUrl, iconUrl } from '../common/monitor';
 
 const http = require('http');
 
@@ -160,8 +160,7 @@ class Do extends React.Component {
                     url: n._self,
                     name: n.Subject,
                     comment: n.Body,
-                    image: n.Image ? "http://localhost:7938" + n.Image :
-                        "http://localhost:7938/icon?name=" + n.IconName,
+                    image: n.Image ? "http://localhost:7938" + n.Image : iconUrl(n.IconName)
                 })
             })
 
@@ -172,7 +171,7 @@ class Do extends React.Component {
                 url: w._self,
                 name: w.Name,
                 comment: "",
-                image: 'http://localhost:7938/icon?name=' + w.IconName,
+                image: iconUrl(w.IconName),
                 iconStyle: windowIconStyle(w),
             }))
 
@@ -185,7 +184,7 @@ class Do extends React.Component {
                     url: a._self,
                     name: a.Name,
                     comment: a.Comment || '',
-                    image: 'http://localhost:7938/icon?name=' + a.IconName
+                    image: iconUrl(a.IconName)
                 }))
 
             let desc = key => this.state.session._post[key].Description
@@ -197,7 +196,7 @@ class Do extends React.Component {
                     url: this.state.session._self + "?action=" + key,
                     name: key,
                     comment: this.state.session._post[key].Description,
-                    image: 'http://localhost:7938/icon?name=' + this.state.session._post[key].IconName,
+                    image: iconUrl(this.state.session._post[key].IconName),
                 }))
         }
 
@@ -213,8 +212,7 @@ class Do extends React.Component {
                         url: n._self,
                         name: n.Subject,
                         comment: n.Body,
-                        image: n.Image ? "http://localhost:7938" + n.Image :
-                            "http://localhost:7938/icon?name=" + n.IconName
+                        image: n.Image ? "http://localhost:7938" + n.Image : iconUrl(n.IconName)
                     }
                     return <Item key={item.url} item={item} />
                 })

@@ -5,7 +5,7 @@
 // Please refer to the GPL2 file for a copy of the license.
 //
 import React from 'react'
-import { monitorUrl, getUrl, postUrl } from "../common/monitor";
+import { monitorUrl, getUrl, postUrl, iconUrl } from "../common/monitor";
 import { publish } from "../common/utils";
 
 export class NotifierItem extends React.Component {
@@ -87,12 +87,9 @@ export class NotifierItem extends React.Component {
             event.preventDefault()
         }
 
-        let iconUrl = () => {
-            return 'http://localhost:7938/icon?name=' + this.state.item.IconName
-        }
 
         return this.state.item ?
-            <img src={iconUrl()} alt="" height="18px" width="18px"
+            <img src={iconUrl(this.state.item.IconName)} alt="" height="18px" width="18px"
                 style={{ paddingRight: "5px" }} onClick={onClick} onContextMenu={onRightClick} /> :
             null
     }

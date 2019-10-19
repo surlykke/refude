@@ -8,7 +8,7 @@ import React from 'react';
 import { T } from "../common/translate";
 import { ItemList } from "../common/itemlist"
 import { applicationRank, subscribe, devtools } from "../common/utils";
-import {getUrl, postUrl, patchUrl} from "../common/monitor"
+import {getUrl, postUrl, patchUrl, iconUrl} from "../common/monitor"
 
 let gui = window.require('nw.gui');
 let filePath = gui.App.argv[0];
@@ -86,7 +86,7 @@ export default class AppChooser extends React.Component {
                     url: app._self,
                     name: app.Name,
                     comment: app.Comment || '',
-                    image: 'http://localhost:7938/icon?name=' + app.IconName,
+                    image: iconUrl(app.IconName),
                     app: app
                 })
             })
