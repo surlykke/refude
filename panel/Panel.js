@@ -16,7 +16,6 @@ import { devtools, manageZoom, subscribe, managePosition } from '../common/utils
 import { Clock } from './clock'
 import { Battery } from './battery'
 import { NotifierItems } from './notifieritems'
-import { Notificationalert } from "./notificationalert";
 import { DragField } from './dragfield'
 import { CloseButton } from "./closebutton";
 import { Do } from './do'
