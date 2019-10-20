@@ -18,13 +18,11 @@ const http = require('http');
 let rank = (name, comment, lowercaseTerm) => {
     let tmp = name.toLowerCase().indexOf(lowercaseTerm)
     if (tmp > -1) {
-        console.log("rank('" + name + "', '" + comment + "', '" + lowercaseTerm + "') returning", tmp)
         return tmp
     }
     if (comment) {
         tmp = comment.toLowerCase().indexOf(lowercaseTerm)
         if (tmp > -1) {
-            console.log("rank('" + name + "', '" + comment + "', '" + lowercaseTerm + "') returning", tmp + 100)
             return 100 + tmp
         }
     }
