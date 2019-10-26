@@ -98,6 +98,18 @@ func (c *collection) removeAssociations(app *DesktopApplication) {
 }
 
 func CollectMimeTypes() map[string]*Mimetype {
+	res := make(map[string]*Mimetype)
+
+	for id, comment := range schemeHandlers {
+		var mimetype, err = MakeMimetype(id)
+		if err != nil {
+			fmt.Println("Problem making mimetype", id)
+		} else {
+			mimetype.Comment = comment
+			res[mimetypeSelf(id)] = mimetype
+		}
+	}
+
 	xmlCollector := struct {
 		XMLName   xml.Name `xml:"mime-info"`
 		MimeTypes []struct {
@@ -141,9 +153,8 @@ func CollectMimeTypes() map[string]*Mimetype {
 		fmt.Println("Error parsing: ", parseErr)
 	}
 
-	res := make(map[string]*Mimetype)
 	for _, tmp := range xmlCollector.MimeTypes {
-		if mimeType, err := NewMimetype(tmp.Type); err != nil {
+		if mimeType, err := MakeMimetype(tmp.Type); err != nil {
 			fmt.Println(err)
 		} else {
 			var collectedLocales = make(map[string]bool)
@@ -221,7 +232,7 @@ func (c *collection) collectApplications(appdir string) {
 			return nil
 		}
 
-		app.Id = strings.Replace(path[len(appdir)+1:len(path)-8], "/", "-", -1)
+		app.Id = strings.Replace(path[len(appdir)+1:], "/", "-", -1)
 		app.Links = resource.MakeLinks(appSelf(app.Id), "application")
 		var exec = app.Exec
 		var inTerminal = app.Terminal
@@ -252,7 +263,7 @@ func (c *collection) collectApplications(appdir string) {
 func (c *collection) getOrAdd(mimetypeId string) *Mimetype {
 	if mimetype, ok := c.mimetypes[mimetypeSelf(mimetypeId)]; ok {
 		return mimetype
-	} else if mimetype, err := NewMimetype(mimetypeId); err == nil {
+	} else if mimetype, err := MakeMimetype(mimetypeId); err == nil {
 		c.mimetypes[mimetypeSelf(mimetypeId)] = mimetype
 		return mimetype
 	} else {

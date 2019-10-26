@@ -38,6 +38,15 @@ func Run() {
 		}
 	}
 
+	// Make sure we have ~/.config/mimeapps.list	
+	if _, err := os.Stat(xdg.ConfigHome + "/mimeapps.list"); err != nil && os.IsNotExist(err) {
+		if emptyMimemappsList, err := os.Create(xdg.ConfigHome + "/mimeapps.list"); err != nil {
+			panic(err)
+		} else {
+			emptyMimemappsList.Close()
+		}
+	}
+
 	if _, err := unix.InotifyAddWatch(fd, xdg.ConfigHome+"/mimeapps.list", unix.IN_CLOSE_WRITE); err != nil {
 		panic(err)
 	}

@@ -41,7 +41,7 @@ type Mimetype struct {
 
 var mimetypePattern = regexp.MustCompile(`^([^/]+)/([^/]+)$`)
 
-func NewMimetype(id string) (*Mimetype, error) {
+func MakeMimetype(id string) (*Mimetype, error) {
 
 	if !mimetypePattern.MatchString(id) {
 		return nil, errors.New("Incomprehensible mimetype: " + id)
@@ -53,12 +53,6 @@ func NewMimetype(id string) (*Mimetype, error) {
 		mt.SubClassOf = []string{}
 		mt.IconName = "unknown"
 		mt.GenericIcon = "unknown"
-
-		if strings.HasPrefix(id, "x-scheme-handler/") {
-			mt.Comment = id[len("x-scheme-handler/"):] + " url"
-		} else {
-			mt.Comment = id
-		}
 
 		return mt, nil
 	}
