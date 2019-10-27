@@ -52,28 +52,31 @@ func Collect() (map[string]interface{}, map[string]interface{}) {
 	}
 
 	for mimetypeId, appIds := range c.associations {
-		if _, ok := c.mimetypes[mimetypeSelf(mimetypeId)]; ok {
+		if _, ok := c.mimetypes[mimetypeId]; ok {
 			for _, appId := range appIds {
-				if application, ok := c.applications[appSelf(appId)]; ok {
+				if application, ok := c.applications[appId]; ok {
 					application.Mimetypes = slice.AppendIfNotThere(application.Mimetypes, mimetypeId)
 				}
 			}
 		}
 	}
 
+	fmt.Println("Sætter default apps")
 	for mimetypeId, appIds := range c.defaultApps {
-		if mimetype, ok := c.mimetypes[mimetypeSelf(mimetypeId)]; ok {
+		if mimetype, ok := c.mimetypes[mimetypeId]; ok {
 			for _, appId := range appIds {
-				if _, ok := c.applications[appSelf(appId)]; ok {
+				if _, ok := c.applications[appId]; ok {
+					fmt.Println("Sætter default", mimetypeId, appId)
 					mimetype.DefaultApp = appId
+					mimetype.DefaultAppPath = appSelf(appId)
 					break
 				}
 			}
 		}
 	}
 	var mimetypeResources = make(map[string]interface{})
-	for path, mt := range c.mimetypes {
-		mimetypeResources[path] = mt
+	for mimetypeId, mt := range c.mimetypes {
+		mimetypeResources[mimetypeSelf(mimetypeId)] = mt
 	}
 
 	var mimetypePathList, mimetypeList = resource.ExtractPathAndResourceLists(mimetypeResources)
@@ -81,8 +84,8 @@ func Collect() (map[string]interface{}, map[string]interface{}) {
 	mimetypeResources["/mimetypes"] = mimetypeList
 
 	var applicationResources = make(map[string]interface{})
-	for path, app := range c.applications {
-		applicationResources[path] = app
+	for appId, app := range c.applications {
+		applicationResources[appSelf(appId)] = app
 	}
 	var appPathList, appList = resource.ExtractPathAndResourceLists(applicationResources)
 	applicationResources["/applicationpaths"] = appPathList
@@ -106,7 +109,7 @@ func CollectMimeTypes() map[string]*Mimetype {
 			fmt.Println("Problem making mimetype", id)
 		} else {
 			mimetype.Comment = comment
-			res[mimetypeSelf(id)] = mimetype
+			res[id] = mimetype
 		}
 	}
 
@@ -207,7 +210,7 @@ func CollectMimeTypes() map[string]*Mimetype {
 				tags = append(tags, language.Make(locale))
 			}
 
-			res[mimetypeSelf(mimeType.Id)] = mimeType
+			res[mimeType.Id] = mimeType
 		}
 	}
 
@@ -247,7 +250,7 @@ func (c *collection) collectApplications(appdir string) {
 			})
 		}
 
-		c.applications[appSelf(app.Id)] = app
+		c.applications[app.Id] = app
 
 		for _, mimetype := range mimetypes {
 			c.associations[mimetype] = slice.AppendIfNotThere(c.associations[mimetype], app.Id)
@@ -261,10 +264,10 @@ func (c *collection) collectApplications(appdir string) {
 }
 
 func (c *collection) getOrAdd(mimetypeId string) *Mimetype {
-	if mimetype, ok := c.mimetypes[mimetypeSelf(mimetypeId)]; ok {
+	if mimetype, ok := c.mimetypes[mimetypeId]; ok {
 		return mimetype
 	} else if mimetype, err := MakeMimetype(mimetypeId); err == nil {
-		c.mimetypes[mimetypeSelf(mimetypeId)] = mimetype
+		c.mimetypes[mimetypeId] = mimetype
 		return mimetype
 	} else {
 		log.Println(mimetypeId, "not legal")

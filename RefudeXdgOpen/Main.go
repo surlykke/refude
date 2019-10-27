@@ -25,7 +25,7 @@ import (
 )
 
 type MimeType struct {
-	DefaultApp string
+	DefaultAppPath string
 }
 
 var client = http.Client{
@@ -53,8 +53,8 @@ func getMimetype(mimetypeId string) (*MimeType, error) {
 	return mimetype, nil
 }
 
-func launchApp(appId, filepath string) error {
-	var url = "http://localhost/application/" + appId + "?arg=" + url.QueryEscape(filepath)
+func launchApp(appPath, filepath string) error {
+	var url = "http://localhost" + appPath + "?arg=" + url.QueryEscape(filepath)
 	if request, err := http.NewRequest("POST", url, nil); err != nil {
 		return err
 	} else if response, err := client.Do(request); err != nil {
@@ -65,13 +65,13 @@ func launchApp(appId, filepath string) error {
 	}
 }
 
-func getDefaultApp(mimetypeid string) (string, error) {
+func getDefaultAppPath(mimetypeid string) (string, error) {
 	var mimetype, err = getMimetype(mimetypeid)
 	if err != nil {
 		fmt.Printf("Error getting mimetype : %v", err)
 		return "", err
 	} else {
-		return mimetype.DefaultApp, nil
+		return mimetype.DefaultAppPath, nil
 	}
 }
 
@@ -114,13 +114,13 @@ func main() {
 	if len(mimetypeId) == 0 {
 		log.Fatal("Could not determine type of " + arg)
 	}
-	appId, err := getDefaultApp(mimetypeId)
+	appPath, err := getDefaultAppPath(mimetypeId)
 	if err != nil {
 		log.Fatal("Error querying default app of ", mimetypeId, err)
 	}
-	if appId != "" {
-		if err = launchApp(appId, arg); err != nil {
-			log.Fatal("Error launching " + appId + " with " + arg)
+	if appPath != "" {
+		if err = launchApp(appPath, arg); err != nil {
+			log.Fatal("Error launching " + appPath + " with " + arg)
 		}
 	} else {
 		fmt.Println("Calling refudeAppChooser ", arg, mimetypeId)

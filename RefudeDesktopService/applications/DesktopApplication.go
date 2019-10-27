@@ -110,5 +110,10 @@ func launchWithArgs(exec string, args []string, inTerminal bool) {
 }
 
 func appSelf(appId string) string {
-	return fmt.Sprintf("/application/%s", appId)
+	if !strings.HasSuffix(appId, ".desktop") {
+		log.Println("Weird application id:", appId)
+		return ""
+	} else {
+		return fmt.Sprintf("/application/%s", appId[:len(appId)-8])
+	}
 }

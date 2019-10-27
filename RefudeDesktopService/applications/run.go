@@ -8,62 +8,62 @@ package applications
 
 import (
 	"fmt"
-	"os"
+	"strings"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/xdg"
-	"golang.org/x/sys/unix"
 )
+
+var watcher *fsnotify.Watcher
+
+func watchDir(dir string) {
+	if xdg.DirOrFileExists(dir) {
+		if err := watcher.Add(dir); err != nil {
+			fmt.Println("Could not watch:", dir, ":", err)
+		}
+	}
+}
+
+func isRelevant(event fsnotify.Event) bool {
+	return strings.HasSuffix(event.Name, ".desktop") || strings.HasSuffix(event.Name, "/mimeapps.list")
+}
+
+func collectAndMap() {
+	fmt.Println("collect mimetypes and applications")
+	var mimetypeResources, applicationResources = Collect()
+
+	fmt.Println("found", len(mimetypeResources), "mimetypes and", len(applicationResources), "applications")
+
+	resource.MapCollection(&mimetypeResources, "mimetypes")
+	resource.MapCollection(&applicationResources, "applications")
+}
 
 func Run() {
 	fmt.Println("Ind i applications.Run")
-	fd, err := unix.InotifyInit()
-
+	var err error
+	watcher, err = fsnotify.NewWatcher()
 	if err != nil {
 		panic(err)
 	}
 
-	defer unix.Close(fd)
+	defer watcher.Close()
 
 	for _, dataDir := range append(xdg.DataDirs, xdg.DataHome) {
-		appDir := dataDir + "/applications"
-		if _, err := os.Stat(appDir); os.IsNotExist(err) {
-			// path/to/whatever does not exist
-		}
-
-		if xdg.DirOrFileExists(appDir) {
-			if _, err := unix.InotifyAddWatch(fd, appDir, unix.IN_CREATE|unix.IN_MODIFY|unix.IN_DELETE); err != nil {
-				fmt.Println("Could not watch:", appDir, ":", err)
-			}
-		}
+		watchDir(dataDir + "/applications")
 	}
+	watchDir(xdg.ConfigHome)
 
-	// Make sure we have ~/.config/mimeapps.list	
-	if _, err := os.Stat(xdg.ConfigHome + "/mimeapps.list"); err != nil && os.IsNotExist(err) {
-		if emptyMimemappsList, err := os.Create(xdg.ConfigHome + "/mimeapps.list"); err != nil {
-			panic(err)
-		} else {
-			emptyMimemappsList.Close()
-		}
-	}
-
-	if _, err := unix.InotifyAddWatch(fd, xdg.ConfigHome+"/mimeapps.list", unix.IN_CLOSE_WRITE); err != nil {
-		panic(err)
-	}
-
-	dummy := make([]byte, 100)
+	collectAndMap()
 	for {
-		fmt.Println("collect mimetypes and applicatons")
-		var mimetypeResources, applicationResources = Collect()
-
-		fmt.Println("found", len(mimetypeResources), "mimetypes and", len(applicationResources), "applications")
-
-		resource.MapCollection(&mimetypeResources, "mimetypes")
-		resource.MapCollection(&applicationResources, "applications")
-
-		if _, err := unix.Read(fd, dummy); err != nil {
-			panic(err)
+		select {
+		case event := <-watcher.Events:
+			fmt.Println("Event:", event)
+			if isRelevant(event) {
+				collectAndMap()
+			}
+		case err := <-watcher.Errors:
+			fmt.Println(err)
 		}
-		fmt.Println("Recollect apps and mimes...")
 	}
 }

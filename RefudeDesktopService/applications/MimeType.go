@@ -37,6 +37,7 @@ type Mimetype struct {
 	IconName        string
 	GenericIcon     string
 	DefaultApp      string `json:",omitempty"`
+	DefaultAppPath  string `json:",omitempty"`
 }
 
 var mimetypePattern = regexp.MustCompile(`^([^/]+)/([^/]+)$`)
@@ -53,7 +54,6 @@ func MakeMimetype(id string) (*Mimetype, error) {
 		mt.SubClassOf = []string{}
 		mt.IconName = "unknown"
 		mt.GenericIcon = "unknown"
-
 		return mt, nil
 	}
 }
