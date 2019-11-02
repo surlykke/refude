@@ -23,7 +23,10 @@ class Clock extends React.Component {
 	componentDidMount = () => {
     	let update = () => {
 			let now = new Date()
-	        this.setState({time: now.toLocaleTimeString()});
+	        this.setState({
+				time: now.toLocaleTimeString(), 
+				date: now.toISOString().slice(0, 10)
+			});
 			// Update just after next turn of second..
             setTimeout(update, 1000 - now.getMilliseconds() + 1);
 	    };
@@ -31,7 +34,10 @@ class Clock extends React.Component {
 	}
 
 	render = () => {
-		return <div id="clock" style={this.props.style}>{this.state.time}</div>
+		return <div id="clock" style={this.props.style}>
+					<div>{this.state.time}</div>
+					<div style={{fontSize: "10px", textAlign: "center"}}>{this.state.date}</div>
+				</div>
 	}
 }
 
