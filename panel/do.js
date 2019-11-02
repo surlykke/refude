@@ -15,21 +15,38 @@ import { monitorUrl, getUrl, postUrl, iconUrl } from '../common/monitor';
 
 const http = require('http');
 
-let rank = (name, comment, lowercaseTerm) => {
+let rank = (name, comment, lowercaseTerm, fluffy) => {
     let tmp = name.toLowerCase().indexOf(lowercaseTerm)
     if (tmp > -1) {
         return tmp
     }
+   
+    // More fluffy search - eg. pwr matches PowerOff or nvim matches neovim 
+    // When we reach here we know lowercaseTerm is not empty
+    if (fluffy) { 
+        let j = 0;
+        for (let i = 0;    i < name.length; i++) {
+            if (name[i].toLocaleLowerCase() === lowercaseTerm[j]) {
+                j++;
+            }
+            if (j >= lowercaseTerm.length) {
+                console.log("Fluffy match '" + lowercaseTerm + "' to '" + name + "'");
+                return 100 + i
+            }
+            
+        }
+    }
+
     if (comment) {
         tmp = comment.toLowerCase().indexOf(lowercaseTerm)
         if (tmp > -1) {
-            return 100 + tmp
+            return 200 + tmp
         }
     }
     return -1
 };
 
-let match = (name, comment, lowercaseTerm) => rank(name, comment, lowercaseTerm) > -1
+let match = (name, comment, lowercaseTerm, fluffy) => rank(name, comment, lowercaseTerm, fluffy) > -1
 
 let windowIconStyle = w => {
     let style = {
@@ -175,8 +192,8 @@ class Do extends React.Component {
 
         if (term !== '') {
             this.state.applications.
-                filter(a => match(a.Name, a.Comment, term)).
-                sort((a1, a2) => rank(a1.Name, a1.Comment, term) - rank(a2.Name, a2.Comment, term)).
+                filter(a => match(a.Name, a.Comment, term, true)).
+                sort((a1, a2) => rank(a1.Name, a1.Comment, term, true) - rank(a2.Name, a2.Comment, term, true)).
                 forEach(a => items.push({
                     group: T("Applications"),
                     url: a._self,
@@ -187,8 +204,8 @@ class Do extends React.Component {
 
             let desc = key => this.state.session._post[key].Description
             Object.keys(this.state.session._post).
-                filter(key => match(key, desc(key), term)).
-                sort((k1, k2) => rank(k1, desc(k1), term) - rank(k2, desc(k2), term)).
+                filter(key => match(key, desc(key), term, true)).
+                sort((k1, k2) => rank(k1, desc(k1), term, true) - rank(k2, desc(k2), term, true)).
                 forEach(key => items.push({
                     group: T("Leave"),
                     url: this.state.session._self + "?action=" + key,
