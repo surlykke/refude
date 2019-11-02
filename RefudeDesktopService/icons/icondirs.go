@@ -46,31 +46,23 @@ func init() {
 	}
 }
 
-var (
-	baseDirSink = make(chan string)
-)
-
-func receiveIconDirs() {
-
-	for baseDirPath := range baseDirSink {
-		fmt.Println("Recieve", baseDirPath)
-		baseDirPath = filepath.Clean(baseDirPath)
-		if baseDir, err := os.Open(baseDirPath); err != nil {
-			fmt.Println("Could not open", baseDirPath, "-", err)
-		} else if fileInfos, err := baseDir.Readdir(-1); err != nil {
-			fmt.Println("Could not read", baseDirPath, "-", err)
-		} else {
-			for _, fileInfo := range fileInfos {
-				if strings.HasPrefix(fileInfo.Name(), ".") {
-					continue
-				} else if fileInfo.IsDir() {
-					handleDirectory(baseDirPath, fileInfo.Name())
-				} else {
-					handleFile(baseDirPath, "", "", fileInfo)
-				}
+func scanBaseDir(baseDirPath string) {
+	fmt.Println("Recieve", baseDirPath)
+	baseDirPath = filepath.Clean(baseDirPath)
+	if baseDir, err := os.Open(baseDirPath); err != nil {
+		fmt.Println("Could not open", baseDirPath, "-", err)
+	} else if fileInfos, err := baseDir.Readdir(-1); err != nil {
+		fmt.Println("Could not read", baseDirPath, "-", err)
+	} else {
+		for _, fileInfo := range fileInfos {
+			if strings.HasPrefix(fileInfo.Name(), ".") {
+				continue
+			} else if fileInfo.IsDir() {
+				handleDirectory(baseDirPath, fileInfo.Name())
+			} else {
+				handleFile(baseDirPath, "", "", fileInfo)
 			}
 		}
-
 	}
 
 }
@@ -109,17 +101,9 @@ func handleFile(baseDirPath string, themeId string, iconDir string, fileInfo os.
 		}
 
 		if themeId != "" {
-			themeIconImages <- themeIconImage{
-				iconName: iconName,
-				themeId:  themeId,
-				iconDir:  iconDir,
-				path:     imageFilePath,
-			}
+			addThemeIconImage(themeId, iconDir, iconName, imageFilePath)
 		} else {
-			otherIconImages <- otherIconImage{
-				name: iconName,
-				path: imageFilePath,
-			}
+			AddOtherIcon(iconName, imageFilePath)
 		}
 	}
 }

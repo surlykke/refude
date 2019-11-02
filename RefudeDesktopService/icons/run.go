@@ -19,39 +19,29 @@ import (
 )
 
 func Run() {
-	var baseDirs = []string{xdg.Home + "/.icons"}
+	AddBaseDir(xdg.Home + "/.icons")
 	for _, dataDir := range xdg.DataDirs {
-		baseDirs = append(baseDirs, dataDir+"/icons")
+		AddBaseDir(dataDir + "/icons")
 	}
-	baseDirs = append(baseDirs, "/usr/share/pixmaps")
-
-	initIconCollection(baseDirs)
-	go recieveImages()
-	go receiveIconDirs()
-
-	fmt.Println("Adding basedirs", baseDirs)
-	for _, baseDir := range baseDirs {
-		baseDirSink <- baseDir
-	}
-	fmt.Println("Done")
-}
-
-func AddBaseDir(baseDir string) {
-	baseDirSink <- baseDir
+	AddBaseDir("/usr/share/pixmaps")
 }
 
 func AddARGBIcon(argbIcon image.ARGBIcon) string {
 	var iconName = image.ARGBIconHashName(argbIcon)
 	if reg.haveNotAdded(iconName) {
+		lock.Lock()
+		defer lock.Unlock()
 		for _, pixMap := range argbIcon.Images {
-			if pixMap.Width != pixMap.Height {
-			} else {
+			if pixMap.Width == pixMap.Height { // else ignore
 				var dir = fmt.Sprintf("%s/%d", refudeSessionIconsDir, pixMap.Width)
-				go saveAsPng(dir, iconName, &pixMap)
-				sessionIconImages <- sessionIconImage{
-					name: iconName,
-					size: pixMap.Width,
-				}
+				saveAsPng(dir, iconName, &pixMap)
+
+				sessionIcons[iconName] = append(sessionIcons[iconName], IconImage{
+					MinSize: pixMap.Width,
+					MaxSize: pixMap.Width,
+					Path:    fmt.Sprintf("%s/%s.png", dir, iconName),
+				})
+
 			}
 		}
 	}
@@ -72,7 +62,7 @@ func AddFileIcon(filePath string) string {
 			fmt.Println("Not an icon  file", filePath)
 			return ""
 		} else {
-			otherIconImages <- otherIconImage{name: name, path: filePath}
+			AddOtherIcon(name, filePath)
 			return name
 		}
 	}
@@ -82,11 +72,8 @@ func AddFileIcon(filePath string) string {
 func AddRawImageIcon(imageData image.ImageData) string {
 	var name = image.ImageDataHashName(imageData)
 	if reg.haveNotAdded(name) {
-		go saveAsPng(refudeSessionIconsDir, name, imageData)
-		otherIconImages <- otherIconImage{
-			name: name,
-			path: refudeSessionIconsDir + "/" + name + ".png",
-		}
+		saveAsPng(refudeSessionIconsDir, name, imageData)
+		AddOtherIcon(name, fmt.Sprintf("%s/%s.png", refudeSessionIconsDir, name))
 	}
 	return name
 }

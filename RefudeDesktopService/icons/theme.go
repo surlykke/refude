@@ -22,12 +22,11 @@ import (
 type (
 	IconTheme struct {
 		resource.Links
-		Id          string
-		Name        string
-		Comment     string
-		Inherits    []string
-		Dirs        map[string]IconDir
-		SearchOrder []string
+		Id       string
+		Name     string
+		Comment  string
+		Inherits []string
+		Dirs     map[string]IconDir
 	}
 
 	IconDir struct {
