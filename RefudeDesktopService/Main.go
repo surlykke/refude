@@ -10,6 +10,7 @@ import (
 	"net/http"
 
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/applications"
+	"github.com/surlykke/RefudeServices/RefudeDesktopService/backlight"
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/icons"
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/notifications"
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/power"
@@ -19,15 +20,6 @@ import (
 	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
-/*var repos = []ResourceCollection{
-	windows.Windows,
-	applications.Resources,
-	notifications.Notifications,
-	statusnotifications.Items,
-	power.PowerResources,
-	icons.Icons,
-}*/
-
 func main() {
 	go windows.Run()
 	go applications.Run()
@@ -35,6 +27,7 @@ func main() {
 	go power.Run()
 	go statusnotifications.Run()
 	go icons.Run()
+	go backlight.Run()
 	//
 	var handler = http.HandlerFunc(resource.ServeHTTP)
 	go lib.Serve("org.refude.desktop-service", handler)
