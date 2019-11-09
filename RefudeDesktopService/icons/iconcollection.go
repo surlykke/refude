@@ -71,9 +71,7 @@ func mapThemeResources() {
 	for themeId, theme := range themes {
 		themeResources["/icontheme/"+themeId] = &(*theme)
 	}
-	var themePaths, themeList = resource.ExtractPathAndResourceLists(themeResources)
-	themeResources["/iconthemepaths"] = themePaths
-	themeResources["/iconthemes"] = themeList
+	themeResources["/iconthemes"] = resource.ExtractResourceList(themeResources)
 	resource.MapCollection(&themeResources, "iconthemes")
 
 	resource.MapSingle("/icon", &IconResource{})

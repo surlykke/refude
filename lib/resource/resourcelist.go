@@ -10,26 +10,31 @@ import (
 	"sort"
 )
 
-type PathList []string
+type pathAndResource struct {
+	Path     string
+	Resource interface{}
+}
+
+type pathAndResourceList []pathAndResource
 
 /* sort.Interface */
-func (pl PathList) Len() int               { return len(pl) }
-func (pl PathList) Swap(i int, j int)      { pl[i], pl[j] = pl[j], pl[i] }
-func (pl PathList) Less(i int, j int) bool { return pl[i] < pl[j] }
+func (pl pathAndResourceList) Len() int               { return len(pl) }
+func (pl pathAndResourceList) Swap(i int, j int)      { pl[i], pl[j] = pl[j], pl[i] }
+func (pl pathAndResourceList) Less(i int, j int) bool { return pl[i].Path < pl[j].Path }
 
 /**
  * Returns a list of paths and a list of resources, both sorted by path
  */
-func ExtractPathAndResourceLists(resources map[string]interface{}) ([]string, []interface{}) {
-	var pathList = make([]string, 0, len(resouces))
-	var resourceList = make([]interface{}, 0, len(resources))
-	for path, _ := range resources {
-		pathList = append(pathList, path)
+func ExtractResourceList(resources map[string]interface{}) []interface{} {
+	var parl = make(pathAndResourceList, 0, len(resouces))
+	for path, resource := range resources {
+		parl = append(parl, pathAndResource{Path: path, Resource: resource})
 	}
-	sort.Sort(PathList(pathList))
-	for _, path := range pathList {
-		resourceList = append(resourceList, resources[path])
+	sort.Sort(parl)
+	var resourceList = make([]interface{}, 0, len(parl))
+	for _, par := range parl {
+		resourceList = append(resourceList, par.Resource)
 	}
 
-	return pathList, resourceList
+	return resourceList
 }

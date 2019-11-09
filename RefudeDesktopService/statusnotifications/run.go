@@ -63,9 +63,7 @@ func updateCollections() {
 	for _, item := range items {
 		resources[item.Self] = item
 	}
-	var pathList, itemList = resource.ExtractPathAndResourceLists(resources)
-	resources["/itempaths"] = pathList
-	resources["/items"] = itemList
+	resources["/items"] = resource.ExtractResourceList(resources)
 
 	for _, item := range items {
 		if item.menu != nil {

@@ -78,18 +78,13 @@ func Collect() (map[string]interface{}, map[string]interface{}) {
 	for mimetypeId, mt := range c.mimetypes {
 		mimetypeResources[mimetypeSelf(mimetypeId)] = mt
 	}
-
-	var mimetypePathList, mimetypeList = resource.ExtractPathAndResourceLists(mimetypeResources)
-	mimetypeResources["/mimetypepaths"] = mimetypePathList
-	mimetypeResources["/mimetypes"] = mimetypeList
+	mimetypeResources["/mimetypes"] = resource.ExtractResourceList(mimetypeResources)
 
 	var applicationResources = make(map[string]interface{})
 	for appId, app := range c.applications {
 		applicationResources[appSelf(appId)] = app
 	}
-	var appPathList, appList = resource.ExtractPathAndResourceLists(applicationResources)
-	applicationResources["/applicationpaths"] = appPathList
-	applicationResources["/applications"] = appList
+	applicationResources["/applications"] = resource.ExtractResourceList(applicationResources)
 
 	return mimetypeResources, applicationResources
 }

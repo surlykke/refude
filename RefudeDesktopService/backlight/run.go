@@ -76,9 +76,7 @@ func getDevices() {
 	for _, dev := range devices {
 		resources["/backlight/"+dev.Id] = &(*dev)
 	}
-	var backlightpaths, backlights = resource.ExtractPathAndResourceLists(resources)
-	resources["/backlightpaths"] = backlightpaths
-	resources["/backlights"] = backlights
+	resources["/backlights"] = resource.ExtractResourceList(resources)
 	resource.MapCollection(&resources, "backlights")
 }
 

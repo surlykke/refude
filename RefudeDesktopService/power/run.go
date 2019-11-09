@@ -44,8 +44,6 @@ func updateDeviceList() {
 	for _, device := range devices {
 		collection[device.Self] = &(*device)
 	}
-	var devicePaths, deviceList = resource.ExtractPathAndResourceLists(collection)
-	collection["/devicepaths"] = devicePaths
-	collection["/devices"] = deviceList
+	collection["/devices"] = resource.ExtractResourceList(collection)
 	resource.MapCollection(&collection, "devices")
 }

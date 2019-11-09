@@ -67,9 +67,7 @@ func updateCollections() {
 	for _, notification := range notifications {
 		resources[notificationSelf(notification.Id)] = notification
 	}
-	var pathList, notificationList = resource.ExtractPathAndResourceLists(resources)
-	resources["/notificationpaths"] = pathList
-	resources["/notifications"] = notificationList
+	resources["/notifications"] = resource.ExtractResourceList(resources)
 
 	for path, notificationImage := range notificationImages {
 		resources[path] = notificationImage

@@ -41,10 +41,7 @@ func Run() {
 			var window = MakeWindow(wId)
 			resources[window.Self] = window
 		}
-
-		var paths, windows = resource.ExtractPathAndResourceLists(resources)
-		resources["/windowpaths"] = paths
-		resources["/windows"] = windows
+		resources["/windows"] = resource.ExtractResourceList(resources)
 
 		for _, wId := range wIds {
 			resources[ScreenshotSelf(wId)] = ScreenShot(wId)
