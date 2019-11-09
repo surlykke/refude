@@ -69,7 +69,6 @@ import (
 	"image/color"
 	"image/png"
 	"log"
-	"sync"
 	"unsafe"
 )
 
@@ -97,7 +96,6 @@ type Event struct {
  * Wrapper around connections to X11. Not threadsafe, caller must take lock
  */
 type Connection struct {
-	sync.Mutex
 	display    *C.Display
 	rootWindow C.Window
 

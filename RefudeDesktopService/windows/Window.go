@@ -56,7 +56,8 @@ func MakeWindow(wId uint32) *Window {
 
 func (w *Window) MarshalJSON() ([]byte, error) {
 	var wd = WindowData{Links: w.Links, Actions: w.Actions, Id: w.wId}
-
+	dataMutex.Lock()
+	defer dataMutex.Unlock()
 	if parent, err := dataConnection.GetParent(w.wId); err == nil {
 		if parent != 0 {
 			wd.X, wd.Y, wd.W, wd.H, err = dataConnection.GetGeometry(parent)
@@ -97,12 +98,12 @@ func (ss ScreenShot) GET(w http.ResponseWriter, r *http.Request) {
 }
 
 var dataConnection = xlib.MakeConnection()
-var dataMutex sync.Mutex
+var dataMutex = &sync.Mutex{}
 
 func makeExecuter(wId uint32) func() {
 	return func() {
-		dataConnection.Lock()
-		defer dataConnection.Unlock()
+		dataMutex.Lock()
+		defer dataMutex.Unlock()
 		dataConnection.RaiseAndFocusWindow(wId)
 	}
 }
@@ -130,7 +131,6 @@ func GetIconName(wId uint32) (string, error) {
 	if name, ok := getIconNameFromCache(wId); ok {
 		return name, nil
 	} else {
-
 		pixelArray, err := dataConnection.GetIcon(wId)
 		if err != nil {
 			return "", err
@@ -169,8 +169,8 @@ func GetIconName(wId uint32) (string, error) {
 }
 
 func getScreenshot(wId uint32, downscale byte) ([]byte, error) {
-	dataConnection.Lock()
-	defer dataConnection.Unlock()
+	dataMutex.Lock()
+	defer dataMutex.Unlock()
 
 	return dataConnection.GetScreenshotAsPng(wId, downscale)
 }
