@@ -7,7 +7,6 @@
 package windows
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -24,6 +23,7 @@ import (
 
 type WindowData struct {
 	resource.Links
+	resource.Actions
 	Id         uint32
 	Parent     uint32
 	StackOrder int
@@ -54,6 +54,28 @@ func MakeWindow(wId uint32) *Window {
 	return w
 }
 
+func (w *Window) MarshalJSON() ([]byte, error) {
+	var wd = WindowData{Links: w.Links, Actions: w.Actions, Id: w.wId}
+
+	if parent, err := dataConnection.GetParent(w.wId); err == nil {
+		if parent != 0 {
+			wd.X, wd.Y, wd.W, wd.H, err = dataConnection.GetGeometry(parent)
+		} else {
+			wd.X, wd.Y, wd.W, wd.H, err = dataConnection.GetGeometry(w.wId)
+		}
+	}
+	if name, err := dataConnection.GetName(w.wId); err == nil {
+		wd.Name = name
+	}
+	if iconName, err := GetIconName(w.wId); err == nil {
+		wd.IconName = iconName
+	}
+	if states, err := dataConnection.GetState(w.wId); err == nil {
+		wd.States = states
+	}
+	return json.Marshal(&wd)
+}
+
 type ScreenShot uint32
 
 func ScreenshotSelf(wId uint32) string {
@@ -76,48 +98,6 @@ func (ss ScreenShot) GET(w http.ResponseWriter, r *http.Request) {
 
 var dataConnection = xlib.MakeConnection()
 var dataMutex sync.Mutex
-
-func (w *Window) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	var data, err = json.Marshal(w.Links)
-	if err != nil {
-		return nil, err
-	}
-	buf.Write(data[:len(data)-1]) // omit last '}'
-	fmt.Fprintf(&buf, `,"Id":%d`, w.wId)
-	dataConnection.Lock()
-	defer dataConnection.Unlock()
-	if parent, err := dataConnection.GetParent(w.wId); err == nil {
-		var X, Y int32
-		var H, W uint32
-		if parent != 0 {
-			X, Y, W, H, err = dataConnection.GetGeometry(parent)
-		} else {
-			X, Y, W, H, err = dataConnection.GetGeometry(w.wId)
-		}
-		if err == nil {
-			fmt.Fprintf(&buf, `,"X":%d,"Y":%d,"W":%d,"H":%d`, X, Y, W, H)
-		}
-	}
-	if name, err := dataConnection.GetName(w.wId); err == nil {
-		fmt.Fprintf(&buf, `,"Name": "%s"`, name)
-	}
-	if iconName, err := GetIconName(w.wId); err == nil {
-		fmt.Fprintf(&buf, `,"IconName":"%s"`, iconName)
-	}
-	if states, err := dataConnection.GetState(w.wId); err == nil {
-		fmt.Fprint(&buf, `,"States":[`)
-		if len(states) > 0 {
-			fmt.Fprintf(&buf, `"%s"`, states[0])
-			for i := 1; i < len(states); i++ {
-				fmt.Fprintf(&buf, `,"%s"`, states[i])
-			}
-		}
-	}
-	fmt.Fprint(&buf, `]}`)
-
-	return buf.Bytes(), nil
-}
 
 func makeExecuter(wId uint32) func() {
 	return func() {
