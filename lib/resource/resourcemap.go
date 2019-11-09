@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/surlykke/RefudeServices/lib/requests"
@@ -31,6 +32,25 @@ type (
 	}
 )
 
+type completer struct{}
+
+func (c *completer) GET(w http.ResponseWriter, r *http.Request) {
+	var prefix = requests.GetSingleQueryParameter(r, "prefix", "")
+	if prefix == "" {
+		requests.ReportUnprocessableEntity(w, fmt.Errorf("'prefix' must be given and not empty"))
+	} else {
+		resourcesLock.Lock()
+		var paths = make([]string, 0, len(resources))
+		for path, _ := range resources {
+			if strings.HasPrefix(path, prefix) {
+				paths = append(paths, path)
+			}
+		}
+		resourcesLock.Unlock()
+		ServeAsJson(w, r, paths)
+	}
+}
+
 var (
 	/** Deadlock prevention:
 	 * condsLock and resourcesLock may not be held at the same time
@@ -47,6 +67,10 @@ var (
 	conds     = make(map[string]*sync.Cond)
 	condsLock sync.Mutex
 )
+
+func init() {
+	MapSingle("/complete", &completer{})
+}
 
 func get(path string) (interface{}, bool) {
 	resourcesLock.Lock()

@@ -26,18 +26,6 @@ import (
 
 const operators = "GET POST PATCH DELETE"
 
-// Urls to consult for completions for a given prefix
-var collectionPaths = []string{"/windowpaths", "/applicationpaths", "/mimetypepaths", "/itempaths", "/devicepaths", "/notificationpaths"}
-
-var basisPaths = []string{
-	"/windows", "/windowpaths", "/window/",
-	"/applications", "/applicationpaths", "/application/",
-	"/mimetypes", "/mimetypepaths", "/mimetype",
-	"/items", "/itempaths", "/item/",
-	"/notifications", "/notificationpaths", "/notification/",
-	"/devices", "/devicepaths", "/device",
-}
-
 type HeaderMap map[string]string
 
 func (hm *HeaderMap) String() string {
@@ -135,7 +123,7 @@ func completions(argStr string, filter bool) []string {
 	var args = argReg.Split(argStr, -1)
 	var argc = len(args)
 	if argc < 2 {
-		return []string{} // Probably newer happening
+		return []string{} // Probably never happening
 	}
 
 	var lastArg = args[argc-2]
@@ -152,26 +140,14 @@ func completions(argStr string, filter bool) []string {
 		return []string{} // FIXME offer common http request headers
 	default:
 		var comp = make([]string, 0, 2000)
-		comp = append(comp, "-H")
-		if !hasX {
+		if strings.HasPrefix("-H", curArg) {
+			comp = append(comp, "-H")
+		}
+		if (!hasX) && strings.HasPrefix("-X", curArg) {
 			comp = append(comp, "-X")
 		}
 		if !strings.HasPrefix(curArg, "-") {
-			comp = append(comp, basisPaths...)
-			for _, collectionPath := range collectionPaths {
-				comp = append(comp, getStringlist(collectionPath)...)
-			}
-		}
-
-		if filter {
-			var filtered = 0
-			for _, completion := range comp {
-				if strings.HasPrefix(completion, curArg) {
-					comp[filtered] = completion
-					filtered++
-				}
-			}
-			comp = comp[0:filtered]
+			comp = append(comp, getStringlist("/complete?prefix="+curArg)...)
 		}
 
 		return comp
