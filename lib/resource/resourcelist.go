@@ -23,7 +23,7 @@ func (pl pathAndResourceList) Swap(i int, j int)      { pl[i], pl[j] = pl[j], pl
 func (pl pathAndResourceList) Less(i int, j int) bool { return pl[i].Path < pl[j].Path }
 
 /**
- * Returns a list of paths and a list of resources, both sorted by path
+ * Returns a list of resources, sorted by path
  */
 func ExtractResourceList(resources map[string]interface{}) []interface{} {
 	var parl = make(pathAndResourceList, 0, len(resouces))

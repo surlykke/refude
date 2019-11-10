@@ -41,7 +41,8 @@ func windowSelf(windowId uint32) string {
 type Window struct {
 	resource.Links
 	resource.Actions
-	wId uint32
+	wId        uint32
+	stackOrder int
 }
 
 func MakeWindow(wId uint32) *Window {
@@ -49,13 +50,14 @@ func MakeWindow(wId uint32) *Window {
 		resource.MakeLinks(windowSelf(wId), "window"),
 		resource.Actions{},
 		wId,
+		0,
 	}
 	w.SetPostAction("default", resource.ResourceAction{Description: "Raise and focus", Executer: makeExecuter(w.wId)})
 	return w
 }
 
 func (w *Window) MarshalJSON() ([]byte, error) {
-	var wd = WindowData{Links: w.Links, Actions: w.Actions, Id: w.wId}
+	var wd = WindowData{Links: w.Links, Actions: w.Actions, Id: w.wId, StackOrder: w.stackOrder}
 	dataMutex.Lock()
 	defer dataMutex.Unlock()
 	if parent, err := dataConnection.GetParent(w.wId); err == nil {

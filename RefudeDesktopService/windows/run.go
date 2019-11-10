@@ -36,18 +36,25 @@ func Run() {
 			log.Println("WARN: Unable to retrieve _NET_CLIENT_LIST_STACKING", err)
 			wIds = []uint32{}
 		}
-		var resources = make(map[string]interface{}, 2*len(wIds)+2)
-		for _, wId := range wIds {
-			var window = MakeWindow(wId)
-			resources[window.Self] = window
-		}
-		resources["/windows"] = resource.ExtractResourceList(resources)
-
-		for _, wId := range wIds {
-			resources[ScreenshotSelf(wId)] = ScreenShot(wId)
-		}
-
-		resource.MapCollection(&resources, "windows")
+		mapWindowResources(wIds)
 		eventConnection.WaitforStackEvent()
 	}
+}
+
+func mapWindowResources(wIds []uint32) {
+	// Reverse to get top window first
+	for i, j := 0, len(wIds)-1; i < j; i, j = i+1, j-1 {
+		wIds[i], wIds[j] = wIds[j], wIds[i]
+	}
+	var resources = make(map[string]interface{}, 2*len(wIds)+2)
+	var windows = make([]*Window, 0, len(wIds))
+	for i, wId := range wIds {
+		var window = MakeWindow(wId)
+		window.stackOrder = -i
+		resources[window.Self] = window
+		windows = append(windows, window)
+		resources[ScreenshotSelf(wId)] = ScreenShot(wId)
+	}
+	resources["/windows"] = windows
+	resource.MapCollection(&resources, "windows")
 }
