@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/surlykke/RefudeServices/lib/resource"
@@ -20,6 +21,7 @@ const lenbn = len(brightness)
 type device struct {
 	Id            string
 	BrightnessPct uint8
+	Updated       time.Time
 	maxBrightness uint64
 	brightness    uint64
 }
@@ -68,6 +70,7 @@ func getDevices() {
 				watcher.Remove(brightnessPath)
 			}
 			dev.BrightnessPct = uint8(100 * dev.brightness / dev.maxBrightness)
+			dev.Updated = time.Now()
 			devices[dev.Id] = dev
 		}
 	}
