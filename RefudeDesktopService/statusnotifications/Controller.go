@@ -163,32 +163,34 @@ func updateWatcherProperties() {
 func buildItem(sender string, path dbus.ObjectPath) *Item {
 	fmt.Println("MakeItem")
 	var item = MakeItem(sender, path)
-
-	var val dbus.Variant
-	var ok bool
-	if val, ok = dbuscall.GetSingleProp(conn, item.sender, item.itemPath, ITEM_INTERFACE, "ID"); ok {
-		item.Id = getStringOr(val)
+	var props = dbuscall.GetAllProps(conn, item.sender, item.itemPath, ITEM_INTERFACE)
+	item.Id = getStringOr(props["Id"])
+	item.Category = getStringOr(props["Category"])
+	if menuPath := getDbusPath(props["Menu"]); menuPath != "" {
+		item.menu = MakeMenuResource(item.sender, menuPath)
+		item.Menu = item.menu.self
 	}
-	if val, ok := dbuscall.GetSingleProp(conn, item.sender, item.itemPath, ITEM_INTERFACE, "Category"); ok {
-		item.Category = getStringOr(val)
+	item.Title = getStringOr(props["Title"])
+	item.Status = getStringOr(props["Status"])
+	item.ToolTip = getStringOr(props["ToolTip"])
+
+	if iconThemePath := getStringOr(props["IconThemePath"]); iconThemePath != "" {
+		icons.AddBaseDir(iconThemePath)
 	}
 
-	if val, ok := dbuscall.GetSingleProp(conn, item.sender, item.itemPath, ITEM_INTERFACE, "Menu"); ok {
-		var menuPath = getDbusPath(val)
-		if menuPath != "" {
-			item.menu = MakeMenuResource(item.sender, menuPath)
-			item.Menu = item.menu.self
-		}
+	if item.useIconPixmap = getStringOr(props["IconName"]) == ""; item.useIconPixmap {
+		item.IconName = collectPixMap(props["IconPixmap"])
 	} else {
-		log.Println("Problem getting menu:", val)
+		item.IconName = getStringOr(props["IconName"])
 	}
 
-	updateTitle(item)
-	updateStatus(item)
-	updateToolTip(item)
-	updateIcon(item)
-	updateAttentionIcon(item)
-	updateOverlayIcon(item)
+	if item.useAttentionIconPixmap = getStringOr(props["AttentionIconName"]) == ""; item.useAttentionIconPixmap {
+		item.AttentionIconName = collectPixMap(props["AttentionIconPixmap"])
+	} else {
+		item.AttentionIconName = getStringOr(props["AttentionIconName"])
+	}
+
+	item.useOverlayIconPixmap = getStringOr(props["OverlayIconName"]) == "" // TODO
 
 	return item
 }
@@ -212,30 +214,26 @@ func updateStatus(item *Item) {
 }
 
 func updateIcon(item *Item) {
-	if v, ok := getProp(item, "IconThemePath"); ok {
-		item.iconThemePath = getStringOr(v)
-		if item.iconThemePath != "" {
-			icons.AddBaseDir(item.iconThemePath)
-		}
-	}
-	if v, ok := getProp(item, "IconName"); ok {
-		if item.IconName = getStringOr(v); item.IconName == "" {
-			v, ok = getProp(item, "IconPixmap")
+	if item.useIconPixmap {
+		if v, ok := getProp(item, "IconPixmap"); ok {
 			item.IconName = collectPixMap(v)
 		}
 	} else {
-		item.IconName = ""
+		if v, ok := getProp(item, "IconName"); ok {
+			item.IconName = getStringOr(v)
+		}
 	}
 }
 
 func updateAttentionIcon(item *Item) {
-	if v, ok := getProp(item, "AttentionIconName"); ok {
-		if item.AttentionIconName = getStringOr(v); item.AttentionIconName == "" {
-			v, ok = getProp(item, "AttentionIconPixmap")
+	if item.useAttentionIconPixmap {
+		if v, ok := getProp(item, "AttentionIconPixmap"); ok {
 			item.AttentionIconName = collectPixMap(v)
 		}
 	} else {
-		item.IconName = ""
+		if v, ok := getProp(item, "AttentionIconName"); ok {
+			item.AttentionIconName = getStringOr(v)
+		}
 	}
 }
 

@@ -40,6 +40,9 @@ type Item struct {
 	Title                   string
 	ToolTip                 string
 	iconThemePath           string
+	useIconPixmap           bool
+	useAttentionIconPixmap  bool
+	useOverlayIconPixmap    bool
 }
 
 func MakeItem(sender string, path dbus.ObjectPath) *Item {
