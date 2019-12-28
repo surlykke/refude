@@ -96,6 +96,14 @@ const INTROSPECT_XML = `<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object 
     </interface>
 </node>`
 
+/*const*/
+var expireryOverride = map[string]int32{
+	// TODO should be user configurable
+	"Spotify":  10000,
+	"Chromium": 30000,
+	"IDEA":     10000,
+}
+
 const (
 	Expired   uint32 = 1
 	Dismissed        = 2
@@ -165,11 +173,15 @@ func notify(app_name string,
 					if "" != app_icon {
 						notification.IconName = app_icon
 					} else {
-						// FIXME notification.IconName, _ = installRawImageIcon(hints, "icon_data")
+						// TODO notification.IconName, _ = installRawImageIcon(hints, "icon_data")
 					}
 				}
 			}
 		}
+	}
+
+	if tmp, ok := expireryOverride[app_name]; ok {
+		expire_timeout = tmp
 	}
 
 	if expire_timeout == 0 {
@@ -178,9 +190,11 @@ func notify(app_name string,
 
 	if expire_timeout > 0 {
 		notification.Expires = notification.Created.Add(time.Millisecond * time.Duration(expire_timeout))
+	} else {
+		notification.Expires = notification.Created.Add(time.Minute)
 	}
 
-	time.AfterFunc(time.Minute*61, func() {
+	time.AfterFunc(notification.Expires.Sub(notification.Created)+100*time.Millisecond, func() {
 		reaper <- notification.Id
 	})
 

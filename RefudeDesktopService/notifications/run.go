@@ -46,11 +46,8 @@ func Run() {
 		case id := <-reaper:
 			if n, ok := notifications[id]; ok {
 				var now = time.Now()
-				var age = now.Sub(n.Created)
-				if age < time.Hour {
-					time.AfterFunc(time.Minute*61-age, func() {
-						reaper <- n.Id
-					})
+				if now.Before(n.Expires) {
+					time.AfterFunc(n.Expires.Sub(now)+100*time.Millisecond, func() { reaper <- n.Id })
 				} else {
 					delete(notifications, id)
 					delete(notificationImages, n.Image)
