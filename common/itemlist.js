@@ -14,18 +14,25 @@ export class ItemList extends React.Component {
 
     constructor(props) {
         super(props)
-        this.state = { items: [], selectedUrl: null };
+
+        this.state = { 
+            items: this.props.model.items, 
+            selectedUrl: this.props.model.selectedUrl
+        };
+       
+        this.props.model.updateListeners.push(() => {
+            this.setState({ 
+                items: this.props.model.items, 
+                selectedItem: this.props.model.selectedItem
+            })
+        });
+        console.log(">>>>>>>>>>>>>>>>>> num listeners now:", this.props.model.updateListeners.length)
     }
 
-    componentDidMount = () => {
-        subscribe("moveRequested", this.move);
-    };
-
     componentDidUpdate = () => {
-        document.getElementById("input").focus();
         // Scroll selected item into view
-        if (this.state.selectedUrl) {
-            let selectedDiv = document.getElementById(this.state.selectedUrl);
+        if (this.state.selectedItem) {
+            let selectedDiv = document.getElementById(this.state.selectedItem.url);
             if (selectedDiv) {
                 let listDiv = document.getElementById("itemListDiv");
                 let { top: listTop, bottom: listBottom } = listDiv.getBoundingClientRect();
@@ -37,78 +44,9 @@ export class ItemList extends React.Component {
         publish("componentUpdated");
     };
 
-    componentWillReceiveProps = (props) => {
-        this.setState({ items: props.items});
-        this.ensureSelection(props.items)
-    };
-
-    ensureSelection = items => {
-        if (!(this.state.selectedUrl && items.findIndex(i => this.state.selectedUrl === i.url) > -1)) {
-            this.setSelected(items[0])
-        }
-    }
-
-    keyDown = (event) => {
-        let { key, ctrlKey, shiftKey, altKey, metaKey } = event;
-
-        if (key === "Tab" && !ctrlKey && shiftKey && !altKey && !metaKey) this.move(false);
-        else if (key === "Tab" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.move(true);
-        else if (key === "ArrowUp" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.move(false);
-        else if (key === "ArrowDown" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.move(true);
-        else if (key === "Enter" && !ctrlKey && !shiftKey && !altKey && !metaKey) publish("itemActivated", this.getSelected());
-        else if (key === " " && !ctrlKey && !shiftKey && !altKey && !metaKey) publish("itemActivated", this.getSelected());
-        else if (key === "Escape" && !ctrlKey && !shiftKey && !altKey && !metaKey) publish("dismiss");
-        else {
-            return;
-        }
-        event.preventDefault();
-    };
-
-    move = (down) => {
-        let index = this.state.items.findIndex(i => this.state.selectedUrl === i.url);
-        if (index > -1) {
-            let numItems = this.state.items.length;
-            index = (index + numItems + (down ? 1 : -1)) % numItems;
-        } else {
-            index = 0
-        }
-        this.setSelected(this.state.items[index]);
-    };
-
-    setSelected = (item) => {
-        let selectedUrl = item ? item.url : undefined
-        this.setState({ selectedUrl: selectedUrl });
-        publish("itemSelected", selectedUrl)
-    };
-
-    getSelected = () => {
-        return this.state.items.find(i => i.url === this.state.selectedUrl);
-    }
 
     render = () => {
-        let outerStyle = Object.assign({
-            display: "flex",
-            flexFlow: "column",
-            paddingTop: "0.3em",
-            paddingLeft: "0.3em",
-        }, this.props.style);
-
-        let searchBoxStyle = {
-            boxSizing: "border-box",
-            paddingRight: "5px",
-            width: "calc(100% - 16px)",
-            marginTop: "4px",
-        };
-
-        let inputStyle = {
-            width: "100%",
-            height: "36px",
-            borderRadius: "5px",
-            outlineStyle: "none",
-        };
-
         let innerStyle = {
-            marginTop: "8px",
             overflowY: "scroll"
         };
 
@@ -129,21 +67,14 @@ export class ItemList extends React.Component {
             }
             content.push(<Item key={item.url}
                 item={item}
-                selected={item.url === this.state.selectedUrl}
-                onClick={this.setSelected}
-                onDoubleClick={() => publish("itemActivated", this.getSelected())} />);
+                selected={item === this.state.selectedItem}
+                onClick={this.props.onClick}
+                onDoubleClick={this.props.onDoubleClick} />);
         });
 
-        return (
-            <div onKeyDown={this.keyDown} style={outerStyle}>
-                <div style={searchBoxStyle}>
-                    <input id="input" value={this.state.term} style={inputStyle} type="search" 
-                            onChange={(event) => publish("termChanged", event.target.value)} 
-                            autoComplete="off" />
-                </div>
-                <div id="itemListDiv" style={innerStyle}>
-                    {content}
-                </div>
+        return  (
+            <div id="itemListDiv" style={innerStyle}>
+                {content}
             </div>
         )
     }

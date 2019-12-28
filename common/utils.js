@@ -129,3 +129,45 @@ const PUBSUB = (() => {
 export let publish = (topic, data) => PUBSUB.publish(topic, data);
 export let subscribe = (topic, fn) => PUBSUB.subscribe(topic, fn);
 
+
+export let rank = (item, lowercaseTerm) => {
+
+    if (lowercaseTerm === "" && !item.matchEmpty) {
+        return -1;
+    }
+
+    let tmp = item.name.toLowerCase().indexOf(lowercaseTerm)
+    if (tmp > -1) {
+        return tmp
+    }
+
+    // More fluffy search - eg. pwr matches PowerOff or nvim matches neovim 
+    // When we reach here we know lowercaseTerm is not empty
+    if (item.matchFluffy) {
+        let j = 0;
+        for (let i = 0; i < item.name.length; i++) {
+            if (item.name[i].toLocaleLowerCase() === lowercaseTerm[j]) {
+                j++;
+            }
+            if (j >= lowercaseTerm.length) {
+                return 100 + i
+            }
+
+        }
+    }
+
+    if (item.comment) {
+        tmp = item.comment.toLowerCase().indexOf(lowercaseTerm)
+        if (tmp > -1) {
+            return 200 + tmp
+        }
+    }
+    return -1
+};
+
+export let filterAndSort = (itemlist, lowercaseTerm) => {
+    return itemlist.filter(i => {
+        i.rank = rank(i, lowercaseTerm);
+        return i.rank > -1;
+    }).sort((i1, i2) => i1.rank - i2.rank);
+}

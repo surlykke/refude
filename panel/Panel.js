@@ -60,12 +60,10 @@ export default class Panel extends React.Component {
 
 
     adjustSize = () => {
-        console.log("Into adjustSize")
         setTimeout(
             () => {
                 let { width, height } = this.content.getBoundingClientRect()
                 let zoomLevel = document.body.style.zoom || 1
-                console.log("document.body.style.zoom:", zoomLevel) 
                 Window.resizeTo(Math.round(zoomLevel*width) - 1, Math.round(zoomLevel*height))
             },
             10

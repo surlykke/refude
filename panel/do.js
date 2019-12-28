@@ -6,7 +6,7 @@
 
 
 import React from 'react'
-import { WIN, publish, subscribe} from "../common/utils";
+import { WIN, publish, subscribe, filterAndSort } from "../common/utils";
 import { ItemList } from "../common/itemlist"
 import { Item } from "../common/item"
 import { Indicator } from "./indicator";
@@ -15,38 +15,7 @@ import { monitorUrl, getUrl, postUrl, iconUrl } from '../common/monitor';
 
 const http = require('http');
 
-let rank = (name, comment, lowercaseTerm, fluffy) => {
-    let tmp = name.toLowerCase().indexOf(lowercaseTerm)
-    if (tmp > -1) {
-        return tmp
-    }
-   
-    // More fluffy search - eg. pwr matches PowerOff or nvim matches neovim 
-    // When we reach here we know lowercaseTerm is not empty
-    if (fluffy) { 
-        let j = 0;
-        for (let i = 0;    i < name.length; i++) {
-            if (name[i].toLocaleLowerCase() === lowercaseTerm[j]) {
-                j++;
-            }
-            if (j >= lowercaseTerm.length) {
-                console.log("Fluffy match '" + lowercaseTerm + "' to '" + name + "'");
-                return 100 + i
-            }
-            
-        }
-    }
 
-    if (comment) {
-        tmp = comment.toLowerCase().indexOf(lowercaseTerm)
-        if (tmp > -1) {
-            return 200 + tmp
-        }
-    }
-    return -1
-};
-
-let match = (name, comment, lowercaseTerm, fluffy) => rank(name, comment, lowercaseTerm, fluffy) > -1
 
 let windowIconStyle = w => {
     let style = {
@@ -66,176 +35,248 @@ let windowIconStyle = w => {
     return style
 };
 
-let timeToExpiry = notification => {
-    return Date.parse(notification.Created) - new Date().getTime() + 20000
-}
-
-let timeToNextExpiry = notifications => {
-    let t
-    notifications.forEach(n => t = !(t < timeToExpiry(n)) ? timeToExpiry(n) : t)
-    return t
-}
 
 class Do extends React.Component {
     constructor(props) {
-        //devtools();
         super(props);
-        this.state = { notifications: [], windows: [], applications: [], session: { _post: {} }, term: "" };
+        [this.model, this.controller] = makeModelAndController();
+        ["notifications", "windows", "applications", "session"].forEach(key => this.controller.itemMap.set(key, []))
+        monitorNotifications(this.controller);
 
+        this.state = {open: false};
         this.listenForUpDown();
         this.handleBlurEvents();
-
-        subscribe("termChanged", newTerm => this.setState({ term: newTerm.toLocaleLowerCase() }))
-        subscribe("itemSelected", url => publish("windowSelected", this.state.windows.find(w => w._self === url)))
-        subscribe("itemActivated", item => postUrl(item.url, response => { this.reset() }))
-        subscribe("dismiss", this.dismiss)
     };
 
-    componentDidMount = () => {
-        monitorUrl("/notifications", resp => {
-            if (this.state.notifications.length === 0) {
-                this.notificationFilterScheduler(resp.data)
-            } else { // scheduler will already be running
-                this.setState({ notifications: resp.data.filter(n => timeToExpiry(n) > 0) })
-            }
-        });
-    };
-
-    notificationFilterScheduler = notifications => {
-        let filteredNotificatons = notifications.filter(n => timeToExpiry(n) > 0)
-        this.setState({ notifications: filteredNotificatons })
-        if (filteredNotificatons.length > 0) {
-            let delay = timeToNextExpiry(filteredNotificatons)
-            setTimeout(() => this.notificationFilterScheduler(this.state.notifications), delay + 1000)
-        }
-    }
-
-    componentDidUpdate = () => {
-        publish("componentUpdated");
-    };
+    focusInput = () => document.getElementById("input") && document.getElementById("input").focus();
 
     listenForUpDown = () => {
         let that = this;
         http.createServer(function (req, res) {
-            that.showWin();
+            that.open();
             if (req.url === "/up") {
-                publish("moveRequested", false);
+                that.controller.move(false);
             } else {
-                publish("moveRequested", true);
+                that.controller.move(true);
             }
             res.end('')
         }).listen("/run/user/1000/org.refude.panel.do");
     };
 
-    handleBlurEvents = () => {
-        WIN.on('focus', () => this.hasfocus = true);
-        WIN.on('blur', () => {
-            this.hasfocus = false;
-            // TAB momentarily unfocuses window - so we wait a bit to see if it's for real
-            setTimeout(() => {
-                if (!this.hasfocus) this.dismiss(true);
-            }, 100);
-        });
-    };
+    handleBlurEvents = () => WIN.on('blur', this.close);
 
-    showWin = () => {
-        if (!this.state["shown"]) {
-            getUrl("/windows", resp => this.setState({ windows: resp.data.filter(w => w.States.indexOf("_NET_WM_STATE_ABOVE") < 0) }))
-            getUrl("/applications", resp => this.setState({ applications: resp.data.filter(app => !app.NoDisplay) }))
-            getUrl("/session", resp => this.setState({ session: resp.data }))
-            this.setState({ shown: true });
-            publish("selectorShown", new Date().getTime())
+
+    keyDown = (event) => {
+        let { key, ctrlKey, shiftKey, altKey, metaKey } = event;
+
+        if (key === "Tab" && !ctrlKey && shiftKey && !altKey && !metaKey) this.controller.move(false);
+        else if (key === "Tab" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.controller.move(true);
+        else if (key === "ArrowUp" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.controller.move(false);
+        else if (key === "ArrowDown" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.controller.move(true);
+        else if (key === "Enter" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.activate();
+        else if (key === " " && !ctrlKey && !shiftKey && !altKey && !metaKey) this.activate(); 
+        else if (key === "Escape" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.close();
+        else {
+            return;
         }
-        WIN.focus();
+        event.preventDefault();
     };
 
-
-    dismiss = (blur) => {
-        if (this.state.shown && !blur) {
-            // Return focus to whatever was at the top of the (normal) stack
-            this.state.windows[0] && postUrl(this.state.windows[0]._self)
+    activate = (item) => {
+        if (!item) {
+            item = this.model.items[this.model.selectedIndex()];
         }
-        this.reset()
-    };
-
-    reset = () => {
-        this.setState({ "shown": undefined, term: "" })
-        publish("reset")
+        if (item) {
+            postUrl(item.url, response => { this.close() });
+        }
     }
 
+    open = () => {
+        console.log("open, this.state.open:", this.state.open);
+        if (! this.state.open) {
+            this.setState({open: true});
+            fetchResources(this.controller);
+        }
+        WIN.focus()
+    };
+
+    close = () => {
+        console.log("close")
+        let input = document.getElementById("input");
+        if (input) {
+            input.value = "";
+            this.controller.setTerm("");
+        }
+        this.setState({open: undefined});
+        this.controller.clear(["windows", "applications", "session"])
+    };
+
     render = () => {
-        let itemListStyle = { maxWidth: "300px", maxHeight: "300px" };
-        let term = this.state.term
-        let items = []
-        this.state.notifications.
-            filter(n => match(n.Subject, n.Body, term)).
-            forEach(n => {
-                items.push({
-                    group: T("Notifications"),
-                    url: n._self,
-                    name: n.Subject,
-                    comment: n.Body,
-                    image: n.Image ? "http://localhost:7938" + n.Image : iconUrl(n.IconName)
-                })
-            })
 
-        this.state.windows.
-            filter(w => match(w.Name, undefined, term)).
-            forEach(w => items.push({
-                group: T("Open windows"),
-                url: w._self,
-                name: w.Name,
-                comment: "",
-                image: iconUrl(w.IconName),
-                iconStyle: windowIconStyle(w),
-            }))
+        let outerStyle = {
+            maxWidth: "300px",
+            maxHeight: "300px",
+            display: "flex",
+            flexFlow: "column",
+            paddingTop: this.state.open ? "0.3em" : "0px",
+            paddingLeft: "0.3em",
+        };
 
-        if (term !== '') {
-            this.state.applications.
-                filter(a => match(a.Name, a.Comment, term, true)).
-                sort((a1, a2) => rank(a1.Name, a1.Comment, term, true) - rank(a2.Name, a2.Comment, term, true)).
-                forEach(a => items.push({
+        let searchBoxStyle = {
+            boxSizing: "border-box",
+            paddingRight: "5px",
+            width: "calc(100% - 16px)",
+            marginTop: "4px",
+            marginBottom: "6px",
+        };
+
+        let inputStyle = {
+            width: "100%",
+            height: "36px",
+            borderRadius: "5px",
+            outlineStyle: "none",
+        };
+
+        return [ 
+            <div onKeyDown={this.keyDown} style={outerStyle}>
+                {this.state.open &&
+                  <div style={searchBoxStyle}>
+                    <input id="input" 
+                           style={inputStyle} 
+                           type="search" 
+                           onChange={e => this.controller.setTerm(e.target.value.toLowerCase())} 
+                           autoComplete="off"
+                           autoFocus/>
+                  </div>}
+                <ItemList key="itemlist" model={this.model} onClick={this.controller.select} onDoubleClick={this.activate} />
+            </div>,
+            <Indicator key="indicator" model={this.model}/>
+
+        ];
+    }
+}
+
+    let fetchResources = (controller) => {
+        getUrl("/windows", resp => {
+            controller.itemMap.set("windows", resp.data
+                .filter(w => w.States.indexOf("_NET_WM_STATE_ABOVE") < 0)
+                .map(w => ({
+                    group: T("Open windows"),
+                    url: w._self,
+                    name: w.Name,
+                    comment: "",
+                    image: iconUrl(w.IconName),
+                    iconStyle: windowIconStyle(w),
+                    indicator: {
+                        X: w.X, Y: w.Y, W: w.W, H: w.H,
+                        ImageUrl: `http://localhost:7938${w._self}/screenshot?downscale=3`
+                    }, 
+                    matchEmpty: true
+                }))
+            )
+            controller.update();
+        });
+
+        getUrl("/applications", resp => {
+            controller.itemMap.set("applications", resp.data
+                .filter(a => !a.NoDisplay)
+                .map(a => ({
                     group: T("Applications"),
                     url: a._self,
                     name: a.Name,
                     comment: a.Comment || '',
-                    image: iconUrl(a.IconName)
-                }))
+                    image: iconUrl(a.IconName),
+                    matchFluffy: true
+                })));
+            controller.update();
+        });
 
-            let desc = key => this.state.session._post[key].Description
-            Object.keys(this.state.session._post).
-                filter(key => match(key, desc(key), term, true)).
-                sort((k1, k2) => rank(k1, desc(k1), term, true) - rank(k2, desc(k2), term, true)).
-                forEach(key => items.push({
+        getUrl("/session", resp => {
+            controller.itemMap.set("session", Object.keys(resp.data._post)
+                .map(key => ({
                     group: T("Leave"),
-                    url: this.state.session._self + "?action=" + key,
+                    url: resp.data._self + "?action=" + key,
                     name: key,
-                    comment: this.state.session._post[key].Description,
-                    image: iconUrl(this.state.session._post[key].IconName),
-                }))
+                    comment: resp.data._post[key].Description,
+                    image: iconUrl(resp.data._post[key].IconName),
+                    matchFluffy: true
+                })));
+            controller.update();
+        });
+    }
+
+let monitorNotifications = (controller) => {
+    monitorUrl("/notifications", resp => {
+        controller.itemMap.set("notifications", resp.data.map(n => ({
+            group: T("Notifications"),
+            url: n._self,
+            name: n.Subject,
+            comment: n.Body,
+            image: n.Image ? "http://localhost:7938" + n.Image : iconUrl(n.IconName),
+            matchEmpty: true
+        })))
+        controller.update();
+    })
+}
+
+
+let makeModelAndController = () => {
+    let term = "";
+
+    let model = {
+        updateListeners: [],
+        selectedItem: null, 
+        items: [],
+        selectedIndex: () => model.selectedItem ? model.items.findIndex(i => i.url === model.selectedItem.url) : -1
+    }
+ 
+    let notifyListeners = () => {
+        model.updateListeners.forEach(l => l());
+    }    
+
+    let controller = {
+        itemMap: new Map(),
+        setTerm: (t) => {
+            term = t.toLowerCase();
+            controller.update()
+        },
+        move: (down) => {
+            let index = model.selectedIndex()
+            if (index > -1) {
+                let numItems = model.items.length;
+                index = (index + numItems + (down ? 1 : -1)) % numItems;
+                model.selectedItem = model.items[index];
+                notifyListeners();
+            }
+        },
+        select: (item) => {
+            if (model.items.findIndex(i => i.url === item.url) > - 1) {
+                model.selectedItem = item;
+                notifyListeners();
+            } 
+        },
+        update: () => { 
+            model.items = [];
+            controller.itemMap.forEach((itemList, k) => {
+                model.items.push(...filterAndSort(itemList, term));
+            });
+            let index = model.selectedIndex();
+            if (index > -1) {
+                model.selectedItem = model.items[index]
+            } else {
+                model.selectedItem = model.items[0]
+            }
+        
+            notifyListeners();
+        },
+        clear: (keys) => {
+           keys.forEach(k => controller.itemMap.set(k, []));
+           controller.update();
         }
 
-        if (this.state.shown) {
-            return [
-                <ItemList key="itemlist" style={itemListStyle} items={items} />,
-                <Indicator key="indicator" />
-            ];
-        } else if (this.state.notifications.length > 0) {
-            return <div> {
-                this.state.notifications.map(n => {
-                    let item = {
-                        url: n._self,
-                        name: n.Subject,
-                        comment: n.Body,
-                        image: n.Image ? "http://localhost:7938" + n.Image : iconUrl(n.IconName)
-                    }
-                    return <Item key={item.url} item={item} />
-                })
-            } </div>
-        } else {
-            return null
-        }
     }
+
+    return [model, controller];
 }
 
 export { Do }
