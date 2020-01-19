@@ -71,7 +71,7 @@ export class Battery extends React.Component {
             <path d={`M ${startX} ${startY} A ${segmentRadius} ${segmentRadius} 0 ${bigArchFlag} 0 ${-startX} ${startY}`} fill={fillColor} stroke="none" />;
 
         return <div title={title} style={this.props.style}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="-60 -65 120 125">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="-60 -65 120 125">
                 <circle cx="0" cy="0" r={segmentRadius + strokeWidth / 2} fill="white" stroke={strokeColor} strokeWidth={strokeWidth} />
                 {marker}
                 <text textAnchor="middle" x="0" y="30" style={{ fontWeight: "bold", fontSize: "90px", fill: "red" }}>{alertText}</text>

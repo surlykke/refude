@@ -28,8 +28,6 @@ const style = {
     margin: "0px",
     paddingLeft: "6px",
     paddingRight: "6px",
-    paddingTop: "2px",
-    paddingBottom: "2px",
     width: "fit-content",
     backgroundColor: "rgba(255,255,255,0.8)"
 }

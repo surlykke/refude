@@ -13,30 +13,37 @@
  */
 import React from 'react'
 
+
+// TODO i18n
+const monthNames = ["jan", "feb", "mar", "apr", "maj", "jun", "jul", "aug", "sep", "okt", "nov", "dec"];
+
 class Clock extends React.Component {
 
 	constructor(props) {
 		super(props)
+		this.style = Object.assign({}, this.props.style);
+		this.style.fontSize = "14px"; 
+		this.style.verticalAlign = "top";
 		this.state = {time: "--:--:--"}
 	}
-
+	
 	componentDidMount = () => {
     	let update = () => {
 			let now = new Date()
 	        this.setState({
-				time: now.toLocaleTimeString(), 
-				date: now.toISOString().slice(0, 10)
+				// TODO i18n
+				clockString: `${now.getUTCDate()}. ${monthNames[now.getUTCMonth()]} ${now.getHours()}:${now.getMinutes().toString().padStart(2, "0")}`
 			});
 			// Update just after next turn of second..
-            setTimeout(update, 1000 - now.getMilliseconds() + 1);
+            setTimeout(update, 60000 - now.getSeconds()*1000, now.getMilliseconds() + 1);
 	    };
 		update()
 	}
 
 	render = () => {
-		return <div id="clock" style={this.props.style}>
-					<div>{this.state.time}</div>
-					<div style={{fontSize: "10px", textAlign: "center"}}>{this.state.date}</div>
+		console.log("Render clock with style:", this.style)
+		return <div id="clock" style={this.style}>
+					<div>{this.state.clockString}</div>
 				</div>
 	}
 }

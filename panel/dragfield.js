@@ -16,7 +16,7 @@ class DragField extends React.Component {
         Object.assign(style, this.props.style);
         console.log("this.props.style:", style)
         return <div style={style}>
-            <svg width="20" height="20" viewBox="-50 -50 100 100" xmlns="http://www.w3.org/2000/svg">
+            <svg width="14" height="14" viewBox="-50 -50 100 100" xmlns="http://www.w3.org/2000/svg">
                 <defs>
                     <marker id="arrow" viewBox="0 0 12 12" refX="3" refY="6" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
                         <path d="M 0 0 L 6 6 L 0 12 z" />

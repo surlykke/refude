@@ -89,7 +89,7 @@ export class NotifierItem extends React.Component {
 
 
         return this.state.item ?
-            <img src={iconUrl(this.state.item.IconName)} alt="" height="18px" width="18px"
+            <img src={iconUrl(this.state.item.IconName)} alt="" height="14px" width="14px"
                 style={{ paddingRight: "5px" }} onClick={onClick} onContextMenu={onRightClick} /> :
             null
     }
