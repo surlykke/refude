@@ -170,7 +170,7 @@ func CollectMimeTypes() map[string]*Mimetype {
 			}
 
 			for _, tmpExpandedAcronym := range tmp.ExpandedAcronym {
-				if xdg.LocaleMatch(tmpExpandedAcronym.Lang) || tmpExpandedAcronym.Lang == "" && mimeType.Acronym == "" {
+				if xdg.LocaleMatch(tmpExpandedAcronym.Lang) || tmpExpandedAcronym.Lang == "" && mimeType.ExpandedAcronym == "" {
 					mimeType.ExpandedAcronym = tmpExpandedAcronym.Text
 				}
 			}
