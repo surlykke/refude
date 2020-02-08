@@ -209,6 +209,17 @@ func CollectMimeTypes() map[string]*Mimetype {
 		}
 	}
 
+	// Do a transitive closure on 'SubClassOf'
+	for _, mt := range res {
+		for i := 0; i < len(mt.SubClassOf); i++ {
+			if ancestor, ok := res[mt.SubClassOf[i]]; ok {
+				for _, id := range ancestor.SubClassOf {
+					mt.SubClassOf = slice.AppendIfNotThere(mt.SubClassOf, id)
+				}
+			}
+		}
+	}
+
 	return res
 }
 
