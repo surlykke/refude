@@ -7,16 +7,80 @@
 package icons
 
 import (
+	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/surlykke/RefudeServices/lib/searchutils"
+
+	"github.com/surlykke/RefudeServices/lib/requests"
+	"github.com/surlykke/RefudeServices/lib/respond"
 
 	"github.com/surlykke/RefudeServices/lib/xdg"
 
 	"github.com/surlykke/RefudeServices/lib/image"
 )
+
+const iconthemePrefixLength = len("/icontheme/")
+
+func ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path == "/icon" {
+		if r.Method == "GET" {
+			if name := requests.GetSingleQueryParameter(r, "name", ""); name == "" {
+				respond.UnprocessableEntity(w, errors.New("no name given"))
+			} else {
+				var themeId = requests.GetSingleQueryParameter(r, "theme", "hicolor")
+				var size = uint64(32)
+				var err error
+				if len(r.URL.Query()["size"]) > 0 {
+					size, err = strconv.ParseUint(r.URL.Query()["size"][0], 10, 32)
+					if err != nil {
+						respond.UnprocessableEntity(w, errors.New("Invalid size given:"+r.URL.Query()["size"][0]))
+					}
+				}
+
+				if image, ok := findImage(themeId, name, uint32(size)); !ok {
+					w.WriteHeader(http.StatusNotFound)
+				} else {
+					http.ServeFile(w, r, image.Path)
+				}
+			}
+		} else {
+			respond.NotAllowed(w)
+		}
+	} else if iconTheme := getTheme(r.URL.Path); iconTheme != nil {
+		if r.Method == "GET" {
+			respond.AsJson(w, iconTheme.ToStandardFormat())
+		} else {
+			respond.NotAllowed(w)
+		}
+	} else {
+		respond.NotFound(w)
+	}
+}
+
+func SearchThemes(collector *searchutils.Collector) {
+	lock.Lock()
+	defer lock.Unlock()
+	for _, theme := range themes {
+		collector.Collect(theme.ToStandardFormat())
+	}
+}
+
+func AllPaths() []string {
+	lock.Lock()
+	defer lock.Unlock()
+	var paths = make([]string, 0, len(themes)+1)
+	for path, _ := range themes {
+		paths = append(paths, path)
+	}
+	return paths
+}
 
 func Run() {
 	AddBaseDir(xdg.Home + "/.icons")
@@ -24,6 +88,12 @@ func Run() {
 		AddBaseDir(dataDir + "/icons")
 	}
 	AddBaseDir("/usr/share/pixmaps")
+}
+
+func getTheme(path string) *IconTheme {
+	lock.Lock()
+	defer lock.Unlock()
+	return themes[path]
 }
 
 func AddARGBIcon(argbIcon image.ARGBIcon) string {

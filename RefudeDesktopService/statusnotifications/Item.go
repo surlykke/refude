@@ -7,28 +7,16 @@
 package statusnotifications
 
 import (
-	"encoding/json"
-	"errors"
 	"fmt"
-	"log"
-	"net/http"
-	"reflect"
-	"strconv"
 	"strings"
-	"time"
 
 	"github.com/godbus/dbus"
-	"github.com/surlykke/RefudeServices/lib/requests"
-	"github.com/surlykke/RefudeServices/lib/resource"
-	"github.com/surlykke/RefudeServices/lib/slice"
+	"github.com/surlykke/RefudeServices/lib/respond"
 )
 
 type Item struct {
-	resource.Links
-	key                     string
 	sender                  string
 	itemPath                dbus.ObjectPath
-	menu                    *MenuResource
 	Id                      string
 	Menu                    string `json:",omitempty"`
 	Category                string
@@ -45,12 +33,14 @@ type Item struct {
 	useOverlayIconPixmap    bool
 }
 
-func MakeItem(sender string, path dbus.ObjectPath) *Item {
-	return &Item{
-		Links:    resource.MakeLinks(itemSelf(sender, path), "statusnotifieritem"),
-		key:      sender + string(path),
-		sender:   sender,
-		itemPath: path,
+func (item *Item) ToStandardFormat() *respond.StandardFormat {
+	return &respond.StandardFormat{
+		Self:     itemSelf(item.sender, item.itemPath),
+		Type:     "status_item",
+		Title:    item.Title,
+		IconName: item.IconName,
+		OnPost:   "Activate",
+		Data:     item,
 	}
 }
 
@@ -58,33 +48,21 @@ func itemSelf(sender string, path dbus.ObjectPath) string {
 	return fmt.Sprintf("/item/%s", strings.Replace(sender+string(path), "/", "-", -1))
 }
 
-func menuSelf(sender string, path dbus.ObjectPath) string {
+type ItemMap map[string]*Item
+
+/*func menuSelf(sender string, path dbus.ObjectPath) string {
 	return fmt.Sprintf("/itemmenu/%s", strings.Replace(sender+string(path), "/", "-", -1))
-}
+}*/
 
-func (item *Item) POST(w http.ResponseWriter, r *http.Request) {
-	action := requests.GetSingleQueryParameter(r, "action", "left")
-	x, _ := strconv.Atoi(requests.GetSingleQueryParameter(r, "x", "0"))
-	y, _ := strconv.Atoi(requests.GetSingleQueryParameter(r, "y", "0"))
+/**
+ * dbusMethodName one of "Activate", "SecondaryActivate", "ContextMenu"
+ */
 
-	var call *dbus.Call
-	if slice.Among(action, "left", "middle", "right") {
-		action2method := map[string]string{"left": "Activate", "middle": "SecondaryActivate", "right": "ContextMenu"}
-		dbusObj := conn.Object(item.sender, item.itemPath)
-		call = dbusObj.Call("org.kde.StatusNotifierItem."+action2method[action], dbus.Flags(0), x, y)
-	} else {
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		return
-	}
-	if call.Err != nil {
-		log.Println(call.Err)
-		w.WriteHeader(http.StatusInternalServerError)
-	} else {
-		w.WriteHeader(http.StatusAccepted)
-	}
-}
+/*func (item *Item) POST(w http.ResponseWriter, r *http.Request) {
 
-type MenuResource struct {
+}*/
+
+/*type MenuResource struct {
 	self   string
 	sender string
 	path   dbus.ObjectPath
@@ -164,3 +142,4 @@ func fetchMenu(sender string, path dbus.ObjectPath) ([]MenuItem, error) {
 		return []MenuItem{menu}, nil
 	}
 }
+*/

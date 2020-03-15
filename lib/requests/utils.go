@@ -7,8 +7,6 @@
 package requests
 
 import (
-	"encoding/json"
-	"fmt"
 	"net/http"
 	"regexp"
 
@@ -57,15 +55,6 @@ func GetSingleParams(r *http.Request, paramNames ...string) (map[string]string, 
 	return result, nil
 }
 
-func ReportUnprocessableEntity(w http.ResponseWriter, err error) {
-	if body, err2 := json.Marshal(err.Error()); err2 == nil {
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		w.Write(body)
-	} else {
-		panic(fmt.Sprintf("Cannot json-marshall %s", err.Error()))
-	}
-}
-
 func CheckEtag(r *http.Request, resourceEtag string) int {
 	switch r.Method {
 	case "GET", "HEAD":
@@ -88,6 +77,7 @@ func CheckEtag(r *http.Request, resourceEtag string) int {
 var r = regexp.MustCompile(`^\s*(?:W/)?("[^"]*")\s*`)
 
 func EtagMatch(etag string, etagList string) bool {
+
 	var pos = 0
 
 	for {

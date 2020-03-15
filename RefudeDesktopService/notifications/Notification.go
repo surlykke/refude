@@ -11,12 +11,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib/respond"
 )
 
 type Notification struct {
-	resource.Links
-	resource.Actions
 	Id        uint32
 	Sender    string
 	Subject   string
@@ -26,33 +24,52 @@ type Notification struct {
 	imagePath string
 	Created   time.Time
 	Expires   time.Time `json:",omitempty"`
+	Actions   map[string]string
+}
+
+func (n *Notification) ToStandardFormat() *respond.StandardFormat {
+	return &respond.StandardFormat{
+		Self:     notificationSelf(n.Id),
+		Type:     "notification",
+		Title:    n.Subject,
+		Comment:  n.Body,
+		IconName: n.IconName,
+		OnPost:   n.Actions["default"],
+		Data:     n,
+	}
+}
+
+func (n *Notification) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
+		respond.AsJson(w, n.ToStandardFormat())
+	} else if r.Method == "POST" && n.haveDefaultAction() {
+		conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".ActionInvoked", n.Id, "default")
+	} else {
+		respond.NotAllowed(w)
+	}
+}
+
+func (n *Notification) haveDefaultAction() bool {
+	_, ok := n.Actions["default"]
+	return ok
 }
 
 type NotificationImage struct {
 	imagePath string
 }
 
-func (ni *NotificationImage) POST(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusMethodNotAllowed)
-}
-
-func (ni *NotificationImage) PATCH(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusMethodNotAllowed)
-}
-
-func (ni *NotificationImage) DELETE(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusMethodNotAllowed)
-}
-
-func (ni *NotificationImage) GET(w http.ResponseWriter, r *http.Request) {
-	if "GET" != r.Method {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-	} else {
-		fmt.Println("Serving", ni.imagePath)
+func (ni *NotificationImage) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
 		http.ServeFile(w, r, ni.imagePath)
+	} else {
+		respond.NotAllowed(w)
 	}
 }
 
 func notificationSelf(id uint32) string {
 	return fmt.Sprintf("/notification/%d", id)
+}
+
+func notificationImageSelf(id uint32) string {
+	return fmt.Sprintf("/notificationimage/%d", id)
 }

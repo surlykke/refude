@@ -14,9 +14,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/surlykke/RefudeServices/lib/requests"
+	"github.com/surlykke/RefudeServices/lib/respond"
 
-	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/slice"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 
@@ -26,7 +25,6 @@ import (
 const freedesktopOrgXml = "/usr/share/mime/packages/freedesktop.org.xml"
 
 type Mimetype struct {
-	resource.Links
 	Id              string
 	Comment         string
 	Acronym         string `json:",omitempty"`
@@ -47,28 +45,46 @@ func MakeMimetype(id string) (*Mimetype, error) {
 	if !mimetypePattern.MatchString(id) {
 		return nil, errors.New("Incomprehensible mimetype: " + id)
 	} else {
-		mt := &Mimetype{Links: resource.MakeLinks(mimetypeSelf(id), "mimetype")}
-		mt.Id = id
-		mt.Aliases = []string{}
-		mt.Globs = []string{}
-		mt.SubClassOf = []string{}
-		mt.IconName = "unknown"
-		mt.GenericIcon = "unknown"
-		return mt, nil
+		return &Mimetype{
+			Id:          id,
+			Aliases:     []string{},
+			Globs:       []string{},
+			SubClassOf:  []string{},
+			IconName:    "unknown",
+			GenericIcon: "unknown",
+		}, nil
 	}
 }
 
-func (mt *Mimetype) PATCH(w http.ResponseWriter, r *http.Request) {
-	var decoder = json.NewDecoder(r.Body)
-	var decoded = make(map[string]string)
-	if err := decoder.Decode(&decoded); err != nil {
-		requests.ReportUnprocessableEntity(w, err)
-	} else if defaultApp, ok := decoded["DefaultApp"]; !ok || len(decoded) != 1 {
-		requests.ReportUnprocessableEntity(w, fmt.Errorf("Patch payload should contain exactly one parameter: 'DefaultApp"))
-	} else if err = setDefaultApp(mt.Id, defaultApp); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-	} else {
-		w.WriteHeader(http.StatusAccepted)
+func (mt *Mimetype) ToStandardFormat() *respond.StandardFormat {
+	return &respond.StandardFormat{
+		Self:     mimetypeSelf(mt.Id),
+		Type:     "mimetype",
+		Title:    mt.Comment,
+		Comment:  mt.Acronym,
+		IconName: mt.IconName,
+		Data:     mt,
+	}
+}
+
+func (mt *Mimetype) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case "GET":
+		respond.AsJson(w, mt.ToStandardFormat())
+	case "PATCH":
+		var decoder = json.NewDecoder(r.Body)
+		var decoded = make(map[string]string)
+		if err := decoder.Decode(&decoded); err != nil {
+			respond.UnprocessableEntity(w, err)
+		} else if defaultApp, ok := decoded["DefaultApp"]; !ok || len(decoded) != 1 {
+			respond.UnprocessableEntity(w, fmt.Errorf("Patch payload should contain exactly one parameter: 'DefaultApp"))
+		} else if err = setDefaultApp(mt.Id, defaultApp); err != nil {
+			respond.ServerError(w)
+		} else {
+			respond.Accepted(w)
+		}
+	default:
+		respond.NotAllowed(w)
 	}
 }
 
@@ -98,3 +114,5 @@ func setDefaultApp(mimetypeId string, appId string) error {
 func mimetypeSelf(mimetypeId string) string {
 	return fmt.Sprintf("/mimetype/%s", mimetypeId)
 }
+
+type MimetypeMap map[string]*Mimetype

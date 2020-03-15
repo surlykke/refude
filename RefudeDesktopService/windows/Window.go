@@ -7,106 +7,99 @@
 package windows
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"sync"
+
+	"github.com/surlykke/RefudeServices/lib/respond"
 
 	"github.com/surlykke/RefudeServices/lib/image"
 	"github.com/surlykke/RefudeServices/lib/requests"
 
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/icons"
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/windows/xlib"
-
-	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
 type WindowData struct {
-	resource.Links
-	resource.Actions
-	Id         uint32
-	Parent     uint32
-	StackOrder int
-	X, Y       int32
-	W, H       uint32
-	Name       string
-	IconName   string `json:",omitempty"`
-	States     []string
+	Id       uint32
+	Parent   uint32
+	X, Y     int32
+	W, H     uint32
+	Name     string
+	IconName string `json:",omitempty"`
+	States   []string
 }
 
-func windowSelf(windowId uint32) string {
-	return fmt.Sprintf("/window/%d", windowId)
-}
+type Window uint32
 
-type Window struct {
-	resource.Links
-	resource.Actions
-	wId        uint32
-	stackOrder int
-}
-
-func MakeWindow(wId uint32) *Window {
-	var w = &Window{
-		resource.MakeLinks(windowSelf(wId), "window"),
-		resource.Actions{},
-		wId,
-		0,
-	}
-	w.SetPostAction("default", resource.ResourceAction{Description: "Raise and focus", Executer: makeExecuter(w.wId)})
-	return w
-}
-
-func (w *Window) MarshalJSON() ([]byte, error) {
-	var wd = WindowData{Links: w.Links, Actions: w.Actions, Id: w.wId, StackOrder: w.stackOrder}
+func (w Window) ToStandardFormat() *respond.StandardFormat {
+	var wId = uint32(w)
+	var wd = WindowData{Id: wId}
 	dataMutex.Lock()
-	defer dataMutex.Unlock()
-	if parent, err := dataConnection.GetParent(w.wId); err == nil {
+	if parent, err := dataConnection.GetParent(wId); err == nil {
 		if parent != 0 {
 			wd.X, wd.Y, wd.W, wd.H, err = dataConnection.GetGeometry(parent)
 		} else {
-			wd.X, wd.Y, wd.W, wd.H, err = dataConnection.GetGeometry(w.wId)
+			wd.X, wd.Y, wd.W, wd.H, err = dataConnection.GetGeometry(wId)
 		}
 	}
-	if name, err := dataConnection.GetName(w.wId); err == nil {
+	if name, err := dataConnection.GetName(wId); err == nil {
 		wd.Name = name
 	}
-	if iconName, err := GetIconName(w.wId); err == nil {
+	if iconName, err := GetIconName(wId); err == nil {
 		wd.IconName = iconName
 	}
-	if states, err := dataConnection.GetState(w.wId); err == nil {
+	if states, err := dataConnection.GetState(wId); err == nil {
 		wd.States = states
 	}
-	return json.Marshal(&wd)
+	defer dataMutex.Unlock()
+
+	return &respond.StandardFormat{
+		Self:   fmt.Sprintf("/window/%d", w),
+		Type:   "window",
+		Title:  wd.Name,
+		OnPost: "Raise and focus",
+		Data:   wd,
+	}
 }
 
-type ScreenShot uint32
+type WindowMap map[string]Window
 
-func ScreenshotSelf(wId uint32) string {
-	return fmt.Sprintf("/window/%d/screenshot", wId)
+type ScreenShotResource struct {
+	self string
+	wId  uint32
 }
 
-func (ss ScreenShot) GET(w http.ResponseWriter, r *http.Request) {
-	var downscaleS = requests.GetSingleQueryParameter(r, "downscale", "1")
-	var downscale = downscaleS[0] - '0'
-	if downscale < 1 || downscale > 5 {
-		requests.ReportUnprocessableEntity(w, fmt.Errorf("downscale should be >= 1 and <= 5"))
-	} else if bytes, err := getScreenshot(uint32(ss), downscale); err == nil {
-		w.Header().Set("Content-Type", "image/png")
-		w.Write(bytes)
+func makeScreenShotResource(wId uint32) *ScreenShotResource {
+	return &ScreenShotResource{
+		self: fmt.Sprintf("/window/%d/screenshot", wId),
+		wId:  wId,
+	}
+}
+
+func (ss *ScreenShotResource) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		respond.NotAllowed(w)
 	} else {
-		fmt.Println("Error getting screenshot:", err)
-		w.WriteHeader(http.StatusInternalServerError)
+		var downscaleS = requests.GetSingleQueryParameter(r, "downscale", "1")
+		var downscale = downscaleS[0] - '0'
+		if downscale < 1 || downscale > 5 {
+			respond.UnprocessableEntity(w, fmt.Errorf("downscale should be >= 1 and <= 5"))
+		} else if bytes, err := getScreenshot(ss.wId, downscale); err == nil {
+			w.Header().Set("Content-Type", "image/png")
+			w.Write(bytes)
+		} else {
+			fmt.Println("Error getting screenshot:", err)
+			w.WriteHeader(http.StatusInternalServerError)
+		}
 	}
 }
 
 var dataConnection = xlib.MakeConnection()
 var dataMutex = &sync.Mutex{}
 
-func makeExecuter(wId uint32) func() {
-	return func() {
-		dataMutex.Lock()
-		defer dataMutex.Unlock()
-		dataConnection.RaiseAndFocusWindow(wId)
+func makeExecuter(wId uint32) func(http.ResponseWriter, *http.Request) {
+	return func(http.ResponseWriter, *http.Request) {
 	}
 }
 

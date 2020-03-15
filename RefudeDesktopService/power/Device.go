@@ -11,11 +11,10 @@ import (
 	"strings"
 
 	"github.com/godbus/dbus"
-	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib/respond"
 )
 
 type Device struct {
-	resource.Links
 	DbusPath         dbus.ObjectPath
 	NativePath       string
 	Vendor           string
@@ -42,6 +41,16 @@ type Device struct {
 	Capacity         float64
 	Technology       string
 	DisplayDevice    bool
+	title            string
+}
+
+func (d *Device) ToStandardFormat() *respond.StandardFormat {
+	return &respond.StandardFormat{
+		Self:  deviceSelf(d),
+		Type:  "power_device",
+		Title: string(d.DbusPath), // FIXME
+		Data:  d,
+	}
 }
 
 func deviceType(index uint32) string {
@@ -68,14 +77,10 @@ func deviceTecnology(index uint32) string {
 	return devTecnology[index]
 }
 
-func deviceSelf(dbusPath dbus.ObjectPath) string {
-	if strings.HasPrefix(string(dbusPath), DevicePrefix) {
-		dbusPath = dbusPath[len(DevicePrefix):]
+func deviceSelf(device *Device) string {
+	var path = string(device.DbusPath)
+	if strings.HasPrefix(path, DevicePrefix) {
+		path = path[len(DevicePrefix):]
 	}
-	return fmt.Sprintf("/device%s", dbusPath)
-}
-
-type SessionResource struct {
-	resource.Links
-	resource.Actions
+	return fmt.Sprintf("/device%s", path)
 }

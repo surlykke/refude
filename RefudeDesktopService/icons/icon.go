@@ -12,10 +12,11 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/surlykke/RefudeServices/lib/respond"
+
 	"github.com/surlykke/RefudeServices/lib/slice"
 
 	"github.com/surlykke/RefudeServices/lib/requests"
-	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
 type Icon struct {
@@ -31,31 +32,31 @@ type IconImage struct {
 	Path    string
 }
 
-type IconResource struct {
-	resource.Links
-}
+type IconResource struct{}
 
-func (ir *IconResource) GET(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-	} else if name := requests.GetSingleQueryParameter(r, "name", ""); name == "" {
-		requests.ReportUnprocessableEntity(w, errors.New("no name given"))
-	} else {
-		var themeId = requests.GetSingleQueryParameter(r, "theme", "hicolor")
-		var size = uint64(32)
-		var err error
-		if len(r.URL.Query()["size"]) > 0 {
-			size, err = strconv.ParseUint(r.URL.Query()["size"][0], 10, 32)
-			if err != nil {
-				requests.ReportUnprocessableEntity(w, errors.New("Invalid size given:"+r.URL.Query()["size"][0]))
+func (IconResource) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
+		if name := requests.GetSingleQueryParameter(r, "name", ""); name == "" {
+			respond.UnprocessableEntity(w, errors.New("no name given"))
+		} else {
+			var themeId = requests.GetSingleQueryParameter(r, "theme", "hicolor")
+			var size = uint64(32)
+			var err error
+			if len(r.URL.Query()["size"]) > 0 {
+				size, err = strconv.ParseUint(r.URL.Query()["size"][0], 10, 32)
+				if err != nil {
+					respond.UnprocessableEntity(w, errors.New("Invalid size given:"+r.URL.Query()["size"][0]))
+				}
+			}
+
+			if image, ok := findImage(themeId, name, uint32(size)); !ok {
+				w.WriteHeader(http.StatusNotFound)
+			} else {
+				http.ServeFile(w, r, image.Path)
 			}
 		}
-
-		if image, ok := findImage(themeId, name, uint32(size)); !ok {
-			w.WriteHeader(http.StatusNotFound)
-		} else {
-			http.ServeFile(w, r, image.Path)
-		}
+	} else {
+		respond.NotAllowed(w)
 	}
 }
 

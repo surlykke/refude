@@ -19,7 +19,6 @@ import (
 
 	"github.com/godbus/dbus"
 	"github.com/godbus/dbus/introspect"
-	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
 const NOTIFICATIONS_SERVICE = "org.freedesktop.Notifications"
@@ -156,29 +155,27 @@ func notify(app_name string,
 		id = <-ids
 	}
 
-	notification := &Notification{Links: resource.MakeLinks(notificationSelf(id), "notification")}
-	notification.Id = id
-	notification.Sender = app_name
-	notification.Created = time.Now()
-	notification.IconName = app_icon
-	notification.Subject = sanitize(summary, []string{}, []string{})
-	notification.Body = sanitize(body, allowedTags, allowedEscapes)
-
 	// Get image
+
+	var iconName string
 	var ok bool
-	if notification.IconName, ok = installRawImageIcon(hints, "image-data"); !ok {
-		if notification.IconName, ok = installRawImageIcon(hints, "image_data"); !ok {
-			if notification.IconName, ok = installFileIcon(hints, "image-path"); !ok {
-				if notification.IconName, ok = installFileIcon(hints, "image_path"); !ok {
+	if iconName, ok = installRawImageIcon(hints, "image-data"); !ok {
+		if iconName, ok = installRawImageIcon(hints, "image_data"); !ok {
+			if iconName, ok = installFileIcon(hints, "image-path"); !ok {
+				if iconName, ok = installFileIcon(hints, "image_path"); !ok {
 					if "" != app_icon {
-						notification.IconName = app_icon
+						iconName = app_icon
 					} else {
-						// TODO notification.IconName, _ = installRawImageIcon(hints, "icon_data")
+						// TODO iconName, _ = installRawImageIcon(hints, "icon_data")
 					}
 				}
 			}
 		}
 	}
+
+	// Get expirery
+	var created = time.Now()
+	var expires time.Time
 
 	if tmp, ok := expireryOverride[app_name]; ok {
 		expire_timeout = tmp
@@ -189,32 +186,28 @@ func notify(app_name string,
 	}
 
 	if expire_timeout > 0 {
-		notification.Expires = notification.Created.Add(time.Millisecond * time.Duration(expire_timeout))
+		expires = created.Add(time.Millisecond * time.Duration(expire_timeout))
 	} else {
-		notification.Expires = notification.Created.Add(time.Minute)
+		expires = created.Add(time.Minute)
 	}
 
+	notification := &Notification{
+		Id:       id,
+		Sender:   app_name,
+		Created:  created,
+		Expires:  expires,
+		IconName: iconName,
+		Subject:  sanitize(summary, []string{}, []string{}),
+		Body:     sanitize(body, allowedTags, allowedEscapes),
+		Actions:  map[string]string{},
+	}
 	time.AfterFunc(notification.Expires.Sub(notification.Created)+100*time.Millisecond, func() {
 		reaper <- notification.Id
 	})
 
-	// Add a dismiss action
-	var notificationId = notification.Id
-	notification.DeleteAction = &resource.ResourceAction{
-		Description: "dismiss",
-		Executer:    func() { removals <- removal{notificationId, Dismissed} },
-	}
-
 	// Add actions given in notification (We are aware that one of these may overwrite the dismiss action added above)
 	for i := 0; i+1 < len(actions); i = i + 2 {
-		var notificationId = notification.Id
-		var actionId = actions[i]
-		var actionDescription = actions[i+1]
-		notification.SetPostAction(actionId, resource.ResourceAction{
-			Description: actionDescription, IconName: "", Executer: func() {
-				conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".ActionInvoked", notificationId, actionId)
-			},
-		})
+		notification.Actions[actions[i]] = actions[i+1]
 	}
 
 	incomingNotifications <- notification

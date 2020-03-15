@@ -10,8 +10,6 @@ import (
 	"log"
 	"path/filepath"
 	"sync"
-
-	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
 type (
@@ -43,45 +41,33 @@ var (
 )
 
 func AddBaseDir(baseDir string) {
-	var foundThemes = false
 	if indexFilePaths, err := filepath.Glob(baseDir + "/*/index.theme"); err != nil {
 		log.Println(err)
 	} else {
 		for _, indexFilePath := range indexFilePaths {
 			if theme, ok := readTheme(indexFilePath); ok {
-				if _, ok = themes[theme.Id]; !ok {
-					theme.Links = resource.MakeLinks("/icontheme/"+theme.Id, "icontheme")
-					themes[theme.Id] = theme
-					themeIcons[theme.Id] = make(map[string][]IconImage)
-					foundThemes = true
-				}
+				addTheme(theme)
 			}
 		}
-	}
-
-	if foundThemes {
-		mapThemeResources()
 	}
 
 	scanBaseDir(baseDir)
 }
 
-func mapThemeResources() {
-	var themeResources = make(map[string]interface{})
-	for themeId, theme := range themes {
-		themeResources["/icontheme/"+themeId] = &(*theme)
+func addTheme(theme *IconTheme) {
+	lock.Lock()
+	defer lock.Unlock()
+	if _, ok := themes["/icontheme/"+theme.Id]; !ok {
+		themes["/icontheme/"+theme.Id] = theme
+		themeIcons[theme.Id] = make(map[string][]IconImage)
 	}
-	themeResources["/iconthemes"] = resource.ExtractResourceList(themeResources)
-	resource.MapCollection(&themeResources, "iconthemes")
-
-	resource.MapSingle("/icon", &IconResource{})
 }
 
 func addThemeIconImage(themeId string, iconDir string, iconName string, path string) {
 	lock.Lock()
 	defer lock.Unlock()
 
-	if theme, ok := themes[themeId]; !ok {
+	if theme, ok := themes["/icontheme/"+themeId]; !ok {
 		wannabeThemeIcons = append(wannabeThemeIcons, themeIconImage{themeId, iconDir, iconName, path})
 	} else if iconDir, ok := theme.Dirs[iconDir]; !ok {
 		// Ignore

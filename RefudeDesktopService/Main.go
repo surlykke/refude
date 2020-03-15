@@ -8,6 +8,10 @@ package main
 
 import (
 	"net/http"
+	"strings"
+
+	"github.com/surlykke/RefudeServices/RefudeDesktopService/search"
+	"github.com/surlykke/RefudeServices/RefudeDesktopService/session"
 
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/applications"
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/backlight"
@@ -16,9 +20,46 @@ import (
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/power"
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/statusnotifications"
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/windows"
+	"github.com/surlykke/RefudeServices/lib/respond"
+
 	"github.com/surlykke/RefudeServices/lib"
-	"github.com/surlykke/RefudeServices/lib/resource"
 )
+
+type dummy struct{}
+
+func (dummy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	var path = r.URL.Path
+	switch {
+	case match(r, "/window"):
+		windows.ServeHTTP(w, r)
+	case match(r, "/application"):
+		applications.AppServeHTTP(w, r)
+	case match(r, "/mimetype"):
+		applications.MimetypeServeHTTP(w, r)
+	case match(r, "/notification"):
+		notifications.ServeHTTP(w, r)
+	case match(r, "/device"):
+		power.ServeHTTP(w, r)
+	case match(r, "/item"):
+		statusnotifications.ServeHTTP(w, r)
+	case match(r, "/backlight"):
+		backlight.ServeHTTP(w, r)
+	case match(r, "/icon"):
+		icons.ServeHTTP(w, r)
+	case match(r, "/session"):
+		session.ServeHTTP(w, r)
+	case match(r, "/search"):
+		search.ServeHTTP(w, r)
+	case path == "/complete":
+		search.ServeHTTP(w, r)
+	default:
+		respond.NotFound(w)
+	}
+}
+
+func match(r *http.Request, prefix string) bool {
+	return strings.HasPrefix(r.URL.Path, prefix)
+}
 
 func main() {
 	go windows.Run()
@@ -26,10 +67,10 @@ func main() {
 	go notifications.Run()
 	go power.Run()
 	go statusnotifications.Run()
-	go icons.Run()
 	go backlight.Run()
-	//
-	var handler = http.HandlerFunc(resource.ServeHTTP)
+	go icons.Run()
+
+	var handler = dummy{}
 	go lib.Serve("org.refude.desktop-service", handler)
 	_ = http.ListenAndServe(":7938", handler)
 }

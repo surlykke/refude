@@ -9,8 +9,6 @@ package statusnotifications
 import (
 	"errors"
 	"fmt"
-	"log"
-	"reflect"
 	"regexp"
 	"strings"
 
@@ -21,7 +19,6 @@ import (
 	"github.com/godbus/dbus/prop"
 	dbuscall "github.com/surlykke/RefudeServices/lib/dbusutils"
 	"github.com/surlykke/RefudeServices/lib/image"
-	"github.com/surlykke/RefudeServices/lib/slice"
 )
 
 const WATCHER_SERVICE = "org.kde.StatusNotifierWatcher"
@@ -162,14 +159,15 @@ func updateWatcherProperties() {
 
 func buildItem(sender string, path dbus.ObjectPath) *Item {
 	fmt.Println("MakeItem")
-	var item = MakeItem(sender, path)
+	var item = &Item{sender: sender, itemPath: path}
+	fmt.Println(dbuscall.Introspect(conn, item.sender, item.itemPath))
 	var props = dbuscall.GetAllProps(conn, item.sender, item.itemPath, ITEM_INTERFACE)
 	item.Id = getStringOr(props["Id"])
 	item.Category = getStringOr(props["Category"])
-	if menuPath := getDbusPath(props["Menu"]); menuPath != "" {
+	/*if menuPath := getDbusPath(props["Menu"]); menuPath != "" {
 		item.menu = MakeMenuResource(item.sender, menuPath)
 		item.Menu = item.menu.self
-	}
+	}*/
 	item.Title = getStringOr(props["Title"])
 	item.Status = getStringOr(props["Status"])
 	item.ToolTip = getStringOr(props["ToolTip"])
@@ -275,7 +273,7 @@ func getDbusPath(variant dbus.Variant) dbus.ObjectPath {
 	return ""
 }
 
-func parseMenu(value []interface{}) (MenuItem, error) {
+/*func parseMenu(value []interface{}) (MenuItem, error) {
 	var menuItem = MenuItem{}
 	var id int32
 	var ok bool
@@ -329,7 +327,7 @@ func parseMenu(value []interface{}) (MenuItem, error) {
 	}
 
 	return menuItem, nil
-}
+}*/
 
 func collectPixMap(variant dbus.Variant) string {
 	if arrs, ok := variant.Value().([][]interface{}); ok {

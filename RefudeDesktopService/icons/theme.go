@@ -14,28 +14,35 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/slice"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
-type (
-	IconTheme struct {
-		resource.Links
-		Id       string
-		Name     string
-		Comment  string
-		Inherits []string
-		Dirs     map[string]IconDir
-	}
+type IconTheme struct {
+	Id       string
+	Name     string
+	Comment  string
+	Inherits []string
+	Dirs     map[string]IconDir
+}
 
-	IconDir struct {
-		Path    string
-		MinSize uint32
-		MaxSize uint32
-		Context string
+func (it *IconTheme) ToStandardFormat() *respond.StandardFormat {
+	return &respond.StandardFormat{
+		Self:    "/icontheme/" + it.Id,
+		Type:    "icontheme",
+		Title:   it.Name,
+		Comment: it.Comment,
+		Data:    it,
 	}
-)
+}
+
+type IconDir struct {
+	Path    string
+	MinSize uint32
+	MaxSize uint32
+	Context string
+}
 
 func readTheme(indexThemeFilePath string) (*IconTheme, bool) {
 	// id of a theme is the name of the directory in which its index.theme file resides

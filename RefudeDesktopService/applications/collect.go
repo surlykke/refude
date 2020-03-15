@@ -17,7 +17,6 @@ import (
 	"strings"
 
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/icons"
-	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/slice"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 	"golang.org/x/text/language"
@@ -30,10 +29,7 @@ type collection struct {
 	defaultApps  map[string][]string // Maps from mimetypeid to a list of app ids
 }
 
-/**
- * Return a map path->mimetype and a map path->application
- */
-func Collect() (map[string]interface{}, map[string]interface{}) {
+func Collect() collection {
 	var c collection
 	c.mimetypes = CollectMimeTypes()
 	c.applications = make(map[string]*DesktopApplication)
@@ -74,19 +70,8 @@ func Collect() (map[string]interface{}, map[string]interface{}) {
 			}
 		}
 	}
-	var mimetypeResources = make(map[string]interface{})
-	for mimetypeId, mt := range c.mimetypes {
-		mimetypeResources[mimetypeSelf(mimetypeId)] = mt
-	}
-	mimetypeResources["/mimetypes"] = resource.ExtractResourceList(mimetypeResources)
 
-	var applicationResources = make(map[string]interface{})
-	for appId, app := range c.applications {
-		applicationResources[appSelf(appId)] = app
-	}
-	applicationResources["/applications"] = resource.ExtractResourceList(applicationResources)
-
-	return mimetypeResources, applicationResources
+	return c
 }
 
 func (c *collection) removeAssociations(app *DesktopApplication) {
@@ -242,19 +227,6 @@ func (c *collection) collectApplications(appdir string) {
 		}
 
 		app.Id = strings.Replace(path[len(appdir)+1:], "/", "-", -1)
-		app.Links = resource.MakeLinks(appSelf(app.Id), "application")
-		var exec = app.Exec
-		var inTerminal = app.Terminal
-		app.SetPostAction("default", resource.ResourceAction{
-			Description: "Launch", IconName: app.IconName, Executer: func() { launch(exec, inTerminal) },
-		})
-		for id, action := range app.DesktopActions {
-			var exec = action.Exec
-			var inTerminal = app.Terminal
-			app.SetPostAction(id, resource.ResourceAction{
-				Description: action.Name, IconName: action.IconName, Executer: func() { launch(exec, inTerminal) },
-			})
-		}
 
 		c.applications[app.Id] = app
 

@@ -7,20 +7,18 @@
 package power
 
 import (
+	"strings"
+
 	"github.com/godbus/dbus"
 	dbuscall "github.com/surlykke/RefudeServices/lib/dbusutils"
-	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
 const UPowService = "org.freedesktop.UPower"
 const UPowPath = "/org/freedesktop/UPower"
 const UPowerInterface = "org.freedesktop.UPower"
 const DevicePrefix = "/org/freedesktop/UPower/devices"
-const DisplayDevicePath = DevicePrefix + "/DisplayDevice"
+const DisplayDevicePath = dbus.ObjectPath(DevicePrefix + "/DisplayDevice")
 const UPowerDeviceInterface = "org.freedesktop.UPower.Device"
-const login1Service = "org.freedesktop.login1"
-const login1Path = "/org/freedesktop/login1"
-const managerInterface = "org.freedesktop.login1.Manager"
 
 func subscribeToDeviceUpdates() chan *dbus.Signal {
 	var signals = make(chan *dbus.Signal, 100)
@@ -34,22 +32,17 @@ func subscribeToDeviceUpdates() chan *dbus.Signal {
 	return signals
 }
 
-func getDevices() []*Device {
-	var devices = make([]*Device, 0, 10)
-
+func retrieveDevicePaths() []dbus.ObjectPath {
 	enumCall := dbusConn.Object(UPowService, UPowPath).Call(UPowerInterface+".EnumerateDevices", dbus.Flags(0))
-	devicePaths := append(enumCall.Body[0].([]dbus.ObjectPath), DisplayDevicePath)
-	for _, path := range devicePaths {
-		devices = append(devices, getDevice(path))
-	}
-
-	return devices
+	return append(enumCall.Body[0].([]dbus.ObjectPath), DisplayDevicePath)
 }
 
-func getDevice(path dbus.ObjectPath) *Device {
-	var device = &Device{Links: resource.MakeLinks(deviceSelf(path), "powerdevice")}
+func retrieveDevice(path dbus.ObjectPath) *Device {
+	var device = &Device{}
 	device.DisplayDevice = path == DisplayDevicePath
 	device.DbusPath = path
+	var lastSlash = strings.LastIndex(string(path), "/")
+	device.title = strings.Title(strings.Join(strings.Split(string(path)[lastSlash+1:], "_"), " "))
 	updateDevice(device, dbuscall.GetAllProps(dbusConn, UPowService, path, UPowerDeviceInterface))
 	return device
 }
@@ -61,28 +54,6 @@ var dbusConn = func() *dbus.Conn {
 		return conn
 	}
 }()
-
-var possibleActionValues = map[string][]string{
-	"PowerOff":    {"Shutdown", "Power off the machine", "system-shutdown"},
-	"Reboot":      {"Reboot", "Reboot the machine", "system-reboot"},
-	"Suspend":     {"Suspend", "Suspend the machine", "system-suspend"},
-	"Hibernate":   {"Hibernate", "Put the machine into hibernation", "system-suspend-hibernate"},
-	"HybridSleep": {"HybridSleep", "Put the machine into hybrid sleep", "system-suspend-hibernate"}}
-
-func buildSessionResource() *SessionResource {
-	var session = &SessionResource{Links: resource.MakeLinks("/session", "session")}
-	for id, pv := range possibleActionValues {
-		if "yes" == dbusConn.Object(login1Service, login1Path).Call(managerInterface+".Can"+id, dbus.Flags(0)).Body[0].(string) {
-			var dbusEndPoint = managerInterface + "." + id
-			var executer = func() {
-				dbusConn.Object(login1Service, login1Path).Call(dbusEndPoint, dbus.Flags(0), false)
-			}
-			session.SetPostAction(id, resource.ResourceAction{Description: pv[1], IconName: pv[2], Executer: executer})
-		}
-	}
-
-	return session
-}
 
 func updateDevice(d *Device, m map[string]dbus.Variant) {
 	for key, variant := range m {

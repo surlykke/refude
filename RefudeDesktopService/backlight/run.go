@@ -3,14 +3,18 @@ package backlight
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
+	"net/http"
 	"path/filepath"
 	"strconv"
 	"strings"
-	"sync"
+	"sync/atomic"
 	"time"
 
+	"github.com/surlykke/RefudeServices/lib/searchutils"
+
 	"github.com/fsnotify/fsnotify"
-	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib/respond"
 )
 
 const backlightdir = "/sys/class/backlight"
@@ -18,26 +22,48 @@ const brightness = "/brightness"
 const lenbld = len(backlightdir)
 const lenbn = len(brightness)
 
-type device struct {
-	Id            string
-	BrightnessPct uint8
-	Updated       time.Time
-	maxBrightness uint64
-	brightness    uint64
-}
-
-func (dev *device) setBrightness(brightness uint64) {
-	if brightness > dev.maxBrightness {
-		dev.brightness = 0
+func ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if backlight, ok := devices.Load().(DeviceMap)[r.URL.Path]; ok {
+		if r.Method == "GET" {
+			respond.AsJson(w, backlight.ToStandardFormat())
+		} else {
+			respond.NotAllowed(w)
+		}
 	} else {
-		dev.brightness = brightness
+		respond.NotFound(w)
 	}
-
-	dev.BrightnessPct = uint8(100 * dev.brightness / dev.maxBrightness)
 }
 
-var lock = &sync.Mutex{}
-var devices = make(map[string]*device)
+func SearchBacklights(collector *searchutils.Collector) {
+	for _, device := range devices.Load().(DeviceMap) {
+		collector.Collect(device.ToStandardFormat())
+	}
+}
+
+func AllPaths() []string {
+	var deviceMap = devices.Load().(DeviceMap)
+	var paths = make([]string, 0, len(deviceMap))
+	for path, _ := range deviceMap {
+		paths = append(paths, path)
+	}
+	return paths
+}
+
+func Run() {
+	devices.Store(retrieveDevices())
+	for {
+		select {
+		case _ = <-watcher.Events:
+			devices.Store(retrieveDevices())
+		case err := <-watcher.Errors:
+			fmt.Println("Error from watcher:", err)
+		}
+	}
+}
+
+func init() {
+	devices.Store(make(DeviceMap))
+}
 
 var watcher = func() *fsnotify.Watcher {
 	if tmp, err := fsnotify.NewWatcher(); err != nil {
@@ -49,17 +75,21 @@ var watcher = func() *fsnotify.Watcher {
 	}
 }()
 
-func getDevices() {
-	for id, _ := range devices {
-		watcher.Remove(backlightdir + "/" + id + "/brightness")
+var watchedDirs = map[string]bool{}
+
+func retrieveDevices() DeviceMap {
+	for subdir, _ := range watchedDirs {
+		watcher.Remove(backlightdir + "/" + subdir + "/brightness")
 	}
-	if dirs, err := filepath.Glob(backlightdir + "/*"); err != nil {
-		panic(fmt.Sprint("Error globbing for backlight catalogues: ", err))
+	if deviceDirs, err := filepath.Glob(backlightdir + "/*"); err != nil {
+		log.Println("Error globbing for backlight catalogues: ", err)
+		return make(DeviceMap)
 	} else {
-		for _, dir := range dirs {
-			var dev = &device{Id: dir[len(backlightdir)+1:]}
-			var maxBrightnessPath = dir + "/max_brightness"
-			var brightnessPath = dir + "/brightness"
+		var devMap = make(DeviceMap)
+		for _, deviceDir := range deviceDirs {
+			var dev = &Device{Id: deviceDir[len(backlightdir)+1:]}
+			var maxBrightnessPath = deviceDir + "/max_brightness"
+			var brightnessPath = deviceDir + "/brightness"
 			if err := watcher.Add(brightnessPath); err != nil {
 				fmt.Println("Unable to watch", brightnessPath, err)
 			} else if dev.maxBrightness, err = readUint64(maxBrightnessPath); err != nil {
@@ -71,16 +101,11 @@ func getDevices() {
 			}
 			dev.BrightnessPct = uint8(100 * dev.brightness / dev.maxBrightness)
 			dev.Updated = time.Now()
-			devices[dev.Id] = dev
+			fmt.Println(">>>>>>>>>>>>>>>>> Setting: ", "/backlight/"+dev.Id)
+			devMap["/backlight/"+dev.Id] = dev
 		}
+		return devMap
 	}
-
-	var resources = make(map[string]interface{})
-	for _, dev := range devices {
-		resources["/backlight/"+dev.Id] = &(*dev)
-	}
-	resources["/backlights"] = resource.ExtractResourceList(resources)
-	resource.MapCollection(&resources, "backlights")
 }
 
 func readBrightness(brightnessPath string, maxBrightness uint64) (uint64, error) {
@@ -103,14 +128,4 @@ func readUint64(filepath string) (uint64, error) {
 	}
 }
 
-func Run() {
-	getDevices()
-	for {
-		select {
-		case _ = <-watcher.Events:
-			getDevices()
-		case err := <-watcher.Errors:
-			fmt.Println("Error from watcher:", err)
-		}
-	}
-}
+var devices atomic.Value

@@ -9,10 +9,12 @@ package windows
 import (
 	"fmt"
 	"log"
+	"net/http"
+	"sync/atomic"
 
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/windows/xlib"
-
-	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib/respond"
+	"github.com/surlykke/RefudeServices/lib/searchutils"
 )
 
 const (
@@ -24,6 +26,38 @@ const (
 	NET_WM_STATE             = "_NET_WM_STATE"
 )
 
+func ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if wi, ok := windows.Load().(WindowMap)[r.URL.Path]; ok {
+		if r.Method == "GET" {
+			respond.AsJson(w, wi.ToStandardFormat())
+		} else if r.Method == "POST" {
+			dataMutex.Lock()
+			defer dataMutex.Unlock()
+			dataConnection.RaiseAndFocusWindow(uint32(wi))
+			respond.Accepted(w)
+		} else {
+			respond.NotAllowed(w)
+		}
+	} else {
+		respond.NotFound(w)
+	}
+}
+
+func SearchWindows(collector *searchutils.Collector) {
+	for _, wi := range windows.Load().(WindowMap) {
+		collector.Collect(wi.ToStandardFormat())
+	}
+}
+
+func AllPaths() []string {
+	var vm = windows.Load().(WindowMap)
+	var paths = make([]string, 0, len(vm))
+	for path, _ := range vm {
+		paths = append(paths, path)
+	}
+	return paths
+}
+
 // Maintains windows lists
 func Run() {
 	fmt.Println("Ind i window.Run")
@@ -31,30 +65,24 @@ func Run() {
 	eventConnection.SubscribeToStackEvents()
 
 	for {
-		var wIds, err = eventConnection.GetUint32s(0, NET_CLIENT_LIST_STACKING)
+		wIds, err := eventConnection.GetUint32s(0, NET_CLIENT_LIST_STACKING)
 		if err != nil {
 			log.Println("WARN: Unable to retrieve _NET_CLIENT_LIST_STACKING", err)
 			wIds = []uint32{}
 		}
-		mapWindowResources(wIds)
+
+		var wm = make(WindowMap, len(wIds))
+		for _, wId := range wIds {
+			wm[fmt.Sprintf("/window/%d", wId)] = Window(wId)
+		}
+		windows.Store(wm)
+
 		eventConnection.WaitforStackEvent()
 	}
 }
 
-func mapWindowResources(wIds []uint32) {
-	// Reverse to get top window first
-	for i, j := 0, len(wIds)-1; i < j; i, j = i+1, j-1 {
-		wIds[i], wIds[j] = wIds[j], wIds[i]
-	}
-	var resources = make(map[string]interface{}, 2*len(wIds)+2)
-	var windows = make([]*Window, 0, len(wIds))
-	for i, wId := range wIds {
-		var window = MakeWindow(wId)
-		window.stackOrder = -i
-		resources[window.Self] = window
-		windows = append(windows, window)
-		resources[ScreenshotSelf(wId)] = ScreenShot(wId)
-	}
-	resources["/windows"] = windows
-	resource.MapCollection(&resources, "windows")
+var windows atomic.Value
+
+func init() {
+	windows.Store(make(WindowMap))
 }

@@ -6,7 +6,11 @@
 //
 package dbuscall
 
-import "github.com/godbus/dbus"
+import (
+	"fmt"
+
+	"github.com/godbus/dbus"
+)
 
 const INTROSPECT_INTERFACE = "org.freedesktop.DBus.Introspectable"
 const PROPERTIES_INTERFACE = "org.freedesktop.DBus.Properties"
@@ -24,5 +28,13 @@ func GetAllProps(conn *dbus.Conn, service string, dbusPath dbus.ObjectPath, dbus
 		return map[string]dbus.Variant{}
 	} else {
 		return call.Body[0].(map[string]dbus.Variant)
+	}
+}
+
+func Introspect(conn *dbus.Conn, service string, dbusPath dbus.ObjectPath) string {
+	if call := conn.Object(service, dbusPath).Call(INTROSPECT_INTERFACE+".Introspect", dbus.Flags(0)); call.Err != nil {
+		return fmt.Sprintln(call.Err)
+	} else {
+		return call.Body[0].(string)
 	}
 }

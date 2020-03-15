@@ -14,14 +14,12 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/surlykke/RefudeServices/lib/requests"
-	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib/respond"
+
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
 type DesktopApplication struct {
-	resource.Links
-	resource.Actions
 	Type            string
 	Version         string `json:",omitempty"`
 	Name            string
@@ -48,35 +46,27 @@ type DesktopApplication struct {
 	Mimetypes       []string
 }
 
+func (d *DesktopApplication) ToStandardFormat() *respond.StandardFormat {
+	return &respond.StandardFormat{
+		Self:     appSelf(d.Id),
+		OnPost:   "Launch",
+		Type:     "application",
+		Title:    d.Name,
+		Comment:  d.Comment,
+		IconName: d.IconName,
+		Data:     d,
+	}
+
+}
+
 type DesktopAction struct {
 	Name     string
 	Exec     string
 	IconName string
 }
 
-func (da *DesktopApplication) POST(w http.ResponseWriter, r *http.Request) {
-	var actionName = requests.GetSingleQueryParameter(r, "action", "")
-	var args = r.URL.Query()["arg"]
-	var exec string
-	if actionName == "" {
-		exec = da.Exec
-	} else if action, ok := da.DesktopActions[actionName]; !ok {
-		w.WriteHeader(http.StatusUnprocessableEntity)
-	} else {
-		exec = action.Exec
-	}
-
-	var onlySingleArg = !(strings.Contains(exec, "%F") || strings.Contains(exec, "%U"))
-	if onlySingleArg && len(args) > 1 {
-		w.WriteHeader(http.StatusUnprocessableEntity)
-	} else {
-		launchWithArgs(da.Exec, args, da.Terminal)
-		w.WriteHeader(http.StatusAccepted)
-	}
-}
-
-func launch(exec string, inTerminal bool) {
-	launchWithArgs(exec, []string{}, inTerminal)
+func (d *DesktopApplication) launch() {
+	launchWithArgs(d.Exec, []string{}, d.Terminal)
 }
 
 func launchWithArgs(exec string, args []string, inTerminal bool) {
@@ -114,6 +104,20 @@ func appSelf(appId string) string {
 		log.Println("Weird application id:", appId)
 		return ""
 	} else {
-		return fmt.Sprintf("/application/%s", appId[:len(appId)-8])
+		return "/application/" + appId[:len(appId)-8]
 	}
 }
+
+func (d *DesktopApplication) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case "GET":
+		respond.AsJson(w, d.ToStandardFormat())
+	case "POST":
+		d.launch()
+		respond.Accepted(w)
+	default:
+		respond.NotAllowed(w)
+	}
+}
+
+type ApplicationMap map[string]*DesktopApplication

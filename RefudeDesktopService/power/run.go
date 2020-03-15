@@ -8,42 +8,78 @@ package power
 
 import (
 	"log"
+	"net/http"
+	"sync"
 
-	dbuscall "github.com/surlykke/RefudeServices/lib/dbusutils"
-	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib/searchutils"
+
+	"github.com/godbus/dbus"
+	"github.com/surlykke/RefudeServices/lib/respond"
 )
 
-var devices = make(map[string]*Device)
-
-func Run() {
-	var session = buildSessionResource()
-	resource.MapSingle(session.Self, session)
-
-	var signals = subscribeToDeviceUpdates()
-
-	for _, device := range getDevices() {
-		devices[device.Self] = device
-	}
-	updateDeviceList()
-
-	for signal := range signals {
-		if signal.Name == "org.freedesktop.DBus.Properties.PropertiesChanged" {
-			var path = deviceSelf(signal.Path)
-			if device, ok := devices[path]; ok {
-				updateDevice(device, dbuscall.GetAllProps(dbusConn, UPowService, signal.Path, UPowerDeviceInterface))
-				updateDeviceList()
-			} else {
-				log.Println("Warn: Update on unknown device: ", signal.Path)
-			}
+func ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if device := getDevice(r.URL.Path); device != nil {
+		if r.Method == "GET" {
+			respond.AsJson(w, device.ToStandardFormat())
+		} else {
+			respond.NotAllowed(w)
 		}
 	}
 }
 
-func updateDeviceList() {
-	var collection = make(map[string]interface{})
+func SearchDevices(collector *searchutils.Collector) {
+	deviceLock.Lock()
+	defer deviceLock.Unlock()
+
 	for _, device := range devices {
-		collection[device.Self] = &(*device)
+		collector.Collect(device.ToStandardFormat())
 	}
-	collection["/devices"] = resource.ExtractResourceList(collection)
-	resource.MapCollection(&collection, "devices")
+
+}
+
+func AllPaths() []string {
+	deviceLock.Lock()
+	defer deviceLock.Unlock()
+	var paths = make([]string, 0, len(devices))
+	for path, _ := range devices {
+		paths = append(paths, path)
+	}
+	return paths
+}
+
+func Run() {
+	var knownPaths = map[dbus.ObjectPath]bool{DisplayDevicePath: true}
+	var signals = subscribeToDeviceUpdates()
+
+	setDevice(retrieveDevice(DisplayDevicePath))
+	for _, dbusPath := range retrieveDevicePaths() {
+		setDevice(retrieveDevice(dbusPath))
+		knownPaths[dbusPath] = true
+	}
+
+	for signal := range signals {
+		if signal.Name == "org.freedesktop.DBus.Properties.PropertiesChanged" {
+			if knownPaths[signal.Path] {
+			}
+			setDevice(retrieveDevice(signal.Path))
+		} else {
+			log.Println("Warn: Update on unknown device: ", signal.Path)
+		}
+	}
+
+}
+
+var devices = make(map[string]*Device)
+var deviceLock sync.Mutex
+
+func getDevice(path string) *Device {
+	deviceLock.Lock()
+	defer deviceLock.Unlock()
+	return devices[path]
+}
+
+func setDevice(device *Device) {
+	deviceLock.Lock()
+	defer deviceLock.Unlock()
+	devices[deviceSelf(device)] = device
 }

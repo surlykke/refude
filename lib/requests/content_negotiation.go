@@ -37,7 +37,7 @@ import (
 // Also the spec allows escaping a lot of different characters inside a string with '\' but noting that the sender 'SHOULD NOT' use escaping
 // for other characters than '"' and '\'. We tighten that to 'MUST NOT'. (Again, probably a violation of specs..)
 //
-// We do _not_ handle suffixes, so if, eg., application/myjsonformat+json is offered and application/json is acceptet, that will not match. You'll
+// We do _not_ handle suffixes, so if, eg., application/myjsonformat+json is offered and application/json is accepted, that will not match. You'll
 // have to offer both application/myjsonformat+json and application/json
 
 const tChar = "[a-zA-Z0-9!#$%&'*+\\-.^_`|~']"
