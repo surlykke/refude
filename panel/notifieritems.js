@@ -5,7 +5,7 @@
 // Please refer to the GPL2 file for a copy of the license.
 //
 import React from 'react'
-import { monitorUrl, getUrl, postUrl, iconUrl } from "../common/monitor";
+import { getUrl, postUrl, iconUrl, monitorSSE } from "../common/monitor";
 import { publish } from "../common/utils";
 
 export class NotifierItem extends React.Component {
@@ -21,11 +21,13 @@ export class NotifierItem extends React.Component {
 
     render = () => {
         let showMenu = (event) => {
-            console.log("Into showMenu, this.state.item.Menu:", this.state.item.Menu)
+            console.log("Into showMenu, this.state.item.Data.Menu:", this.state.item.Data.Menu)
             event.preventDefault()
-            let buildMenu = jsonMenu => {
+            let menuSelf
+            let buildMenu = entries => {
+                console.log("Into buildMenu, entries:", entries)
                 let menu = new nw.Menu()
-                jsonMenu.Entries.forEach(jsonMenuItem => {
+                entries.forEach(jsonMenuItem => {
                     let menuItem = new nw.MenuItem({
                         type: jsonMenuItem.Type === "separator" ? "separator" :
                             jsonMenuItem.ToggleType === "checkmark" ? "checkbox" :
@@ -34,12 +36,12 @@ export class NotifierItem extends React.Component {
                         label: (jsonMenuItem.Label || "").replace(/_([^_])/g, "$1"),
                         checked: jsonMenuItem.ToggleState === 1
                     })
-                    if (jsonMenuItem.SubMenus) {
-                        menuItem.submenu = buildMenu(jsonMenuItem.SubMenus)
+                    if (jsonMenuItem.SubEntries) {
+                        menuItem.submenu = buildMenu(jsonMenuItem.SubEntries)
                     } else if (menuItem.type === "normal" || menuItem.type === "checkbox") {
                         menuItem.click = () => {
-                            console.log("Post:", jsonMenu._self + '?id=' + jsonMenuItem.Id)
-                            postUrl(jsonMenu._self + '?id=' + jsonMenuItem.Id, resp => {
+                            console.log("Post:", menuSelf + '?id=' + jsonMenuItem.Id)
+                            postUrl(menuSelf + '?id=' + jsonMenuItem.Id, resp => {
                                 console.log("resp:", resp)
                             })
                         }
@@ -50,9 +52,11 @@ export class NotifierItem extends React.Component {
                 return menu
             }
 
-            if (this.state.item.Menu) {
-                getUrl(this.state.item.Menu, resp => {
-                    let m = buildMenu(resp.data)
+            if (this.state.item.Data.Menu) {
+                getUrl(this.state.item.Data.Menu, resp => {
+                    let menu = resp.data 
+                    menuSelf = menu.Self
+                    let m = buildMenu(menu.Data)
                     m.popup(event.clientX, event.clientY)
                 })
             }
@@ -71,22 +75,27 @@ export class NotifierItem extends React.Component {
 
             let { x, y } = getXY(event)
             if (event.button === 0) {
-                let url = this.state.item._self + '?action=left&x=' + x + '&y=' + y;
+                let url = this.state.item.Self + '?action=Activate&x=' + x + '&y=' + y;
                 console.log("POST against", url);
                 postUrl(url);
             } else if (event.button === 1) {
-                console.log("POST against", this.state.item._self + '?action=middle&x=' + x + '&y=' + y)
-                postUrl(this.state.item._self + '?action=middle&x=' + x + '&y=' + y);
+                console.log("POST against", this.state.item.Self + '?action=SecondaryActivate&x=' + x + '&y=' + y)
+                postUrl(this.state.item.Self + '?action=middle&x=' + x + '&y=' + y);
             }
         }
 
         let onRightClick = (event) => {
             event.persist()
-            let { x, y } = getXY(event)
-            showMenu(event)
             event.preventDefault()
+            console.log("onRightClick on", this.state.item)
+            if (this.state.item.Data.Menu) {
+                showMenu(event)
+            } else {
+                let { x, y } = getXY(event)
+                console.log("POST against", this.state.item.Self + '?action=SecondaryActivate&x=' + x + '&y=' + y)
+                postUrl(this.state.item.Self + '?action=ContextMenu&x=' + x + '&y=' + y);
+            }
         }
-
 
         return this.state.item ?
             <img src={iconUrl(this.state.item.IconName)} alt="" height="14px" width="14px"
@@ -102,19 +111,21 @@ export class NotifierItems extends React.Component {
         this.state = { items: [] };
         this.style = Object.assign({}, props.style);
         this.style.margin = "0px";
+        monitorSSE("status_item", this.getItems, this.getItems)
     }
-
-    componentDidMount = () => {
-        monitorUrl("/items", resp => this.setState({ items: resp.data }), err => this.setState({ items: [] }));
-    };
 
     componentDidUpdate = () => {
         publish("componentUpdated");
     };
 
+    getItems = () => {
+        getUrl("/search?type=status_item", resp => this.setState({ items: resp.data}));
+    };
+
+
     render = () => {
         return <div style={this.style}>
-            {this.state.items.map(item => (<NotifierItem key={item._self} item={item} />))}
+            {this.state.items.map(item => (<NotifierItem key={item.Self} item={item} />))}
         </div>
     }
 

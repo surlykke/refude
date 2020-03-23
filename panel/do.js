@@ -6,12 +6,10 @@
 
 
 import React from 'react'
-import { WIN, publish, subscribe, filterAndSort } from "../common/utils";
-import { ItemList } from "../common/itemlist"
-import { Item } from "../common/item"
+import { WIN, publish } from "../common/utils";
 import { Indicator } from "./indicator";
 import { T } from "../common/translate";
-import { monitorUrl, getUrl, postUrl, iconUrl } from '../common/monitor';
+import { getUrl, postUrl, monitorSSE} from '../common/monitor';
 
 const http = require('http');
 
@@ -39,13 +37,25 @@ let windowIconStyle = w => {
 class Do extends React.Component {
     constructor(props) {
         super(props);
-        [this.model, this.controller] = makeModelAndController();
-        ["notifications", "windows", "applications", "session"].forEach(key => this.controller.itemMap.set(key, []))
-        monitorNotifications(this.controller);
-
-        this.state = {open: false};
+        this.state = {resources: [], open: false, term: ""}
         this.listenForUpDown();
+        monitorSSE("events", () => this.state.open || this.updateResourceList(), this.updateResourceList)
         this.handleBlurEvents();
+    };
+
+    componentDidUpdate = () => {
+        // Scroll selected item into view
+        if (this.state.selected) {
+            let selectedDiv = document.getElementById(this.state.selected);
+            if (selectedDiv) {
+                let listDiv = document.getElementById("itemListDiv");
+                let { top: listTop, bottom: listBottom } = listDiv.getBoundingClientRect();
+                let { top: selectedTop, bottom: selectedBottom } = selectedDiv.getBoundingClientRect();
+                if (selectedTop < listTop) listDiv.scrollTop -= (listTop - selectedTop + 25)
+                else if (selectedBottom > listBottom) listDiv.scrollTop += (selectedBottom - listBottom + 10)
+            }
+        }
+        publish("componentUpdated");
     };
 
     focusInput = () => document.getElementById("input") && document.getElementById("input").focus();
@@ -53,28 +63,49 @@ class Do extends React.Component {
     listenForUpDown = () => {
         let that = this;
         http.createServer(function (req, res) {
-            that.open();
-            if (req.url === "/up") {
-                that.controller.move(false);
-            } else {
-                that.controller.move(true);
-            }
+            that.open(() => {that.move(req.url !== "/up")});
             res.end('')
         }).listen("/run/user/1000/org.refude.panel.do");
     };
 
     handleBlurEvents = () => WIN.on('blur', this.close);
 
+    updateResourceList = () => {
+        console.log("updateResourceList")
+        if (this.state.open) {
+            let url = `/search/desktop?term=${this.state.term}` 
+            console.log("Getting", url)
+            getUrl(url, resp => {
+                this.setState({resources: resp.data}, this.ensureSelection)
+            })
+        } else {
+            getUrl("/search/events", resp => {
+                this.setState({resources: resp.data, selected: undefined})
+            }) 
+        }
+    }
+
+    ensureSelection = () => {
+        if (!(this.state.selected && this.state.resources.find(r => r.Self === this.state.selected))) {
+            let firstRes = this.state.resources[0]
+            this.setState({selected: firstRes && firstRes.Self})
+        }
+    }
+
+    setTerm = (term) => {
+        this.setState({term: term.toLowerCase()}, this.updateResourceList)
+    }
 
     keyDown = (event) => {
+        console.log("keyDown: ", event)
         let { key, ctrlKey, shiftKey, altKey, metaKey } = event;
 
-        if (key === "Tab" && !ctrlKey && shiftKey && !altKey && !metaKey) this.controller.move(false);
-        else if (key === "Tab" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.controller.move(true);
-        else if (key === "ArrowUp" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.controller.move(false);
-        else if (key === "ArrowDown" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.controller.move(true);
+        if (key === "Tab" && !ctrlKey && shiftKey && !altKey && !metaKey) this.move(false);
+        else if (key === "Tab" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.move(true);
+        else if (key === "ArrowUp" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.move(false);
+        else if (key === "ArrowDown" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.move(true);
         else if (key === "Enter" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.activate();
-        else if (key === " " && !ctrlKey && !shiftKey && !altKey && !metaKey) this.activate(); 
+        else if (key === " " && !ctrlKey && !shiftKey && !altKey && !metaKey) this.activate();
         else if (key === "Escape" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.close();
         else {
             return;
@@ -82,33 +113,40 @@ class Do extends React.Component {
         event.preventDefault();
     };
 
-    activate = (item) => {
-        if (!item) {
-            item = this.model.items[this.model.selectedIndex()];
-        }
-        if (item) {
-            postUrl(item.url, response => { this.close() });
+    move = (down) => {
+        if (!this.state.open) return;
+        console.log("move", down, "selected just now:", this.state.selected)
+        let index = this.state.resources.findIndex(r => r.Self === this.state.selected)
+        console.log("index:", index)
+        if (index > -1) {
+            index = (index + this.state.resources.length + (down ? 1 : -1)) % this.state.resources.length;
+            console.log("Set selected:", this.state.resources[index].Self)
+            this.setState({selected: this.state.resources[index].Self}) 
+            //notifyListeners();
         }
     }
 
-    open = () => {
-        console.log("open, this.state.open:", this.state.open);
-        if (! this.state.open) {
-            this.setState({open: true});
-            fetchResources(this.controller);
+    select = (url) => {
+        this.setState({selected: url})
+    }
+
+    activate = (url) => {
+        url = url || this.state.selected 
+        if (url) {
+            postUrl(url, response => { this.close() });
         }
+    }
+
+    open = (callback) => {
+        console.log("open, this.state.open:", this.state.open);
+        this.setState({open: true, term: ""}, this.updateResourceList)
+        callback && callback()
         WIN.focus()
     };
 
     close = () => {
         console.log("close")
-        let input = document.getElementById("input");
-        if (input) {
-            input.value = "";
-            this.controller.setTerm("");
-        }
-        this.setState({open: undefined});
-        this.controller.clear(["windows", "applications", "session"])
+        this.setState({open: false, term: ""}, this.updateResourceList);
     };
 
     render = () => {
@@ -121,6 +159,37 @@ class Do extends React.Component {
             paddingTop: this.state.open ? "0.3em" : "0px",
             paddingLeft: "0.3em",
         };
+
+        let innerStyle = {
+            overflowY: "scroll"
+        };
+
+        let headingStyle = {
+            fontSize: "0.9em",
+            color: "gray",
+            fontStyle: "italic",
+            marginTop: "5px",
+            marginBottom: "3px",
+        };
+
+        let itemStyle = (self) => {
+            let style = {
+                marginRight: "5px",
+                padding: "4px",
+                verticalAlign: "top",
+                overflow: "hidden",
+                height: "30px",
+            };
+
+            if (this.state.selected === self) {
+                    Object.assign(style, {
+                        border: "solid black 2px",
+                        borderRadius: "5px",
+                        boxShadow: "1px 1px 1px #888888",
+                })
+            }
+            return style
+        }
 
         let searchBoxStyle = {
             boxSizing: "border-box",
@@ -137,146 +206,89 @@ class Do extends React.Component {
             outlineStyle: "none",
         };
 
-        return [ 
-            <div onKeyDown={this.keyDown} style={outerStyle}>
-                {this.state.open &&
-                  <div style={searchBoxStyle}>
-                    <input id="input" 
-                           style={inputStyle} 
-                           type="search" 
-                           onChange={e => this.controller.setTerm(e.target.value.toLowerCase())} 
-                           autoComplete="off"
-                           autoFocus/>
-                  </div>}
-                <ItemList key="itemlist" model={this.model} onClick={this.controller.select} onDoubleClick={this.activate} />
-            </div>,
-            <Indicator key="indicator" model={this.model}/>
-
-        ];
-    }
-}
-
-    let fetchResources = (controller) => {
-        getUrl("/windows", resp => {
-            controller.itemMap.set("windows", resp.data
-                .filter(w => w.States.indexOf("_NET_WM_STATE_ABOVE") < 0)
-                .map(w => ({
-                    group: T("Open windows"),
-                    url: w._self,
-                    name: w.Name,
-                    comment: "",
-                    image: iconUrl(w.IconName),
-                    iconStyle: windowIconStyle(w),
-                    indicator: {
-                        X: w.X, Y: w.Y, W: w.W, H: w.H,
-                        ImageUrl: `http://localhost:7938${w._self}/screenshot?downscale=3`
-                    }, 
-                    matchEmpty: true
-                }))
-            )
-            controller.update();
-        });
-
-        getUrl("/applications", resp => {
-            controller.itemMap.set("applications", resp.data
-                .filter(a => !a.NoDisplay)
-                .map(a => ({
-                    group: T("Applications"),
-                    url: a._self,
-                    name: a.Name,
-                    comment: a.Comment || '',
-                    image: iconUrl(a.IconName),
-                    matchFluffy: true
-                })));
-            controller.update();
-        });
-
-        getUrl("/session", resp => {
-            controller.itemMap.set("session", Object.keys(resp.data._post)
-                .map(key => ({
-                    group: T("Leave"),
-                    url: resp.data._self + "?action=" + key,
-                    name: key,
-                    comment: resp.data._post[key].Description,
-                    image: iconUrl(resp.data._post[key].IconName),
-                    matchFluffy: true
-                })));
-            controller.update();
-        });
-    }
-
-let monitorNotifications = (controller) => {
-    monitorUrl("/notifications", resp => {
-        controller.itemMap.set("notifications", resp.data.map(n => ({
-            group: T("Notifications"),
-            url: n._self,
-            name: n.Subject,
-            comment: n.Body,
-            image: n.Image ? "http://localhost:7938" + n.Image : iconUrl(n.IconName),
-            matchEmpty: true
-        })))
-        controller.update();
-    })
-}
+        let nameStyle = {
+            overflow: "hidden",
+            whiteSpace: "nowrap",
+            marginRight: "6px",
+        };
+    
+        let commentStyle = {
+            fontSize: "0.8em",
+        };
 
 
-let makeModelAndController = () => {
-    let term = "";
-
-    let model = {
-        updateListeners: [],
-        selectedItem: null, 
-        items: [],
-        selectedIndex: () => model.selectedItem ? model.items.findIndex(i => i.url === model.selectedItem.url) : -1
-    }
- 
-    let notifyListeners = () => {
-        model.updateListeners.forEach(l => l());
-    }    
-
-    let controller = {
-        itemMap: new Map(),
-        setTerm: (t) => {
-            term = t.toLowerCase();
-            controller.update()
-        },
-        move: (down) => {
-            let index = model.selectedIndex()
-            if (index > -1) {
-                let numItems = model.items.length;
-                index = (index + numItems + (down ? 1 : -1)) % numItems;
-                model.selectedItem = model.items[index];
-                notifyListeners();
+        let iconStyle = (res) => {
+            console.log("iconStyle, Type:", res.Type, "Data.States:", res.Data.States)
+            let style = {
+                float: "left",
+                marginRight: "6px"
+            };
+           
+            if (res.Type === "window") {
+                Object.assign(style, {
+                    WebkitFilter: "drop-shadow(5px 5px 3px grey)",
+                    overflow: "visible"
+                });
+                
+                if (res.Data.States && res.Data.States.includes("_NET_WM_STATE_HIDDEN")) {
+                    Object.assign(style, {
+                        marginLeft: "10px",
+                        marginTop: "10px",
+                        width: "14px",
+                        height: "14px",
+                        opacity: "0.7"
+                    })
+                }
             }
-        },
-        select: (item) => {
-            if (model.items.findIndex(i => i.url === item.url) > - 1) {
-                model.selectedItem = item;
-                notifyListeners();
-            } 
-        },
-        update: () => { 
-            model.items = [];
-            controller.itemMap.forEach((itemList, k) => {
-                model.items.push(...filterAndSort(itemList, term));
-            });
-            let index = model.selectedIndex();
-            if (index > -1) {
-                model.selectedItem = model.items[index]
-            } else {
-                model.selectedItem = model.items[0]
-            }
-        
-            notifyListeners();
-        },
-        clear: (keys) => {
-           keys.forEach(k => controller.itemMap.set(k, []));
-           controller.update();
+
+            return style
         }
 
-    }
+        let iconUrl = (res) => {
+            if (res.IconName) {
+                return `http://localhost:7938/icon?name=${res.IconName}&theme=oxygen`
+            } else {
+                return ""
+            }
+        }
 
-    return [model, controller];
+        let prevType 
+
+        let items = []
+        this.state.resources.forEach( r => {
+            if (prevType !== r.Type) {
+                items.push(<div style={headingStyle}>{r.Type}</div>)
+            }
+            items.push(
+                <div id={r.Self} style={itemStyle(r.Self)} onClick={() => this.select(r.Self)} onDoubleClick={() => this.activate(r.Self)}>
+                    <img width="24px" height="24px" style={iconStyle(r)} src={iconUrl(r)} alt=""/>
+                    <div style={nameStyle}>{r.Title}</div>
+                    <div style={commentStyle}>{r.Comment}</div>
+                </div>
+            )
+            prevType = r.Type
+        })
+
+        return [
+            <div onKeyDown={this.keyDown} style={outerStyle}>
+                {this.state.open &&
+                    <div style={searchBoxStyle}>
+                        <input id="input"
+                            style={inputStyle}
+                            type="search"
+                            onChange={e => this.setTerm(e.target.value)}
+                            value={this.state.term}
+                            autoComplete="off"
+                            autoFocus />
+                    </div>}
+                <div id="itemListDiv" style={innerStyle}>
+                    {items}
+                </div>
+            </div>,
+            <div/>
+            //<Indicator key="indicator" model={this.model} />
+        ];
+    }
 }
 
 export { Do }

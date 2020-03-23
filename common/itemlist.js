@@ -6,8 +6,7 @@
 //
 import React from 'react';
 import { Item } from './item'
-import { publish, subscribe } from "./utils";
-import { timingSafeEqual } from 'crypto';
+import { publish, filterAndSort  } from "./utils";
 
 
 export class ItemList extends React.Component {
@@ -26,7 +25,6 @@ export class ItemList extends React.Component {
                 selectedItem: this.props.model.selectedItem
             })
         });
-        console.log(">>>>>>>>>>>>>>>>>> num listeners now:", this.props.model.updateListeners.length)
     }
 
     componentDidUpdate = () => {
@@ -78,4 +76,63 @@ export class ItemList extends React.Component {
             </div>
         )
     }
+}
+
+export let makeModelAndController = () => {
+    let term = "";
+
+    let model = {
+        updateListeners: [],
+        selectedItem: null, 
+        items: [],
+        selectedIndex: () => model.selectedItem ? model.items.findIndex(i => i.url === model.selectedItem.url) : -1
+    }
+ 
+    let notifyListeners = () => {
+        model.updateListeners.forEach(l => l());
+    }    
+
+    let controller = {
+        itemMap: new Map(),
+        setTerm: (t) => {
+            term = t.toLowerCase();
+            controller.update()
+        },
+        move: (down) => {
+            let index = model.selectedIndex()
+            if (index > -1) {
+                let numItems = model.items.length;
+                index = (index + numItems + (down ? 1 : -1)) % numItems;
+                model.selectedItem = model.items[index];
+                notifyListeners();
+            }
+        },
+        select: (item) => {
+            if (model.items.findIndex(i => i.url === item.url) > - 1) {
+                model.selectedItem = item;
+                notifyListeners();
+            } 
+        },
+        update: () => { 
+            model.items = [];
+            controller.itemMap.forEach((itemList, k) => {
+                model.items.push(...filterAndSort(itemList, term));
+            });
+            let index = model.selectedIndex();
+            if (index > -1) {
+                model.selectedItem = model.items[index]
+            } else {
+                model.selectedItem = model.items[0]
+            }
+        
+            notifyListeners();
+        },
+        clear: (keys) => {
+           keys.forEach(k => controller.itemMap.set(k, []));
+           controller.update();
+        }
+
+    }
+
+    return [model, controller];
 }

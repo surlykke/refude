@@ -6,9 +6,9 @@
 //
 import React from 'react';
 import { T } from "../common/translate";
-import { ItemList } from "../common/itemlist"
+import { ItemList, makeModelAndController } from "../common/itemlist"
 import { applicationRank, subscribe, devtools } from "../common/utils";
-import {getUrl, postUrl, patchUrl, iconUrl} from "../common/monitor"
+import { getUrl, postUrl, patchUrl, iconUrl } from "../common/monitor"
 
 let gui = window.require('nw.gui');
 let filePath = gui.App.argv[0];
@@ -21,22 +21,12 @@ const desktopapp = "application/vnd.org.refude.desktopapplication+json";
 export default class AppChooser extends React.Component {
     constructor(props) {
         super(props);
-        //devtools();
+        devtools();
+        [this.model, this.controller] = makeModelAndController();
         this.mimetypeIdList = [mimetypeId];
         this.mimetypeComment = {}
         this.appMap = {};
-        this.state = { items: [] };
-        this.term = ""
         this.fetchMimetypes(0);
-    }
-
-    componentDidMount = () => {
-        subscribe("dismiss", () => gui.App.quit());
-        subscribe("termChanged", (term) => {
-            this.term = term.toLowerCase();
-            this.filterAndSort();
-        });
-        subscribe("itemActivated", (item) => this.setState({ selected: item.app }));
     }
 
     fetchMimetypes = (pos) => {
@@ -51,9 +41,6 @@ export default class AppChooser extends React.Component {
                 this.fetchMimetypes(pos + 1)
             });
         } else {
-            this.mimetypeIdList.push('other');
-            console.log("mimetypeIdList:", this.mimetypeIdList);
-            console.log("mimetypeComment:", this.mimetypeComment);
             this.fetchApps()
         }
     };
@@ -61,39 +48,60 @@ export default class AppChooser extends React.Component {
     fetchApps = () => {
         let appTakesArg = a => a.Exec && (a.Exec.toLowerCase().indexOf("%f") > -1 || a.Exec.toLowerCase().indexOf("%u") > -1)
 
+        this.mimetypeIdList.forEach(mimetypeId => this.controller.itemMap.set(mimetypeId, []));
+        this.controller.itemMap.set("other", [])
+        
         getUrl("/applications", resp => {
-            let apps = resp.data.filter(a => appTakesArg(a))
-            let foundApps = [];
-            for (let mimetypeId of this.mimetypeIdList) {
-                this.appMap[mimetypeId] = apps.filter(app => !foundApps.includes(app) && (mimetypeId === 'other' || app.Mimetypes.includes(mimetypeId)))
-                foundApps.push(...this.appMap[mimetypeId]);
+            let place = item => {
+                for (let mimetypeId of this.mimetypeIdList) {
+                    if (item.app.Mimetypes.includes(mimetypeId)) {
+                        this.controller.itemMap.get(mimetypeId).push(item);
+                        return
+                    }
+                }
+                this.controller.itemMap.get("other").push(item);
             }
-            this.filterAndSort();
-        });
-    };
 
-
-    filterAndSort = () => {
-        console.log("Sorting:", this.term);
-        let items = [];
-        for (let mimetypeId of this.mimetypeIdList) {
-            this.appMap[mimetypeId].forEach(app => {
-                app.__rank = applicationRank(app, this.term);
-            });
-            this.appMap[mimetypeId].filter(app => app.__rank < 1).sort((a1, a2) => a1.__rank - a2.__rank).forEach(app => {
-                items.push({
-                    group: mimetypeId === 'other' ? T("Other applications") : T("Applications that handle " + this.mimetypeComment[mimetypeId]),
+            resp.data.filter(a => appTakesArg(a)).forEach(app => {
+                let item = {
                     url: app._self,
                     name: app.Name,
                     comment: app.Comment || '',
                     image: iconUrl(app.IconName),
-                    app: app
-                })
-            })
-        }
-        console.log("Set items:", items);
-        this.setState({ items: items });
+                    app: app,
+                    matchEmpty: true
+                }
+
+                place(item);
+            });
+            this.controller.update();
+        });
     };
+
+    keyDown = (event) => {
+        let { key, ctrlKey, shiftKey, altKey, metaKey } = event;
+
+        if (key === "Tab" && !ctrlKey && shiftKey && !altKey && !metaKey) this.controller.move(false);
+        else if (key === "Tab" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.controller.move(true);
+        else if (key === "ArrowUp" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.controller.move(false);
+        else if (key === "ArrowDown" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.controller.move(true);
+        else if (key === "Enter" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.activate();
+        else if (key === " " && !ctrlKey && !shiftKey && !altKey && !metaKey) this.activate();
+        else if (key === "Escape" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.close();
+        else {
+            return;
+        }
+        event.preventDefault();
+    };
+
+    activate = (item) => {
+        if (!item) {
+            item = this.model.items[this.model.selectedIndex()];
+        }
+        if (item) {
+            postUrl(item.url, response => { this.close() });
+        }
+    }
 
     launch = (app, always) => {
         console.log("Launching", app.Name)
@@ -104,7 +112,7 @@ export default class AppChooser extends React.Component {
 
         postUrl(app._self + "?arg=" + encodeURIComponent(filePath), resp => {
             gui.App.quit();
-        });    
+        });
     };
 
     cancel = () => {
@@ -118,78 +126,50 @@ export default class AppChooser extends React.Component {
     };
 
     render = () => {
-        let style = {
-            display: "flex",
-            flexFlow: "column",
-            height: "100%"
-        };
-
-        let itemListStyle = { 
-            maxHeight: "92%"
-        };
 
         let headingStyle = {
             padding: "0.3em"
         };
 
-
-        let buttonBarStyle = {
-            position: "absolute",
-            bottom: "1em",
-            right: "1em",
+        let outerStyle = {
+            maxWidth: "300px",
+            maxHeight: "300px",
+            display: "flex",
+            flexFlow: "column",
+            paddingLeft: "0.3em",
         };
 
-        let buttonStyle = {
-            backgroundColor: "white",
-            borderRadius: "5px",
-            border: "black solid 2px",
-            marginLeft: "0.8em",
-            height: "2em",
-            boxShadow: "1px 1px 1px #888888",
+        let searchBoxStyle = {
+            boxSizing: "border-box",
+            paddingRight: "5px",
+            width: "calc(100% - 16px)",
+            marginTop: "4px",
+            marginBottom: "6px",
         };
 
-        let overlayStyle = {
-            position: "fixed",
-            top: "0px",
-            left: "0px",
+        let inputStyle = {
             width: "100%",
-            height: "100%",
-            zAxis: "10",
-            backgroundColor: "rgba(255, 255, 255, 0.7)",
-        };
-
-        let popupStyle = {
-            position: "absolute",
-            top: "3em",
-            left: "20%",
-            padding: "16px",
-            height: "8em",
-            width: "calc(60% - 36px)",
-            backgroundColor: "rgba(255, 255, 255, 1)",
+            height: "36px",
             borderRadius: "5px",
-            border: "solid black 2px"
+            outlineStyle: "none",
         };
 
-        let comment = this.mimetypeComment[mimetypeId];
-        let appName = this.state.selected ? this.state.selected.Name : "";
 
-        return <div style={style}>
-            {this.state.selected &&
-                <div style={overlayStyle} onKeyDown={this.props.dismiss}>
-                    <div style={popupStyle}>
-                        <span dangerouslySetInnerHTML={{ __html: T("Open files of type <b>%0</b> with <b>%1</b>?", comment, appName) }} />
-                        <div style={buttonBarStyle}>
-                            <button style={buttonStyle} onClick={() => this.launch(this.state.selected, false)} autoFocus>{T("Just once")}</button>
-                            <button style={buttonStyle} onClick={() => this.launch(this.state.selected, true)}>{T("Always")}</button>
-                            <button style={buttonStyle} onClick={this.cancel}>{T("Cancel")}</button>
-                        </div>
-                    </div>
-                </div>}
 
+        return <div onKeyDown={this.keyDown} style={outerStyle}>
             <div key="heading" style={headingStyle}>
                 <span dangerouslySetInnerHTML={{ __html: T("Open &nbsp;<b>%0</b>&nbsp;with:", fileName) }} />
             </div>
-            <ItemList key="itemlist" style={itemListStyle} items={this.state.items} disabled={this.state.selected} />
+            <div style={searchBoxStyle}>
+                <input id="input"
+                    style={inputStyle}
+                    type="search"
+                    onChange={e => this.controller.setTerm(e.target.value.toLowerCase())}
+                    autoComplete="off"
+                    autoFocus />
+            </div>
+            <ItemList key="itemlist" model={this.model} onClick={this.controller.select} onDoubleClick={this.activate} />
         </div>
+
     }
 }

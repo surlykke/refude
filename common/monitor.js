@@ -33,6 +33,33 @@ export let monitorUrl = (path, dataHandler, errorHandler) => {
     getIfNoneMatch()
 }
 
+
+export let monitorSSE = (eventType, onEvent, initial) => {
+    let helper = () => {
+        let url = eventType ? `http://localhost:7938/events?type=${eventType}` : "http://localhost:7938/events" 
+        console.log("Source connecting to ", url)
+
+        let evtSource = new EventSource(url)
+        
+		evtSource.onerror = event => {
+            console.log(".. error", event)
+			if (evtSource.readyState === 2) {
+				setTimeout(helper, 5000)
+			}
+		}
+
+		evtSource.onmessage = event =>  {
+            console.log("... event:", event, new Date())
+			onEvent(event)
+        }
+        
+        // Should do this via onopen, but for some reason onopen does not fire until first event is received.
+        initial && initial()
+	}
+
+    helper()
+}
+
 export let getUrl = (path, handler) => {
     Axios.get(`http://localhost:7938${path}`).then(resp => handler(resp)).catch(err => console.error(err))
 }

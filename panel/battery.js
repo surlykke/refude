@@ -13,7 +13,7 @@
  */
 import React from 'react'
 import { publish } from "../common/utils";
-import { monitorUrl } from '../common/monitor';
+import { monitorUrl, getUrl, monitorSSE } from '../common/monitor';
 
 /**
  * We represent charge by a circle segment (cf https://en.wikipedia.org/wiki/Circular_segment)
@@ -31,18 +31,17 @@ export class Battery extends React.Component {
         super(props);
         this.state = { pct: -1, state: "Unknown" };
         this.etag = undefined;
+        monitorSSE("power_device", this.getDeviceData, this.getDeviceData)
     }
 
-    componentDidMount = () => {
-        monitorUrl("/device/DisplayDevice", resp => {
+    getDeviceData = () => {
+        getUrl("/device/DisplayDevice", resp => {
             this.setState({
-                pct: resp.data.State === "Unknown" ? 0 : resp.data.Percentage,
-                state: resp.data.State
-            });
-        }, () => {
-            this.setState({ pct: 0, state: "Unknown" })
-        });
-    };
+                pct: resp.data.Data.State === "Unknown" ? 0 : resp.data.Data.Percentage,
+                state: resp.data.Data.State
+            })
+        })
+    }
 
     componentDidUpdate() {
         publish("componentUpdated");

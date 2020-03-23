@@ -48,7 +48,7 @@ export default class Panel extends React.Component {
         super(props)
         managePosition()
         manageZoom()
-        // devtools();
+        //devtools();
     }
 
     componentDidMount = () => {
@@ -82,4 +82,4 @@ export default class Panel extends React.Component {
     }
 }
 
-
+ 
