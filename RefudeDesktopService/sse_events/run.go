@@ -57,12 +57,9 @@ func write(conn net.Conn, msg string) bool {
  *
  */
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Serving")
 	if r.Method != "GET" {
 		respond.NotAllowed(w)
 	} else {
-		fmt.Println("Serving events request")
-
 		var watchedTypes = determineWatchedTypes(r.URL.Query()["type"])
 
 		var ctx = r.Context()
@@ -74,7 +71,6 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-cache")
 
 		w.(http.Flusher).Flush()
-		fmt.Println("Header sent")
 		fmt.Fprint(w, "\n")
 		w.(http.Flusher).Flush()
 		for {
@@ -83,7 +79,6 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				cancel <- subscription
 			case ev := <-subscription:
 				if ev == nil {
-					fmt.Println("Returnerer")
 					return
 				} else {
 					if watchedTypes[ev.Type] {

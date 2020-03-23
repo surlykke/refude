@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/surlykke/RefudeServices/lib/searchutils"
 
@@ -52,7 +51,6 @@ var searchers = map[string]func(*searchutils.Collector){
 }
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	var start = time.Now()
 	switch r.URL.Path {
 	case "/complete": // To be removed
 		fallthrough
@@ -67,8 +65,6 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	default:
 		respond.NotFound(w)
 	}
-	var duration = time.Now().Sub(start)
-	fmt.Println("search.ServeHTTP took:", duration)
 }
 
 func searchPaths(w http.ResponseWriter, r *http.Request) {
@@ -123,7 +119,7 @@ func search(w http.ResponseWriter, r *http.Request) {
 }
 
 func searchEvents(w http.ResponseWriter, r *http.Request) {
-	var collector = searchutils.MakeCollector("", 20)
+	var collector = searchutils.MakeCollector("", 20, false)
 	notifications.SearchNotifications(collector)
 	respond.AsJson(w, collector.Get())
 }
@@ -144,33 +140,15 @@ func searchDesktop(w http.ResponseWriter, r *http.Request) {
 		resourceTypes = []string{"notification", "window", "application", "session_action"}
 	}
 
-	var collector = searchutils.MakeCollector(term, 200)
+	var collector = searchutils.MakeCollector(term, 200, true)
 	var resources = make([]*respond.StandardFormat, 0, 1000)
 	for _, resourceType := range resourceTypes {
 		collector.Clear()
 		searchers[resourceType](collector)
-		if resourceType == "notification" {
-			for _, res := range collector.Get() {
-				resources = append(resources, res)
-			}
-		} else if resourceType == "window" {
-			for _, res := range collector.Get() {
-				var wi = res.Data.(windows.WindowData)
-				if !slice.Contains(wi.States, "_NET_WM_STATE_ABOVE") {
-					resources = append(resources, res)
-				}
-			}
-		} else if resourceType == "application" {
-			for _, res := range collector.Get() {
-				var da = res.Data.(*applications.DesktopApplication)
-				if !da.NoDisplay {
-					resources = append(resources, res)
-				}
-			}
+		if resourceType == "notification" || resourceType == "window" {
+			resources = append(resources, collector.Get()...)
 		} else {
-			for _, res := range collector.Get() {
-				resources = append(resources, res)
-			}
+			resources = append(resources, collector.SortByRankAndGet()...)
 		}
 	}
 
@@ -180,7 +158,7 @@ func searchDesktop(w http.ResponseWriter, r *http.Request) {
 // Caller ensures validity of resourceTypes
 func find(resourceTypes []string, term string) []*respond.StandardFormat {
 	var resources = make([]*respond.StandardFormat, 0, 1000)
-	var collector = searchutils.MakeCollector(strings.ToLower(term), 1000)
+	var collector = searchutils.MakeCollector(strings.ToLower(term), 1000, false)
 
 	for _, resourceType := range resourceTypes {
 		collector.Clear()

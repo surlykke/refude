@@ -48,13 +48,14 @@ type DesktopApplication struct {
 
 func (d *DesktopApplication) ToStandardFormat() *respond.StandardFormat {
 	return &respond.StandardFormat{
-		Self:     appSelf(d.Id),
-		OnPost:   "Launch",
-		Type:     "application",
-		Title:    d.Name,
-		Comment:  d.Comment,
-		IconName: d.IconName,
-		Data:     d,
+		Self:      appSelf(d.Id),
+		OnPost:    "Launch",
+		Type:      "application",
+		Title:     d.Name,
+		Comment:   d.Comment,
+		IconName:  d.IconName,
+		Data:      d,
+		NoDisplay: d.NoDisplay,
 	}
 
 }

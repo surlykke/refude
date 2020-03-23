@@ -10,9 +10,11 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"sync/atomic"
 
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/windows/xlib"
+	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
 )
@@ -27,7 +29,8 @@ const (
 )
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if wi, ok := windows.Load().(WindowMap)[r.URL.Path]; ok {
+	var path = r.URL.Path
+	if wi, ok := windows.Load().(WindowMap)[path]; ok {
 		if r.Method == "GET" {
 			respond.AsJson(w, wi.ToStandardFormat())
 		} else if r.Method == "POST" {
@@ -38,9 +41,30 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		} else {
 			respond.NotAllowed(w)
 		}
+	} else if wi, ok := getWindowForScreenShot(r.URL.Path); ok {
+		var downscaleS = requests.GetSingleQueryParameter(r, "downscale", "1")
+		var downscale = downscaleS[0] - '0'
+		if downscale < 1 || downscale > 5 {
+			respond.UnprocessableEntity(w, fmt.Errorf("downscale should be >= 1 and <= 5"))
+		} else if bytes, err := getScreenshot(uint32(wi), downscale); err == nil {
+			w.Header().Set("Content-Type", "image/png")
+			w.Write(bytes)
+		} else {
+			fmt.Println("Error getting screenshot:", err)
+			w.WriteHeader(http.StatusInternalServerError)
+		}
 	} else {
 		respond.NotFound(w)
 	}
+}
+
+func getWindowForScreenShot(path string) (Window, bool) {
+	var ok = false
+	var w Window
+	if strings.HasSuffix(path, "/screenshot") {
+		w, ok = windows.Load().(WindowMap)[path[0:len(path)-11]]
+	}
+	return w, ok
 }
 
 func SearchWindows(collector *searchutils.Collector) {

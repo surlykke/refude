@@ -52,6 +52,7 @@ type StandardFormat struct {
 	Comment      string      `json:",omitempty"`
 	IconName     string      `json:",omitempty"`
 	Data         interface{} `json:",omitempty"`
+	NoDisplay    bool        `json:"-"`
 }
 
 func AsJson(w http.ResponseWriter, data interface{}) {

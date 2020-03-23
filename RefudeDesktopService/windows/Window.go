@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/surlykke/RefudeServices/lib/slice"
+
 	"github.com/surlykke/RefudeServices/lib/respond"
 
 	"github.com/surlykke/RefudeServices/lib/image"
@@ -55,12 +57,13 @@ func (w Window) ToStandardFormat() *respond.StandardFormat {
 	defer dataMutex.Unlock()
 
 	return &respond.StandardFormat{
-		Self:     fmt.Sprintf("/window/%d", w),
-		Type:     "window",
-		Title:    wd.Name,
-		OnPost:   "Raise and focus",
-		IconName: wd.IconName,
-		Data:     wd,
+		Self:      fmt.Sprintf("/window/%d", w),
+		Type:      "window",
+		Title:     wd.Name,
+		OnPost:    "Raise and focus",
+		IconName:  wd.IconName,
+		Data:      wd,
+		NoDisplay: slice.Contains(wd.States, "_NET_WM_STATE_ABOVE"),
 	}
 }
 

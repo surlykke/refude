@@ -22,18 +22,24 @@ type Collector struct {
 	term            string
 	termAsRunes     []rune
 	rankedResources RankedList
+	omitNoDisplay   bool
 }
 
-func MakeCollector(term string, initialCapacity int) *Collector {
+func MakeCollector(term string, initialCapacity int, omitNoDisplay bool) *Collector {
 	var lowercaseTerm = strings.ToLower(term)
 	return &Collector{
 		term:            lowercaseTerm,
 		termAsRunes:     []rune(lowercaseTerm),
 		rankedResources: make(RankedList, 0, initialCapacity),
+		omitNoDisplay:   omitNoDisplay,
 	}
 }
 
 func (c *Collector) Collect(resource *respond.StandardFormat) {
+	if c.omitNoDisplay && resource.NoDisplay {
+		return
+	}
+
 	var rank = Rank(resource, c.term, c.termAsRunes)
 	if rank > -1 {
 		c.rankedResources = append(c.rankedResources, RankedResource{resource, rank})

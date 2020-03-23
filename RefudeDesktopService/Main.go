@@ -7,7 +7,6 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -31,7 +30,6 @@ import (
 type dummy struct{}
 
 func (dummy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	fmt.Println(r.Method, r.URL.Path, r.URL.Query())
 	var path = r.URL.Path
 	switch {
 	case match(r, "/window"):
