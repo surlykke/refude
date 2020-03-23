@@ -7,8 +7,11 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
+
+	"github.com/surlykke/RefudeServices/RefudeDesktopService/sse_events"
 
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/search"
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/session"
@@ -28,6 +31,7 @@ import (
 type dummy struct{}
 
 func (dummy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	fmt.Println(r.Method, r.URL.Path, r.URL.Query())
 	var path = r.URL.Path
 	switch {
 	case match(r, "/window"):
@@ -52,6 +56,8 @@ func (dummy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		search.ServeHTTP(w, r)
 	case path == "/complete":
 		search.ServeHTTP(w, r)
+	case path == "/events":
+		sse_events.ServeHTTP(w, r)
 	default:
 		respond.NotFound(w)
 	}
@@ -69,6 +75,7 @@ func main() {
 	go statusnotifications.Run()
 	go backlight.Run()
 	go icons.Run()
+	go sse_events.Run()
 
 	var handler = dummy{}
 	go lib.Serve("org.refude.desktop-service", handler)

@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/surlykke/RefudeServices/RefudeDesktopService/sse_events"
+
 	"github.com/surlykke/RefudeServices/lib/searchutils"
 
 	"github.com/godbus/dbus"
@@ -81,5 +83,7 @@ func getDevice(path string) *Device {
 func setDevice(device *Device) {
 	deviceLock.Lock()
 	defer deviceLock.Unlock()
-	devices[deviceSelf(device)] = device
+	var self = deviceSelf(device)
+	devices[self] = device
+	sse_events.Publish <- &sse_events.Event{Type: "power_device", Path: self}
 }

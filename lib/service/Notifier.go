@@ -6,6 +6,13 @@
 //
 package service
 
+// Express that something happened to resource of type resourceType
+// at path. What happened may be that it was created, updated or removed.
+// A client may discover exactly what by GET'ing the resource
+
+
+func MakeBrooker
+
 /*import (
 	"fmt"
 	"net/http"

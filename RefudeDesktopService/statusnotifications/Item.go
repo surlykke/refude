@@ -7,11 +7,17 @@
 package statusnotifications
 
 import (
+	"errors"
 	"fmt"
+	"log"
+	"reflect"
 	"strings"
 
 	"github.com/godbus/dbus"
+	"github.com/surlykke/RefudeServices/RefudeDesktopService/icons"
+	"github.com/surlykke/RefudeServices/lib/image"
 	"github.com/surlykke/RefudeServices/lib/respond"
+	"github.com/surlykke/RefudeServices/lib/slice"
 )
 
 type Item struct {
@@ -27,6 +33,7 @@ type Item struct {
 	AttentionAccessibleDesc string
 	Title                   string
 	ToolTip                 string
+	menuPath                dbus.ObjectPath
 	iconThemePath           string
 	useIconPixmap           bool
 	useAttentionIconPixmap  bool
@@ -49,67 +56,6 @@ func itemSelf(sender string, path dbus.ObjectPath) string {
 }
 
 type ItemMap map[string]*Item
-
-/*func menuSelf(sender string, path dbus.ObjectPath) string {
-	return fmt.Sprintf("/itemmenu/%s", strings.Replace(sender+string(path), "/", "-", -1))
-}*/
-
-/**
- * dbusMethodName one of "Activate", "SecondaryActivate", "ContextMenu"
- */
-
-/*func (item *Item) POST(w http.ResponseWriter, r *http.Request) {
-
-}*/
-
-/*type MenuResource struct {
-	self   string
-	sender string
-	path   dbus.ObjectPath
-}
-
-func MakeMenuResource(sender string, path dbus.ObjectPath) *MenuResource {
-	return &MenuResource{
-		self:   menuSelf(sender, path),
-		sender: sender,
-		path:   path,
-	}
-}
-
-func (mr *MenuResource) GET(w http.ResponseWriter, r *http.Request) {
-	var menu = &Menu{Links: resource.MakeLinks(mr.self, "itemmenu")}
-	var err error
-	if menu.Entries, err = fetchMenu(mr.sender, mr.path); err != nil {
-		log.Println("Error retrieving menu for", mr.sender, mr.path, ":", err)
-		w.WriteHeader(http.StatusInternalServerError)
-	} else if bytes, err := json.Marshal(menu); err != nil {
-		log.Println("Error marshalling menu", err)
-		w.WriteHeader(http.StatusInternalServerError)
-	} else {
-		w.Header().Set("Content-Type", "application/json")
-		w.Write(bytes)
-	}
-}
-
-func (mr *MenuResource) POST(w http.ResponseWriter, r *http.Request) {
-	id := requests.GetSingleQueryParameter(r, "id", "")
-	idAsInt, _ := strconv.Atoi(id)
-	data := dbus.MakeVariant("")
-	time := uint32(time.Now().Unix())
-	dbusObj := conn.Object(mr.sender, mr.path)
-	call := dbusObj.Call("com.canonical.dbusmenu.Event", dbus.Flags(0), idAsInt, "clicked", data, time)
-	if call.Err != nil {
-		log.Println(call.Err)
-		w.WriteHeader(http.StatusInternalServerError)
-	} else {
-		w.WriteHeader(http.StatusAccepted)
-	}
-}
-
-type Menu struct {
-	resource.Links
-	Entries []MenuItem
-}
 
 type MenuItem struct {
 	Id          string
@@ -142,4 +88,77 @@ func fetchMenu(sender string, path dbus.ObjectPath) ([]MenuItem, error) {
 		return []MenuItem{menu}, nil
 	}
 }
-*/
+
+func parseMenu(value []interface{}) (MenuItem, error) {
+	var menuItem = MenuItem{}
+	var id int32
+	var ok bool
+	var m map[string]dbus.Variant
+	var s []dbus.Variant
+
+	if len(value) < 3 {
+		return MenuItem{}, errors.New("Wrong length")
+	} else if id, ok = value[0].(int32); !ok {
+		return MenuItem{}, errors.New("Expected int32, got: " + reflect.TypeOf(value[0]).String())
+	} else if m, ok = value[1].(map[string]dbus.Variant); !ok {
+		return MenuItem{}, errors.New("Excpected dbus.Variant, got: " + reflect.TypeOf(value[1]).String())
+	} else if s, ok = value[2].([]dbus.Variant); !ok {
+		return MenuItem{}, errors.New("expected []dbus.Variant, got: " + reflect.TypeOf(value[2]).String())
+	}
+
+	menuItem.Id = fmt.Sprintf("%d", id)
+
+	menuItem.Type = getStringOr(m["type"])
+	if menuItem.Type == "" {
+		menuItem.Type = "standard"
+	}
+	if !slice.Among(menuItem.Type, "standard", "separator") {
+		return MenuItem{}, errors.New("Illegal menuitem type: " + menuItem.Type)
+	}
+	menuItem.Label = getStringOr(m["label"])
+	menuItem.Enabled = getBoolOr(m["enabled"], true)
+	menuItem.Visible = getBoolOr(m["visible"], true)
+	if menuItem.IconName = getStringOr(m["icon-name"]); menuItem.IconName == "" {
+		// FIXME: Look for pixmap
+	}
+	if menuItem.ToggleType = getStringOr(m["toggle-type"]); !slice.Among(menuItem.ToggleType, "checkmark", "radio", "") {
+		return MenuItem{}, errors.New("Illegal toggle-type: " + menuItem.ToggleType)
+	}
+
+	menuItem.ToggleState = getInt32Or(m["toggle-state"], -1)
+	if childrenDisplay := getStringOr(m["children-display"]); childrenDisplay == "submenu" {
+		for _, variant := range s {
+			if interfaces, ok := variant.Value().([]interface{}); !ok {
+				return MenuItem{}, errors.New("Submenu item not of type []interface")
+			} else {
+				if submenuItem, err := parseMenu(interfaces); err != nil {
+					return MenuItem{}, err
+				} else {
+					menuItem.SubEntries = append(menuItem.SubEntries, submenuItem)
+				}
+			}
+		}
+	} else if childrenDisplay != "" {
+		log.Println("warning: ignoring unknown children-display type:", childrenDisplay)
+	}
+
+	return menuItem, nil
+}
+
+func collectPixMap(variant dbus.Variant) string {
+	if arrs, ok := variant.Value().([][]interface{}); ok {
+		var images = []image.ARGBImage{}
+		for _, arr := range arrs {
+			for len(arr) > 2 {
+				width := uint32(arr[0].(int32))
+				height := uint32(arr[1].(int32))
+				pixels := arr[2].([]byte)
+				images = append(images, image.ARGBImage{Width: width, Height: height, Pixels: pixels})
+				arr = arr[3:]
+			}
+		}
+		var argbIcon = image.ARGBIcon{Images: images}
+		return icons.AddARGBIcon(argbIcon)
+	}
+	return ""
+}

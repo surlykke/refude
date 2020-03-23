@@ -18,7 +18,6 @@ import (
 	"github.com/godbus/dbus/introspect"
 	"github.com/godbus/dbus/prop"
 	dbuscall "github.com/surlykke/RefudeServices/lib/dbusutils"
-	"github.com/surlykke/RefudeServices/lib/image"
 )
 
 const WATCHER_SERVICE = "org.kde.StatusNotifierWatcher"
@@ -164,10 +163,9 @@ func buildItem(sender string, path dbus.ObjectPath) *Item {
 	var props = dbuscall.GetAllProps(conn, item.sender, item.itemPath, ITEM_INTERFACE)
 	item.Id = getStringOr(props["Id"])
 	item.Category = getStringOr(props["Category"])
-	/*if menuPath := getDbusPath(props["Menu"]); menuPath != "" {
-		item.menu = MakeMenuResource(item.sender, menuPath)
-		item.Menu = item.menu.self
-	}*/
+	if item.menuPath = getDbusPath(props["Menu"]); item.menuPath != "" {
+		item.Menu = itemSelf(item.sender, item.itemPath) + "/menu"
+	}
 	item.Title = getStringOr(props["Title"])
 	item.Status = getStringOr(props["Status"])
 	item.ToolTip = getStringOr(props["ToolTip"])
@@ -269,80 +267,6 @@ func getInt32Or(variant dbus.Variant, fallback int32) int32 {
 func getDbusPath(variant dbus.Variant) dbus.ObjectPath {
 	if res, ok := variant.Value().(dbus.ObjectPath); ok {
 		return res
-	}
-	return ""
-}
-
-/*func parseMenu(value []interface{}) (MenuItem, error) {
-	var menuItem = MenuItem{}
-	var id int32
-	var ok bool
-	var m map[string]dbus.Variant
-	var s []dbus.Variant
-
-	if len(value) < 3 {
-		return MenuItem{}, errors.New("Wrong length")
-	} else if id, ok = value[0].(int32); !ok {
-		return MenuItem{}, errors.New("Expected int32, got: " + reflect.TypeOf(value[0]).String())
-	} else if m, ok = value[1].(map[string]dbus.Variant); !ok {
-		return MenuItem{}, errors.New("Excpected dbus.Variant, got: " + reflect.TypeOf(value[1]).String())
-	} else if s, ok = value[2].([]dbus.Variant); !ok {
-		return MenuItem{}, errors.New("expected []dbus.Variant, got: " + reflect.TypeOf(value[2]).String())
-	}
-
-	menuItem.Id = fmt.Sprintf("%d", id)
-
-	menuItem.Type = getStringOr(m["type"])
-	if menuItem.Type == "" {
-		menuItem.Type = "standard"
-	}
-	if !slice.Among(menuItem.Type, "standard", "separator") {
-		return MenuItem{}, errors.New("Illegal menuitem type: " + menuItem.Type)
-	}
-	menuItem.Label = getStringOr(m["label"])
-	menuItem.Enabled = getBoolOr(m["enabled"], true)
-	menuItem.Visible = getBoolOr(m["visible"], true)
-	if menuItem.IconName = getStringOr(m["icon-name"]); menuItem.IconName == "" {
-		// FIXME: Look for pixmap
-	}
-	if menuItem.ToggleType = getStringOr(m["toggle-type"]); !slice.Among(menuItem.ToggleType, "checkmark", "radio", "") {
-		return MenuItem{}, errors.New("Illegal toggle-type: " + menuItem.ToggleType)
-	}
-
-	menuItem.ToggleState = getInt32Or(m["toggle-state"], -1)
-	if childrenDisplay := getStringOr(m["children-display"]); childrenDisplay == "submenu" {
-		for _, variant := range s {
-			if interfaces, ok := variant.Value().([]interface{}); !ok {
-				return MenuItem{}, errors.New("Submenu item not of type []interface")
-			} else {
-				if submenuItem, err := parseMenu(interfaces); err != nil {
-					return MenuItem{}, err
-				} else {
-					menuItem.SubEntries = append(menuItem.SubEntries, submenuItem)
-				}
-			}
-		}
-	} else if childrenDisplay != "" {
-		log.Println("warning: ignoring unknown children-display type:", childrenDisplay)
-	}
-
-	return menuItem, nil
-}*/
-
-func collectPixMap(variant dbus.Variant) string {
-	if arrs, ok := variant.Value().([][]interface{}); ok {
-		var images = []image.ARGBImage{}
-		for _, arr := range arrs {
-			for len(arr) > 2 {
-				width := uint32(arr[0].(int32))
-				height := uint32(arr[1].(int32))
-				pixels := arr[2].([]byte)
-				images = append(images, image.ARGBImage{Width: width, Height: height, Pixels: pixels})
-				arr = arr[3:]
-			}
-		}
-		var argbIcon = image.ARGBIcon{Images: images}
-		return icons.AddARGBIcon(argbIcon)
 	}
 	return ""
 }

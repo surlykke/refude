@@ -11,6 +11,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/surlykke/RefudeServices/RefudeDesktopService/sse_events"
+
 	"github.com/surlykke/RefudeServices/lib/searchutils"
 
 	"github.com/surlykke/RefudeServices/lib/respond"
@@ -117,6 +119,7 @@ func Run() {
 				notificationImages[notification.Image] = &NotificationImage{notification.imagePath}
 			}
 			lock.Unlock()
+			sendEvent(self)
 		case rem := <-removals:
 			var self = notificationSelf(rem.id)
 			var imageSelf = notificationImageSelf(rem.id)
@@ -129,6 +132,7 @@ func Run() {
 			}
 			lock.Unlock()
 			if found {
+				sendEvent(self)
 				conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", rem.id, rem.reason)
 			}
 		case id := <-reaper:
@@ -148,9 +152,14 @@ func Run() {
 					delete(notifications, self)
 					delete(notificationImages, imageSelf)
 					lock.Unlock()
+					sendEvent(self)
 					conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", id, Expired)
 				}
 			}
 		}
 	}
+}
+
+func sendEvent(path string) {
+	sse_events.Publish <- &sse_events.Event{Type: "notification", Path: path}
 }

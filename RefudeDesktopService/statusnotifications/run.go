@@ -11,8 +11,11 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
+	"time"
 
+	"github.com/surlykke/RefudeServices/RefudeDesktopService/sse_events"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
 
 	"github.com/godbus/dbus"
@@ -34,7 +37,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			if !slice.Among(action, "Activate", "SecondaryActivate", "ContextMenu") {
 				respond.UnprocessableEntity(w, fmt.Errorf("action must be 'Activate', 'SecondaryActivate' or 'ContextMenu'"))
 			} else {
-				var call = dbusObj.Call("org.kde.StatusNotifierItem."+action, dbus.Flags(0), x, y /*FIXME*/)
+				var call = dbusObj.Call("org.kde.StatusNotifierItem."+action, dbus.Flags(0), x, y)
 				if call.Err != nil {
 					log.Println(call.Err)
 					respond.ServerError(w)
@@ -42,11 +45,51 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					respond.Accepted(w)
 				}
 			}
+		}
+	} else if item = getItemForMenu(r.URL.Path); item != nil {
+		if r.Method == "GET" {
+
+			if entries, err := fetchMenu(item.sender, item.menuPath); err != nil {
+				log.Println("Error retrieving menu for", item.sender, item.menuPath, ":", err)
+				w.WriteHeader(http.StatusInternalServerError)
+			} else {
+				var res = &respond.StandardFormat{
+					Self: r.URL.Path,
+					Type: "itemmenu",
+					Data: entries,
+				}
+				respond.AsJson(w, res)
+			}
+		} else if r.Method == "POST" {
+			id := requests.GetSingleQueryParameter(r, "id", "")
+			idAsInt, _ := strconv.Atoi(id)
+			data := dbus.MakeVariant("")
+			time := uint32(time.Now().Unix())
+			dbusObj := conn.Object(item.sender, item.menuPath)
+			call := dbusObj.Call("com.canonical.dbusmenu.Event", dbus.Flags(0), idAsInt, "clicked", data, time)
+			if call.Err != nil {
+				log.Println(call.Err)
+				respond.ServerError(w)
+			} else {
+				respond.Accepted(w)
+			}
 		} else {
 			respond.NotAllowed(w)
 		}
 	} else {
 		respond.NotFound(w)
+	}
+}
+
+func getItemForMenu(path string) *Item {
+	var item *Item = nil
+	if strings.HasSuffix(path, "/menu") {
+		item = get(path[0 : len(path)-5])
+	}
+	if item != nil && item.Menu != "" {
+		return item
+	} else {
+		return nil
 	}
 }
 
@@ -113,9 +156,11 @@ var items = make(ItemMap)
 var lock sync.Mutex
 
 func set(item *Item) {
+	var self = itemSelf(item.sender, item.itemPath)
 	lock.Lock()
-	defer lock.Unlock()
-	items[itemSelf(item.sender, item.itemPath)] = item
+	items[self] = item
+	lock.Unlock()
+	sendEvent(self)
 }
 
 func get(path string) *Item {
@@ -125,7 +170,13 @@ func get(path string) *Item {
 }
 
 func remove(sender string, itemPath dbus.ObjectPath) {
+	var self = itemSelf(sender, itemPath)
 	lock.Lock()
-	defer lock.Unlock()
-	delete(items, itemSelf(sender, itemPath))
+	delete(items, self)
+	lock.Unlock()
+	sendEvent(self)
+}
+
+func sendEvent(path string) {
+	sse_events.Publish <- &sse_events.Event{Type: "status_item", Path: path}
 }

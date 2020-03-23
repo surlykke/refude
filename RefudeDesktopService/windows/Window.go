@@ -55,11 +55,12 @@ func (w Window) ToStandardFormat() *respond.StandardFormat {
 	defer dataMutex.Unlock()
 
 	return &respond.StandardFormat{
-		Self:   fmt.Sprintf("/window/%d", w),
-		Type:   "window",
-		Title:  wd.Name,
-		OnPost: "Raise and focus",
-		Data:   wd,
+		Self:     fmt.Sprintf("/window/%d", w),
+		Type:     "window",
+		Title:    wd.Name,
+		OnPost:   "Raise and focus",
+		IconName: wd.IconName,
+		Data:     wd,
 	}
 }
 

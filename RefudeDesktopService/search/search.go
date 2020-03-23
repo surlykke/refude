@@ -149,10 +149,28 @@ func searchDesktop(w http.ResponseWriter, r *http.Request) {
 	for _, resourceType := range resourceTypes {
 		collector.Clear()
 		searchers[resourceType](collector)
-		if resourceType == "notification" || resourceType == "window" {
-			resources = append(resources, collector.Get()...)
+		if resourceType == "notification" {
+			for _, res := range collector.Get() {
+				resources = append(resources, res)
+			}
+		} else if resourceType == "window" {
+			for _, res := range collector.Get() {
+				var wi = res.Data.(windows.WindowData)
+				if !slice.Contains(wi.States, "_NET_WM_STATE_ABOVE") {
+					resources = append(resources, res)
+				}
+			}
+		} else if resourceType == "application" {
+			for _, res := range collector.Get() {
+				var da = res.Data.(*applications.DesktopApplication)
+				if !da.NoDisplay {
+					resources = append(resources, res)
+				}
+			}
 		} else {
-			resources = append(resources, collector.SortByRankAndGet()...)
+			for _, res := range collector.Get() {
+				resources = append(resources, res)
+			}
 		}
 	}
 
