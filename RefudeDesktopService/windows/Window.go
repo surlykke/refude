@@ -16,7 +16,6 @@ import (
 	"github.com/surlykke/RefudeServices/lib/respond"
 
 	"github.com/surlykke/RefudeServices/lib/image"
-	"github.com/surlykke/RefudeServices/lib/requests"
 
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/icons"
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/windows/xlib"
@@ -32,70 +31,40 @@ type WindowData struct {
 	States   []string
 }
 
-type Window uint32
+type Window struct {
+	self string
+	id   uint32
+}
 
 func (w Window) ToStandardFormat() *respond.StandardFormat {
-	var wId = uint32(w)
-	var wd = WindowData{Id: wId}
+	var wd = WindowData{Id: w.id}
 	dataMutex.Lock()
-	if parent, err := dataConnection.GetParent(wId); err == nil {
+	if parent, err := dataConnection.GetParent(w.id); err == nil {
 		if parent != 0 {
 			wd.X, wd.Y, wd.W, wd.H, err = dataConnection.GetGeometry(parent)
 		} else {
-			wd.X, wd.Y, wd.W, wd.H, err = dataConnection.GetGeometry(wId)
+			wd.X, wd.Y, wd.W, wd.H, err = dataConnection.GetGeometry(w.id)
 		}
 	}
-	if name, err := dataConnection.GetName(wId); err == nil {
+	if name, err := dataConnection.GetName(w.id); err == nil {
 		wd.Name = name
 	}
-	if iconName, err := GetIconName(wId); err == nil {
+	if iconName, err := GetIconName(w.id); err == nil {
 		wd.IconName = iconName
 	}
-	if states, err := dataConnection.GetState(wId); err == nil {
+	if states, err := dataConnection.GetState(w.id); err == nil {
 		wd.States = states
 	}
 	defer dataMutex.Unlock()
 
 	return &respond.StandardFormat{
-		Self:      fmt.Sprintf("/window/%d", w),
+		Self:      fmt.Sprintf("/window/%d", w.id),
 		Type:      "window",
 		Title:     wd.Name,
 		OnPost:    "Raise and focus",
 		IconName:  wd.IconName,
 		Data:      wd,
 		NoDisplay: slice.Contains(wd.States, "_NET_WM_STATE_ABOVE"),
-	}
-}
-
-type WindowMap map[string]Window
-
-type ScreenShotResource struct {
-	self string
-	wId  uint32
-}
-
-func makeScreenShotResource(wId uint32) *ScreenShotResource {
-	return &ScreenShotResource{
-		self: fmt.Sprintf("/window/%d/screenshot", wId),
-		wId:  wId,
-	}
-}
-
-func (ss *ScreenShotResource) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
-		respond.NotAllowed(w)
-	} else {
-		var downscaleS = requests.GetSingleQueryParameter(r, "downscale", "1")
-		var downscale = downscaleS[0] - '0'
-		if downscale < 1 || downscale > 5 {
-			respond.UnprocessableEntity(w, fmt.Errorf("downscale should be >= 1 and <= 5"))
-		} else if bytes, err := getScreenshot(ss.wId, downscale); err == nil {
-			w.Header().Set("Content-Type", "image/png")
-			w.Write(bytes)
-		} else {
-			fmt.Println("Error getting screenshot:", err)
-			w.WriteHeader(http.StatusInternalServerError)
-		}
 	}
 }
 

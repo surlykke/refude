@@ -14,9 +14,19 @@ type RankedResource struct {
 
 type RankedList []RankedResource
 
-func (rL RankedList) Len() int               { return len(rL) }
-func (rL RankedList) Less(i int, j int) bool { return rL[i].Rank < rL[j].Rank }
-func (rL RankedList) Swap(i int, j int)      { rL[i], rL[j] = rL[j], rL[i] }
+func (rL RankedList) Len() int {
+	return len(rL)
+}
+
+func (rL RankedList) Less(i int, j int) bool {
+	if rL[i].Rank == rL[j].Rank {
+		return rL[i].Self < rL[j].Self
+	} else {
+		return rL[i].Rank < rL[j].Rank
+	}
+}
+
+func (rL RankedList) Swap(i int, j int) { rL[i], rL[j] = rL[j], rL[i] }
 
 type Collector struct {
 	term            string

@@ -29,24 +29,23 @@ const (
 )
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	var path = r.URL.Path
-	if wi, ok := windows.Load().(WindowMap)[path]; ok {
+	if window, ok := getWindow(r.URL.Path); ok {
 		if r.Method == "GET" {
-			respond.AsJson(w, wi.ToStandardFormat())
+			respond.AsJson(w, window.ToStandardFormat())
 		} else if r.Method == "POST" {
 			dataMutex.Lock()
 			defer dataMutex.Unlock()
-			dataConnection.RaiseAndFocusWindow(uint32(wi))
+			dataConnection.RaiseAndFocusWindow(window.id)
 			respond.Accepted(w)
 		} else {
 			respond.NotAllowed(w)
 		}
-	} else if wi, ok := getWindowForScreenShot(r.URL.Path); ok {
+	} else if window, ok := getWindowForScreenShot(r.URL.Path); ok {
 		var downscaleS = requests.GetSingleQueryParameter(r, "downscale", "1")
 		var downscale = downscaleS[0] - '0'
 		if downscale < 1 || downscale > 5 {
 			respond.UnprocessableEntity(w, fmt.Errorf("downscale should be >= 1 and <= 5"))
-		} else if bytes, err := getScreenshot(uint32(wi), downscale); err == nil {
+		} else if bytes, err := getScreenshot(window.id, downscale); err == nil {
 			w.Header().Set("Content-Type", "image/png")
 			w.Write(bytes)
 		} else {
@@ -59,25 +58,33 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func getWindowForScreenShot(path string) (Window, bool) {
-	var ok = false
-	var w Window
 	if strings.HasSuffix(path, "/screenshot") {
-		w, ok = windows.Load().(WindowMap)[path[0:len(path)-11]]
+		return getWindow(path[0 : len(path)-11])
 	}
-	return w, ok
+	return Window{}, false
+}
+
+func getWindow(path string) (Window, bool) {
+	for _, w := range windows.Load().([]Window) {
+		if w.self == path {
+			return w, true
+		}
+	}
+	return Window{}, false
 }
 
 func SearchWindows(collector *searchutils.Collector) {
-	for _, wi := range windows.Load().(WindowMap) {
+	for _, wi := range windows.Load().([]Window) {
 		collector.Collect(wi.ToStandardFormat())
 	}
 }
 
 func AllPaths() []string {
-	var vm = windows.Load().(WindowMap)
-	var paths = make([]string, 0, len(vm))
-	for path, _ := range vm {
-		paths = append(paths, path)
+	var windowList = windows.Load().([]Window)
+	var paths = make([]string, 0, 2*len(windowList))
+	for _, window := range windowList {
+		paths = append(paths, window.self)
+		paths = append(paths, window.self+"/screenshot")
 	}
 	return paths
 }
@@ -89,17 +96,17 @@ func Run() {
 	eventConnection.SubscribeToStackEvents()
 
 	for {
-		wIds, err := eventConnection.GetUint32s(0, NET_CLIENT_LIST_STACKING)
-		if err != nil {
+		if wIds, err := eventConnection.GetUint32s(0, NET_CLIENT_LIST_STACKING); err != nil {
 			log.Println("WARN: Unable to retrieve _NET_CLIENT_LIST_STACKING", err)
-			wIds = []uint32{}
+			windows.Store([]Window{})
+		} else {
+			var list = make([]Window, len(wIds), len(wIds))
+			// Revert so highest in stach comes first
+			for i := 0; i < len(wIds); i++ {
+				list[i] = Window{self: fmt.Sprintf("/window/%d", wIds[len(wIds)-i-1]), id: wIds[len(wIds)-i-1]}
+			}
+			windows.Store(list)
 		}
-
-		var wm = make(WindowMap, len(wIds))
-		for _, wId := range wIds {
-			wm[fmt.Sprintf("/window/%d", wId)] = Window(wId)
-		}
-		windows.Store(wm)
 
 		eventConnection.WaitforStackEvent()
 	}
@@ -108,5 +115,5 @@ func Run() {
 var windows atomic.Value
 
 func init() {
-	windows.Store(make(WindowMap))
+	windows.Store([]Window{})
 }
