@@ -159,7 +159,6 @@ func updateWatcherProperties() {
 func buildItem(sender string, path dbus.ObjectPath) *Item {
 	fmt.Println("MakeItem")
 	var item = &Item{sender: sender, itemPath: path}
-	fmt.Println(dbuscall.Introspect(conn, item.sender, item.itemPath))
 	var props = dbuscall.GetAllProps(conn, item.sender, item.itemPath, ITEM_INTERFACE)
 	item.Id = getStringOr(props["Id"])
 	item.Category = getStringOr(props["Category"])

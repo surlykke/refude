@@ -1,4 +1,4 @@
-package sse_events
+package ss_events
 
 import (
 	"fmt"
@@ -69,9 +69,9 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Connection", "keep-alive")
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.Header().Set("Cache-Control", "no-cache")
-
 		w.(http.Flusher).Flush()
-		fmt.Fprint(w, "\n")
+
+		fmt.Fprintf(w, "event:ping\ndata:-\n\n")
 		w.(http.Flusher).Flush()
 		for {
 			select {
@@ -82,7 +82,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					return
 				} else {
 					if watchedTypes[ev.Type] {
-						fmt.Fprintf(w, "data:%s:%s\n\n", ev.Type, ev.Path)
+						fmt.Fprintf(w, "event:message\ndata:%s:%s\n\n", ev.Type, ev.Path)
 						w.(http.Flusher).Flush()
 					}
 				}

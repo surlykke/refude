@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/surlykke/RefudeServices/RefudeDesktopService/sse_events"
+	"github.com/surlykke/RefudeServices/RefudeDesktopService/ss_events"
 
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/search"
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/session"
@@ -55,7 +55,7 @@ func (dummy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case path == "/complete":
 		search.ServeHTTP(w, r)
 	case path == "/events":
-		sse_events.ServeHTTP(w, r)
+		ss_events.ServeHTTP(w, r)
 	default:
 		respond.NotFound(w)
 	}
@@ -73,7 +73,7 @@ func main() {
 	go statusnotifications.Run()
 	go backlight.Run()
 	go icons.Run()
-	go sse_events.Run()
+	go ss_events.Run()
 
 	var handler = dummy{}
 	go lib.Serve("org.refude.desktop-service", handler)

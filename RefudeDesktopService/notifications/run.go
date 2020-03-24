@@ -11,8 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/surlykke/RefudeServices/RefudeDesktopService/sse_events"
-
+	"github.com/surlykke/RefudeServices/RefudeDesktopService/ss_events"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
 
 	"github.com/surlykke/RefudeServices/lib/respond"
@@ -161,5 +160,5 @@ func Run() {
 }
 
 func sendEvent(path string) {
-	sse_events.Publish <- &sse_events.Event{Type: "notification", Path: path}
+	ss_events.Publish <- &ss_events.Event{Type: "notification", Path: path}
 }
