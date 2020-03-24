@@ -34,28 +34,28 @@ export let monitorUrl = (path, dataHandler, errorHandler) => {
 }
 
 
-export let monitorSSE = (eventType, onEvent, initial) => {
+export let monitorSSE = (eventType, onMessage, onOpen, onError) => {
     let helper = () => {
         let url = eventType ? `http://localhost:7938/events?type=${eventType}` : "http://localhost:7938/events" 
-        console.log("Source connecting to ", url)
-
+        
         let evtSource = new EventSource(url)
         
 		evtSource.onerror = event => {
-            console.log(".. error", event)
+            onError && onError()
 			if (evtSource.readyState === 2) {
 				setTimeout(helper, 5000)
 			}
 		}
 
+        evtSource.onopen = event => {
+            onOpen && onOpen()
+        }
+
 		evtSource.onmessage = event =>  {
-            console.log("... event:", event, new Date())
-			onEvent(event)
+			onMessage(event)
         }
         
-        // Should do this via onopen, but for some reason onopen does not fire until first event is received.
-        initial && initial()
-	}
+    }
 
     helper()
 }

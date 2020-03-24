@@ -111,7 +111,7 @@ export class NotifierItems extends React.Component {
         this.state = { items: [] };
         this.style = Object.assign({}, props.style);
         this.style.margin = "0px";
-        monitorSSE("status_item", this.getItems, this.getItems)
+        monitorSSE("status_item", this.getItems, this.getItems, () => {this.setState({items: []})})
     }
 
     componentDidUpdate = () => {

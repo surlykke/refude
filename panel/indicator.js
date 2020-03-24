@@ -4,23 +4,18 @@ import {subscribe, SCREEN} from "../common/utils";
 export class Indicator extends React.Component {
 
     constructor(props) {
-        //devtools();
+        console.log("indicator constructor")
         super(props);
         this.state = {};
         this.getScreenLayout();
-        this.props.model.updateListeners.push(() => {
-            this.setState({indicator: this.props.model.selectedItem && this.props.model.selectedItem.indicator})
-        })
     }
 
-    selectorShown = 0
-
-    componentDidMount = () => {
-        subscribe("windowSelected", w => {
-            this.setState({window: w});
-        });
-        subscribe("selectorShown", ss => this.selectorShown = ss)
+    static getDerivedStateFromProps(props, state) {
+        console.log("getDerivedStateFromProps, props:", props)
+        return {indicator: props.indicator}
     }
+
+
 
     getScreenLayout = () => {
         let bx1, by1, bx2, by2;
@@ -55,18 +50,14 @@ export class Indicator extends React.Component {
 
     render = () => {
         let {indicator} = this.state;
-        if (indicator) {
-            let viewBox = `${this.display.x - 3} ${this.display.y - 3} ${this.display.w + 6} ${this.display.h + 6}`;
-            let rects = this.screens.map((scr, i) => <rect key={`screenRect_${i}`} x={scr.x} y={scr.y} width={scr.w} height={scr.h} fill="lightgrey"/>);
-            //rects.push(<rect key="winRect" x={window.X} y={window.Y} width={window.W} height={window.H} fill="grey" />);
-            let {X, Y, W, H, ImageUrl} = indicator
-            rects.push(<image key="winRect" x={X} y={Y} width={W} height={H} xlinkHref={ImageUrl}/>);
-            return <svg key="windows" xmlns="http://www.w3.org/2000/svg" width="calc(100% - 16px)" style={{margin: "8px"}} viewBox={viewBox}>
-                {rects}
-            </svg>;
-        } else {
-            return null;
-        }
+        console.log("Indicator render, indicator:", indicator)
+        let viewBox = `${this.display.x - 3} ${this.display.y - 3} ${this.display.w + 6} ${this.display.h + 6}`;
+        let rects = this.screens.map((scr, i) => <rect key={`screenRect_${i}`} x={scr.x} y={scr.y} width={scr.w} height={scr.h} fill="lightgrey"/>);
+        //rects.push(<rect key="winRect" x={window.X} y={window.Y} width={window.W} height={window.H} fill="grey" />);
+        rects.push(<image key="winRect" x={indicator.X} y={indicator.Y} width={indicator.W} height={indicator.H} xlinkHref={indicator.screenShotUrl}/>);
+        return <svg key="windows" xmlns="http://www.w3.org/2000/svg" width="calc(100% - 16px)" style={{margin: "8px"}} viewBox={viewBox}>
+            {rects}
+        </svg>;
     }
 }
 

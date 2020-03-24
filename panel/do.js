@@ -9,7 +9,7 @@ import React from 'react'
 import { WIN, publish } from "../common/utils";
 import { Indicator } from "./indicator";
 import { T } from "../common/translate";
-import { getUrl, postUrl, monitorSSE} from '../common/monitor';
+import { getUrl, postUrl, monitorSSE } from '../common/monitor';
 
 const http = require('http');
 
@@ -37,9 +37,9 @@ let windowIconStyle = w => {
 class Do extends React.Component {
     constructor(props) {
         super(props);
-        this.state = {resources: [], open: false, term: ""}
+        this.state = { resources: [], open: false, term: "" }
         this.listenForUpDown();
-        monitorSSE("events", () => this.state.open || this.updateResourceList(), this.updateResourceList)
+        monitorSSE("events", this.updateResourceList(), this.updateResourceList, () => {this.setState({resources: []})})
         this.handleBlurEvents();
     };
 
@@ -63,7 +63,7 @@ class Do extends React.Component {
     listenForUpDown = () => {
         let that = this;
         http.createServer(function (req, res) {
-            that.open(() => {that.move(req.url !== "/up")});
+            that.open(() => { that.move(req.url !== "/up") });
             res.end('')
         }).listen("/run/user/1000/org.refude.panel.do");
     };
@@ -71,33 +71,36 @@ class Do extends React.Component {
     handleBlurEvents = () => WIN.on('blur', this.close);
 
     updateResourceList = () => {
-        console.log("updateResourceList")
         if (this.state.open) {
-            let url = `/search/desktop?term=${this.state.term}` 
-            console.log("Getting", url)
+            let url = `/search/desktop?term=${this.state.term}`
             getUrl(url, resp => {
-                this.setState({resources: resp.data}, this.ensureSelection)
+                this.setState({ resources: resp.data }, this.ensureSelection)
             })
         } else {
             getUrl("/search/events", resp => {
-                this.setState({resources: resp.data, selected: undefined})
-            }) 
+                this.setState({ resources: resp.data, selected: undefined })
+            })
         }
     }
 
     ensureSelection = () => {
-        if (!(this.state.selected && this.state.resources.find(r => r.Self === this.state.selected))) {
-            let firstRes = this.state.resources[0]
-            this.setState({selected: firstRes && firstRes.Self})
+        if (!this.selectedResource()) {
+            this.setState({ selected: this.state.resources[0] && this.state.resources[0].Self })
         }
     }
 
+    selectedResource = () => {
+        console.log("selectedREsource looking for", this.state.selected)
+        let res = this.state.selected && this.state.resources.find(r => r.Self === this.state.selected)
+        console.log("Returning", res)
+        return res
+    }
+
     setTerm = (term) => {
-        this.setState({term: term.toLowerCase()}, this.updateResourceList)
+        this.setState({ term: term.toLowerCase() }, this.updateResourceList)
     }
 
     keyDown = (event) => {
-        console.log("keyDown: ", event)
         let { key, ctrlKey, shiftKey, altKey, metaKey } = event;
 
         if (key === "Tab" && !ctrlKey && shiftKey && !altKey && !metaKey) this.move(false);
@@ -115,38 +118,33 @@ class Do extends React.Component {
 
     move = (down) => {
         if (!this.state.open) return;
-        console.log("move", down, "selected just now:", this.state.selected)
         let index = this.state.resources.findIndex(r => r.Self === this.state.selected)
-        console.log("index:", index)
         if (index > -1) {
             index = (index + this.state.resources.length + (down ? 1 : -1)) % this.state.resources.length;
-            console.log("Set selected:", this.state.resources[index].Self)
-            this.setState({selected: this.state.resources[index].Self}) 
+            this.setState({ selected: this.state.resources[index].Self })
             //notifyListeners();
         }
     }
 
     select = (url) => {
-        this.setState({selected: url})
+        this.setState({ selected: url })
     }
 
     activate = (url) => {
-        url = url || this.state.selected 
+        url = url || this.state.selected
         if (url) {
             postUrl(url, response => { this.close() });
         }
     }
 
     open = (callback) => {
-        console.log("open, this.state.open:", this.state.open);
-        this.setState({open: true, term: ""}, this.updateResourceList)
+        this.setState({ open: true, term: "" }, this.updateResourceList)
         callback && callback()
         WIN.focus()
     };
 
     close = () => {
-        console.log("close")
-        this.setState({open: false, term: ""}, this.updateResourceList);
+        this.setState({ open: false, term: "" }, this.updateResourceList);
     };
 
     render = () => {
@@ -182,10 +180,10 @@ class Do extends React.Component {
             };
 
             if (this.state.selected === self) {
-                    Object.assign(style, {
-                        border: "solid black 2px",
-                        borderRadius: "5px",
-                        boxShadow: "1px 1px 1px #888888",
+                Object.assign(style, {
+                    border: "solid black 2px",
+                    borderRadius: "5px",
+                    boxShadow: "1px 1px 1px #888888",
                 })
             }
             return style
@@ -211,25 +209,24 @@ class Do extends React.Component {
             whiteSpace: "nowrap",
             marginRight: "6px",
         };
-    
+
         let commentStyle = {
             fontSize: "0.8em",
         };
 
 
         let iconStyle = (res) => {
-            console.log("iconStyle, Type:", res.Type, "Data.States:", res.Data.States)
             let style = {
                 float: "left",
                 marginRight: "6px"
             };
-           
+
             if (res.Type === "window") {
                 Object.assign(style, {
                     WebkitFilter: "drop-shadow(5px 5px 3px grey)",
                     overflow: "visible"
                 });
-                
+
                 if (res.Data.States && res.Data.States.includes("_NET_WM_STATE_HIDDEN")) {
                     Object.assign(style, {
                         marginLeft: "10px",
@@ -252,16 +249,16 @@ class Do extends React.Component {
             }
         }
 
-        let prevType 
+        let prevType
 
         let items = []
-        this.state.resources.forEach( r => {
+        this.state.resources.forEach(r => {
             if (prevType !== r.Type) {
                 items.push(<div style={headingStyle}>{r.Type}</div>)
             }
             items.push(
                 <div id={r.Self} style={itemStyle(r.Self)} onClick={() => this.select(r.Self)} onDoubleClick={() => this.activate(r.Self)}>
-                    <img width="24px" height="24px" style={iconStyle(r)} src={iconUrl(r)} alt=""/>
+                    <img width="24px" height="24px" style={iconStyle(r)} src={iconUrl(r)} alt="" />
                     <div style={nameStyle}>{r.Title}</div>
                     <div style={commentStyle}>{r.Comment}</div>
                 </div>
@@ -269,7 +266,20 @@ class Do extends React.Component {
             prevType = r.Type
         })
 
-        return [
+        let indicator;
+        let res = this.selectedResource()
+        if (res && "window" === res.Type) {
+            indicator = {
+                X: res.Data.X,
+                Y: res.Data.Y,
+                W: res.Data.W,
+                H: res.Data.H,
+                screenShotUrl: "http://localhost:7938" + res.Self + "/screenshot?downscale=3",
+            }
+        }
+
+
+        return <span>
             <div onKeyDown={this.keyDown} style={outerStyle}>
                 {this.state.open &&
                     <div style={searchBoxStyle}>
@@ -284,10 +294,9 @@ class Do extends React.Component {
                 <div id="itemListDiv" style={innerStyle}>
                     {items}
                 </div>
-            </div>,
-            <div/>
-            //<Indicator key="indicator" model={this.model} />
-        ];
+            </div>
+            {indicator && <Indicator key="indicator" indicator={indicator} />}
+        </span>
     }
 }
 

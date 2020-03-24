@@ -31,7 +31,7 @@ export class Battery extends React.Component {
         super(props);
         this.state = { pct: -1, state: "Unknown" };
         this.etag = undefined;
-        monitorSSE("power_device", this.getDeviceData, this.getDeviceData)
+        monitorSSE("power_device", this.getDeviceData, this.getDeviceData, () => {this.setState({pct: -1, state: "Unknown"})})
     }
 
     getDeviceData = () => {
