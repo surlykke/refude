@@ -136,6 +136,8 @@ func Run() {
 					updateToolTip(itemCopy)
 				case "org.kde.StatusNotifierItem.NewIcon":
 					updateIcon(itemCopy)
+				case "org.kde.StatusNotifierItem.NewIconThemePath":
+					updateIconThemePath(itemCopy)
 				case "org.kde.StatusNotifierItem.NewAttentionIcon":
 					updateAttentionIcon(itemCopy)
 				case "org.kde.StatusNotifierItem.NewOverlayIcon":

@@ -220,6 +220,13 @@ func updateIcon(item *Item) {
 	}
 }
 
+func updateIconThemePath(item *Item) {
+	if v, ok := getProp(item, "IconThemePath"); ok {
+		item.iconThemePath = getStringOr(v)
+		icons.AddBaseDir(item.iconThemePath)
+	}
+}
+
 func updateAttentionIcon(item *Item) {
 	if item.useAttentionIconPixmap {
 		if v, ok := getProp(item, "AttentionIconPixmap"); ok {
