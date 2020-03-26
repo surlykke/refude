@@ -39,7 +39,7 @@ class Do extends React.Component {
         super(props);
         this.state = { resources: [], open: false, term: "" }
         this.listenForUpDown();
-        monitorSSE("events", this.updateResourceList(), this.updateResourceList, () => {this.setState({resources: []})})
+        monitorSSE("events", this.updateResourceList, this.updateResourceList, () => {this.setState({resources: []})})
         this.handleBlurEvents();
     };
 

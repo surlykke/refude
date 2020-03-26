@@ -53,7 +53,7 @@ export default class Panel extends React.Component {
 
     componentDidMount = () => {
         subscribe("componentUpdated", this.adjustSize);
-        setTimeout(this.adjustSize, 1000)
+        this.adjustSize()
     };
 
 

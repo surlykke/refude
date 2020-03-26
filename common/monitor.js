@@ -51,10 +51,10 @@ export let monitorSSE = (eventType, onMessage, onOpen, onError) => {
             onOpen && onOpen()
         }
 
-		evtSource.onmessage = event =>  {
-			onMessage(event)
+         evtSource.onmessage = () => {
+            console.log('onmessage')
+            onMessage()
         }
-        
     }
 
     helper()
