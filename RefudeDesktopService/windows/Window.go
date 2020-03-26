@@ -64,7 +64,7 @@ func (w Window) ToStandardFormat() *respond.StandardFormat {
 		OnPost:    "Raise and focus",
 		IconName:  wd.IconName,
 		Data:      wd,
-		NoDisplay: slice.Contains(wd.States, "_NET_WM_STATE_ABOVE"),
+		NoDisplay: slice.Contains(wd.States, "_NET_WM_STATE_ABOVE", "_NET_WM_STATE_SKIP_TASKBAR"),
 	}
 }
 
