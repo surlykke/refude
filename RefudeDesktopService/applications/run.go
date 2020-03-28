@@ -12,6 +12,8 @@ import (
 	"strings"
 	"sync/atomic"
 
+	"github.com/surlykke/RefudeServices/lib/requests"
+
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
 
@@ -20,11 +22,42 @@ import (
 )
 
 func AppServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if app, ok := applications.Load().(ApplicationMap)[r.URL.Path]; ok {
+	if r.URL.Path == "/application/actionsearch" {
+		if r.Method != "GET" {
+			respond.NotAllowed(w)
+		} else if id := requests.GetSingleQueryParameter(r, "for", ""); id == "" {
+			respond.NotFound(w)
+		} else {
+			var prefix = "/application/" + id
+			var term = requests.GetSingleQueryParameter(r, "term", "")
+			var collector = searchutils.MakeCollector(term, 10, false)
+			var foundSome = false
+			for path, act := range actions.Load().(actionMap) {
+				if strings.HasPrefix(path, prefix) {
+					foundSome = true
+					collector.Collect(act.ToStandardFormat())
+				}
+			}
+			if !foundSome {
+				respond.NotFound(w)
+			} else {
+				respond.AsJson(w, collector.SortByRankAndGet())
+			}
+		}
+	} else if app, ok := applications.Load().(ApplicationMap)[r.URL.Path]; ok {
 		if r.Method == "GET" {
 			respond.AsJson(w, app.ToStandardFormat())
 		} else if r.Method == "POST" {
-			app.launch()
+			launch(app.Exec, app.Terminal)
+			respond.Accepted(w)
+		} else {
+			respond.NotAllowed(w)
+		}
+	} else if act, ok := actions.Load().(actionMap)[r.URL.Path]; ok {
+		if r.Method == "GET" {
+			respond.AsJson(w, act.ToStandardFormat())
+		} else if r.Method == "POST" {
+			launch(act.Exec, false)
 			respond.Accepted(w)
 		} else {
 			respond.NotAllowed(w)
@@ -108,11 +141,6 @@ func Run() {
 	}
 }
 
-func init() {
-	mimetypes.Store(make(MimetypeMap))
-	applications.Store(make(ApplicationMap))
-}
-
 var watcher *fsnotify.Watcher
 
 func watchDir(dir string) {
@@ -127,7 +155,13 @@ func isRelevant(event fsnotify.Event) bool {
 	return strings.HasSuffix(event.Name, ".desktop") || strings.HasSuffix(event.Name, "/mimeapps.list")
 }
 
-var mimetypes, applications atomic.Value
+var mimetypes, applications, actions atomic.Value
+
+func init() {
+	mimetypes.Store(make(MimetypeMap))
+	applications.Store(make(ApplicationMap))
+	actions.Store(make(actionMap))
+}
 
 func collectAndMap() {
 	fmt.Println("collect mimetypes and applications")
@@ -139,10 +173,18 @@ func collectAndMap() {
 	mimetypes.Store(mimetypeMap)
 
 	var appMap = make(ApplicationMap, len(c.applications))
+	var actMap = make(actionMap, 50)
 	for appId, app := range c.applications {
 		appMap[appSelf(appId)] = app
+		if len(app.DesktopActions) > 0 {
+			for _, act := range app.DesktopActions {
+				fmt.Println("Mapping action", act.self)
+				actMap[act.self] = act
+			}
+		}
 	}
 	applications.Store(appMap)
+	actions.Store(actMap)
 }
 
 /*if otherActionsPath != "" {

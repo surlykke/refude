@@ -214,7 +214,8 @@ func (c *collection) collectApplications(appdir string) {
 			return nil
 		}
 
-		app, mimetypes, err := readDesktopFile(path)
+		var id = strings.Replace(path[len(appdir)+1:], "/", "-", -1)
+		app, mimetypes, err := readDesktopFile(path, id)
 		if err != nil {
 			log.Println("Error processing ", path, ":\n\t", err)
 			return nil
@@ -225,8 +226,6 @@ func (c *collection) collectApplications(appdir string) {
 			(len(app.NotShowIn) > 0 && slice.ElementsInCommon(xdg.CurrentDesktop, app.NotShowIn)) {
 			return nil
 		}
-
-		app.Id = strings.Replace(path[len(appdir)+1:], "/", "-", -1)
 
 		c.applications[app.Id] = app
 
@@ -283,13 +282,13 @@ func (c *collection) readMimeappsList(path string) {
 	}
 }
 
-func readDesktopFile(path string) (*DesktopApplication, []string, error) {
+func readDesktopFile(path string, id string) (*DesktopApplication, []string, error) {
 	if iniFile, err := xdg.ReadIniFile(path); err != nil {
 		return nil, nil, err
 	} else if len(iniFile) == 0 || iniFile[0].Name != "Desktop Entry" {
 		return nil, nil, errors.New("File must start with '[Desktop Entry]'")
 	} else {
-		var da = DesktopApplication{}
+		var da = DesktopApplication{Id: id}
 		var mimetypes = []string{}
 		da.DesktopActions = make(map[string]*DesktopAction)
 		var actionNames = []string{}
@@ -335,24 +334,22 @@ func readDesktopFile(path string) (*DesktopApplication, []string, error) {
 			} else if currentAction := actionGroup.Name[15:]; !slice.Contains(actionNames, currentAction) {
 				log.Print(path, ", undeclared action: ", currentAction, " - ignoring\n")
 			} else {
-				var action DesktopAction
-				if action.Name = actionGroup.Entries["Name"]; action.Name == "" {
+				var name = actionGroup.Entries["Name"]
+				if name == "" {
 					return nil, nil, errors.New("Desktop file invalid, action " + actionGroup.Name + " has no default 'Name'")
 				}
-				icon = actionGroup.Entries["icon"]
-				if strings.HasPrefix(icon, "/") {
-					action.IconName = icons.AddFileIcon(icon)
-				} else {
-					action.IconName = icon
+				var iconName = actionGroup.Entries["icon"]
+				if strings.HasPrefix(iconName, "/") {
+					iconName = icons.AddFileIcon(iconName)
 				}
-				if action.IconName == "" {
-					action.IconName = da.IconName
+				da.DesktopActions[currentAction] = &DesktopAction{
+					self:     appSelf(da.Id) + "/" + currentAction,
+					Name:     name,
+					Exec:     actionGroup.Entries["Exec"],
+					IconName: iconName,
 				}
-				action.Exec = actionGroup.Entries["Exec"]
-				da.DesktopActions[currentAction] = &action
 			}
 		}
-
 		mimetypes = slice.Split(group.Entries["MimeType"], ";")
 
 		return &da, mimetypes, nil

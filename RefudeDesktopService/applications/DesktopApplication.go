@@ -45,28 +45,48 @@ type DesktopApplication struct {
 	Mimetypes       []string
 }
 
+func (d *DesktopApplication) otherActionsPath() string {
+	if len(d.DesktopActions) > 0 {
+		return "/application/actionsearch?for=" + d.Id[0:len(d.Id)-8]
+	} else {
+		return ""
+	}
+}
+
 func (d *DesktopApplication) ToStandardFormat() *respond.StandardFormat {
 	return &respond.StandardFormat{
-		Self:      appSelf(d.Id),
-		OnPost:    "Launch",
-		Type:      "application",
-		Title:     d.Name,
-		Comment:   d.Comment,
-		IconName:  d.IconName,
-		Data:      d,
-		NoDisplay: d.NoDisplay,
+		Self:         appSelf(d.Id),
+		OnPost:       "Launch",
+		OtherActions: d.otherActionsPath(),
+		Type:         "application",
+		Title:        d.Name,
+		Comment:      d.Comment,
+		IconName:     d.IconName,
+		Data:         d,
+		NoDisplay:    d.NoDisplay,
 	}
-
 }
 
 type DesktopAction struct {
+	self     string
 	Name     string
 	Exec     string
 	IconName string
 }
 
-func (d *DesktopApplication) launch() {
-	launchWithArgs(d.Exec, []string{}, d.Terminal)
+func (da *DesktopAction) ToStandardFormat() *respond.StandardFormat {
+	return &respond.StandardFormat{
+		Self:     da.self,
+		OnPost:   "Launch",
+		Type:     "applicationaction",
+		Title:    da.Name,
+		IconName: da.IconName,
+		Data:     da,
+	}
+}
+
+func launch(exec string, inTerminal bool) {
+	launchWithArgs(exec, []string{}, inTerminal)
 }
 
 func launchWithArgs(exec string, args []string, inTerminal bool) {
@@ -109,3 +129,4 @@ func appSelf(appId string) string {
 }
 
 type ApplicationMap map[string]*DesktopApplication
+type actionMap map[string]*DesktopAction
