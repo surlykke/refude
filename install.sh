@@ -11,15 +11,7 @@ mkdir -p ${REFUDEDIR}
 
 echo done building
 
-for appdir in panel appchooser ; do
-	rm -rf $REFUDEDIR/$appdir
-	cp -R dist/$appdir $REFUDEDIR/$appdir
-done
-
-for app in panel/refudePanel panel/refudeDo appchooser/refudeAppChooser;  do
-	ln -sf $REFUDEDIR/$app ${PREFIX}/bin
-done
-
-for desktopfile in panel/refudePanel.desktop; do
-    ln -sf $REFUDEDIR/$desktopfile ${PREFIX}/share/applications
-done
+rm -rf $REFUDEDIR/panel
+cp -R dist/panel $REFUDEDIR/panel
+ln -sf $REFUDEDIR/panel ${PREFIX}/bin
+ln -sf $REFUDEDIR/refudePanel.desktop ${PREFIX}/share/applications

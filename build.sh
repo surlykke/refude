@@ -4,13 +4,9 @@
 
 cd $(dirname $0)
 
-#apps='appchooser panel test'
-apps='appchooser panel'
 
-for appdir in $apps; do
-    mkdir -p dist/$appdir
-    cp $appdir/static/* dist/$appdir
-done
+mkdir -p dist/panel
+cp panel/static/* dist/panel
 
 if [[ "-d" == "$1" ]]; then
     ./node_modules/.bin/webpack -d

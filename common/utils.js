@@ -76,8 +76,6 @@ export let managePosition = () => {
     subscribe("selectorShown", savePosition)    
 }
 
-
-
 export let manageZoom = () => {
     let zoom = [0.25, 0.33, 0.50, 0.67, 0.75, 0.80, 0.90, 1.00, 1.10, 1.25, 1.50, 1.75, 2.00, 2.50, 3.00, 4.00, 5.00] // The ones that chromium have
 
@@ -100,18 +98,6 @@ export let manageZoom = () => {
     });
 }
 
-
-export let applicationRank = (app, lowercaseTerm) => {
-    let tmp;
-    if ((tmp = app.Name.toLowerCase().indexOf(lowercaseTerm)) > -1) {
-        return -tmp;
-    } else if (app.Comment && (tmp = app.Comment.toLowerCase().indexOf(lowercaseTerm)) > -1) {
-        return -tmp - 100;
-    } else {
-        return 1;
-    }
-};
-
 const PUBSUB = (() => {
     let subscriptions = {}
     return {
@@ -128,46 +114,3 @@ const PUBSUB = (() => {
 
 export let publish = (topic, data) => PUBSUB.publish(topic, data);
 export let subscribe = (topic, fn) => PUBSUB.subscribe(topic, fn);
-
-
-export let rank = (item, lowercaseTerm) => {
-
-    if (lowercaseTerm === "" && !item.matchEmpty) {
-        return -1;
-    }
-
-    let tmp = item.name.toLowerCase().indexOf(lowercaseTerm)
-    if (tmp > -1) {
-        return tmp
-    }
-
-    // More fluffy search - eg. pwr matches PowerOff or nvim matches neovim 
-    // When we reach here we know lowercaseTerm is not empty
-    if (item.matchFluffy) {
-        let j = 0;
-        for (let i = 0; i < item.name.length; i++) {
-            if (item.name[i].toLocaleLowerCase() === lowercaseTerm[j]) {
-                j++;
-            }
-            if (j >= lowercaseTerm.length) {
-                return 100 + i
-            }
-
-        }
-    }
-
-    if (item.comment) {
-        tmp = item.comment.toLowerCase().indexOf(lowercaseTerm)
-        if (tmp > -1) {
-            return 200 + tmp
-        }
-    }
-    return -1
-};
-
-export let filterAndSort = (itemlist, lowercaseTerm) => {
-    return itemlist.filter(i => {
-        i.rank = rank(i, lowercaseTerm);
-        return i.rank > -1;
-    }).sort((i1, i2) => i1.rank - i2.rank);
-}

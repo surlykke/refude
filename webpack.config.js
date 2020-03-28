@@ -24,7 +24,6 @@ module.exports = {
     },
     entry: {
         panel: './panel/index.js',
-        appchooser: './appchooser/index.js',
 //        test: './test/index.js'
     },
     target: 'node',

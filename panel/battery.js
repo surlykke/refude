@@ -13,7 +13,7 @@
  */
 import React from 'react'
 import { publish } from "../common/utils";
-import { monitorUrl, getUrl, monitorSSE } from '../common/monitor';
+import { getUrl, monitorSSE } from '../common/monitor';
 
 /**
  * We represent charge by a circle segment (cf https://en.wikipedia.org/wiki/Circular_segment)
