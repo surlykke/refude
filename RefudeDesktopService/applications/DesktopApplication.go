@@ -9,7 +9,6 @@ package applications
 import (
 	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"regexp"
 	"strings"
@@ -106,18 +105,6 @@ func appSelf(appId string) string {
 		return ""
 	} else {
 		return "/application/" + appId[:len(appId)-8]
-	}
-}
-
-func (d *DesktopApplication) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case "GET":
-		respond.AsJson(w, d.ToStandardFormat())
-	case "POST":
-		d.launch()
-		respond.Accepted(w)
-	default:
-		respond.NotAllowed(w)
 	}
 }
 
