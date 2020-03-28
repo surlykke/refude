@@ -23,6 +23,10 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			respond.AsJson(w, notification.ToStandardFormat())
 		} else if r.Method == "POST" && notification.haveDefaultAction() {
 			conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".ActionInvoked", notification.Id, "default")
+			respond.Accepted(w)
+		} else if r.Method == "DELETE" {
+			removals <- removal{id: notification.Id, reason: Dismissed}
+			respond.Accepted(w)
 		} else {
 			respond.NotAllowed(w)
 		}
