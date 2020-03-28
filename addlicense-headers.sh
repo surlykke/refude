@@ -1,6 +1,6 @@
 #!/bin/bash
 cd $(dirname $0)
-DIRS="appchooser common do panel"
+DIRS="appchooser common panel"
 
 addHtmlHeader () {
 	cat ./license-header-template-html.txt $1 | sponge $1
