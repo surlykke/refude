@@ -1,4 +1,4 @@
-// Copyright (c) 2015, 2016, 2017 Christian Surlykke
+// Copyright (c) Christian Surlykke
 //
 // This file is part of the refude project.
 // It is distributed under the GPL v2 license.
