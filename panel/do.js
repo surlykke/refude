@@ -13,33 +13,11 @@ import { getUrl, postUrl, monitorSSE } from '../common/monitor';
 
 const http = require('http');
 
-
-
-let windowIconStyle = w => {
-    let style = {
-        WebkitFilter: "drop-shadow(5px 5px 3px grey)",
-        overflow: "visible"
-    };
-    if (w.States.includes("_NET_WM_STATE_HIDDEN")) {
-        Object.assign(style, {
-            marginLeft: "10px",
-            marginTop: "10px",
-            width: "14px",
-            height: "14px",
-            opacity: "0.7"
-        })
-    }
-
-    return style
-};
-
-
 class Do extends React.Component {
     constructor(props) {
         super(props);
         this.state = { resources: [], open: false, term: "" }
         this.listenForUpDown();
-        monitorSSE("events", this.updateResourceList, this.updateResourceList, () => {this.setState({resources: []})})
         this.handleBlurEvents();
     };
 
@@ -49,16 +27,16 @@ class Do extends React.Component {
             let selectedDiv = document.getElementById(this.state.selected);
             if (selectedDiv) {
                 let listDiv = document.getElementById("itemListDiv");
-                let { top: listTop, bottom: listBottom } = listDiv.getBoundingClientRect();
-                let { top: selectedTop, bottom: selectedBottom } = selectedDiv.getBoundingClientRect();
-                if (selectedTop < listTop) listDiv.scrollTop -= (listTop - selectedTop + 25)
-                else if (selectedBottom > listBottom) listDiv.scrollTop += (selectedBottom - listBottom + 10)
+                if (listDiv) {
+                    let { top: listTop, bottom: listBottom } = listDiv.getBoundingClientRect();
+                    let { top: selectedTop, bottom: selectedBottom } = selectedDiv.getBoundingClientRect();
+                    if (selectedTop < listTop) listDiv.scrollTop -= (listTop - selectedTop + 25)
+                    else if (selectedBottom > listBottom) listDiv.scrollTop += (selectedBottom - listBottom + 10)
+                }
             }
         }
         publish("componentUpdated");
     };
-
-    focusInput = () => document.getElementById("input") && document.getElementById("input").focus();
 
     listenForUpDown = () => {
         let that = this;
@@ -71,16 +49,10 @@ class Do extends React.Component {
     handleBlurEvents = () => WIN.on('blur', this.close);
 
     updateResourceList = () => {
-        if (this.state.open) {
-            let url = `/search/desktop?term=${this.state.term}`
-            getUrl(url, resp => {
-                this.setState({ resources: resp.data }, this.ensureSelection)
-            })
-        } else {
-            getUrl("/search/events", resp => {
-                this.setState({ resources: resp.data, selected: undefined })
-            })
-        }
+        let url = `/search/desktop?term=${this.state.term}`
+        getUrl(url, resp => {
+            this.setState({ resources: resp.data }, this.ensureSelection)
+        })
     }
 
     ensureSelection = () => {
@@ -140,21 +112,22 @@ class Do extends React.Component {
     open = (callback) => {
         this.setState({ open: true, term: "" }, this.updateResourceList)
         callback && callback()
+        publish("doOpen")
         WIN.focus()
     };
 
     close = () => {
-        this.setState({ open: false, term: "" }, this.updateResourceList);
+        this.setState({ open: false, resources: [], term: "" });
+        publish("doClose")
     };
 
     render = () => {
 
-        let outerStyle = {
+        let doStyle = {
             maxWidth: "300px",
             maxHeight: "300px",
             display: "flex",
             flexFlow: "column",
-            paddingTop: this.state.open ? "0.3em" : "0px",
             paddingLeft: "0.3em",
         };
 
@@ -266,37 +239,27 @@ class Do extends React.Component {
             prevType = r.Type
         })
 
-        let indicator;
-        let res = this.selectedResource()
-        if (res && "window" === res.Type) {
-            indicator = {
-                X: res.Data.X,
-                Y: res.Data.Y,
-                W: res.Data.W,
-                H: res.Data.H,
-                screenShotUrl: "http://localhost:7938" + res.Self + "/screenshot?downscale=3",
-            }
-        }
-
-
-        return <span>
-            <div onKeyDown={this.keyDown} style={outerStyle}>
-                {this.state.open &&
-                    <div style={searchBoxStyle}>
-                        <input id="input"
-                            style={inputStyle}
+        if (this.state.open) {
+            return <>
+            <div style={doStyle}>
+                <div style={searchBoxStyle} onKeyDown={this.keyDown}>
+                    <input id="input"
+                        style={inputStyle}
                             type="search"
                             onChange={e => this.setTerm(e.target.value)}
                             value={this.state.term}
                             autoComplete="off"
                             autoFocus />
-                    </div>}
+                </div>
                 <div id="itemListDiv" style={innerStyle}>
                     {items}
                 </div>
             </div>
-            {indicator && <Indicator key="indicator" indicator={indicator} />}
-        </span>
+            <Indicator key="indicator" res={this.selectedResource()} />
+            </>
+        } else {
+            return null;
+        }
     }
 }
 

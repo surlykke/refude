@@ -14,7 +14,6 @@ class DragField extends React.Component {
     render = () => {
         let style = {WebkitAppRegion: "drag"};
         Object.assign(style, this.props.style);
-        console.log("this.props.style:", style)
         return <div style={style}>
             <svg width="14" height="14" viewBox="-50 -50 100 100" xmlns="http://www.w3.org/2000/svg">
                 <defs>

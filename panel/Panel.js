@@ -19,6 +19,7 @@ import { NotifierItems } from './notifieritems'
 import { DragField } from './dragfield'
 import { CloseButton } from "./closebutton";
 import { Do } from './do'
+import { Notifications } from './notifications'
 
 const http = require('http');
 
@@ -56,19 +57,24 @@ export default class Panel extends React.Component {
         this.adjustSize()
     };
 
-
     adjustSize = () => {
         setTimeout(
             () => {
                 let { width, height } = this.content.getBoundingClientRect()
                 let zoomLevel = document.body.style.zoom || 1
-                Window.resizeTo(Math.round(zoomLevel*width) - 1, Math.round(zoomLevel*height))
+                let newWidth = Math.round(zoomLevel*width) - 1;
+                let newHeight = Math.round(zoomLevel*height);
+                if (Math.abs(newWidth - Window.width) > 3 || Math.abs(newHeight - Window.height) > 3) {
+                    Window.resizeTo(newWidth, newHeight);
+                }
             },
-            10
+            1
         )
     };
 
     render = () => {
+        
+
         return <div style={{ width: "500px" }}>
             <div style={style} id="content" ref={div => { this.content = div }}>
                 <Clock style={pluginStyle} />
@@ -76,7 +82,8 @@ export default class Panel extends React.Component {
                 <Battery style={pluginStyle} />
                 <DragField style={pluginStyle} />
                 <CloseButton style={pluginStyle} />
-                <Do />
+                <Notifications/>
+                <Do/> 
             </div>
         </div>
     }

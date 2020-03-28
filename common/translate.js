@@ -30,9 +30,7 @@ export let T = (string, ...args) => {
     } else {
         args.forEach((arg, i) => {
             let regexp = new RegExp(`%${i}`, 'g');
-            console.log("Replacing", regexp, "in", string, "with", arg);
             string = string.replace(regexp, arg)
-            console.log("String now:", string);
         });
         return string;
     }

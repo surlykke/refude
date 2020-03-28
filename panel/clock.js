@@ -41,7 +41,6 @@ class Clock extends React.Component {
 	}
 
 	render = () => {
-		console.log("Render clock with style:", this.style)
 		return <div id="clock" style={this.style}>
 					<div>{this.state.clockString}</div>
 				</div>
