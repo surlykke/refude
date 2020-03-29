@@ -35,6 +35,7 @@ func (n *Notification) ToStandardFormat() *respond.StandardFormat {
 		Comment:  n.Body,
 		IconName: n.IconName,
 		OnPost:   n.Actions["default"],
+		OnDelete: "Dismiss",
 		Data:     n,
 	}
 }
