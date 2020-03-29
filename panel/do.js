@@ -8,12 +8,13 @@
 import React from 'react'
 import { WIN, publish } from "../common/utils";
 import { Indicator } from "./indicator";
+import { DoItem} from "./doitem"
 import { T } from "../common/translate";
 import { getUrl, postUrl, monitorSSE } from '../common/monitor';
 
 const http = require('http');
 
-class Do extends React.Component {
+export class Do extends React.Component {
     constructor(props) {
         super(props);
         this.state = { resources: [], open: false, term: "" }
@@ -62,9 +63,7 @@ class Do extends React.Component {
     }
 
     selectedResource = () => {
-        console.log("selectedREsource looking for", this.state.selected)
         let res = this.state.selected && this.state.resources.find(r => r.Self === this.state.selected)
-        console.log("Returning", res)
         return res
     }
 
@@ -94,7 +93,6 @@ class Do extends React.Component {
         if (index > -1) {
             index = (index + this.state.resources.length + (down ? 1 : -1)) % this.state.resources.length;
             this.setState({ selected: this.state.resources[index].Self })
-            //notifyListeners();
         }
     }
 
@@ -135,33 +133,6 @@ class Do extends React.Component {
             overflowY: "scroll"
         };
 
-        let headingStyle = {
-            fontSize: "0.9em",
-            color: "gray",
-            fontStyle: "italic",
-            marginTop: "5px",
-            marginBottom: "3px",
-        };
-
-        let itemStyle = (self) => {
-            let style = {
-                marginRight: "5px",
-                padding: "4px",
-                verticalAlign: "top",
-                overflow: "hidden",
-                height: "30px",
-            };
-
-            if (this.state.selected === self) {
-                Object.assign(style, {
-                    border: "solid black 2px",
-                    borderRadius: "5px",
-                    boxShadow: "1px 1px 1px #888888",
-                })
-            }
-            return style
-        }
-
         let searchBoxStyle = {
             boxSizing: "border-box",
             paddingRight: "5px",
@@ -177,68 +148,6 @@ class Do extends React.Component {
             outlineStyle: "none",
         };
 
-        let nameStyle = {
-            overflow: "hidden",
-            whiteSpace: "nowrap",
-            marginRight: "6px",
-        };
-
-        let commentStyle = {
-            fontSize: "0.8em",
-        };
-
-
-        let iconStyle = (res) => {
-            let style = {
-                float: "left",
-                marginRight: "6px"
-            };
-
-            if (res.Type === "window") {
-                Object.assign(style, {
-                    WebkitFilter: "drop-shadow(5px 5px 3px grey)",
-                    overflow: "visible"
-                });
-
-                if (res.Data.States && res.Data.States.includes("_NET_WM_STATE_HIDDEN")) {
-                    Object.assign(style, {
-                        marginLeft: "10px",
-                        marginTop: "10px",
-                        width: "14px",
-                        height: "14px",
-                        opacity: "0.7"
-                    })
-                }
-            }
-
-            return style
-        }
-
-        let iconUrl = (res) => {
-            if (res.IconName) {
-                return `http://localhost:7938/icon?name=${res.IconName}&theme=oxygen`
-            } else {
-                return ""
-            }
-        }
-
-        let prevType
-
-        let items = []
-        this.state.resources.forEach(r => {
-            if (prevType !== r.Type) {
-                items.push(<div style={headingStyle}>{r.Type}</div>)
-            }
-            items.push(
-                <div id={r.Self} style={itemStyle(r.Self)} onClick={() => this.select(r.Self)} onDoubleClick={() => this.activate(r.Self)}>
-                    <img width="24px" height="24px" style={iconStyle(r)} src={iconUrl(r)} alt="" />
-                    <div style={nameStyle}>{r.Title}</div>
-                    <div style={commentStyle}>{r.Comment}</div>
-                </div>
-            )
-            prevType = r.Type
-        })
-
         if (this.state.open) {
             return <>
             <div style={doStyle}>
@@ -252,7 +161,10 @@ class Do extends React.Component {
                             autoFocus />
                 </div>
                 <div id="itemListDiv" style={innerStyle}>
-                    {items}
+                    {this.state.resources.map((r,i,resources) => 
+                        <DoItem res={r} prevRes={resources[i-1]} selected={this.state.selected === r.Self} 
+                                onClick={() => this.select(r)} onDoubleClick={() => this.activate(r.Self)}/>)
+                    }
                 </div>
             </div>
             <Indicator key="indicator" res={this.selectedResource()} />
@@ -263,4 +175,3 @@ class Do extends React.Component {
     }
 }
 
-export { Do }

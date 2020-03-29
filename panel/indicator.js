@@ -46,8 +46,6 @@ export let Indicator = props => {
     if (props.res && props.res.Type === "window") {
         let {X,Y,W,H} = props.res.Data
         let screenShotUrl = "http://localhost:7938" + props.res.Self + "/screenshot?downscale=3"
-        console.log("screenShotUrl", screenShotUrl)
-        console.log("Indicator render:", X, Y, W, H, screenShotUrl)
         let viewBox = `${display.x - 3} ${display.y - 3} ${display.w + 6} ${display.h + 6}`;
         let rects = screens.map((scr, i) => <rect key={`screenRect_${i}`} x={scr.x} y={scr.y} width={scr.w} height={scr.h} fill="lightgrey"/>);
         //rects.push(<rect key="winRect" x={window.X} y={window.Y} width={window.W} height={window.H} fill="grey" />);
