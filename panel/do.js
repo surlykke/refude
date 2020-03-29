@@ -10,7 +10,7 @@ import { WIN, publish } from "../common/utils";
 import { Indicator } from "./indicator";
 import { DoItem} from "./doitem"
 import { T } from "../common/translate";
-import { getUrl, postUrl, monitorSSE } from '../common/monitor';
+import { getUrl, postUrl, monitorSSE, deleteUrl } from '../common/monitor';
 
 const http = require('http');
 
@@ -81,6 +81,7 @@ export class Do extends React.Component {
         else if (key === "Enter" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.activate();
         else if (key === " " && !ctrlKey && !shiftKey && !altKey && !metaKey) this.activate();
         else if (key === "Escape" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.close();
+        else if (key === "Delete" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.delete();
         else {
             return;
         }
@@ -105,6 +106,11 @@ export class Do extends React.Component {
         if (url) {
             postUrl(url, response => { this.close() });
         }
+    }
+
+    delete = (url) => {
+        url = url || this.state.selected;
+        url && deleteUrl(url, response => this.close());
     }
 
     open = (callback) => {

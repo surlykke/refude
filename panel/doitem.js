@@ -19,11 +19,12 @@ export let DoItem = props => {
     };
 
     let style =  {
-            marginRight: "5px",
-            padding: "4px",
-            verticalAlign: "top",
-            overflow: "hidden",
-            height: "30px",
+        position: "relative",
+        marginRight: "5px",
+        padding: "4px",
+        verticalAlign: "top",
+        overflow: "hidden",
+        height: "30px",
     };
 
     if (selected) {
@@ -67,12 +68,31 @@ export let DoItem = props => {
     let commentStyle = {
         fontSize: "0.8em",
     };
-    
+
+    if (res.OtherActions) {
+        Object.assign(commentStyle, {width: "calc(100% - 24px)"})
+    }
+
     return [ 
         !(prevRes && prevRes.Type === res.Type) &&
         <div style={headingStyle}>{res.Type}</div>,
         
-        <div id={res.Self} style={style} onClick={onClick} onDoubleClick={onDoubleClick}>
+        <div id={res.Self} style={style} onClick={onClick} onDoubleClick={onDoubleClick}> 
+            {res.OnDelete &&
+            <svg width="10" height="10" viewBox="0 0 100 100" style={{position: "absolute", top: "2px", right: "2px"}}>
+                <g fillOpacity="0" strokeWidth="12" stroke="black">
+                    <line x1="25" y1="25" x2="75" y2="75"/>
+                    <line x1="25" y1="75" x2="75" y2="25"/>
+                </g>
+                <circle cx="50" cy="50" r="48" stroke="black" strokeWidth="4" fill="none" />
+            </svg>}
+
+            {res.OtherActions &&
+            <svg width="18" height="6" viewBox="0 0 300 100" style={{position: "absolute", zAxis: "10", bottom: "2px", right: "5px"}}>
+                <circle cx="50" cy="50" r="30" stroke="gray" strokeWidth="4" fill="gray" />
+                <circle cx="150" cy="50" r="30" stroke="gray" strokeWidth="4" fill="gray" />
+                <circle cx="250" cy="50" r="30" stroke="gray" strokeWidth="4" fill="gray" />
+            </svg>}
             <img width="24px" height="24px" style={iconStyle} src={iconUrl} alt="" />
             <div style={nameStyle}>{res.Title}</div>
             <div style={commentStyle}>{res.Comment}</div>

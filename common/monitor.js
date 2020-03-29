@@ -43,6 +43,13 @@ export let patchUrl = (path, body, handler) => {
     }).catch(err => console.error(err))
 }
 
+export let deleteUrl = (path, handler) => {
+    Axios.delete(`http://localhost:7938${path}`).then(resp => {
+        handler && handler(resp)
+    }).catch(err => console.error(err))
+}
+
+
 export let iconUrl = (iconName) => {
     // TODO make icontheme configurable
     return `http://localhost:7938/icon?name=${iconName}&theme=oxygen`;
