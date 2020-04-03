@@ -20,6 +20,8 @@ export class Do extends React.Component {
         this.state = { resources: [], open: false, term: "" }
         this.listenForUpDown();
         this.handleBlurEvents();
+        this.history = []
+        this.url = "/search/desktop"
     };
 
     componentDidUpdate = () => {
@@ -50,8 +52,8 @@ export class Do extends React.Component {
     handleBlurEvents = () => WIN.on('blur', this.close);
 
     updateResourceList = () => {
-        let url = `/search/desktop?term=${this.state.term}`
-        getUrl(url, resp => {
+        let separator = this.url.indexOf('?') > -1 ? '&' : '?';
+        getUrl(this.url + `${separator}term=${this.state.term}`, resp => {
             this.setState({ resources: resp.data }, this.ensureSelection)
         })
     }
@@ -77,11 +79,17 @@ export class Do extends React.Component {
         if (key === "Tab" && !ctrlKey && shiftKey && !altKey && !metaKey) this.move(false);
         else if (key === "Tab" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.move(true);
         else if (key === "ArrowUp" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.move(false);
-        else if (key === "ArrowDown" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.move(true);
+        else if (key === "k" && ctrlKey && !shiftKey && !altKey && !metaKey) this.move(false);
+        else if (key === "ArrowDown" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.move(true); 
+        else if (key === "j" && ctrlKey && !shiftKey && !altKey && !metaKey) this.move(true);
         else if (key === "Enter" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.activate();
         else if (key === " " && !ctrlKey && !shiftKey && !altKey && !metaKey) this.activate();
         else if (key === "Escape" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.close();
         else if (key === "Delete" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.delete();
+        else if (key === "ArrowRight" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.navigate();
+        else if (key === "l" && ctrlKey && !shiftKey && !altKey && !metaKey) this.navigate();
+        else if (key === "ArrowLeft" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.navigateBack();
+        else if (key === "h" && ctrlKey && !shiftKey && !altKey && !metaKey) this.navigateBack();
         else {
             return;
         }
@@ -113,7 +121,28 @@ export class Do extends React.Component {
         url && deleteUrl(url, response => this.close());
     }
 
+    navigate = () => {
+        let res = this.selectedResource()
+        if (res && res.OtherActions) {
+            this.history.unshift({url: this.url, term: this.state.term, selected: this.state.selected})
+            this.url = res.OtherActions;
+            this.setState({term: ""}, this.updateResourceList)
+        }
+        console.log('navigate')
+    }
+
+    navigateBack = () => {
+        if (this.history.length > 0) {
+            let history = this.history.shift()
+            this.url = history.url;
+            this.setState({term: history.term, selected: history.selected}, this.updateResourceList)
+        }
+        console.log('navigateBack')
+    }
+
     open = (callback) => {
+        this.url = "/search/desktop"
+        this.history = []
         this.setState({ open: true, term: "" }, this.updateResourceList)
         callback && callback()
         publish("doOpen")
