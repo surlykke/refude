@@ -66,7 +66,7 @@ func findImage(themeId string, iconName string, size uint32) (IconImage, bool) {
 
 	var idsToVisit = []string{themeId}
 	for i := 0; i < len(idsToVisit); i++ {
-		if theme, ok := themes[idsToVisit[i]]; ok {
+		if theme, ok := themes["/icontheme/"+idsToVisit[i]]; ok {
 			if imageList, ok := themeIcons[idsToVisit[i]][iconName]; ok {
 				return findBestMatch(imageList, size), true
 			} else {
