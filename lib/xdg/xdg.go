@@ -25,6 +25,15 @@ var RuntimeDir string
 var CurrentDesktop []string
 var Locale string
 
+var DesktopDir string
+var DownloadDir string
+var TemplatesDir string
+var PublicshareDir string
+var DocumentsDir string
+var MusicDir string
+var PicturesDir string
+var VideosDir string
+
 func init() {
 	Home = os.Getenv("HOME")
 	ConfigHome = notEmptyOr(os.Getenv("XDG_CONFIG_HOME"), Home+"/.config")
@@ -40,6 +49,18 @@ func init() {
 	if index := strings.Index(Locale, "."); index > -1 {
 		Locale = Locale[0:index]
 	}
+
+	// User dirs. Defaults taken from my /etc/xdg/user-dirs.defaults. We probably should re-read that file on startup,
+	// but given that so many apps use these, I find it unlikely that they will change. (The defaults, that is)
+	var userDirs, _ = readUserDirs(Home, ConfigHome)
+	DesktopDir = notEmptyOr(userDirs["XDG_DESKTOP_DIR"], Home+"/DESKTOP")
+	DownloadDir = notEmptyOr(userDirs["XDG_DOWNLOAD_DIR"], Home+"/DOWNLOAD")
+	TemplatesDir = notEmptyOr(userDirs["XDG_TEMPLATES_DIR"], Home+"/TEMPLATES")
+	PublicshareDir = notEmptyOr(userDirs["XDG_PUBLICSHARE_DIR"], Home+"/PUBLICSHARE")
+	DocumentsDir = notEmptyOr(userDirs["XDG_DOCUMENTS_DIR"], Home+"/DOCUMENTS")
+	MusicDir = notEmptyOr(userDirs["XDG_MUSIC_DIR"], Home+"/MUSIC")
+	PicturesDir = notEmptyOr(userDirs["XDG_PICTURES_DIR"], Home+"/PICTURES")
+	VideosDir = notEmptyOr(userDirs["XDG_VIDEOS_DIR"], Home+"/VIDEOS")
 }
 
 func RunCmd(argv []string) {
