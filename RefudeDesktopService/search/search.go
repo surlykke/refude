@@ -79,6 +79,16 @@ func searchDesktop(w http.ResponseWriter, r *http.Request) {
 		sfl = append(sfl, session.Collect(term)...)
 	}
 
+	var j = 0
+	for i := 0; i < len(sfl); i++ {
+		if !sfl[i].NoDisplay {
+			sfl[j] = sfl[i]
+			j++
+		}
+	}
+
+	sfl = sfl[:j]
+
 	respond.AsJson(w, r, sfl)
 }
 
