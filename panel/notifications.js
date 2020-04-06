@@ -22,7 +22,7 @@ export class Notifications extends React.Component {
     };
 
     update = () => {
-        getUrl("/search/events", resp => {
+        getUrl("/notifications", resp => {
             this.setState({ events: resp.data })
         })
     }

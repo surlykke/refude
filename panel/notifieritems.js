@@ -119,7 +119,7 @@ export class NotifierItems extends React.Component {
     };
 
     getItems = () => {
-        getUrl("/search?type=status_item", resp => this.setState({ items: resp.data}));
+        getUrl("/items", resp => this.setState({ items: resp.data}));
     };
 
 
