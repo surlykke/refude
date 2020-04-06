@@ -12,8 +12,6 @@ import (
 	"strings"
 	"sync/atomic"
 
-	"github.com/surlykke/RefudeServices/lib/requests"
-
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
 
@@ -22,93 +20,97 @@ import (
 )
 
 func AppServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path == "/application/actionsearch" {
-		if r.Method != "GET" {
-			respond.NotAllowed(w)
-		} else if id := requests.GetSingleQueryParameter(r, "for", ""); id == "" {
-			respond.NotFound(w)
-		} else {
-			var prefix = "/application/" + id
-			var term = requests.GetSingleQueryParameter(r, "term", "")
-			var collector = searchutils.MakeCollector(term, 10, false)
-			var foundSome = false
-			for path, act := range actions.Load().(actionMap) {
-				if strings.HasPrefix(path, prefix) {
-					foundSome = true
-					collector.Collect(act.ToStandardFormat())
-				}
-			}
-			if !foundSome {
-				respond.NotFound(w)
-			} else {
-				respond.AsJson(w, collector.SortByRankAndGet())
-			}
-		}
+	if r.URL.Path == "/applications" {
+		respond.AsJson(w, r, CollectApps(searchutils.Term(r)))
 	} else if app, ok := applications.Load().(ApplicationMap)[r.URL.Path]; ok {
-		if r.Method == "GET" {
-			respond.AsJson(w, app.ToStandardFormat())
-		} else if r.Method == "POST" {
-			launch(app.Exec, app.Terminal)
-			respond.Accepted(w)
+		if r.Method == "POST" {
+			respond.AcceptedAndThen(w, func() { launch(app.Exec, app.Terminal) })
 		} else {
-			respond.NotAllowed(w)
+			respond.AsJson(w, r, app.ToStandardFormat())
 		}
-	} else if act, ok := actions.Load().(actionMap)[r.URL.Path]; ok {
-		if r.Method == "GET" {
-			respond.AsJson(w, act.ToStandardFormat())
-		} else if r.Method == "POST" {
-			launch(act.Exec, false)
-			respond.Accepted(w)
+	} else if app = getAppForActions(r.URL.Path); app != nil {
+		respond.AsJson(w, r, app.collectActions(searchutils.Term(r)))
+	} else if act := getDesktopAction(r.URL.Path); act != nil {
+		if r.Method == "POST" {
+			respond.AcceptedAndThen(w, func() { launch(act.Exec, false) })
 		} else {
-			respond.NotAllowed(w)
+			respond.AsJson(w, r, act.ToStandardFormat())
 		}
 	} else {
 		respond.NotFound(w)
 	}
+}
+
+func getAppForActions(path string) *DesktopApplication {
+	if strings.HasSuffix(path, "/actions") {
+		if app, ok := applications.Load().(ApplicationMap)[path[:len(path)-8]]; ok {
+			return app
+		}
+	}
+	return nil
+}
+
+func getDesktopAction(path string) *DesktopAction {
+	if i := strings.Index(path, "/action/"); i > -1 {
+		if app, ok := applications.Load().(ApplicationMap)[path[:i]]; ok {
+			if act, ok := app.DesktopActions[path[i+8:]]; ok {
+				return act
+			}
+		}
+	}
+
+	return nil
+}
+
+func CollectApps(term string) respond.StandardFormatList {
+	var appMap = applications.Load().(ApplicationMap)
+	var sfl = make(respond.StandardFormatList, 0, len(appMap))
+	for _, app := range appMap {
+		if rank := searchutils.SimpleRank(app.Name, app.Comment, term); rank > -1 {
+			sfl = append(sfl, app.ToStandardFormat().Ranked(rank))
+		}
+	}
+	return sfl.SortByRank()
 }
 
 func MimetypeServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if mt, ok := mimetypes.Load().(MimetypeMap)[r.URL.Path]; ok {
-		if r.Method == "GET" {
-			respond.AsJson(w, mt.ToStandardFormat())
-		} else {
-			respond.NotAllowed(w) // FIXME allow PATCH to set default app
-		}
+	if r.URL.Path == "/mimetypes" {
+		respond.AsJson(w, r, CollectMimetypes(searchutils.Term(r)))
+	} else if mt, ok := mimetypes.Load().(MimetypeMap)[r.URL.Path]; ok {
+		respond.AsJson(w, r, mt.ToStandardFormat())
 	} else {
 		respond.NotFound(w)
 	}
 }
 
-/**
- * term must be lowercase
- */
-func SearchApps(collector *searchutils.Collector) {
-	for _, app := range applications.Load().(ApplicationMap) {
-		collector.Collect(app.ToStandardFormat())
+func CollectMimetypes(term string) respond.StandardFormatList {
+	var mimeMap = mimetypes.Load().(MimetypeMap)
+	var sfl = make(respond.StandardFormatList, 0, len(mimeMap))
+	for _, mt := range mimeMap {
+		if rank := searchutils.SimpleRank(mt.Comment, mt.Acronym, term); rank > -1 {
+			sfl = append(sfl, mt.ToStandardFormat().Ranked(rank))
+		}
 	}
+	return sfl.SortByRank()
 }
 
-func SearchMimetypes(collector *searchutils.Collector) {
-	for _, mt := range mimetypes.Load().(MimetypeMap) {
-		collector.Collect(mt.ToStandardFormat())
-	}
-}
-
-func AllAppPaths() []string {
+func AllPaths() []string {
 	var applicationMap = applications.Load().(ApplicationMap)
-	var paths = make([]string, 0, len(applicationMap))
-	for path, _ := range applicationMap {
+	var mimeMap = mimetypes.Load().(MimetypeMap)
+	var paths = make([]string, 0, len(applicationMap)+len(mimeMap)+100)
+	for path, app := range applicationMap {
+		paths = append(paths, path)
+		if len(app.DesktopActions) > 0 {
+			paths = append(paths, path+"/actions")
+			for _, act := range app.DesktopActions {
+				paths = append(paths, act.self)
+			}
+		}
+	}
+	for path, _ := range mimeMap {
 		paths = append(paths, path)
 	}
-	return paths
-}
-
-func AllMimetypePaths() []string {
-	var mimetypeMap = mimetypes.Load().(MimetypeMap)
-	var paths = make([]string, 0, len(mimetypeMap))
-	for path, _ := range mimetypeMap {
-		paths = append(paths, path)
-	}
+	paths = append(paths, "/applications", "/mimetypes")
 	return paths
 }
 
@@ -155,12 +157,11 @@ func isRelevant(event fsnotify.Event) bool {
 	return strings.HasSuffix(event.Name, ".desktop") || strings.HasSuffix(event.Name, "/mimeapps.list")
 }
 
-var mimetypes, applications, actions atomic.Value
+var mimetypes, applications atomic.Value
 
 func init() {
 	mimetypes.Store(make(MimetypeMap))
 	applications.Store(make(ApplicationMap))
-	actions.Store(make(actionMap))
 }
 
 func collectAndMap() {
@@ -173,30 +174,8 @@ func collectAndMap() {
 	mimetypes.Store(mimetypeMap)
 
 	var appMap = make(ApplicationMap, len(c.applications))
-	var actMap = make(actionMap, 50)
 	for appId, app := range c.applications {
 		appMap[appSelf(appId)] = app
-		if len(app.DesktopActions) > 0 {
-			for _, act := range app.DesktopActions {
-				fmt.Println("Mapping action", act.self)
-				actMap[act.self] = act
-			}
-		}
 	}
 	applications.Store(appMap)
-	actions.Store(actMap)
 }
-
-/*if otherActionsPath != "" {
-	for daId, da := range app.DesktopActions {
-		var exec, terminal = da.Exec, app.Terminal
-		resources = append(resources, &server.JsonData{
-			Self:        appSelf(appId) + "/" + daId,
-			Type:        "Action",
-			Title:       da.Name,
-			IconName:    da.IconName,
-			OnPost:      da.Name,
-			PostHandler: func(w http.ResponseWriter, r *http.Request) { launch(exec, terminal) },
-		})
-	}
-}*/

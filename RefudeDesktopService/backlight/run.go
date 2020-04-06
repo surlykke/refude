@@ -23,21 +23,23 @@ const lenbld = len(backlightdir)
 const lenbn = len(brightness)
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if backlight, ok := devices.Load().(DeviceMap)[r.URL.Path]; ok {
-		if r.Method == "GET" {
-			respond.AsJson(w, backlight.ToStandardFormat())
-		} else {
-			respond.NotAllowed(w)
-		}
+	if r.URL.Path == "/backlights" {
+		respond.AsJson(w, r, Collect(searchutils.Term(r)))
+	} else if backlight, ok := devices.Load().(DeviceMap)[r.URL.Path]; ok {
+		respond.AsJson(w, r, backlight.ToStandardFormat())
 	} else {
 		respond.NotFound(w)
 	}
 }
 
-func SearchBacklights(collector *searchutils.Collector) {
+func Collect(term string) respond.StandardFormatList {
+	var sfl = make(respond.StandardFormatList, 0, 5)
 	for _, device := range devices.Load().(DeviceMap) {
-		collector.Collect(device.ToStandardFormat())
+		if rank := searchutils.SimpleRank(device.Id, "", term); rank > -1 {
+			sfl = append(sfl, device.ToStandardFormat().Ranked(rank))
+		}
 	}
+	return sfl
 }
 
 func AllPaths() []string {

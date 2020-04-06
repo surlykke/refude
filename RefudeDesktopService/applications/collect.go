@@ -58,6 +58,17 @@ func Collect() collection {
 	}
 
 	fmt.Println("Sætter default apps")
+
+	// In case no default app is defined in a mimetypes.list somewhere
+	// we take as default app any (randomly chosen) app that handles this mimetype
+	for _, app := range c.applications {
+		for _, mimetypeId := range app.Mimetypes {
+			if mimetype, ok := c.mimetypes[mimetypeId]; ok {
+				mimetype.DefaultApp = app.Id
+			}
+		}
+	}
+
 	for mimetypeId, appIds := range c.defaultApps {
 		if mimetype, ok := c.mimetypes[mimetypeId]; ok {
 			for _, appId := range appIds {
@@ -343,7 +354,7 @@ func readDesktopFile(path string, id string) (*DesktopApplication, []string, err
 					iconName = icons.AddFileIcon(iconName)
 				}
 				da.DesktopActions[currentAction] = &DesktopAction{
-					self:     appSelf(da.Id) + "/" + currentAction,
+					self:     appSelf(da.Id) + "/action/" + currentAction,
 					Name:     name,
 					Exec:     actionGroup.Entries["Exec"],
 					IconName: iconName,

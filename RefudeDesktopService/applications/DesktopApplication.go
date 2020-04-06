@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/surlykke/RefudeServices/lib/respond"
+	"github.com/surlykke/RefudeServices/lib/searchutils"
 
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
@@ -45,19 +46,12 @@ type DesktopApplication struct {
 	Mimetypes       []string
 }
 
-func (d *DesktopApplication) otherActionsPath() string {
-	if len(d.DesktopActions) > 0 {
-		return "/application/actionsearch?for=" + d.Id[0:len(d.Id)-8]
-	} else {
-		return ""
-	}
-}
-
 func (d *DesktopApplication) ToStandardFormat() *respond.StandardFormat {
+	var self = appSelf(d.Id)
 	return &respond.StandardFormat{
-		Self:         appSelf(d.Id),
+		Self:         self,
 		OnPost:       "Launch",
-		OtherActions: d.otherActionsPath(),
+		OtherActions: self + "/actions",
 		Type:         "application",
 		Title:        d.Name,
 		Comment:      d.Comment,
@@ -65,6 +59,16 @@ func (d *DesktopApplication) ToStandardFormat() *respond.StandardFormat {
 		Data:         d,
 		NoDisplay:    d.NoDisplay,
 	}
+}
+
+func (d *DesktopApplication) collectActions(term string) respond.StandardFormatList {
+	var sfl = make(respond.StandardFormatList, 0, len(d.DesktopActions))
+	for _, act := range d.DesktopActions {
+		if rank := searchutils.SimpleRank(act.Name, "", term); rank > -1 {
+			sfl = append(sfl, act.ToStandardFormat().Ranked(rank))
+		}
+	}
+	return sfl.SortByRank()
 }
 
 type DesktopAction struct {
@@ -129,4 +133,3 @@ func appSelf(appId string) string {
 }
 
 type ApplicationMap map[string]*DesktopApplication
-type actionMap map[string]*DesktopAction

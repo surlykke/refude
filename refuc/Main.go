@@ -147,7 +147,7 @@ func completions(argStr string, filter bool) []string {
 			comp = append(comp, "-X")
 		}
 		if !strings.HasPrefix(curArg, "-") {
-			comp = append(comp, getStringlist("/complete?prefix="+curArg)...)
+			comp = append(comp, getStringlist("/search/paths?prefix="+curArg)...)
 		}
 
 		return comp

@@ -18,87 +18,106 @@ import (
 )
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if notification := getNotification(r.URL.Path); notification != nil {
-		if r.Method == "GET" {
-			respond.AsJson(w, notification.ToStandardFormat())
-		} else if r.Method == "POST" && notification.haveDefaultAction() {
-			conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".ActionInvoked", notification.Id, "default")
-			respond.Accepted(w)
+	if r.URL.Path == "/notifications" {
+		respond.AsJson(w, r, Collect(searchutils.Term(r)))
+	} else if notification := getNotification(r.URL.Path); notification != nil {
+		if r.Method == "POST" && notification.haveDefaultAction() {
+			respond.AcceptedAndThen(w, func() {
+				conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".ActionInvoked", notification.Id, "default")
+			})
 		} else if r.Method == "DELETE" {
-			removals <- removal{id: notification.Id, reason: Dismissed}
-			respond.Accepted(w)
+			respond.AcceptedAndThen(w, func() { removals <- removal{id: notification.Id, reason: Dismissed} })
 		} else {
-			respond.NotAllowed(w)
-		}
-	} else if notificationImage := getNotificationImage(r.URL.Path); notificationImage != nil {
-		if r.Method == "GET" {
-			http.ServeFile(w, r, notificationImage.imagePath)
-		} else {
-			respond.NotAllowed(w)
+			respond.AsJson(w, r, notification.ToStandardFormat())
 		}
 	} else {
 		respond.NotFound(w)
 	}
-
 }
 
-func SearchNotifications(collector *searchutils.Collector) {
+func Collect(term string) respond.StandardFormatList {
 	lock.Lock()
 	defer lock.Unlock()
-
+	var sfl = make(respond.StandardFormatList, 0, len(notifications))
 	for _, notification := range notifications {
-		collector.Collect(notification.ToStandardFormat())
+		if rank := searchutils.SimpleRank(notification.Subject, notification.Body, term); rank > -1 {
+			sfl = append(sfl, notification.ToStandardFormat().Ranked(rank))
+		}
 	}
+	return sfl
 }
 
 func AllPaths() []string {
 	lock.Lock()
 	defer lock.Unlock()
-	var paths = make([]string, 0, len(notifications))
-	for path, _ := range notifications {
-		paths = append(paths, path)
+	var paths = make([]string, 0, len(notifications)+1)
+	for _, n := range notifications {
+		paths = append(paths, n.path)
 	}
+	paths = append(paths, "/notifications")
 	return paths
 }
 
 var lock sync.Mutex
-var notifications = make(map[string]*Notification)
-var notificationImages = make(map[string]*NotificationImage)
+var notifications = []*Notification{}
 
 func getNotification(path string) *Notification {
 	lock.Lock()
 	defer lock.Unlock()
-	return notifications[path]
-}
-
-func setNotification(notification *Notification) {
-	lock.Lock()
-	defer lock.Unlock()
-	notifications[notificationSelf(notification.Id)] = notification
-}
-
-func getNotificationImage(path string) *NotificationImage {
-	lock.Lock()
-	defer lock.Unlock()
-	return notificationImages[path]
-}
-
-func setNotificationImage(notificationId uint32, notificationImage *NotificationImage) {
-	lock.Lock()
-	defer lock.Unlock()
-	notificationImages[notificationImageSelf(notificationId)] = notificationImage
-}
-
-func removeNotification(id uint32) bool {
-	lock.Lock()
-	defer lock.Unlock()
-	var self = notificationSelf(id)
-	_, ok := notifications[self]
-	if ok {
-		delete(notifications, self)
-		delete(notificationImages, self)
+	for _, notification := range notifications {
+		if notification.path == path {
+			return notification
+		}
 	}
-	return ok
+	return nil
+}
+
+func upsert(notification *Notification) {
+	lock.Lock()
+	defer lock.Unlock()
+	for i := 0; i < len(notifications); i++ {
+		if notifications[i].Id == notification.Id {
+			notifications[i] = notification
+			return
+		}
+	}
+	notifications = append(notifications, notification)
+}
+
+func removeNotification(id uint32) *Notification {
+	lock.Lock()
+	defer lock.Unlock()
+	for i := 0; i < len(notifications); i++ {
+		if notifications[i].Id == id {
+			var notification = notifications[i]
+			notifications = append(notifications[:i], notifications[i+1:]...)
+			return notification
+		}
+	}
+	return nil
+}
+
+/**
+ * Returns:
+ * if not found: nil, false
+ * if found, but not expired, notification, false, and notification is not removed
+ * if found and expired, notification, true, and notification is removed
+ */
+func removeIfExpired(id uint32) (*Notification, bool) {
+	lock.Lock()
+	defer lock.Unlock()
+	for i := 0; i < len(notifications); i++ {
+		if notifications[i].Id == id {
+			var notification = notifications[i]
+			if notification.Expires.Before(time.Now()) {
+				notifications = append(notifications[:i], notifications[i+1:]...)
+				return notification, true
+			} else {
+				return notification, false
+			}
+		}
+	}
+	return nil, false
 }
 
 var incomingNotifications = make(chan *Notification)
@@ -111,52 +130,22 @@ func Run() {
 	for {
 		select {
 		case notification := <-incomingNotifications:
-			var self = notificationSelf(notification.Id)
-			if "" != notification.imagePath {
-				notification.Image = notificationImageSelf(notification.Id)
-			}
-
-			lock.Lock()
-			notifications[self] = notification
-			if notification.Image != "" {
-				notificationImages[notification.Image] = &NotificationImage{notification.imagePath}
-			}
-			lock.Unlock()
-			sendEvent(self)
+			upsert(notification)
+			sendEvent(notification.path)
 		case rem := <-removals:
-			var self = notificationSelf(rem.id)
-			var imageSelf = notificationImageSelf(rem.id)
-			var found bool
-
-			lock.Lock()
-			if _, found = notifications[self]; found {
-				delete(notifications, self)
-				delete(notificationImages, imageSelf)
-			}
-			lock.Unlock()
-			if found {
-				sendEvent(self)
+			if notification := removeNotification(rem.id); notification != nil {
+				sendEvent(notification.path)
 				conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", rem.id, rem.reason)
 			}
 		case id := <-reaper:
-			var n *Notification
-			var self = notificationSelf(id)
-			var imageSelf = notificationImageSelf(id)
-			lock.Lock()
-			n = notifications[self]
-			lock.Unlock()
-
-			if n != nil {
-				var now = time.Now()
-				if now.Before(n.Expires) {
-					time.AfterFunc(n.Expires.Sub(now)+100*time.Millisecond, func() { reaper <- n.Id })
-				} else {
-					lock.Lock()
-					delete(notifications, self)
-					delete(notificationImages, imageSelf)
-					lock.Unlock()
-					sendEvent(self)
+			if notification, wasExpired := removeIfExpired(id); notification != nil {
+				if wasExpired {
+					sendEvent(notificationSelf(id))
 					conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", id, Expired)
+				} else {
+					time.AfterFunc(notification.Expires.Sub(time.Now())+100*time.Millisecond, func() {
+						reaper <- notification.Id
+					})
 				}
 			}
 		}

@@ -19,32 +19,34 @@ import (
 )
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if device := getDevice(r.URL.Path); device != nil {
-		if r.Method == "GET" {
-			respond.AsJson(w, device.ToStandardFormat())
-		} else {
-			respond.NotAllowed(w)
-		}
+	if r.URL.Path == "/devices" {
+		respond.AsJson(w, r, Collect(searchutils.Term(r)))
+	} else if device := getDevice(r.URL.Path); device != nil {
+		respond.AsJson(w, r, device.ToStandardFormat())
 	}
 }
 
-func SearchDevices(collector *searchutils.Collector) {
+func Collect(term string) respond.StandardFormatList {
 	deviceLock.Lock()
 	defer deviceLock.Unlock()
-
+	var sfl = make(respond.StandardFormatList, 0, len(devices))
 	for _, device := range devices {
-		collector.Collect(device.ToStandardFormat())
+		if rank := searchutils.SimpleRank(string(device.DbusPath), "", term); rank > -1 {
+			sfl = append(sfl, device.ToStandardFormat().Ranked(rank))
+		}
 	}
 
+	return sfl.SortByRank()
 }
 
 func AllPaths() []string {
 	deviceLock.Lock()
 	defer deviceLock.Unlock()
-	var paths = make([]string, 0, len(devices))
+	var paths = make([]string, 0, len(devices)+1)
 	for path, _ := range devices {
 		paths = append(paths, path)
 	}
+	paths = append(paths, "/devices")
 	return paths
 }
 

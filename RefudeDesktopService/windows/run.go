@@ -29,28 +29,32 @@ const (
 )
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if window, ok := getWindow(r.URL.Path); ok {
-		if r.Method == "GET" {
-			respond.AsJson(w, window.ToStandardFormat())
-		} else if r.Method == "POST" {
+	if r.URL.Path == "/windows" {
+		respond.AsJson(w, r, Collect(searchutils.Term(r)))
+	} else if window, ok := getWindow(r.URL.Path); ok {
+		if r.Method == "POST" {
 			dataMutex.Lock()
 			defer dataMutex.Unlock()
 			dataConnection.RaiseAndFocusWindow(window.id)
 			respond.Accepted(w)
 		} else {
-			respond.NotAllowed(w)
+			respond.AsJson(w, r, window.ToStandardFormat())
 		}
 	} else if window, ok := getWindowForScreenShot(r.URL.Path); ok {
-		var downscaleS = requests.GetSingleQueryParameter(r, "downscale", "1")
-		var downscale = downscaleS[0] - '0'
-		if downscale < 1 || downscale > 5 {
-			respond.UnprocessableEntity(w, fmt.Errorf("downscale should be >= 1 and <= 5"))
-		} else if bytes, err := getScreenshot(window.id, downscale); err == nil {
-			w.Header().Set("Content-Type", "image/png")
-			w.Write(bytes)
+		if r.Method == "GET" {
+			var downscaleS = requests.GetSingleQueryParameter(r, "downscale", "1")
+			var downscale = downscaleS[0] - '0'
+			if downscale < 1 || downscale > 5 {
+				respond.UnprocessableEntity(w, fmt.Errorf("downscale should be >= 1 and <= 5"))
+			} else if bytes, err := getScreenshot(window.id, downscale); err == nil {
+				w.Header().Set("Content-Type", "image/png")
+				w.Write(bytes)
+			} else {
+				fmt.Println("Error getting screenshot:", err)
+				respond.ServerError(w)
+			}
 		} else {
-			fmt.Println("Error getting screenshot:", err)
-			w.WriteHeader(http.StatusInternalServerError)
+			respond.NotAllowed(w)
 		}
 	} else {
 		respond.NotFound(w)
@@ -73,6 +77,19 @@ func getWindow(path string) (Window, bool) {
 	return Window{}, false
 }
 
+func Collect(term string) respond.StandardFormatList {
+	var winList = windows.Load().([]Window)
+	var sfl = make(respond.StandardFormatList, 0, len(winList))
+	for _, win := range winList {
+		var sf = win.ToStandardFormat()
+		if rank := searchutils.SimpleRank(sf.Title, "", term); rank > -1 {
+			sfl = append(sfl, sf)
+		}
+	}
+
+	return sfl
+}
+
 func SearchWindows(collector *searchutils.Collector) {
 	for _, wi := range windows.Load().([]Window) {
 		collector.Collect(wi.ToStandardFormat())
@@ -81,11 +98,12 @@ func SearchWindows(collector *searchutils.Collector) {
 
 func AllPaths() []string {
 	var windowList = windows.Load().([]Window)
-	var paths = make([]string, 0, 2*len(windowList))
+	var paths = make([]string, 0, 2*len(windowList)+1)
 	for _, window := range windowList {
 		paths = append(paths, window.self)
 		paths = append(paths, window.self+"/screenshot")
 	}
+	paths = append(paths, "/windows")
 	return paths
 }
 

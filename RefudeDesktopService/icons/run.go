@@ -53,23 +53,26 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		} else {
 			respond.NotAllowed(w)
 		}
+	} else if r.URL.Path == "/iconthemes" {
+		respond.AsJson(w, r, CollectThemes(searchutils.Term(r)))
 	} else if iconTheme := getTheme(r.URL.Path); iconTheme != nil {
-		if r.Method == "GET" {
-			respond.AsJson(w, iconTheme.ToStandardFormat())
-		} else {
-			respond.NotAllowed(w)
-		}
+		respond.AsJson(w, r, iconTheme.ToStandardFormat())
 	} else {
 		respond.NotFound(w)
 	}
 }
 
-func SearchThemes(collector *searchutils.Collector) {
+func CollectThemes(term string) respond.StandardFormatList {
 	lock.Lock()
 	defer lock.Unlock()
+	var sfl = make(respond.StandardFormatList, 0, len(themes))
 	for _, theme := range themes {
-		collector.Collect(theme.ToStandardFormat())
+		if rank := searchutils.SimpleRank(theme.Name, theme.Comment, term); rank > -1 {
+			sfl = append(sfl, theme.ToStandardFormat().Ranked(rank))
+		}
 	}
+
+	return sfl.SortByRank()
 }
 
 func AllPaths() []string {
@@ -79,6 +82,7 @@ func AllPaths() []string {
 	for path, _ := range themes {
 		paths = append(paths, path)
 	}
+	paths = append(paths, "/icon")
 	return paths
 }
 

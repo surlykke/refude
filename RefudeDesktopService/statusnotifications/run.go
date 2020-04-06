@@ -25,10 +25,10 @@ import (
 )
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if item := get(r.URL.Path); item != nil {
-		if r.Method == "GET" {
-			respond.AsJson(w, item.ToStandardFormat())
-		} else if r.Method == "POST" {
+	if r.URL.Path == "/items" {
+		respond.AsJson(w, r, Collect(searchutils.Term(r)))
+	} else if item := get(r.URL.Path); item != nil {
+		if r.Method == "POST" {
 			dbusObj := conn.Object(item.sender, item.itemPath)
 			action := requests.GetSingleQueryParameter(r, "action", "Activate")
 			x, _ := strconv.Atoi(requests.GetSingleQueryParameter(r, "x", "0"))
@@ -45,22 +45,12 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					respond.Accepted(w)
 				}
 			}
+		} else {
+			respond.AsJson(w, r, item.ToStandardFormat())
 		}
 	} else if item = getItemForMenu(r.URL.Path); item != nil {
-		if r.Method == "GET" {
 
-			if entries, err := fetchMenu(item.sender, item.menuPath); err != nil {
-				log.Println("Error retrieving menu for", item.sender, item.menuPath, ":", err)
-				w.WriteHeader(http.StatusInternalServerError)
-			} else {
-				var res = &respond.StandardFormat{
-					Self: r.URL.Path,
-					Type: "itemmenu",
-					Data: entries,
-				}
-				respond.AsJson(w, res)
-			}
-		} else if r.Method == "POST" {
+		if r.Method == "POST" {
 			id := requests.GetSingleQueryParameter(r, "id", "")
 			idAsInt, _ := strconv.Atoi(id)
 			data := dbus.MakeVariant("")
@@ -77,7 +67,17 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			respond.NotAllowed(w)
 		}
 	} else {
-		respond.NotFound(w)
+		if entries, err := fetchMenu(item.sender, item.menuPath); err != nil {
+			log.Println("Error retrieving menu for", item.sender, item.menuPath, ":", err)
+			respond.ServerError(w)
+		} else {
+			var res = &respond.StandardFormat{
+				Self: r.URL.Path,
+				Type: "itemmenu",
+				Data: entries,
+			}
+			respond.AsJson(w, r, res)
+		}
 	}
 }
 
@@ -93,21 +93,26 @@ func getItemForMenu(path string) *Item {
 	}
 }
 
-func SearchItems(collector *searchutils.Collector) {
+func Collect(term string) respond.StandardFormatList {
 	lock.Lock()
 	defer lock.Unlock()
+	var sfl = make(respond.StandardFormatList, 0, len(items))
 	for _, item := range items {
-		collector.Collect(item.ToStandardFormat())
+		if rank := searchutils.SimpleRank(item.Title, "", term); rank > -1 {
+			sfl = append(sfl, item.ToStandardFormat().Ranked(rank))
+		}
 	}
+	return sfl.SortByRank()
 }
 
 func AllPaths() []string {
 	lock.Lock()
 	defer lock.Unlock()
-	var paths = make([]string, 0, len(items))
+	var paths = make([]string, 0, len(items)+1)
 	for path, _ := range items {
 		paths = append(paths, path)
 	}
+	paths = append(paths, "/items")
 	return paths
 }
 

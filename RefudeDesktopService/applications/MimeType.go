@@ -7,17 +7,10 @@
 package applications
 
 import (
-	"encoding/json"
 	"fmt"
-	"net/http"
-	"os"
 	"regexp"
-	"strings"
 
 	"github.com/surlykke/RefudeServices/lib/respond"
-
-	"github.com/surlykke/RefudeServices/lib/slice"
-	"github.com/surlykke/RefudeServices/lib/xdg"
 
 	"github.com/pkg/errors"
 )
@@ -67,11 +60,7 @@ func (mt *Mimetype) ToStandardFormat() *respond.StandardFormat {
 	}
 }
 
-func (mt *Mimetype) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case "GET":
-		respond.AsJson(w, mt.ToStandardFormat())
-	case "PATCH":
+/*	case "PATCH":
 		var decoder = json.NewDecoder(r.Body)
 		var decoded = make(map[string]string)
 		if err := decoder.Decode(&decoded); err != nil {
@@ -83,10 +72,6 @@ func (mt *Mimetype) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		} else {
 			respond.Accepted(w)
 		}
-	default:
-		respond.NotAllowed(w)
-	}
-}
 
 func setDefaultApp(mimetypeId string, appId string) error {
 	path := xdg.ConfigHome + "/mimeapps.list"
@@ -110,7 +95,7 @@ func setDefaultApp(mimetypeId string, appId string) error {
 		return nil
 	}
 }
-
+*/
 func mimetypeSelf(mimetypeId string) string {
 	return fmt.Sprintf("/mimetype/%s", mimetypeId)
 }

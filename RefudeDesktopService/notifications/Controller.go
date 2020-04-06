@@ -200,7 +200,9 @@ func notify(app_name string,
 		Subject:  sanitize(summary, []string{}, []string{}),
 		Body:     sanitize(body, allowedTags, allowedEscapes),
 		Actions:  map[string]string{},
+		path:     notificationSelf(id),
 	}
+
 	time.AfterFunc(notification.Expires.Sub(notification.Created)+100*time.Millisecond, func() {
 		reaper <- notification.Id
 	})

@@ -12,25 +12,28 @@ import (
 )
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Look for ")
-	if action, ok := actions[r.URL.Path]; ok {
-		if r.Method == "GET" {
-			respond.AsJson(w, action)
-		} else if r.Method == "POST" {
+	if r.URL.Path == "/session/allowedactions" {
+		respond.AsJson(w, r, Collect(searchutils.Term(r)))
+	} else if action, ok := actions[r.URL.Path]; ok {
+		if r.Method == "POST" {
 			login1Object.Call(endpoint[action.Self], dbus.Flags(0), false)
 			respond.Accepted(w)
 		} else {
-			respond.NotAllowed(w)
+			respond.AsJson(w, r, action)
 		}
 	} else {
 		respond.NotFound(w)
 	}
 }
 
-func SearchActions(collector *searchutils.Collector) {
+func Collect(term string) respond.StandardFormatList {
+	var sfl = make(respond.StandardFormatList, 0, len(actions))
 	for _, action := range actions {
-		collector.Collect(action)
+		if rank := searchutils.SimpleRank(action.Title, action.Comment, term); rank > -1 {
+			sfl = append(sfl, action)
+		}
 	}
+	return sfl.SortByRank()
 }
 
 func AllPaths() []string {

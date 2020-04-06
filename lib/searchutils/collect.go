@@ -1,8 +1,11 @@
 package searchutils
 
 import (
+	"net/http"
 	"sort"
 	"strings"
+
+	"github.com/surlykke/RefudeServices/lib/requests"
 
 	"github.com/surlykke/RefudeServices/lib/respond"
 )
@@ -54,6 +57,10 @@ func (c *Collector) Collect(resource *respond.StandardFormat) {
 	if rank > -1 {
 		c.rankedResources = append(c.rankedResources, RankedResource{resource, rank})
 	}
+}
+
+func Term(r *http.Request) string {
+	return requests.GetSingleQueryParameter(r, "term", "")
 }
 
 func (c *Collector) SortByRankAndGet() []*respond.StandardFormat {

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sort"
 )
 
 func NotFound(w http.ResponseWriter) {
@@ -32,6 +33,11 @@ func Accepted(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusAccepted)
 }
 
+func AcceptedAndThen(w http.ResponseWriter, f func()) {
+	w.WriteHeader(http.StatusAccepted)
+	f()
+}
+
 type VersionedResource interface {
 	GetEtag() string
 }
@@ -53,12 +59,56 @@ type StandardFormat struct {
 	IconName     string      `json:",omitempty"`
 	Data         interface{} `json:",omitempty"`
 	NoDisplay    bool        `json:"-"`
+	Rank         int         `json:"-"`
 }
 
-func AsJson(w http.ResponseWriter, data interface{}) {
-	var json = ToJson(data)
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(json)
+type StandardFormatList []*StandardFormat
+
+type rankSortable StandardFormatList
+
+func (rs rankSortable) Len() int { return len(rs) }
+
+func (rs rankSortable) Less(i int, j int) bool {
+	if rs[i].Rank == rs[j].Rank {
+		return rs[i].Self < rs[j].Self
+	} else {
+		return rs[i].Rank < rs[j].Rank
+	}
+}
+
+func (rs rankSortable) Swap(i int, j int) { rs[i], rs[j] = rs[j], rs[i] }
+
+type pathSortable StandardFormatList
+
+func (ps pathSortable) Len() int               { return len(ps) }
+func (ps pathSortable) Less(i int, j int) bool { return ps[i].Rank < ps[j].Rank }
+func (ps pathSortable) Swap(i int, j int)      { ps[i], ps[j] = ps[j], ps[i] }
+
+func (sf *StandardFormat) Ranked(rank int) *StandardFormat {
+	sf.Rank = rank
+	return sf
+}
+
+func (sf StandardFormatList) SortByRank() StandardFormatList {
+	sort.Sort(rankSortable(sf))
+	return sf
+}
+
+func (sf StandardFormatList) SortByPath() StandardFormatList {
+	sort.Sort(pathSortable(sf))
+	return sf
+}
+
+// -----
+
+func AsJson(w http.ResponseWriter, r *http.Request, data interface{}) {
+	if r.Method == "GET" {
+		var json = ToJson(data)
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(json)
+	} else {
+		NotAllowed(w)
+	}
 }
 
 func ToJson(res interface{}) []byte {

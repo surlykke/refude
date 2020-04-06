@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/surlykke/RefudeServices/RefudeDesktopService/file"
+
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/ss_events"
 
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/search"
@@ -56,6 +58,8 @@ func (dummy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		search.ServeHTTP(w, r)
 	case path == "/events":
 		ss_events.ServeHTTP(w, r)
+	case path == "/file":
+		file.ServeHTTP(w, r)
 	default:
 		respond.NotFound(w)
 	}

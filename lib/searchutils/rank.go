@@ -55,3 +55,23 @@ func Rank(sf *respond.StandardFormat, term string, termAsRunes []rune) int {
 
 	return -1
 }
+
+// Caller ensures term is lowercase
+func SimpleRank(title, comment, term string) int {
+	if term == "" {
+		return 0
+	}
+	title = strings.ToLower(title)
+	var tmp = strings.Index(title, term)
+	if tmp > -1 {
+		return tmp
+	}
+	if comment != "" {
+		comment = strings.ToLower(comment)
+		tmp = strings.Index(comment, term)
+		if tmp > -1 {
+			return tmp + 100
+		}
+	}
+	return -1
+}

@@ -1,7 +1,6 @@
 package search
 
 import (
-	"fmt"
 	"net/http"
 	"sort"
 	"strings"
@@ -25,41 +24,12 @@ import (
 	"github.com/surlykke/RefudeServices/lib/slice"
 )
 
-var pathGetters = map[string]func() []string{
-	"window":           windows.AllPaths,
-	"application":      applications.AllAppPaths,
-	"mimetype":         applications.AllMimetypePaths,
-	"backlight_device": backlight.AllPaths,
-	"icontheme":        icons.AllPaths,
-	"status_item":      statusnotifications.AllPaths,
-	"session_action":   session.AllPaths,
-	"notification":     notifications.AllPaths,
-	"device":           power.AllPaths,
-	"other":            otherPaths,
-}
-
-var searchers = map[string]func(*searchutils.Collector){
-	"window":           windows.SearchWindows,
-	"application":      applications.SearchApps,
-	"mimetype":         applications.SearchMimetypes,
-	"backlight_device": backlight.SearchBacklights,
-	"icontheme":        icons.SearchThemes,
-	"status_item":      statusnotifications.SearchItems,
-	"session_action":   session.SearchActions,
-	"notification":     notifications.SearchNotifications,
-	"device":           power.SearchDevices,
-}
-
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch r.URL.Path {
-	case "/complete": // To be removed
-		fallthrough
+	case "/complete":
+		fallthrough // deprecated
 	case "/search/paths":
 		searchPaths(w, r)
-	case "/search":
-		search(w, r)
-	case "/search/events":
-		searchEvents(w, r)
 	case "/search/desktop":
 		searchDesktop(w, r)
 	default:
@@ -68,110 +38,48 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func searchPaths(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
-		respond.NotAllowed(w)
-	} else {
-		var prefix = requests.GetSingleQueryParameter(r, "prefix", "")
-		var paths = make([]string, 0, 2000)
 
-		for _, pathGetter := range pathGetters {
-			for _, path := range pathGetter() {
-				if strings.HasPrefix(path, prefix) {
-					paths = append(paths, path)
-				}
-			}
-		}
+	var prefix = requests.GetSingleQueryParameter(r, "prefix", "")
+	var paths = make([]string, 0, 2000)
 
-		sort.Sort(slice.SortableStringSlice(paths))
-		respond.AsJson(w, paths)
-	}
-}
+	paths = append(paths, windows.AllPaths()...)
+	paths = append(paths, applications.AllPaths()...)
+	paths = append(paths, backlight.AllPaths()...)
+	paths = append(paths, icons.AllPaths()...)
+	paths = append(paths, statusnotifications.AllPaths()...)
+	paths = append(paths, session.AllPaths()...)
+	paths = append(paths, notifications.AllPaths()...)
+	paths = append(paths, power.AllPaths()...)
+	paths = append(paths, otherPaths()...)
 
-func search(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
-		respond.NotAllowed(w)
-		return
-	}
-
-	var query = r.URL.Query()
-	var resourceTypes = query["type"]
-	if len(resourceTypes) == 0 {
-		respond.AsJson(w, []string{})
-	}
-
-	for _, resourceType := range resourceTypes {
-		if _, ok := searchers[resourceType]; !ok {
-			respond.UnprocessableEntity(w, fmt.Errorf("Unknown resource type: %s", resourceType))
-			return
+	var found = 0
+	for i := 0; i < len(paths); i++ {
+		if strings.HasPrefix(paths[i], prefix) {
+			paths[found] = paths[i]
+			found++
 		}
 	}
-	var searchTerms = query["term"]
-	if len(searchTerms) > 1 {
-		respond.UnprocessableEntity(w, fmt.Errorf("Only one searchterm allowed"))
-		return
-	}
-	var searchTerm = ""
-	if len(searchTerms) > 0 {
-		searchTerm = searchTerms[0]
-	}
+	paths = paths[:found]
 
-	respond.AsJson(w, find(resourceTypes, searchTerm))
-}
-
-func searchEvents(w http.ResponseWriter, r *http.Request) {
-	var collector = searchutils.MakeCollector("", 20, false)
-	notifications.SearchNotifications(collector)
-	respond.AsJson(w, collector.Get())
+	sort.Sort(slice.SortableStringSlice(paths))
+	respond.AsJson(w, r, paths)
 }
 
 func searchDesktop(w http.ResponseWriter, r *http.Request) {
-	var terms = r.URL.Query()["term"]
-	var term = ""
-	if len(terms) > 1 {
-		respond.UnprocessableEntity(w, fmt.Errorf("More than one searchterm"))
-		return
-	} else if len(terms) == 1 {
-		term = terms[0]
-	}
-	var resourceTypes []string
+	var term = searchutils.Term(r)
+
+	var sfl = make(respond.StandardFormatList, 0, 1000)
 	if term == "" {
-		resourceTypes = []string{"notification", "window"}
+		sfl = append(sfl, notifications.Collect("")...)
+		sfl = append(sfl, windows.Collect("")...)
 	} else {
-		resourceTypes = []string{"notification", "window", "application", "session_action"}
+		sfl = append(sfl, notifications.Collect("")...)
+		sfl = append(sfl, windows.Collect(term)...)
+		sfl = append(sfl, applications.CollectApps(term)...)
+		sfl = append(sfl, session.Collect(term)...)
 	}
 
-	var collector = searchutils.MakeCollector(term, 200, true)
-	var resources = make([]*respond.StandardFormat, 0, 1000)
-	for _, resourceType := range resourceTypes {
-		collector.Clear()
-		searchers[resourceType](collector)
-		if resourceType == "notification" || resourceType == "window" {
-			resources = append(resources, collector.Get()...)
-		} else {
-			resources = append(resources, collector.SortByRankAndGet()...)
-		}
-	}
-
-	respond.AsJson(w, resources)
-}
-
-// Caller ensures validity of resourceTypes
-func find(resourceTypes []string, term string) []*respond.StandardFormat {
-	var resources = make([]*respond.StandardFormat, 0, 1000)
-	var collector = searchutils.MakeCollector(strings.ToLower(term), 1000, false)
-
-	for _, resourceType := range resourceTypes {
-		collector.Clear()
-		searchers[resourceType](collector)
-		if resourceType == "window" {
-			resources = append(resources, collector.Get()...)
-		} else {
-			resources = append(resources, collector.SortByRankAndGet()...)
-		}
-	}
-
-	return resources
-
+	respond.AsJson(w, r, sfl)
 }
 
 func otherPaths() []string {
