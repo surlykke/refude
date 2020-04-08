@@ -1,34 +1,28 @@
-const WebpackShellPlugin = require('webpack-shell-plugin');
-
 module.exports = {
-	devtool: "source-map",
     module: {
         rules: [
             {
                 test: /\.js$/,
                 exclude: /node_modules/,
                 use: {
-                    loader: "babel-loader",
+                    loader: 'babel-loader',
                     options: {
-                        "presets": [
-                            //"@babel/preset-env",
-                            "@babel/preset-react"
-                        ],
-                        "plugins": [
-                            "@babel/plugin-proposal-class-properties"
-                        ]
+                        'presets': ['@babel/preset-env', '@babel/preset-react'],
+                        'plugins': ['@babel/plugin-proposal-class-properties']
                     }
                 }
             }
         ]
     },
     entry: {
-        panel: './panel/index.js',
-//        test: './test/index.js'
+        renderPanel: './panel/render.js',
+        renderDo: './do/render.js',
+        renderIndicator: './indicator/render.js'
     },
-    target: 'node',
+    target: 'electron-renderer',
     output: {
-        path: __dirname + '/dist',
-        filename: '[name]/index_bundle.js'
-    }
+        filename: '[name]-bundle.js',
+        path: __dirname + '/bundle'
+    },
+    devtool: 'source-map'
 };

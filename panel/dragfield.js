@@ -5,9 +5,6 @@
 // Please refer to the GPL2 file for a copy of the license.
 //
 import React from 'react'
-import { SCREEN, storePosition } from "../common/utils";
-
-let win = nw.Window.get();
 
 class DragField extends React.Component {
 

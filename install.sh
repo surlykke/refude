@@ -1,17 +1,19 @@
 #!/usr/bin/env bash
 thisdir=$(dirname $(realpath $0))
 cd $thisdir
-rm -rf ${thisdir}/dist/*
+rm -rf ${thisdir}/refude-linux-x86
 
 [[ -n "$PREFIX" ]] || PREFIX=$HOME/.local
 REFUDEDIR=${PREFIX}/share/refude
 mkdir -p ${REFUDEDIR}
 
-./build.sh
+./node_modules/electron-packager/bin/electron-packager.js . --asar || exit 1
+cp ./refude.sh ./refude.desktop refude-linux-x64
 
 echo done building
 
-rm -rf $REFUDEDIR/panel
-cp -R dist/panel $REFUDEDIR/panel
-ln -sf $REFUDEDIR/panel ${PREFIX}/bin
-ln -sf $REFUDEDIR/refudePanel.desktop ${PREFIX}/share/applications
+rm -rf $REFUDEDIR/*
+cp -R refude-linux-x64/* $REFUDEDIR
+ln -sf $REFUDEDIR/refude ${PREFIX}/bin
+ln -sf $REFUDEDIR/refude.sh ${PREFIX}/bin
+ln -sf $REFUDEDIR/refude.desktop ${PREFIX}/share/applications

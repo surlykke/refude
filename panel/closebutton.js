@@ -5,11 +5,15 @@
 // Please refer to the GPL2 file for a copy of the license.
 //
 import React from 'react'
+import { ipcRenderer } from 'electron'
 
-const gui = window.require('nw.gui');
+let quit = () => {
+	ipcRenderer.send("panelClose")
+}
+
 export class CloseButton extends React.Component {
 	render = () => {
-		return <div style={this.props.style} onClick={() => gui.App.quit()}>
+		return <div style={this.props.style} onClick={quit}>
 			<svg width="14" height="14" viewBox="0 0 100 100">
 				<g fillOpacity="0" strokeWidth="12" stroke="black">
 					<line x1="15" y1="15" x2="85" y2="85"/>

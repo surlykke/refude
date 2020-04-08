@@ -5,7 +5,6 @@
 // Please refer to the GPL2 file for a copy of the license.
 //
 import React from 'react'
-import { publish, subscribe } from "../common/utils";
 import { getUrl, monitorSSE } from "../common/monitor";
 
 export class Notifications extends React.Component {
@@ -13,12 +12,6 @@ export class Notifications extends React.Component {
         super(props);
         this.state = { events: [], shown: true}
         monitorSSE("events", this.update, this.update, () => {this.setState({events: []})})
-        subscribe("doOpen", () => {this.setState({shown: undefined})})
-        subscribe("doClose", () => {this.setState({shown: true})})
-    };
-
-    componentDidUpdate = () => {
-        publish("componentUpdated");
     };
 
     update = () => {

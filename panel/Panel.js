@@ -12,18 +12,13 @@
  * Please refer to the LICENSE file for a copy of the license.
  */
 import React from 'react'
-import { devtools, manageZoom, subscribe, managePosition } from '../common/utils'
 import { Clock } from './clock'
 import { Battery } from './battery'
 import { NotifierItems } from './notifieritems'
 import { DragField } from './dragfield'
 import { CloseButton } from "./closebutton";
-import { Do } from './do'
 import { Notifications } from './notifications'
-
-const http = require('http');
-
-const Window = nw.Window.get();
+import { ipcRenderer, webFrame} from 'electron'
 
 const style = {
     margin: "0px",
@@ -44,47 +39,35 @@ const pluginStyle = {
 }
 
 export default class Panel extends React.Component {
-
+    content = React.createRef()
+    
     constructor(props) {
         super(props)
-        managePosition()
-        manageZoom()
-        //devtools();
     }
 
     componentDidMount = () => {
-        subscribe("componentUpdated", this.adjustSize);
-        this.adjustSize()
-    };
-
-    adjustSize = () => {
-        setTimeout(
-            () => {
-                let { width, height } = this.content.getBoundingClientRect()
-                let zoomLevel = document.body.style.zoom || 1
-                let newWidth = Math.round(zoomLevel*width) - 1;
-                let newHeight = Math.round(zoomLevel*height);
-                if (Math.abs(newWidth - Window.width) > 3 || Math.abs(newHeight - Window.height) > 3) {
-                    Window.resizeTo(newWidth, newHeight);
-                }
-            },
-            1
-        )
+        this.resizeObserver = new ResizeObserver((observed) => {
+            if (observed[0] && observed[0].contentRect) {
+                let {width, height} = observed[0].contentRect
+                let zoom = webFrame.getZoomFactor()
+                let data = {width:Math.round(zoom*width), height: Math.round(zoom*height)} 
+                ipcRenderer.send("panelSizeChange", data)
+            }
+        })
+        
+        this.resizeObserver.observe(this.content.current)
     };
 
     render = () => {
-        
-
         return <div style={{ width: "500px" }}>
-            <div style={style} id="content" ref={div => { this.content = div }}>
+            <div style={style} id="content" ref={this.content}>
                 <Clock style={pluginStyle} />
                 <NotifierItems style={pluginStyle} />
                 <Battery style={pluginStyle} />
                 <DragField style={pluginStyle} />
                 <CloseButton style={pluginStyle} />
                 <Notifications/>
-                <Do/> 
-            </div>
+           </div>
         </div>
     }
 }

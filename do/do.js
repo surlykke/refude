@@ -6,23 +6,25 @@
 
 
 import React from 'react'
-import { WIN, publish } from "../common/utils";
-import { Indicator } from "./indicator";
 import { DoItem} from "./doitem"
-import { T } from "../common/translate";
-import { getUrl, postUrl, monitorSSE, deleteUrl } from '../common/monitor';
+import { getUrl, postUrl, deleteUrl } from '../common/monitor';
+import { ipcRenderer} from 'electron';
 
-const http = require('http');
 
 export class Do extends React.Component {
     constructor(props) {
         super(props);
-        this.state = { resources: [], open: false, term: "" }
-        this.listenForUpDown();
-        this.handleBlurEvents();
+        this.state = { resources: [], term: "" }
         this.history = []
         this.url = "/search/desktop"
+        ipcRenderer.on("doReset", this.reset)
+        ipcRenderer.on("doMove", (evt, down) => this.move(down))
+
     };
+
+    componentDidMount = () => {
+        this.updateResourceList()
+    }
 
     componentDidUpdate = () => {
         // Scroll selected item into view
@@ -38,30 +40,17 @@ export class Do extends React.Component {
                 }
             }
         }
-        publish("componentUpdated");
     };
-
-    listenForUpDown = () => {
-        let that = this;
-        http.createServer(function (req, res) {
-            that.open(() => { that.move(req.url !== "/up") });
-            res.end('')
-        }).listen("/run/user/1000/org.refude.panel.do");
-    };
-
-    handleBlurEvents = () => WIN.on('blur', this.close);
 
     updateResourceList = () => {
         let separator = this.url.indexOf('?') > -1 ? '&' : '?';
         getUrl(this.url + `${separator}term=${this.state.term}`, resp => {
-            this.setState({ resources: resp.data }, this.ensureSelection)
+            this.setState({ resources: resp.data }, () => {
+                if (!this.selectedResource()) {
+                    this.setState({ selected: this.state.resources[0] && this.state.resources[0].Self })
+                }    
+            })
         })
-    }
-
-    ensureSelection = () => {
-        if (!this.selectedResource()) {
-            this.setState({ selected: this.state.resources[0] && this.state.resources[0].Self })
-        }
     }
 
     selectedResource = () => {
@@ -84,7 +73,7 @@ export class Do extends React.Component {
         else if (key === "j" && ctrlKey && !shiftKey && !altKey && !metaKey) this.move(true);
         else if (key === "Enter" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.activate();
         else if (key === " " && !ctrlKey && !shiftKey && !altKey && !metaKey) this.activate();
-        else if (key === "Escape" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.close();
+        else if (key === "Escape" && !ctrlKey && !shiftKey && !altKey && !metaKey) ipcRenderer.send("doClose");
         else if (key === "Delete" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.delete();
         else if (key === "ArrowRight" && !ctrlKey && !shiftKey && !altKey && !metaKey) this.navigate();
         else if (key === "l" && ctrlKey && !shiftKey && !altKey && !metaKey) this.navigate();
@@ -97,7 +86,6 @@ export class Do extends React.Component {
     };
 
     move = (down) => {
-        if (!this.state.open) return;
         let index = this.state.resources.findIndex(r => r.Self === this.state.selected)
         if (index > -1) {
             index = (index + this.state.resources.length + (down ? 1 : -1)) % this.state.resources.length;
@@ -112,13 +100,13 @@ export class Do extends React.Component {
     activate = (url) => {
         url = url || this.state.selected
         if (url) {
-            postUrl(url, response => { this.close() });
+            postUrl(url, response => { ipcRenderer.send("doClose") });
         }
     }
 
     delete = (url) => {
         url = url || this.state.selected;
-        url && deleteUrl(url, response => this.close());
+        url && deleteUrl(url, response => ipcRenderer.send("doClose"));
     }
 
     navigate = () => {
@@ -128,7 +116,6 @@ export class Do extends React.Component {
             this.url = res.OtherActions;
             this.setState({term: ""}, this.updateResourceList)
         }
-        console.log('navigate')
     }
 
     navigateBack = () => {
@@ -137,36 +124,16 @@ export class Do extends React.Component {
             this.url = history.url;
             this.setState({term: history.term, selected: history.selected}, this.updateResourceList)
         }
-        console.log('navigateBack')
     }
 
-    open = (callback) => {
+    reset = () => {
+        console.log("resetting")
         this.url = "/search/desktop"
         this.history = []
-        this.setState({ open: true, term: "" }, this.updateResourceList)
-        callback && callback()
-        publish("doOpen")
-        WIN.focus()
-    };
-
-    close = () => {
-        this.setState({ open: false, resources: [], term: "" });
-        publish("doClose")
+        this.setState({ term: "" }, this.updateResourceList)
     };
 
     render = () => {
-
-        let doStyle = {
-            maxWidth: "300px",
-            maxHeight: "300px",
-            display: "flex",
-            flexFlow: "column",
-            paddingLeft: "0.3em",
-        };
-
-        let innerStyle = {
-            overflowY: "scroll"
-        };
 
         let searchBoxStyle = {
             boxSizing: "border-box",
@@ -183,30 +150,31 @@ export class Do extends React.Component {
             outlineStyle: "none",
         };
 
-        if (this.state.open) {
-            return <>
-            <div style={doStyle}>
-                <div style={searchBoxStyle} onKeyDown={this.keyDown}>
-                    <input id="input"
-                        style={inputStyle}
-                            type="search"
-                            onChange={e => this.setTerm(e.target.value)}
-                            value={this.state.term}
-                            autoComplete="off"
-                            autoFocus />
-                </div>
-                <div id="itemListDiv" style={innerStyle}>
-                    {this.state.resources.map((r,i,resources) => 
-                        <DoItem res={r} prevRes={resources[i-1]} selected={this.state.selected === r.Self} 
-                                onClick={() => this.select(r)} onDoubleClick={() => this.activate(r.Self)}/>)
-                    }
-                </div>
+        let itemListStyle = {
+            flexGrow: "1",
+            overflowY: "scroll"
+        };
+
+        console.log("render")
+
+        ipcRenderer.send("doResourceSelected", this.selectedResource()) // TODO Optimize
+
+        return <>
+            <div key="searchBox" style={searchBoxStyle} onKeyDown={this.keyDown}>
+                <input id="input"
+                    style={inputStyle}
+                        type="search"
+                        onChange={e => this.setTerm(e.target.value)}
+                        value={this.state.term}
+                        autoComplete="off"
+                        autoFocus />
             </div>
-            <Indicator key="indicator" res={this.selectedResource()} />
-            </>
-        } else {
-            return null;
-        }
+            <div key="itemListDiv" id="itemListDiv" style={itemListStyle}>
+                {this.state.resources.map((r,i,resources) => 
+                    <DoItem key={r.Self} res={r} prevRes={resources[i-1]} selected={this.state.selected === r.Self} 
+                            onClick={() => this.select(r)} onDoubleClick={() => this.activate(r.Self)}/>)
+                }
+            </div>
+        </>
     }
 }
-

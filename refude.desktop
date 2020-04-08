@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Name=Refude
+Name[da]=Refude
+Comment=The ultra minimalistic Refude desktop
+Comment[da]=Det hyper minimalistiske Refude skrivebord
+Exec=refude.sh
+Icon=
+Terminal=false
+Type=Application

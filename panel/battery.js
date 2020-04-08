@@ -12,7 +12,6 @@
  * Please refer to the LICENSE file for a copy of the license.
  */
 import React from 'react'
-import { publish } from "../common/utils";
 import { getUrl, monitorSSE } from '../common/monitor';
 
 /**
@@ -41,10 +40,6 @@ export class Battery extends React.Component {
                 state: resp.data.Data.State
             })
         })
-    }
-
-    componentDidUpdate() {
-        publish("componentUpdated");
     }
 
     /**

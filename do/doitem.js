@@ -75,9 +75,9 @@ export let DoItem = props => {
 
     return [ 
         !(prevRes && prevRes.Type === res.Type) &&
-        <div style={headingStyle}>{res.Type}</div>,
+        <div key="heading" style={headingStyle}>{res.Type}</div>,
         
-        <div id={res.Self} style={style} onClick={onClick} onDoubleClick={onDoubleClick}> 
+        <div key="body" id={res.Self} style={style} onClick={onClick} onDoubleClick={onDoubleClick}> 
             {res.OnDelete &&
             <svg width="10" height="10" viewBox="0 0 100 100" style={{position: "absolute", top: "2px", right: "2px"}}>
                 <g fillOpacity="0" strokeWidth="12" stroke="black">

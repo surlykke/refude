@@ -1,2 +1,0 @@
-#!/usr/bin/env bash
-curl -D - --unix $XDG_RUNTIME_DIR/org.refude.panel.do http://localhost/$1 || refudePanel
