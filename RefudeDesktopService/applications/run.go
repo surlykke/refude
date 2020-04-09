@@ -44,7 +44,9 @@ func AppServeHTTP(w http.ResponseWriter, r *http.Request) {
 func getAppForActions(path string) *DesktopApplication {
 	if strings.HasSuffix(path, "/actions") {
 		if app, ok := applications.Load().(ApplicationMap)[path[:len(path)-8]]; ok {
-			return app
+			if len(app.DesktopActions) > 0 {
+				return app
+			}
 		}
 	}
 	return nil

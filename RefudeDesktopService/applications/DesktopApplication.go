@@ -48,10 +48,14 @@ type DesktopApplication struct {
 
 func (d *DesktopApplication) ToStandardFormat() *respond.StandardFormat {
 	var self = appSelf(d.Id)
+	var otherActions string
+	if len(d.DesktopActions) > 0 {
+		otherActions = self + "/actions"
+	}
 	return &respond.StandardFormat{
 		Self:         self,
 		OnPost:       "Launch",
-		OtherActions: self + "/actions",
+		OtherActions: otherActions,
 		Type:         "application",
 		Title:        d.Name,
 		Comment:      d.Comment,
