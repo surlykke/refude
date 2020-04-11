@@ -49,35 +49,32 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			respond.AsJson(w, r, item.ToStandardFormat())
 		}
 	} else if item = getItemForMenu(r.URL.Path); item != nil {
-
-		if r.Method == "POST" {
-			id := requests.GetSingleQueryParameter(r, "id", "")
-			idAsInt, _ := strconv.Atoi(id)
-			data := dbus.MakeVariant("")
-			time := uint32(time.Now().Unix())
-			dbusObj := conn.Object(item.sender, item.menuPath)
-			call := dbusObj.Call("com.canonical.dbusmenu.Event", dbus.Flags(0), idAsInt, "clicked", data, time)
-			if call.Err != nil {
-				log.Println(call.Err)
-				respond.ServerError(w)
+		if menuItems, err := item.menu(); err != nil {
+			respond.ServerError(w)
+		} else if menuItems != nil {
+			if r.Method == "POST" {
+				id := requests.GetSingleQueryParameter(r, "id", "")
+				idAsInt, _ := strconv.Atoi(id)
+				data := dbus.MakeVariant("")
+				time := uint32(time.Now().Unix())
+				fmt.Println("access conn:", conn)
+				fmt.Println("access conn:", conn)
+				dbusObj := conn.Object(item.sender, item.menuPath)
+				call := dbusObj.Call("com.canonical.dbusmenu.Event", dbus.Flags(0), idAsInt, "clicked", data, time)
+				if call.Err != nil {
+					log.Println(call.Err)
+					respond.ServerError(w)
+				} else {
+					respond.Accepted(w)
+				}
 			} else {
-				respond.Accepted(w)
+				respond.AsJson(w, r, menuToStandardFormat(r.URL.Path, menuItems))
 			}
 		} else {
-			respond.NotAllowed(w)
+			respond.NotFound(w)
 		}
 	} else {
-		if entries, err := fetchMenu(item.sender, item.menuPath); err != nil {
-			log.Println("Error retrieving menu for", item.sender, item.menuPath, ":", err)
-			respond.ServerError(w)
-		} else {
-			var res = &respond.StandardFormat{
-				Self: r.URL.Path,
-				Type: "itemmenu",
-				Data: entries,
-			}
-			respond.AsJson(w, r, res)
-		}
+		respond.NotFound(w)
 	}
 }
 

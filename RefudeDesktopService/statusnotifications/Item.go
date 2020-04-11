@@ -70,22 +70,36 @@ type MenuItem struct {
 	SubEntries  []MenuItem `jsoControllern:",omitempty"`
 }
 
-func fetchMenu(sender string, path dbus.ObjectPath) ([]MenuItem, error) {
-	obj := conn.Object(sender, path)
-	if call := obj.Call(MENU_INTERFACE+".GetLayout", dbus.Flags(0), 0, -1, []string{}); call.Err != nil {
-		return nil, call.Err
-	} else if len(call.Body) < 2 {
-		return nil, errors.New(fmt.Sprint("Retrieved", len(call.Body), "arguments, expected 2"))
-	} else if _, ok := call.Body[0].(uint32); !ok {
-		return nil, errors.New(fmt.Sprint("Expected uint32 as first return argument, got:", reflect.TypeOf(call.Body[0])))
-	} else if interfaces, ok := call.Body[1].([]interface{}); !ok {
-		return nil, errors.New(fmt.Sprint("Expected []interface{} as second return argument, got:", reflect.TypeOf(call.Body[1])))
-	} else if menu, err := parseMenu(interfaces); err != nil {
-		return nil, err
-	} else if len(menu.SubEntries) > 0 {
-		return menu.SubEntries, nil
+func menuToStandardFormat(path string, entries []MenuItem) *respond.StandardFormat {
+	return &respond.StandardFormat{
+		Self:   path,
+		Title:  "Menu",
+		Type:   "status_item_menu",
+		OnPost: "Activate",
+		Data:   entries,
+	}
+}
+
+func (item *Item) menu() ([]MenuItem, error) {
+	if item.menuPath == "" {
+		return nil, nil
 	} else {
-		return []MenuItem{menu}, nil
+		obj := conn.Object(item.sender, item.menuPath)
+		if call := obj.Call(MENU_INTERFACE+".GetLayout", dbus.Flags(0), 0, -1, []string{}); call.Err != nil {
+			return nil, call.Err
+		} else if len(call.Body) < 2 {
+			return nil, errors.New(fmt.Sprint("Retrieved", len(call.Body), "arguments, expected 2"))
+		} else if _, ok := call.Body[0].(uint32); !ok {
+			return nil, errors.New(fmt.Sprint("Expected uint32 as first return argument, got:", reflect.TypeOf(call.Body[0])))
+		} else if interfaces, ok := call.Body[1].([]interface{}); !ok {
+			return nil, errors.New(fmt.Sprint("Expected []interface{} as second return argument, got:", reflect.TypeOf(call.Body[1])))
+		} else if menu, err := parseMenu(interfaces); err != nil {
+			return nil, err
+		} else if len(menu.SubEntries) > 0 {
+			return menu.SubEntries, nil
+		} else {
+			return []MenuItem{menu}, nil
+		}
 	}
 }
 
