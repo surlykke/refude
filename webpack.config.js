@@ -15,9 +15,9 @@ module.exports = {
         ]
     },
     entry: {
-        renderPanel: './panel/render.js',
-        renderDo: './do/render.js',
-        renderIndicator: './indicator/render.js'
+        Panel: './panel/Panel.js',
+        Do: './do/Do.js',
+        Indicator: './indicator/Indicator.js'
     },
     target: 'electron-renderer',
     output: {

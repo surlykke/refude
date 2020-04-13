@@ -6,6 +6,7 @@
 
 
 import React from 'react'
+import ReactDOM from 'react-dom'
 import { DoItem} from "./doitem"
 import { getUrl, postUrl, deleteUrl } from '../common/monitor';
 import { ipcRenderer} from 'electron';
@@ -127,7 +128,6 @@ export class Do extends React.Component {
     }
 
     reset = () => {
-        console.log("resetting")
         this.url = "/search/desktop"
         this.history = []
         this.setState({ term: "" }, this.updateResourceList)
@@ -155,8 +155,6 @@ export class Do extends React.Component {
             overflowY: "scroll"
         };
 
-        console.log("render")
-
         ipcRenderer.send("doResourceSelected", this.selectedResource()) // TODO Optimize
 
         return <>
@@ -178,3 +176,5 @@ export class Do extends React.Component {
         </>
     }
 }
+
+ReactDOM.render(<Do/>,document.getElementById('do'))

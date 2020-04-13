@@ -24,7 +24,7 @@ let createPanel = () => {
     })
     panelWindow.on('move', () => saveBounds("panel", panelWindow.getBounds()))
     panelWindow.on('closed', app.quit)
-//    app.isPackaged || panelWindow.webContents.openDevTools()
+    //app.isPackaged || panelWindow.webContents.openDevTools()
 }
 
 let adjustWindowSize = (evt, rect) => {

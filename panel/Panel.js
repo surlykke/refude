@@ -12,6 +12,7 @@
  * Please refer to the LICENSE file for a copy of the license.
  */
 import React from 'react'
+import ReactDOM from 'react-dom'
 import { Clock } from './clock'
 import { Battery } from './battery'
 import { NotifierItems } from './notifieritems'
@@ -73,3 +74,4 @@ export default class Panel extends React.Component {
 }
 
  
+ReactDOM.render(<Panel/>,document.getElementById('app'))

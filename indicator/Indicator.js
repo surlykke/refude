@@ -5,6 +5,7 @@
 // Please refer to the GPL2 file for a copy of the license.
 //
 import React from 'react';
+import ReactDOM from 'react-dom'
 
 import {ipcRenderer } from 'electron'
 
@@ -72,3 +73,4 @@ export class Indicator extends React.Component {
     }
 }
 
+ReactDOM.render(<Indicator/>, document.getElementById('indicator'))
