@@ -6,57 +6,69 @@ const fs = require('fs')
 const dataPath = app.getPath('userData') + "/windowData.json"
 
 let windowData
-let signature
 
-let signatureChangeListeners = []
+let initialized
+let initialize = () => {
+    if (!initialized) {
+        try {
+            windowData = JSON.parse(fs.readFileSync(dataPath))
+        } catch (error) { }
 
-let onDisplayChange = () => signatureChangeListeners.forEach(scl => scl())
+        if ('object' !== typeof windowData || Array.isArray(windowData)) {
+            windowData = {}
+        }
+        initialized = true
+    }
+}
+
 
 let getSignature = () => {
     let displays = screen.getAllDisplays()
     displays = displays.sort((d1, d2) => d1.id - d2.id)
-    signature = displays.map(d => d.id + "-" + d.bounds.x + "-" + d.bounds.y + "-" + d.bounds.width + "-" + d.bounds.height).join("-")
+    let signature = displays.map(d => d.id + "-" + d.bounds.x + "-" + d.bounds.y + "-" + d.bounds.width + "-" + d.bounds.height).join("-")
     windowData[signature] = windowData[signature] || {}
-    signatureChangeListeners.forEach(scl => scl())
+    return signature
 }
 
-
-// Must happen before first call to manageWindow
-let initializeWindowManager = () => {
-    try {
-        windowData = JSON.parse(fs.readFileSync(dataPath))
-    } catch(error) {}
-
-    if ('object' !== typeof windowData || Array.isArray(windowData)) {
-        windowData = {}
-    }
-    
-    screen.on('display-metrics-changed', getSignature)
-    getSignature() 
-}
 
 let persistScheduled
 let persist = () => {
     if (!persistScheduled) {
         persistScheduled = true;
-        setTimeout(() => { 
+        setTimeout(() => {
             try {
-                fs.writeFileSync(dataPath, JSON.stringify(windowData)); persistScheduled = undefined 
-            } catch(error) {
+                fs.writeFileSync(dataPath, JSON.stringify(windowData)); persistScheduled = undefined
+            } catch (error) {
                 console.log("Unable to save", dataPath, error)
             }
-            }, 2000)
+        }, 2000)
     }
 }
 
 let saveBounds = (windowName, bounds) => {
+    let signature = getSignature()
     windowData[signature][windowName] = bounds
     persist()
 }
 
-let loadBounds = (windowName, bounds) => {
+let loadBounds = (windowName) => {
+    let signature = getSignature()
     return windowData[signature][windowName]
 }
 
+let manageWindow = (window, windowName, managePosition, manageSize) => {
+    initialize()
+    let set = () => {
+        let bounds = loadBounds(windowName)
+        if (bounds) {
+            managePosition && window.setPosition(bounds.x, bounds.y)
+            manageSize && window.setSize(bounds.width, bounds.height)
+        }
+    }
+    set()
+    screen.on('display-metrics-changed', set)
+    window.on('move', () => saveBounds(windowName, window.getBounds()))
+    window.on('resize', () => saveBounds(windowName, window.getBounds()))
+}
 
-module.exports = { saveBounds, loadBounds, onDisplayChange, initializeWindowManager}
+module.exports = {manageWindow} 

@@ -18,7 +18,7 @@ import { Battery } from './battery'
 import { NotifierItems } from './notifieritems'
 import { DragField } from './dragfield'
 import { CloseButton } from "./closebutton";
-import { Notifications } from './notifications'
+import { Notifications } from '../notifications/notifications'
 import { ipcRenderer, webFrame} from 'electron'
 
 const style = {
