@@ -148,12 +148,7 @@ func Run() {
 		select {
 		case notification := <-incomingNotifications:
 			upsert(notification)
-			osd.Events <- &osd.Event{
-				Sender:   notification.Sender,
-				Title:    notification.Subject,
-				Body:     notification.Body,
-				IconName: notification.IconName,
-			}
+			osd.PublishMessage(notification.Sender, notification.Subject, notification.Body, notification.IconName)
 			sendEvent(notification.path)
 		case rem := <-removals:
 			if notification := removeNotification(rem.id); notification != nil {

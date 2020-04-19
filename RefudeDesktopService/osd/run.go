@@ -1,6 +1,7 @@
 package osd
 
 import (
+	"fmt"
 	"net/http"
 	"sync/atomic"
 	"time"
@@ -11,7 +12,7 @@ import (
 )
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	var event = eventStore.Load().(*Event)
+	var event = eventStore.Load().(*event)
 	if r.URL.Path != "/osd" || event == empty {
 		respond.NotFound(w)
 	} else {
@@ -19,26 +20,39 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-type Event struct {
-	Sender   string
-	Title    string
-	Body     string
-	IconName string
-	ends     time.Time
+func PublishMessage(sender, title, message, iconName string) {
+	var event = &event{
+		Sender:   sender,
+		Title:    title,
+		Message:  []string{message},
+		IconName: iconName,
+	}
+	select {
+	case events <- event: // all is well
+	default:
+		fmt.Println("event buffer full. Dropping", event)
+	}
 }
 
-var Events = make(chan *Event)
+type event struct {
+	Sender   string
+	Title    string
+	Message  []string `json:",omitempty"`
+	IconName string
+}
+
+var events = make(chan *event, 50)
 
 const showTime = 6 * time.Second
 
-var empty = &Event{} // Used as a kind of nil
+var empty = &event{} // Used as a kind of nil
 var eventStore atomic.Value
 
-func currentEvent() *Event {
-	return eventStore.Load().(*Event)
+func currentEvent() *event {
+	return eventStore.Load().(*event)
 }
 
-func setCurrentEvent(event *Event) {
+func setCurrentEvent(event *event) {
 	eventStore.Store(event)
 	ss_events.Publish <- &ss_events.Event{Type: "osd", Path: "/osd"}
 }
@@ -55,44 +69,55 @@ func scheduleTimeout(t time.Time) {
 	timeout <- struct{}{}
 }
 
-func canAmend(current, next *Event) bool {
-	return false // FIXME
+func canAmend(current, next *event) bool {
+	return current.Sender == next.Sender &&
+		current.Title == next.Title &&
+		len(current.Message) > 0 &&
+		len(current.Message) < 3 &&
+		len(next.Message) > 0 // Will never be > 1
+
 }
 
-func amend(current, next *Event) *Event {
-	return &(*current) // Fixme
+func amend(current, next *event) *event {
+	return &event{
+		Sender:  current.Sender,
+		Title:   current.Title,
+		Message: append(next.Message, current.Message...),
+	}
 }
 
 func Run() {
-	var next *Event = nil
+	var next *event = nil
+	var currentExpires time.Time
 	for {
 		var current = currentEvent()
-		if current == empty {
-			current = <-Events
-			current.ends = time.Now().Add(showTime)
+		if current == empty { // Then next will be nil
+			current = <-events
+			currentExpires = time.Now().Add(showTime)
 			setCurrentEvent(current)
-			go scheduleTimeout(current.ends)
+			go scheduleTimeout(currentExpires)
 		} else {
 			if next == nil {
 				select {
 				case <-timeout:
-					if current.ends.Before(time.Now()) {
+					if currentExpires.Before(time.Now()) {
 						setCurrentEvent(empty)
 					} else {
-						go scheduleTimeout(current.ends)
+						go scheduleTimeout(currentExpires)
 					}
-				case next = <-Events:
+				case next = <-events:
 					if canAmend(current, next) {
 						setCurrentEvent(amend(current, next))
+						currentExpires = time.Now().Add(showTime)
 						next = nil
 					}
 				}
 			} else {
 				<-timeout
-				if current.ends.Before(time.Now()) {
+				if currentExpires.Before(time.Now()) {
 					setCurrentEvent(empty)
 				} else {
-					go scheduleTimeout(current.ends)
+					go scheduleTimeout(currentExpires)
 				}
 			}
 		}
