@@ -56,11 +56,11 @@ export class Osd extends React.Component {
             };
 
             let titleStyle = {
-                fontSize: "0.8em",
+                fontSize: "1em",
             };
             
             let bodyStyle = {
-                fontSize: "0.8em",
+                fontSize: "0.9em",
             };
 
             let iconStyle = {
@@ -74,11 +74,12 @@ export class Osd extends React.Component {
             }
 
             ipcRenderer.send("osdShow", true)
+            console.log("osd render with", event)
             return <div id="osdDiv" style={style}>
                     <img width="24px" height="24px" style={iconStyle} src={iconUrl} alt="" />
                     <div style={messageStyle}>
                         <div style={titleStyle}>{event.Title}</div>
-                        <div style={bodyStyle}>{event.Body}</div>
+                        {event.Message.map(m => <div style={bodyStyle}>{m}</div>)}
                     </div>
                 </div>
         } else {

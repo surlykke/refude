@@ -110,6 +110,7 @@ let createOsdWindow = () => {
     })).then(() => {
         ipcMain.on('osdShow', (evt, shown) => {
             if (shown) {
+                osdWindow.webContents.setZoomFactor(panelWindow.webContents.zoomFactor)
                 osdWindow.showInactive()
             } else {
                osdWindow.hide()
