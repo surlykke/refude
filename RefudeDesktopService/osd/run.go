@@ -21,6 +21,9 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func PublishMessage(sender, title, message, iconName string) {
+	if iconName == "" {
+		iconName = "dialog-information"
+	}
 	var event = &event{
 		Sender:   sender,
 		Title:    title,
