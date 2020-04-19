@@ -33,11 +33,12 @@ export class Osd extends React.Component {
     update = () => {
         Axios.get(`http://localhost:7938/osd`)
             .then(resp => {
+                console.log("osd set state:", {event: resp.data})
                 this.setState({event: resp.data})
             })
             .catch(err => {
                 console.error(err)
-//                this.setState({event: undefined})
+                this.setState({event: undefined})
             })
     }
 
