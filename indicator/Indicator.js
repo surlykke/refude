@@ -9,6 +9,7 @@ import ReactDOM from 'react-dom'
 
 import {ipcRenderer } from 'electron'
 
+let nocache = 1
 
 export class Indicator extends React.Component {
 
@@ -59,7 +60,7 @@ export class Indicator extends React.Component {
         let res = this.state.resource
         if (res && res.Type === "window") {
             let { X, Y, W, H } = res.Data
-            let screenShotUrl = "http://localhost:7938" + res.Self + "/screenshot?downscale=3"
+            let screenShotUrl = `http://localhost:7938${res.Self}/screenshot?downscale=3&nocache=${nocache++}`
             let viewBox = `${this.display.x - 3} ${this.display.y - 3} ${this.display.w + 6} ${this.display.h + 6}`;
             let rects = this.screens.map((scr, i) => <rect key={`screenRect_${i}`} x={scr.x} y={scr.y} width={scr.w} height={scr.h} fill="lightgrey" />);
             //rects.push(<rect key="winRect" x={window.X} y={window.Y} width={window.W} height={window.H} fill="grey" />);
