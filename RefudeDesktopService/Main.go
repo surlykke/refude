@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/surlykke/RefudeServices/RefudeDesktopService/osd"
+
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/file"
 
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/ss_events"
@@ -60,6 +62,8 @@ func (dummy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		ss_events.ServeHTTP(w, r)
 	case path == "/file":
 		file.ServeHTTP(w, r)
+	case path == "/osd":
+		osd.ServeHTTP(w, r)
 	default:
 		respond.NotFound(w)
 	}
@@ -78,6 +82,7 @@ func main() {
 	go backlight.Run()
 	go icons.Run()
 	go ss_events.Run()
+	go osd.Run()
 
 	var handler = dummy{}
 	go lib.Serve("org.refude.desktop-service", handler)

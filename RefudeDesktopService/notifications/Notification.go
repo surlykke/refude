@@ -22,6 +22,7 @@ type Notification struct {
 	Created  time.Time
 	Expires  time.Time `json:",omitempty"`
 	Actions  map[string]string
+	Hints    map[string]interface{}
 	path     string
 }
 

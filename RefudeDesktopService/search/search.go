@@ -70,10 +70,10 @@ func searchDesktop(w http.ResponseWriter, r *http.Request) {
 
 	var sfl = make(respond.StandardFormatList, 0, 1000)
 	if term == "" {
-		sfl = append(sfl, notifications.Collect("")...)
+		sfl = append(sfl, notifications.CollectActionable("")...)
 		sfl = append(sfl, windows.Collect("")...)
 	} else {
-		sfl = append(sfl, notifications.Collect("")...)
+		sfl = append(sfl, notifications.CollectActionable(term)...)
 		sfl = append(sfl, windows.Collect(term)...)
 		sfl = append(sfl, applications.CollectApps(term)...)
 		sfl = append(sfl, session.Collect(term)...)

@@ -103,6 +103,20 @@ var expireryOverride = map[string]int32{
 	"IDEA":     10000,
 }
 
+var acceptableHintTypes = map[string]bool{
+	"y": true,
+	"b": true,
+	"n": true,
+	"q": true,
+	"i": true,
+	"u": true,
+	"x": true,
+	"t": true,
+	"d": true,
+	"s": true,
+	"o": true,
+}
+
 const (
 	Expired   uint32 = 1
 	Dismissed        = 2
@@ -200,6 +214,7 @@ func notify(app_name string,
 		Subject:  sanitize(summary, []string{}, []string{}),
 		Body:     sanitize(body, allowedTags, allowedEscapes),
 		Actions:  map[string]string{},
+		Hints:    map[string]interface{}{},
 		path:     notificationSelf(id),
 	}
 
@@ -210,6 +225,12 @@ func notify(app_name string,
 	// Add actions given in notification (We are aware that one of these may overwrite the dismiss action added above)
 	for i := 0; i+1 < len(actions); i = i + 2 {
 		notification.Actions[actions[i]] = actions[i+1]
+	}
+
+	for name, val := range hints {
+		if acceptableHintTypes[val.Signature().String()] {
+			notification.Hints[name] = val.Value()
+		}
 	}
 
 	incomingNotifications <- notification

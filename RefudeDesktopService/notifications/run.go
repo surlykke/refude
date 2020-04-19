@@ -11,6 +11,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/surlykke/RefudeServices/RefudeDesktopService/osd"
+
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/ss_events"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
 
@@ -42,6 +44,21 @@ func Collect(term string) respond.StandardFormatList {
 	for _, notification := range notifications {
 		if rank := searchutils.SimpleRank(notification.Subject, notification.Body, term); rank > -1 {
 			sfl = append(sfl, notification.ToStandardFormat().Ranked(rank))
+		}
+	}
+	return sfl
+}
+
+// Notifications that have a default action
+func CollectActionable(term string) respond.StandardFormatList {
+	lock.Lock()
+	defer lock.Unlock()
+	var sfl = make(respond.StandardFormatList, 0, len(notifications))
+	for _, notification := range notifications {
+		if _, ok := notification.Actions["default"]; ok {
+			if rank := searchutils.SimpleRank(notification.Subject, notification.Body, term); rank > -1 {
+				sfl = append(sfl, notification.ToStandardFormat().Ranked(rank))
+			}
 		}
 	}
 	return sfl
@@ -131,6 +148,12 @@ func Run() {
 		select {
 		case notification := <-incomingNotifications:
 			upsert(notification)
+			osd.Events <- &osd.Event{
+				Sender:   notification.Sender,
+				Title:    notification.Subject,
+				Body:     notification.Body,
+				IconName: notification.IconName,
+			}
 			sendEvent(notification.path)
 		case rem := <-removals:
 			if notification := removeNotification(rem.id); notification != nil {

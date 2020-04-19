@@ -60,8 +60,14 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
 		respond.NotAllowed(w)
 	} else {
-		var watchedTypes = determineWatchedTypes(r.URL.Query()["type"])
-
+		var watchedTypes map[string]bool
+		var typeParams = r.URL.Query()["type"]
+		if len(typeParams) > 0 {
+			watchedTypes = make(map[string]bool)
+			for _, typeParam := range typeParams {
+				watchedTypes[typeParam] = true
+			}
+		}
 		var ctx = r.Context()
 		var subscription = make(chan *Event)
 		register <- subscription
@@ -81,7 +87,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				if ev == nil {
 					return
 				} else {
-					if watchedTypes[ev.Type] {
+					if watchedTypes == nil || watchedTypes[ev.Type] {
 						fmt.Fprintf(w, "event:message\ndata:%s:%s\n\n", ev.Type, ev.Path)
 						w.(http.Flusher).Flush()
 					}
