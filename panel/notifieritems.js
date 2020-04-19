@@ -85,11 +85,9 @@ export class NotifierItem extends React.Component {
             event.persist()
             event.preventDefault()
             if (this.state.item.Data.Menu) {
-                console.log("showMenu")
                 showMenu(event)
             } else {
                 let { x, y } = getXY(event)
-                console.log(postUrl)
                 postUrl(this.state.item.Self + '?action=ContextMenu&x=' + x + '&y=' + y);
             }
         }

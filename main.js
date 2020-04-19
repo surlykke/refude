@@ -1,6 +1,6 @@
 process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = true
 
-const {app, BrowserWindow, ipcMain, screen} = require('electron')
+const { app, BrowserWindow, ipcMain, screen } = require('electron')
 let { manageWindow } = require('./common/managewindows')
 let url = require('url')
 let path = require('path')
@@ -9,7 +9,7 @@ let http = require('http')
 let panelWindow
 
 let createPanel = () => {
-    panelWindow = new BrowserWindow({show: false, frame: false, alwaysOnTop: true, webPreferences: { nodeIntegration: true } })
+    panelWindow = new BrowserWindow({ show: false, frame: false, alwaysOnTop: true, webPreferences: { nodeIntegration: true } })
 
     panelWindow.loadURL(url.format({
         pathname: path.join(__dirname, '/panel/panel.html'),
@@ -19,10 +19,15 @@ let createPanel = () => {
     panelWindow.once('ready-to-show', () => {
         manageWindow(panelWindow, 'panel', true, false)
         panelWindow.show()
-        ipcMain.on('panelSizeChange', (evt, rect) => panelWindow.setSize(rect.width + 5, rect.height + 1))
+        ipcMain.on('panelSizeChange', (evt, rect) => {
+            let width = Math.round(panelWindow.webContents.zoomFactor*rect.width) + 8 
+            let height = Math.round(panelWindow.webContents.zoomFactor*rect.height) + 1
+            panelWindow.setSize(width, height)
+        })
+
     })
     panelWindow.on('closed', app.quit)
-    //app.isPackaged || panelWindow.webContents.openDevTools()
+    //panelWindow.webContents.openDevTools()
 }
 
 let doWindow
@@ -59,7 +64,7 @@ let createDoWindow = () => {
         }).listen("/run/user/1000/org.refude.panel.do");
 
         ipcMain.on("doResourceSelected", (evt, res) => {
-            if (doWindow.isVisible() && res && res.Type === "window") { 
+            if (doWindow.isVisible() && res && res.Type === "window") {
                 indicatorWindow.showInactive()
                 indicatorWindow.webContents.send("resource", res)
             } else {
@@ -87,20 +92,46 @@ let createIndicatorWindow = () => {
         slashes: true
     })).then(() => {
         manageWindow(indicatorWindow, "indicator", true, true)
-    }).catch(error => console.log("Error in load:", error))
+    }).catch(error => console.error(error))
 
-    //indicatorWindow.webContents.openDevTools()
 }
 
+let osdWindow
+
+let createOsdWindow = () => {
+    osdWindow = new BrowserWindow({
+        show: false, frame: false, transparent: true, skipTaskbar: true, webPreferences: { nodeIntegration: true }
+    })
+
+    osdWindow.loadURL(url.format({
+        pathname: path.join(__dirname, "/osd/osd.html"),
+        protocol: 'file',
+        slashes: true,
+    })).then(() => {
+        ipcMain.on('osdShow', (evt, shown) => {
+            if (shown) {
+                osdWindow.showInactive()
+            } else {
+               osdWindow.hide()
+            }
+        })
+        ipcMain.on('osdSize', (evt, rect) => {
+            let pb = panelWindow.getBounds()
+            let {x, y, width} = {x: pb.x, y: pb.y + pb.height + 12, width: pb.width}
+            let height = Math.round(osdWindow.webContents.zoomFactor*rect.height) + 1
+            osdWindow.setBounds({ x: x, y: y, width: width, height: height})
+        })
+    })
+
+    // osdWindow.webContents.openDevTools()
+}
 
 app.on('ready', () => {
-    /*app.isPackaged || BrowserWindow.addDevToolsExtension(
-        '/home/surlykke/snap/chromium/1077/.config/chromium/Default/Extensions/fmkadmapgofadopljbjfkapdkoienihi/4.6.0_0'
-    )*/
 
     createPanel()
     createDoWindow()
     createIndicatorWindow()
+    createOsdWindow()
 
     ipcMain.on('panelClose', () => app.quit())
 

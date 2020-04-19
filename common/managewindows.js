@@ -39,7 +39,7 @@ let persist = () => {
             try {
                 fs.writeFileSync(dataPath, JSON.stringify(windowData)); persistScheduled = undefined
             } catch (error) {
-                console.log("Unable to save", dataPath, error)
+                console.error("Unable to save", dataPath, error)
             }
         }, 2000)
     }

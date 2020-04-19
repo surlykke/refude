@@ -18,8 +18,7 @@ import { Battery } from './battery'
 import { NotifierItems } from './notifieritems'
 import { DragField } from './dragfield'
 import { CloseButton } from "./closebutton";
-import { Notifications } from '../notifications/notifications'
-import { ipcRenderer, webFrame} from 'electron'
+import { ipcRenderer, webFrame } from 'electron'
 
 const style = {
     margin: "0px",
@@ -41,7 +40,7 @@ const pluginStyle = {
 
 export default class Panel extends React.Component {
     content = React.createRef()
-    
+
     constructor(props) {
         super(props)
     }
@@ -49,13 +48,13 @@ export default class Panel extends React.Component {
     componentDidMount = () => {
         this.resizeObserver = new ResizeObserver((observed) => {
             if (observed[0] && observed[0].contentRect) {
-                let {width, height} = observed[0].contentRect
-                let zoom = webFrame.getZoomFactor()
-                let data = {width:Math.round(zoom*width), height: Math.round(zoom*height)} 
-                ipcRenderer.send("panelSizeChange", data)
+               ipcRenderer.send("panelSizeChange", {
+                   width: observed[0].contentRect.width, 
+                   height: observed[0].contentRect.height
+                })
             }
         })
-        
+
         this.resizeObserver.observe(this.content.current)
     };
 
@@ -67,11 +66,10 @@ export default class Panel extends React.Component {
                 <Battery style={pluginStyle} />
                 <DragField style={pluginStyle} />
                 <CloseButton style={pluginStyle} />
-                <Notifications/>
-           </div>
+            </div>
         </div>
     }
 }
 
- 
-ReactDOM.render(<Panel/>,document.getElementById('app'))
+
+ReactDOM.render(<Panel />, document.getElementById('app'))

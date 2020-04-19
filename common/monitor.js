@@ -9,26 +9,28 @@ import Axios from "axios";
 
 export let monitorSSE = (eventType, onMessage, onOpen, onError) => {
     let helper = () => {
-        let url = eventType ? `http://localhost:7938/events?type=${eventType}` : "http://localhost:7938/events" 
-        
+        let url = eventType ? `http://localhost:7938/events?type=${eventType}` : "http://localhost:7938/events"
+
         let evtSource = new EventSource(url)
-        
-		evtSource.onerror = event => {
+
+        evtSource.onerror = event => {
             onError && onError()
-			if (evtSource.readyState === 2) {
-				setTimeout(helper, 5000)
-			}
-		}
+            if (evtSource.readyState === 2) {
+                setTimeout(helper, 5000)
+            }
+        }
 
         evtSource.onopen = onOpen
-        evtSource.onmessage  = onMessage
+        evtSource.onmessage = onMessage
     }
 
     helper()
 }
 
-export let getUrl = (path, handler) => {
-    Axios.get(`http://localhost:7938${path}`).then(resp => handler(resp)).catch(err => console.error(err))
+export let getUrl = (path, handler, errHandler) => {
+    Axios.get(`http://localhost:7938${path}`)
+        .then(resp => handler(resp))
+        .catch(errHandler || (err => console.error(err)))
 }
 
 export let postUrl = (path, handler) => {
