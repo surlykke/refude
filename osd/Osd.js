@@ -22,7 +22,7 @@ export class Osd extends React.Component {
     componentDidUpdate = () => {
         let div = document.getElementById("osdDiv")
         if (div) {
-            ipcRenderer.send("osdSize", { 
+            ipcRenderer.send("osdShow", {
                 width: div.getBoundingClientRect().width,
                 height: div.getBoundingClientRect().height
             })
@@ -33,8 +33,7 @@ export class Osd extends React.Component {
     update = () => {
         Axios.get(`http://localhost:7938/osd`)
             .then(resp => {
-                console.log("osd set state:", {event: resp.data})
-                this.setState({event: resp.data})
+                this.setState({ event: resp.data })
             })
             .catch(err => {
                 console.error(err)
@@ -47,44 +46,59 @@ export class Osd extends React.Component {
         let { event } = this.state
         if (event) {
             let style = {
-                width: "fit-content"
+                padding: "0.5em",
+                width: "22em",
+                display: "flex",
+                backgroundColor: "white"
             }
+            let iconStyle = {
+                width: "3em",
+                height: "3em",
+                padding: "0px",
+                margin: "0px"
+
+            }
+   
             let messageStyle = {
+                marginLeft: "0.7em",
                 overflow: "hidden",
-                whiteSpace: "nowrap",
                 marginRight: "6px",
+                flex: "1",
             };
 
             let titleStyle = {
-                fontSize: "1em",
-            };
-            
-            let bodyStyle = {
                 fontSize: "0.9em",
+                whiteSpace: "nowrap",
             };
 
-            let iconStyle = {
-                float: "left",
-                marginRight: "6px"
-            }
+            let bodyStyle = {
+                maxHeight: "2.2em",
+                fontSize: "0.7em",
+                paddingTop: "0.2em",
+                paddingBottom: "0.2em",
+                overflowY: "hidden",
+            };
 
-            let iconUrl = ""
-            if (event.IconName) {
-                iconUrl = `http://localhost:7938/icon?name=${event.IconName}&theme=oxygen`
-            }
+            let iconUrl = event.IconName && `http://localhost:7938/icon?name=${event.IconName}&theme=oxygen&size=48`
 
-            ipcRenderer.send("osdShow", true)
-            console.log("osd render with", event)
             return <div id="osdDiv" style={style}>
-                    <img width="24px" height="24px" style={iconStyle} src={iconUrl} alt="" />
-                    <div style={messageStyle}>
-                        <div style={titleStyle}>{event.Title}</div>
-                        {event.Message.map(m => <div style={bodyStyle}>{m}</div>)}
-                    </div>
+                <div style={iconStyle}>
+                    <img width="100%" height="100%" src={iconUrl} alt="" />
                 </div>
+                <div style={messageStyle}>
+                    <div style={titleStyle}>
+                        {event.Title}
+                    </div>
+                    {event.Message.map(m =>
+                        <div style={bodyStyle}>
+                            {m}
+                        </div>)
+                    }
+                </div>
+            </div>
         } else {
-            ipcRenderer.send("osdShow", false)
-            return <div id="osdDiv" ></div>;
+            ipcRenderer.send("osdHide")
+            return null;
         }
     }
 }

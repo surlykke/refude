@@ -20,8 +20,8 @@ let createPanel = () => {
         manageWindow(panelWindow, 'panel', true, false)
         panelWindow.show()
         ipcMain.on('panelSizeChange', (evt, rect) => {
-            let width = Math.round(panelWindow.webContents.zoomFactor*rect.width) + 8 
-            let height = Math.round(panelWindow.webContents.zoomFactor*rect.height) + 1
+            let width = Math.round(panelWindow.webContents.zoomFactor * rect.width) + 8
+            let height = Math.round(panelWindow.webContents.zoomFactor * rect.height) + 1
             panelWindow.setSize(width, height)
         })
 
@@ -108,19 +108,16 @@ let createOsdWindow = () => {
         protocol: 'file',
         slashes: true,
     })).then(() => {
-        ipcMain.on('osdShow', (evt, shown) => {
-            if (shown) {
-                osdWindow.webContents.setZoomFactor(panelWindow.webContents.zoomFactor)
-                osdWindow.showInactive()
-            } else {
-               osdWindow.hide()
-            }
-        })
-        ipcMain.on('osdSize', (evt, rect) => {
+        ipcMain.on('osdHide', () => osdWindow.hide())
+        ipcMain.on('osdShow', (evt, rect) => {
             let pb = panelWindow.getBounds()
-            let {x, y, width} = {x: pb.x, y: pb.y + pb.height + 12, width: pb.width}
-            let height = Math.round(osdWindow.webContents.zoomFactor*rect.height) + 1
-            osdWindow.setBounds({ x: x, y: y, width: width, height: height})
+            let zf = panelWindow.webContents.zoomFactor
+            console.log("Got rect:", rect, "zf: ", zf, "panelWindow.zoomFactor:", panelWindow.zoomFactor)
+            console.log("set bounds:", { x: pb.x, y: pb.y + pb.height + 12, width: Math.round(zf * rect.width), height: Math.round(zf * rect.height) })
+            osdWindow.setBounds({ x: pb.x, y: pb.y + pb.height + 12, width: Math.round(zf * rect.width), height: Math.round(zf * rect.height) })
+            osdWindow.webContents.zoomFactor = zf
+            osdWindow.showInactive()
+
         })
     })
 
