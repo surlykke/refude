@@ -83,9 +83,10 @@ func canAmend(current, next *event) bool {
 
 func amend(current, next *event) *event {
 	return &event{
-		Sender:  current.Sender,
-		Title:   current.Title,
-		Message: append(next.Message, current.Message...),
+		Sender:   current.Sender,
+		Title:    current.Title,
+		Message:  append(next.Message, current.Message...),
+		IconName: next.IconName,
 	}
 }
 
