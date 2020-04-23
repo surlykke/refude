@@ -23,24 +23,28 @@ func PublishMessage(sender, title, message, iconName string) {
 	if iconName == "" {
 		iconName = "dialog-information"
 	}
-	var event = &event{
+	events <- &event{
 		Sender:   sender,
 		Title:    title,
 		Message:  []string{message},
 		IconName: iconName,
 	}
-	select {
-	case events <- event: // all is well
-	default:
-		fmt.Println("event buffer full. Dropping", event)
+}
+
+func PublishGauge(sender, iconName string, gauge uint8) {
+	events <- &event{
+		Sender:   sender,
+		IconName: iconName,
+		Gauge:    &gauge,
 	}
 }
 
 type event struct {
 	Sender   string
-	Title    string
+	Gauge    *uint8   `json:",omitempty"`
+	Title    string   `json:",omitempty"`
 	Message  []string `json:",omitempty"`
-	IconName string
+	IconName string   `json:",omitempty"`
 }
 
 var events = make(chan *event)
@@ -59,7 +63,6 @@ func Run() {
 	var timeoutPending = false
 
 	for {
-		fmt.Println("Looping, bufStart:", buf.start, ",bufLen:", buf.len)
 		var oldFirst = buf.first()
 
 		select {

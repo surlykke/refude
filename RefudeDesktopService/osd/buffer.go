@@ -50,14 +50,30 @@ func (b *buffer) pop() {
 }
 
 func (b *buffer) canMergeWithLast(e *event) bool {
-	return b.last() != nil && b.last().Sender == e.Sender && b.last().Title == e.Title && len(b.last().Message) < 3
+	if b.last() == nil {
+		return false
+	} else if b.last().Sender != e.Sender {
+		return false
+	} else if b.last().Gauge != nil {
+		return e.Gauge != nil
+	} else {
+		return b.last().Title == e.Title && len(b.last().Message) < 3
+	}
 }
 
 func (b *buffer) mergeWithLast(e *event) {
-	b.data[proj(b.start+b.len-1)] = &event{
-		Sender:   e.Sender,
-		Title:    e.Title,
-		Message:  append(e.Message, b.last().Message...),
-		IconName: e.IconName,
+	if b.last().Gauge != nil {
+		b.data[proj(b.start+b.len-1)] = &event{
+			Sender:   e.Sender,
+			IconName: e.IconName,
+			Gauge:    e.Gauge,
+		}
+	} else {
+		b.data[proj(b.start+b.len-1)] = &event{
+			Sender:   e.Sender,
+			Title:    e.Title,
+			Message:  append(e.Message, b.last().Message...),
+			IconName: e.IconName,
+		}
 	}
 }

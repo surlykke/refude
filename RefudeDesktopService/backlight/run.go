@@ -11,6 +11,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/surlykke/RefudeServices/RefudeDesktopService/osd"
+
 	"github.com/surlykke/RefudeServices/lib/searchutils"
 
 	"github.com/fsnotify/fsnotify"
@@ -103,8 +105,8 @@ func retrieveDevices() DeviceMap {
 			}
 			dev.BrightnessPct = uint8(100 * dev.brightness / dev.maxBrightness)
 			dev.Updated = time.Now()
-			fmt.Println(">>>>>>>>>>>>>>>>> Setting: ", "/backlight/"+dev.Id)
 			devMap["/backlight/"+dev.Id] = dev
+			osd.PublishGauge("refude-backligt", "FIXME", dev.BrightnessPct)
 		}
 		return devMap
 	}
