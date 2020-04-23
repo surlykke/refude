@@ -44,11 +44,8 @@ let createDoWindow = () => {
         protocol: 'file:',
         slashes: true
     })).then(() => {
-        //doWindow.webContents.openDevTools()
-        manageWindow(doWindow, "do", false, true)
-        doWindow.on('closed', () => { win = undefined })
-
-        server = http.createServer(function (req, res) {
+        
+       server = http.createServer(function (req, res) {
             res.end('')
 
             if (!doWindow.isVisible()) {
@@ -63,6 +60,16 @@ let createDoWindow = () => {
 
         }).listen("/run/user/1000/org.refude.panel.do");
 
+ 
+        manageWindow(doWindow, "do", false, true)
+        doWindow.on('closed', () => { win = undefined })
+        
+        doWindow.on('blur', () => {
+            doWindow.hide()
+            indicatorWindow.hide()
+        })
+        
+        
         ipcMain.on("doResourceSelected", (evt, res) => {
             if (doWindow.isVisible() && res && res.Type === "window") {
                 indicatorWindow.showInactive()
@@ -72,18 +79,21 @@ let createDoWindow = () => {
             }
         })
 
+        
         ipcMain.on("doClose", () => {
             doWindow.hide()
             indicatorWindow.hide()
         })
     })
+        
+    //doWindow.webContents.openDevTools()
 }
 
 let indicatorWindow
 
 let createIndicatorWindow = () => {
     indicatorWindow = new BrowserWindow({
-        show: false, frame: false, transparent: true, skipTaskbar: true, webPreferences: { nodeIntegration: true }
+        show: false, frame: false, transparent: true, alwaysOnTop: true, webPreferences: { nodeIntegration: true }
     })
 
     indicatorWindow.loadURL(url.format({
@@ -100,7 +110,7 @@ let osdWindow
 
 let createOsdWindow = () => {
     osdWindow = new BrowserWindow({
-        show: false, frame: false, transparent: true, skipTaskbar: true, webPreferences: { nodeIntegration: true }
+        show: false, frame: false, transparent: true, alwaysOnTop: true, webPreferences: { nodeIntegration: true }
     })
 
     osdWindow.loadURL(url.format({
@@ -112,16 +122,18 @@ let createOsdWindow = () => {
         ipcMain.on('osdShow', (evt, rect) => {
             let pb = panelWindow.getBounds()
             let zf = panelWindow.webContents.zoomFactor
+            let [width, height] = [Math.round(zf*rect.width), Math.round(zf*rect.height)]
+            width = Math.max(width, pb.width)
             console.log("Got rect:", rect, "zf: ", zf, "panelWindow.zoomFactor:", panelWindow.zoomFactor)
             console.log("set bounds:", { x: pb.x, y: pb.y + pb.height + 12, width: Math.round(zf * rect.width), height: Math.round(zf * rect.height) })
-            osdWindow.setBounds({ x: pb.x, y: pb.y + pb.height + 12, width: Math.round(zf * rect.width), height: Math.round(zf * rect.height) })
+            osdWindow.setBounds({ x: pb.x, y: pb.y + pb.height + 12, width: width, height: height})
             osdWindow.webContents.zoomFactor = zf
             osdWindow.showInactive()
 
         })
     })
 
-    // osdWindow.webContents.openDevTools()
+    //osdWindow.webContents.openDevTools()
 }
 
 app.on('ready', () => {

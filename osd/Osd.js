@@ -10,6 +10,11 @@ import { getUrl, monitorSSE } from '../common/monitor';
 import { ipcRenderer } from 'electron';
 import Axios from 'axios'
 
+
+let acceptNotFound = status => {
+    return (status >= 200 && status < 300) || status === 404; // default
+}
+
 export class Osd extends React.Component {
     content = React.createRef()
 
@@ -20,24 +25,32 @@ export class Osd extends React.Component {
     };
 
     componentDidUpdate = () => {
+
         let div = document.getElementById("osdDiv")
         if (div) {
-            ipcRenderer.send("osdShow", {
-                width: div.getBoundingClientRect().width,
-                height: div.getBoundingClientRect().height
+            let [height, width] = [0, 0]
+            Array.from(div.children).forEach(c => {
+                height = Math.max(height, c.getBoundingClientRect().height)
+                width = width + c.getBoundingClientRect().width; 
             })
+            ipcRenderer.send("osdShow", {width: width, height: height})
         }
     }
 
 
     update = () => {
-        Axios.get(`http://localhost:7938/osd`)
+        Axios.get(`http://localhost:7938/osd`, {validateStatus: acceptNotFound})
             .then(resp => {
-                this.setState({ event: resp.data })
+                if (resp.status === 404) {
+                    this.setState({event: undefined})
+                } else {
+                    this.setState({ event: resp.data })
+                }
+                
             })
             .catch(err => {
                 console.error(err)
-                this.setState({event: undefined})
+                this.setState({ event: undefined })
             })
     }
 
@@ -46,24 +59,25 @@ export class Osd extends React.Component {
         let { event } = this.state
         if (event) {
             let style = {
-                padding: "0.5em",
-                width: "22em",
-                display: "flex",
-                backgroundColor: "white"
+                position: "relative",
+                backgroundColor: "white",
+                width: "30em",
+                height: "7em",
             }
             let iconStyle = {
-                width: "3em",
-                height: "3em",
-                padding: "0px",
-                margin: "0px"
-
+                position: "absolute",
+                width: "2.2em",
+                height: "2.2em",
+                padding: "0.5em",
             }
-   
+
             let messageStyle = {
-                marginLeft: "0.7em",
+                position: "absolute",
+                left: "3.2em",
                 overflow: "hidden",
-                marginRight: "6px",
-                flex: "1",
+                padding: "0.5em 0.5em 0.5em 0em",
+                minWidth: "6em",
+                maxWidth: "18em",
             };
 
             let titleStyle = {
@@ -81,20 +95,31 @@ export class Osd extends React.Component {
 
             let iconUrl = event.IconName && `http://localhost:7938/icon?name=${event.IconName}&theme=oxygen&size=48`
 
+            let messageDiv
+            if (event.Gauge) {
+                messageDiv = 
+                    <div id="messageDiv" style={messageStyle}>
+                        <meter min="0" max="100" value={event.Gauge}></meter>
+                    </div>
+            } else {
+                messageDiv =
+                   <div id="messageDiv" style={messageStyle}>
+                        <div style={titleStyle}>
+                            {event.Title}
+                        </div>
+                        {event.Message.map((m, i) =>
+                            <div key={`line${i}`} style={bodyStyle}>
+                                {m}
+                            </div>)
+                        }
+                    </div>
+            }
+
             return <div id="osdDiv" style={style}>
-                <div style={iconStyle}>
+                <div id="iconDiv" style={iconStyle}>
                     <img width="100%" height="100%" src={iconUrl} alt="" />
                 </div>
-                <div style={messageStyle}>
-                    <div style={titleStyle}>
-                        {event.Title}
-                    </div>
-                    {event.Message.map(m =>
-                        <div style={bodyStyle}>
-                            {m}
-                        </div>)
-                    }
-                </div>
+                {messageDiv} 
             </div>
         } else {
             ipcRenderer.send("osdHide")
