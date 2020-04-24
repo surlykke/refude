@@ -88,6 +88,7 @@ func AllPaths() []string {
 
 func Run() {
 	AddBaseDir(xdg.Home + "/.icons")
+	AddBaseDir(xdg.DataHome + "/icons")
 	for _, dataDir := range xdg.DataDirs {
 		AddBaseDir(dataDir + "/icons")
 	}

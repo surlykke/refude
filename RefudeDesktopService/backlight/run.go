@@ -58,6 +58,13 @@ func Run() {
 	for {
 		select {
 		case _ = <-watcher.Events:
+			var old = devices.Load().(DeviceMap)
+			var new = retrieveDevices()
+			for path, dev := range new {
+				if old[path].BrightnessPct != dev.BrightnessPct {
+					osd.PublishGauge("refude-backlight", "display-brightness-symbolic", dev.BrightnessPct)
+				}
+			}
 			devices.Store(retrieveDevices())
 		case err := <-watcher.Errors:
 			fmt.Println("Error from watcher:", err)
@@ -106,7 +113,6 @@ func retrieveDevices() DeviceMap {
 			dev.BrightnessPct = uint8(100 * dev.brightness / dev.maxBrightness)
 			dev.Updated = time.Now()
 			devMap["/backlight/"+dev.Id] = dev
-			osd.PublishGauge("refude-backligt", "FIXME", dev.BrightnessPct)
 		}
 		return devMap
 	}
