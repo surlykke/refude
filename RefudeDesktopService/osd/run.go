@@ -6,12 +6,14 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/surlykke/RefudeServices/RefudeDesktopService/osd/buffer"
+
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/ss_events"
 	"github.com/surlykke/RefudeServices/lib/respond"
 )
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	var event = eventSlot.Load().(*event)
+	var event = eventSlot.Load().(*buffer.Event)
 	if r.URL.Path != "/osd" || event == empty {
 		respond.NotFound(w)
 	} else {
@@ -23,7 +25,7 @@ func PublishMessage(sender, title, message, iconName string) {
 	if iconName == "" {
 		iconName = "dialog-information"
 	}
-	events <- &event{
+	events <- &buffer.Event{
 		Sender:   sender,
 		Title:    title,
 		Message:  []string{message},
@@ -32,24 +34,16 @@ func PublishMessage(sender, title, message, iconName string) {
 }
 
 func PublishGauge(sender, iconName string, gauge uint8) {
-	events <- &event{
+	events <- &buffer.Event{
 		Sender:   sender,
 		IconName: iconName,
 		Gauge:    &gauge,
 	}
 }
 
-type event struct {
-	Sender   string
-	Gauge    *uint8   `json:",omitempty"`
-	Title    string   `json:",omitempty"`
-	Message  []string `json:",omitempty"`
-	IconName string   `json:",omitempty"`
-}
+var events = make(chan *buffer.Event)
 
-var events = make(chan *event)
-
-var empty = &event{} // Used as a kind of nil
+var empty = &buffer.Event{} // Used as a kind of nil
 var eventSlot atomic.Value
 
 func init() {
@@ -58,48 +52,44 @@ func init() {
 
 func Run() {
 	var timeout = make(chan struct{})
-	var buf = &buffer{}
-	var currentExpires time.Time
 	var timeoutPending = false
 
 	for {
-		var oldFirst = buf.first()
+		fmt.Println("loop")
+		buffer.CurrentUpdated = false
 
 		select {
 		case <-timeout:
+			fmt.Println("Timeout")
 			timeoutPending = false
-			if time.Now().After(currentExpires) {
-				buf.pop()
+			if time.Now().After(buffer.CurrentTimeout) {
+				buffer.Pop()
 			}
 		case ev := <-events:
-			if buf.canMergeWithLast(ev) {
-				buf.mergeWithLast(ev)
-			} else if buf.len >= bufSize {
-				fmt.Println("Buffer full, dropping event", ev)
-			} else {
-				buf.push(ev)
-			}
+			fmt.Println("incoming")
+			buffer.Push(ev)
 		}
 
-		if oldFirst != buf.first() {
-			if buf.first() == nil {
+		fmt.Println("currentUpdated:", buffer.CurrentUpdated, "current():", buffer.Current())
+
+		if buffer.CurrentUpdated {
+			if buffer.Current() == nil {
 				eventSlot.Store(empty)
 			} else {
-				eventSlot.Store(buf.first())
-				currentExpires = time.Now().Add(6 * time.Second)
+				eventSlot.Store(buffer.Current())
 			}
 			ss_events.Publish <- &ss_events.Event{Type: "osd", Path: "/osd"}
 		}
 
-		if buf.first() != nil && !timeoutPending {
-			// schedule a timeout
+		if buffer.Current() != nil && !timeoutPending {
+			fmt.Println("Schedule timeout..")
 			go func() {
-				time.Sleep(currentExpires.Sub(time.Now()) + 10*time.Millisecond)
+				time.Sleep(buffer.CurrentTimeout.Sub(time.Now()) + 10*time.Millisecond)
 				timeout <- struct{}{}
 			}()
-
 			timeoutPending = true
 		}
+
 	}
 
 }
