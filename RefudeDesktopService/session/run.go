@@ -7,7 +7,7 @@ import (
 
 	"github.com/surlykke/RefudeServices/lib/respond"
 
-	"github.com/godbus/dbus"
+	"github.com/godbus/dbus/v5"
 )
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {

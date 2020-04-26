@@ -18,7 +18,7 @@ import (
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/ss_events"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
 
-	"github.com/godbus/dbus"
+	"github.com/godbus/dbus/v5"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/slice"

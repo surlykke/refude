@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/godbus/dbus"
+	"github.com/godbus/dbus/v5"
 	"github.com/surlykke/RefudeServices/lib/respond"
 )
 

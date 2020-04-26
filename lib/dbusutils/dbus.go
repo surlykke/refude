@@ -9,7 +9,7 @@ package dbuscall
 import (
 	"fmt"
 
-	"github.com/godbus/dbus"
+	"github.com/godbus/dbus/v5"
 )
 
 const INTROSPECT_INTERFACE = "org.freedesktop.DBus.Introspectable"

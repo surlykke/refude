@@ -9,7 +9,7 @@ package power
 import (
 	"strings"
 
-	"github.com/godbus/dbus"
+	"github.com/godbus/dbus/v5"
 	dbuscall "github.com/surlykke/RefudeServices/lib/dbusutils"
 )
 

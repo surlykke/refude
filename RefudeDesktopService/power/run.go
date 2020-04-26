@@ -11,10 +11,10 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/godbus/dbus/v5"
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/ss_events"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
 
-	"github.com/godbus/dbus"
 	"github.com/surlykke/RefudeServices/lib/respond"
 )
 
