@@ -57,8 +57,6 @@ func Collect() collection {
 		}
 	}
 
-	fmt.Println("Sætter default apps")
-
 	// In case no default app is defined in a mimetypes.list somewhere
 	// we take as default app any (randomly chosen) app that handles this mimetype
 	for _, app := range c.applications {
@@ -73,7 +71,6 @@ func Collect() collection {
 		if mimetype, ok := c.mimetypes[mimetypeId]; ok {
 			for _, appId := range appIds {
 				if _, ok := c.applications[appId]; ok {
-					fmt.Println("Sætter default", mimetypeId, appId)
 					mimetype.DefaultApp = appId
 					mimetype.DefaultAppPath = appSelf(appId)
 					break

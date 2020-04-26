@@ -10,20 +10,14 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/surlykke/RefudeServices/RefudeDesktopService/osd"
-
-	"github.com/surlykke/RefudeServices/RefudeDesktopService/file"
-
-	"github.com/surlykke/RefudeServices/RefudeDesktopService/ss_events"
-
-	"github.com/surlykke/RefudeServices/RefudeDesktopService/search"
-	"github.com/surlykke/RefudeServices/RefudeDesktopService/session"
-
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/applications"
-	"github.com/surlykke/RefudeServices/RefudeDesktopService/backlight"
+	"github.com/surlykke/RefudeServices/RefudeDesktopService/file"
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/icons"
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/notifications"
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/power"
+	"github.com/surlykke/RefudeServices/RefudeDesktopService/search"
+	"github.com/surlykke/RefudeServices/RefudeDesktopService/session"
+	"github.com/surlykke/RefudeServices/RefudeDesktopService/ss_events"
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/statusnotifications"
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/windows"
 	"github.com/surlykke/RefudeServices/lib/respond"
@@ -48,8 +42,6 @@ func (dummy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		power.ServeHTTP(w, r)
 	case match(r, "/item"):
 		statusnotifications.ServeHTTP(w, r)
-	case match(r, "/backlight"):
-		backlight.ServeHTTP(w, r)
 	case match(r, "/icon"):
 		icons.ServeHTTP(w, r)
 	case match(r, "/session"):
@@ -62,8 +54,6 @@ func (dummy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		ss_events.ServeHTTP(w, r)
 	case path == "/file":
 		file.ServeHTTP(w, r)
-	case path == "/osd":
-		osd.ServeHTTP(w, r)
 	default:
 		respond.NotFound(w)
 	}
@@ -79,10 +69,8 @@ func main() {
 	go notifications.Run()
 	go power.Run()
 	go statusnotifications.Run()
-	go backlight.Run()
 	go icons.Run()
 	go ss_events.Run()
-	go osd.Run()
 
 	var handler = dummy{}
 	go lib.Serve("org.refude.desktop-service", handler)

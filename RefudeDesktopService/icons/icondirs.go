@@ -47,7 +47,6 @@ func init() {
 }
 
 func scanBaseDir(baseDirPath string) {
-	fmt.Println("Recieve", baseDirPath)
 	baseDirPath = filepath.Clean(baseDirPath)
 	if baseDir, err := os.Open(baseDirPath); err != nil {
 		fmt.Println("Could not open", baseDirPath, "-", err)
@@ -93,7 +92,6 @@ func handleFile(baseDirPath string, themeId string, iconDir string, fileInfo os.
 		if iconType == "xpm" {
 			var pngFilePath = filepath.Clean(refudeConvertedIconsDir + "/" + themeId + "/" + iconDir + "/" + iconName + ".png")
 			if err := convertAndSave(imageFilePath, pngFilePath); err != nil {
-				log.Println("Problem converting", imageFilePath, err)
 				return
 			}
 			iconType = "png"

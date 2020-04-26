@@ -8,11 +8,12 @@ package notifications
 
 import (
 	"net/http"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
-	"github.com/surlykke/RefudeServices/RefudeDesktopService/osd"
-
+	"github.com/surlykke/RefudeServices/RefudeDesktopService/notifications/osd"
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/ss_events"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
 
@@ -20,7 +21,14 @@ import (
 )
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path == "/notifications" {
+	if r.URL.Path == "/notification/osd" {
+		var current = osd.CurrentlyShowing()
+		if current != nil {
+			respond.AsJson(w, r, current)
+		} else {
+			respond.NotFound(w)
+		}
+	} else if r.URL.Path == "/notifications" {
 		respond.AsJson(w, r, Collect(searchutils.Term(r)))
 	} else if notification := getNotification(r.URL.Path); notification != nil {
 		if r.Method == "POST" && notification.haveDefaultAction() {
@@ -101,6 +109,20 @@ func upsert(notification *Notification) {
 	notifications = append(notifications, notification)
 }
 
+func sendToOsd(n *Notification) {
+	if categoryHint, ok := n.Hints["category"]; ok {
+		if category, ok := categoryHint.(string); ok {
+			if strings.HasPrefix(category, "x-org.refude.gauge.") {
+				if tmp, err := strconv.Atoi(n.Body); err == nil && 0 <= tmp && tmp <= 100 {
+					osd.PublishGauge(n.Id, n.Sender, n.IconName, uint8(tmp))
+					return
+				}
+			}
+		}
+	}
+	osd.PublishMessage(n.Id, n.Sender, n.Subject, n.Body, n.IconName)
+}
+
 func removeNotification(id uint32) *Notification {
 	lock.Lock()
 	defer lock.Unlock()
@@ -142,13 +164,14 @@ var removals = make(chan removal)
 var reaper = make(chan uint32)
 
 func Run() {
+	go osd.RunOSD()
 	go DoDBus()
 
 	for {
 		select {
 		case notification := <-incomingNotifications:
 			upsert(notification)
-			osd.PublishMessage(notification.Sender, notification.Subject, notification.Body, notification.IconName)
+			sendToOsd(notification)
 			sendEvent(notification.path)
 		case rem := <-removals:
 			if notification := removeNotification(rem.id); notification != nil {

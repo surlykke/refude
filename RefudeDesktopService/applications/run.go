@@ -117,7 +117,6 @@ func AllPaths() []string {
 }
 
 func Run() {
-	fmt.Println("Ind i applications.Run")
 	var err error
 	watcher, err = fsnotify.NewWatcher()
 	if err != nil {
@@ -135,7 +134,6 @@ func Run() {
 	for {
 		select {
 		case event := <-watcher.Events:
-			fmt.Println("Event:", event)
 			if isRelevant(event) {
 				collectAndMap()
 			}
@@ -167,7 +165,6 @@ func init() {
 }
 
 func collectAndMap() {
-	fmt.Println("collect mimetypes and applications")
 	var c = Collect()
 	var mimetypeMap = make(MimetypeMap, len(c.mimetypes))
 	for mimeId, mimetype := range c.mimetypes {

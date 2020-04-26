@@ -109,7 +109,6 @@ func AllPaths() []string {
 
 // Maintains windows lists
 func Run() {
-	fmt.Println("Ind i window.Run")
 	var eventConnection = xlib.MakeConnection()
 	eventConnection.SubscribeToStackEvents()
 

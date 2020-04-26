@@ -7,10 +7,8 @@
 package icons
 
 import (
-	"fmt"
 	"log"
 	"path/filepath"
-	"strings"
 	"sync"
 )
 
@@ -64,9 +62,6 @@ func addTheme(theme *IconTheme) {
 		themeIcons[theme.Id] = make(map[string][]IconImage)
 		var newWannabees = make([]themeIconImage, 0, len(wannabeThemeIcons))
 		for _, wannabeIcon := range wannabeThemeIcons {
-			if strings.Index(wannabeIcon.path, "bright") > -1 {
-				fmt.Println("--------- consider", wannabeIcon.path)
-			}
 			if wannabeIcon.themeId == theme.Id {
 				if iconDir, ok := theme.Dirs[wannabeIcon.iconDir]; ok {
 					themeIcons[theme.Id][wannabeIcon.iconName] =

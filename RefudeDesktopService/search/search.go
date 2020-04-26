@@ -14,7 +14,6 @@ import (
 
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/statusnotifications"
 
-	"github.com/surlykke/RefudeServices/RefudeDesktopService/backlight"
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/icons"
 
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/applications"
@@ -44,7 +43,6 @@ func searchPaths(w http.ResponseWriter, r *http.Request) {
 
 	paths = append(paths, windows.AllPaths()...)
 	paths = append(paths, applications.AllPaths()...)
-	paths = append(paths, backlight.AllPaths()...)
 	paths = append(paths, icons.AllPaths()...)
 	paths = append(paths, statusnotifications.AllPaths()...)
 	paths = append(paths, session.AllPaths()...)

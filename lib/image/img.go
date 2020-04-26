@@ -92,7 +92,6 @@ func (id ImageData) AsPng() ([]byte, error) {
 
 	pngData := image.NewRGBA(image.Rect(0, 0, int(id.Width), int(id.Height)))
 	pixelStride := id.Rowstride / id.Width
-	fmt.Println("rowstride:", id.Rowstride, ", pixelstride:", pixelStride)
 	var count = 0
 
 	for y := int32(0); y < id.Height; y++ {

@@ -57,8 +57,6 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				idAsInt, _ := strconv.Atoi(id)
 				data := dbus.MakeVariant("")
 				time := uint32(time.Now().Unix())
-				fmt.Println("access conn:", conn)
-				fmt.Println("access conn:", conn)
 				dbusObj := conn.Object(item.sender, item.menuPath)
 				call := dbusObj.Call("com.canonical.dbusmenu.Event", dbus.Flags(0), idAsInt, "clicked", data, time)
 				if call.Err != nil {
@@ -149,7 +147,6 @@ func Run() {
 				}
 				set(itemCopy)
 			} else {
-				fmt.Println("Item event on unknown item: ", event.sender, event.path)
 				continue
 			}
 		}

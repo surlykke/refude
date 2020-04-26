@@ -1,7 +1,6 @@
 package session
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/surlykke/RefudeServices/lib/searchutils"
@@ -142,11 +141,8 @@ var availabilityEndpoint = map[string]string{
 
 func init() {
 	for _, action := range allActions {
-		fmt.Println("Calling", availabilityEndpoint[action.Self])
 		if "yes" == login1Object.Call(availabilityEndpoint[action.Self], dbus.Flags(0)).Body[0].(string) {
-			fmt.Println("Adding", action)
 			actions[action.Self] = action
 		}
 	}
-	fmt.Println("Actions now:", actions)
 }

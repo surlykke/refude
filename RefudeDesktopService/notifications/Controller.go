@@ -13,12 +13,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/godbus/dbus"
+	"github.com/godbus/dbus/introspect"
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/icons"
 	"github.com/surlykke/RefudeServices/lib/image"
 	"github.com/surlykke/RefudeServices/lib/xdg"
-
-	"github.com/godbus/dbus"
-	"github.com/godbus/dbus/introspect"
 )
 
 const NOTIFICATIONS_SERVICE = "org.freedesktop.Notifications"
