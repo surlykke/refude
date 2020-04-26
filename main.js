@@ -56,6 +56,7 @@ let createDoWindow = () => {
                 indicatorWindow.send("screens", screen.getAllDisplays())
             } else {
                 doWindow.send("doMove", req.url !== "/up")
+                doWindow.focus()
             }
 
         }).listen("/run/user/1000/org.refude.panel.do");
@@ -63,12 +64,6 @@ let createDoWindow = () => {
  
         manageWindow(doWindow, "do", false, true)
         doWindow.on('closed', () => { win = undefined })
-        
-        doWindow.on('blur', () => {
-            doWindow.hide()
-            indicatorWindow.hide()
-        })
-        
         
         ipcMain.on("doResourceSelected", (evt, res) => {
             if (doWindow.isVisible() && res && res.Type === "window") {
@@ -93,7 +88,7 @@ let indicatorWindow
 
 let createIndicatorWindow = () => {
     indicatorWindow = new BrowserWindow({
-        show: false, frame: false, transparent: true, alwaysOnTop: true, webPreferences: { nodeIntegration: true }
+        show: false, frame: false, transparent: true, webPreferences: { nodeIntegration: true }
     })
 
     indicatorWindow.loadURL(url.format({
