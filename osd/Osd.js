@@ -96,7 +96,7 @@ export class Osd extends React.Component {
             let iconUrl = event.IconName && `http://localhost:7938/icon?name=${event.IconName}&theme=oxygen&size=48`
 
             let messageDiv
-            if (event.Gauge) {
+            if (event.Gauge !== undefined) {
                 messageDiv = 
                     <div id="messageDiv" style={messageStyle}>
                         <meter min="0" max="100" value={event.Gauge}></meter>
