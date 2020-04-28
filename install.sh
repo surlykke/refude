@@ -20,6 +20,6 @@ done
 
 cp -R ./icons/* $HICOLOR_ICON_DIR 
 
-cp scripts/bin/runRefude.sh $BIN_DIR
+cp scripts/bin/* $BIN_DIR
 cp scripts/completions/bash/* ${BASH_COMPLETION_DIR}
 cp scripts/completions/fish/* ${FISH_COMPLETION_DIR}

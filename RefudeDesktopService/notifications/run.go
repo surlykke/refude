@@ -7,6 +7,7 @@
 package notifications
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -113,7 +114,11 @@ func sendToOsd(n *Notification) {
 	if categoryHint, ok := n.Hints["category"]; ok {
 		if category, ok := categoryHint.(string); ok {
 			if strings.HasPrefix(category, "x-org.refude.gauge.") {
-				if tmp, err := strconv.Atoi(n.Body); err == nil && 0 <= tmp && tmp <= 100 {
+				if tmp, err := strconv.Atoi(n.Body); err != nil {
+					fmt.Println("Error converting body to int: ", err)
+				} else if tmp < 0 || tmp > 100 {
+					fmt.Println("gauge not in acceptable range:", tmp)
+				} else {
 					osd.PublishGauge(n.Id, n.Sender, n.IconName, uint8(tmp))
 					return
 				}

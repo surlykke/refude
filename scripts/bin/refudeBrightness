@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+
+brightness_path=`ls /sys/class/backlight/*/brightness`
+max_brightness=`cat /sys/class/backlight/*/max_brightness`
+brightness=`cat $brightness_path`
+
+let five_pct=$max_brightness/20
+
+if [[ "+" == $1 ]]; then
+	let new_brightness=$brightness+five_pct
+elif [[ "-" == $1 ]]; then 
+	let new_brightness=$brightness-five_pct
+else
+	echo usage: adjust_backlight +\|-
+	exit 1
+fi
+
+if (( $new_brightness > $max_brightness )); then
+	let new_brightness=$max_brightness
+elif (( $new_brightness <= $five_pct)); then 
+	new_brightness=$five_pct
+fi
+
+
+echo adjust: from  $brightness to $new_brightness
+
+echo $new_brightness > $brightness_path
+let rel_brightness=(100*$new_brightness)/$max_brightness
+notify-send brightness $rel_brightness -c x-org.refude.gauge.brightness -i display-brightness-symbolic
+ 
+
