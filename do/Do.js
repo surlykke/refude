@@ -46,7 +46,7 @@ export class Do extends React.Component {
     updateResourceList = () => {
         let separator = this.url.indexOf('?') > -1 ? '&' : '?';
         getUrl(this.url + `${separator}term=${this.state.term}`, resp => {
-            this.setState({ resources: resp.data, selected: this.state.resources[0] && this.state.resources[0].Self })
+            this.setState({ resources: resp.data, selected: resp.data[0] && resp.data[0].Self })
         })
     }
 
