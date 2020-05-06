@@ -88,7 +88,7 @@ let indicatorWindow
 
 let createIndicatorWindow = () => {
     indicatorWindow = new BrowserWindow({
-        show: false, frame: false, transparent: true, webPreferences: { nodeIntegration: true }
+        show: false, frame: false, skipTaskbar: true, transparent: true, webPreferences: { nodeIntegration: true }
     })
 
     indicatorWindow.loadURL(url.format({
