@@ -33,7 +33,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		respond.NotFound(w)
 	} else if err != nil {
-		respond.ServerError(w)
+		respond.ServerError(w, err)
 	} else {
 		var mimetype, _ = magicmime.TypeByFile(path)
 		var defaultApp = "TODO"

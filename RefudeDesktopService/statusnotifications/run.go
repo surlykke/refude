@@ -8,7 +8,6 @@ package statusnotifications
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -39,8 +38,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			} else {
 				var call = dbusObj.Call("org.kde.StatusNotifierItem."+action, dbus.Flags(0), x, y)
 				if call.Err != nil {
-					log.Println(call.Err)
-					respond.ServerError(w)
+					respond.ServerError(w, call.Err)
 				} else {
 					respond.Accepted(w)
 				}
@@ -50,7 +48,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	} else if item = getItemForMenu(r.URL.Path); item != nil {
 		if menuItems, err := item.menu(); err != nil {
-			respond.ServerError(w)
+			respond.ServerError(w, err)
 		} else if menuItems != nil {
 			if r.Method == "POST" {
 				id := requests.GetSingleQueryParameter(r, "id", "")
@@ -60,8 +58,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				dbusObj := conn.Object(item.sender, item.menuPath)
 				call := dbusObj.Call("com.canonical.dbusmenu.Event", dbus.Flags(0), idAsInt, "clicked", data, time)
 				if call.Err != nil {
-					log.Println(call.Err)
-					respond.ServerError(w)
+					respond.ServerError(w, err)
 				} else {
 					respond.Accepted(w)
 				}

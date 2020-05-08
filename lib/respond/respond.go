@@ -25,8 +25,9 @@ func UnprocessableEntity(w http.ResponseWriter, err error) {
 	}
 }
 
-func ServerError(w http.ResponseWriter) {
+func ServerError(w http.ResponseWriter, err error) {
 	w.WriteHeader(http.StatusInternalServerError)
+	w.Write([]byte(err.Error()))
 }
 
 func Accepted(w http.ResponseWriter) {

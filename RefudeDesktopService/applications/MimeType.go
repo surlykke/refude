@@ -68,7 +68,7 @@ func (mt *Mimetype) ToStandardFormat() *respond.StandardFormat {
 		} else if defaultApp, ok := decoded["DefaultApp"]; !ok || len(decoded) != 1 {
 			respond.UnprocessableEntity(w, fmt.Errorf("Patch payload should contain exactly one parameter: 'DefaultApp"))
 		} else if err = setDefaultApp(mt.Id, defaultApp); err != nil {
-			respond.ServerError(w)
+			respond.ServerError(w, err )
 		} else {
 			respond.Accepted(w)
 		}

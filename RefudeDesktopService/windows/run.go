@@ -50,8 +50,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "image/png")
 				w.Write(bytes)
 			} else {
-				fmt.Println("Error getting screenshot:", err)
-				respond.ServerError(w)
+				respond.ServerError(w, err)
 			}
 		} else {
 			respond.NotAllowed(w)
