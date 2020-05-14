@@ -7,6 +7,7 @@ import (
 
 	"github.com/surlykke/RefudeServices/lib/searchutils"
 
+	"github.com/surlykke/RefudeServices/RefudeDesktopService/file"
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/notifications"
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/power"
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/session"
@@ -75,6 +76,7 @@ func searchDesktop(w http.ResponseWriter, r *http.Request) {
 		sfl = append(sfl, windows.Collect(term)...)
 		sfl = append(sfl, applications.CollectApps(term)...)
 		sfl = append(sfl, session.Collect(term)...)
+		sfl = append(sfl, file.DesktopSearch(term)...)
 	}
 
 	var j = 0

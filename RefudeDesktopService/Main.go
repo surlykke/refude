@@ -29,38 +29,32 @@ type dummy struct{}
 
 func (dummy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var path = r.URL.Path
-	switch {
-	case match(r, "/window"):
+	var prefix = func(p string) bool {
+		return strings.HasPrefix(path, p)
+	}
+	if prefix("/window") {
 		windows.ServeHTTP(w, r)
-	case match(r, "/application"):
-		applications.AppServeHTTP(w, r)
-	case match(r, "/mimetype"):
-		applications.MimetypeServeHTTP(w, r)
-	case match(r, "/notification"):
+	} else if prefix("/application") || prefix("/mimetype") {
+		applications.ServeHTTP(w, r)
+	} else if prefix("/notification") {
 		notifications.ServeHTTP(w, r)
-	case match(r, "/device"):
+	} else if prefix("/device") {
 		power.ServeHTTP(w, r)
-	case match(r, "/item"):
+	} else if prefix("/item") {
 		statusnotifications.ServeHTTP(w, r)
-	case match(r, "/icon"):
+	} else if prefix("/icon") {
 		icons.ServeHTTP(w, r)
-	case match(r, "/session"):
+	} else if prefix("/session") {
 		session.ServeHTTP(w, r)
-	case match(r, "/search"):
+	} else if prefix("/search") || path == "/complete" {
 		search.ServeHTTP(w, r)
-	case path == "/complete":
-		search.ServeHTTP(w, r)
-	case path == "/events":
-		ss_events.ServeHTTP(w, r)
-	case path == "/file":
+	} else if prefix("/file") {
 		file.ServeHTTP(w, r)
-	default:
+	} else if path == "/events" {
+		ss_events.ServeHTTP(w, r)
+	} else {
 		respond.NotFound(w)
 	}
-}
-
-func match(r *http.Request, prefix string) bool {
-	return strings.HasPrefix(r.URL.Path, prefix)
 }
 
 func main() {

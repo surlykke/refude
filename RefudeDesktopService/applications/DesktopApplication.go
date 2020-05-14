@@ -50,7 +50,7 @@ func (d *DesktopApplication) ToStandardFormat() *respond.StandardFormat {
 	var self = appSelf(d.Id)
 	var otherActions string
 	if len(d.DesktopActions) > 0 {
-		otherActions = self + "/actions"
+		otherActions = otherActionsPath(d.Id)
 	}
 	return &respond.StandardFormat{
 		Self:         self,
@@ -93,11 +93,11 @@ func (da *DesktopAction) ToStandardFormat() *respond.StandardFormat {
 	}
 }
 
-func launch(exec string, inTerminal bool) {
-	launchWithArgs(exec, []string{}, inTerminal)
+func Launch(exec string, inTerminal bool) {
+	LaunchWithArgs(exec, []string{}, inTerminal)
 }
 
-func launchWithArgs(exec string, args []string, inTerminal bool) {
+func LaunchWithArgs(exec string, args []string, inTerminal bool) {
 	var argv []string
 	var argsReg = regexp.MustCompile("%[uUfF]")
 	if inTerminal {
@@ -126,14 +126,3 @@ func launchWithArgs(exec string, args []string, inTerminal bool) {
 
 	xdg.RunCmd(argv)
 }
-
-func appSelf(appId string) string {
-	if !strings.HasSuffix(appId, ".desktop") {
-		log.Println("Weird application id:", appId)
-		return ""
-	} else {
-		return "/application/" + appId[:len(appId)-8]
-	}
-}
-
-type ApplicationMap map[string]*DesktopApplication

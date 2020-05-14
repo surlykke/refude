@@ -7,7 +7,6 @@
 package applications
 
 import (
-	"fmt"
 	"regexp"
 
 	"github.com/surlykke/RefudeServices/lib/respond"
@@ -96,8 +95,3 @@ func setDefaultApp(mimetypeId string, appId string) error {
 	}
 }
 */
-func mimetypeSelf(mimetypeId string) string {
-	return fmt.Sprintf("/mimetype/%s", mimetypeId)
-}
-
-type MimetypeMap map[string]*Mimetype

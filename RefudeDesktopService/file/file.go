@@ -23,12 +23,13 @@ func MakeFile(path, mimetype, defaultApp string) *File {
 
 func (f *File) ToStandardFormat() *respond.StandardFormat {
 	return &respond.StandardFormat{
-		Self:         "/file?path=" + f.Path,
+		Self:         fileSelf(f),
 		Type:         "file",
 		Title:        filepath.Base(f.Path),
+		Comment:      f.Path,
 		IconName:     strings.ReplaceAll(f.Mimetype, "/", "-"),
-		OnPost:       "Launch with " + f.DefaultApp,
-		OtherActions: "/file/actionsfor?path=" + f.Path,
+		OnPost:       "Open",
+		OtherActions: otherActionsPath(f),
 		Data:         f,
 	}
 }

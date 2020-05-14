@@ -29,12 +29,19 @@ type collection struct {
 	defaultApps  map[string][]string // Maps from mimetypeid to a list of app ids
 }
 
+func makeCollection() collection {
+	return collection{
+		mimetypes:    make(map[string]*Mimetype),
+		applications: make(map[string]*DesktopApplication),
+		associations: make(map[string][]string),
+		defaultApps:  make(map[string][]string),
+	}
+
+}
+
 func Collect() collection {
-	var c collection
+	var c = makeCollection()
 	c.mimetypes = CollectMimeTypes()
-	c.applications = make(map[string]*DesktopApplication)
-	c.associations = make(map[string][]string) // Map a mimetypeid to a list of desktopapplication ids
-	c.defaultApps = make(map[string][]string)  // Do
 
 	for _, dir := range xdg.DataDirs {
 		c.collectApplications(dir + "/applications")
@@ -194,7 +201,7 @@ func CollectMimeTypes() map[string]*Mimetype {
 			}
 
 			var tags = make([]language.Tag, len(collectedLocales))
-			for locale, _ := range collectedLocales {
+			for locale := range collectedLocales {
 				tags = append(tags, language.Make(locale))
 			}
 
@@ -351,7 +358,7 @@ func readDesktopFile(path string, id string) (*DesktopApplication, []string, err
 					iconName = icons.AddFileIcon(iconName)
 				}
 				da.DesktopActions[currentAction] = &DesktopAction{
-					self:     appSelf(da.Id) + "/action/" + currentAction,
+					self:     actionPath(da.Id, currentAction),
 					Name:     name,
 					Exec:     actionGroup.Entries["Exec"],
 					IconName: iconName,
