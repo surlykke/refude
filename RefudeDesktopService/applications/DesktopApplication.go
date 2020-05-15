@@ -8,7 +8,6 @@ package applications
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"regexp"
 	"strings"
@@ -97,32 +96,18 @@ func Launch(exec string, inTerminal bool) {
 	LaunchWithArgs(exec, []string{}, inTerminal)
 }
 
-func LaunchWithArgs(exec string, args []string, inTerminal bool) {
-	var argv []string
-	var argsReg = regexp.MustCompile("%[uUfF]")
+var argPlaceholders = regexp.MustCompile("%[uUfF]")
+
+func LaunchWithArgs(exec string, args []string, inTerminal bool) error {
+	var argv = strings.Fields(argPlaceholders.ReplaceAllString(exec, strings.Join(args, " ")))
+
 	if inTerminal {
 		var terminal, ok = os.LookupEnv("TERMINAL")
 		if !ok {
-			log.Println(fmt.Sprintf("Trying to run %s in terminal, but env variable TERMINAL not set", exec))
-			return
+			return fmt.Errorf("Trying to run %s in terminal, but env variable TERMINAL not set", exec)
 		}
-		var arglist = []string{}
-		for _, arg := range args {
-			arglist = append(arglist, "'"+strings.Replace(arg, "'", "'\\''", -1)+"'")
-		}
-		var argListS = strings.Join(arglist, " ")
-		var cmd = argsReg.ReplaceAllString(exec, argListS)
-		argv = []string{terminal, "-e", cmd}
-	} else {
-		var fields = strings.Fields(exec)
-		for _, field := range fields {
-			if argsReg.MatchString(field) {
-				argv = append(argv, args...)
-			} else {
-				argv = append(argv, field)
-			}
-		}
+		argv = append([]string{terminal, "-e"}, argv...)
 	}
 
-	xdg.RunCmd(argv)
+	return xdg.RunCmd(argv...)
 }

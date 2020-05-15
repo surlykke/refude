@@ -4,9 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"os/exec"
 	"strings"
-	"syscall"
 
 	"github.com/rakyll/magicmime"
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/applications"
@@ -23,9 +21,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		} else if file == nil {
 			respond.NotFound(w)
 		} else if r.Method == "POST" {
-			var cmd = exec.Command("xdg-open", file.Path)
-			cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true} // So ctrl-C against RefudeDesktopService doesn't affect
-			if err := cmd.Start(); err != nil {
+			if err := xdg.RunCmd("xdg-open", file.Path); err != nil {
 				respond.ServerError(w, err)
 			} else {
 				respond.Accepted(w)
@@ -50,10 +46,11 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			respond.NotFound(w)
 		} else {
 			if r.Method == "POST" {
-				respond.AcceptedAndThen(w, func() {
-					fmt.Println("Launch:", app.Exec, []string{file.Path}, app.Terminal)
-					applications.LaunchWithArgs(app.Exec, []string{file.Path}, app.Terminal)
-				})
+				if err := applications.LaunchWithArgs(app.Exec, []string{file.Path}, app.Terminal); err != nil {
+					respond.ServerError(w, err)
+				} else {
+					respond.Accepted(w)
+				}
 			} else {
 				respond.AsJson(w, r, buildActionSF(file, app, "action"))
 			}

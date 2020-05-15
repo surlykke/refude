@@ -169,25 +169,20 @@ func GetApp(appId string) *DesktopApplication {
 
 func GetAppsForMimetype(mimetypeId string) (recommended, other []*DesktopApplication) {
 	var c = collectionStore.Load().(collection)
-	var handled = make(map[string]bool)
+
 	recommended = make([]*DesktopApplication, 0, 10)
 	other = make([]*DesktopApplication, 0, len(c.applications))
 
-	for _, mimetypeId := range GetMtList(mimetypeId) {
-		for _, appId := range c.associations[mimetypeId] {
-			if !handled[appId] {
-				if da, ok := c.applications[appId]; ok {
-					recommended = append(recommended, da)
+	for _, app := range c.applications {
+		if argPlaceholders.MatchString(app.Exec) {
+			for _, mt := range app.Mimetypes {
+				if mt == mimetypeId {
+					recommended = append(recommended, app)
+					goto next
 				}
-				handled[appId] = true
 			}
-		}
-	}
-
-	for appId, app := range c.applications {
-		if !handled[appId] {
 			other = append(other, app)
-			handled[appId] = true
+		next:
 		}
 	}
 

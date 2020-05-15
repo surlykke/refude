@@ -7,10 +7,10 @@
 package xdg
 
 import (
-	"log"
 	"os"
 	"os/exec"
 	"strings"
+	"syscall"
 
 	"github.com/surlykke/RefudeServices/lib/slice"
 )
@@ -63,19 +63,15 @@ func init() {
 	VideosDir = notEmptyOr(userDirs["XDG_VIDEOS_DIR"], Home+"/VIDEOS")
 }
 
-func RunCmd(argv []string) {
+func RunCmd(argv ...string) error {
 	var cmd = exec.Command(argv[0], argv[1:]...)
 
 	cmd.Dir = Home
 	cmd.Stdout = nil
 	cmd.Stderr = nil
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true} // So ctrl-C against RefudeDesktopService doesn't affect
 
-	if err := cmd.Start(); err != nil {
-		log.Println(err.Error())
-		return
-	}
-
-	go cmd.Wait() // TODO Transfer parenthood to proc 1
+	return cmd.Start()
 }
 
 func notEmptyOr(primary string, secondary string) string {
