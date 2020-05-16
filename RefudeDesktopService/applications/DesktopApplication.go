@@ -92,11 +92,28 @@ func (da *DesktopAction) ToStandardFormat() *respond.StandardFormat {
 	}
 }
 
+func OpenFile(path string, mimetypeId string) error {
+	var c = collectionStore.Load().(collection)
+	if mt, ok := c.mimetypes[mimetypeId]; ok {
+		if mt.DefaultApp != "" {
+			if app, ok := c.applications[mt.DefaultApp]; ok {
+				return LaunchWithArg(app.Exec, path, app.Terminal)
+			}
+		}
+	}
+
+	return xdg.RunCmd("xdg-open", path)
+}
+
 func Launch(exec string, inTerminal bool) {
 	LaunchWithArgs(exec, []string{}, inTerminal)
 }
 
 var argPlaceholders = regexp.MustCompile("%[uUfF]")
+
+func LaunchWithArg(exec string, arg string, inTerminal bool) error {
+	return LaunchWithArgs(exec, []string{arg}, inTerminal)
+}
 
 func LaunchWithArgs(exec string, args []string, inTerminal bool) error {
 	var argv = strings.Fields(argPlaceholders.ReplaceAllString(exec, strings.Join(args, " ")))

@@ -7,9 +7,14 @@
 package applications
 
 import (
+	"fmt"
+	"os"
 	"regexp"
+	"strings"
 
 	"github.com/surlykke/RefudeServices/lib/respond"
+	"github.com/surlykke/RefudeServices/lib/slice"
+	"github.com/surlykke/RefudeServices/lib/xdg"
 
 	"github.com/pkg/errors"
 )
@@ -60,21 +65,27 @@ func (mt *Mimetype) ToStandardFormat() *respond.StandardFormat {
 }
 
 /*	case "PATCH":
-		var decoder = json.NewDecoder(r.Body)
-		var decoded = make(map[string]string)
-		if err := decoder.Decode(&decoded); err != nil {
-			respond.UnprocessableEntity(w, err)
-		} else if defaultApp, ok := decoded["DefaultApp"]; !ok || len(decoded) != 1 {
-			respond.UnprocessableEntity(w, fmt.Errorf("Patch payload should contain exactly one parameter: 'DefaultApp"))
-		} else if err = setDefaultApp(mt.Id, defaultApp); err != nil {
-			respond.ServerError(w, err )
-		} else {
-			respond.Accepted(w)
+	var decoder = json.NewDecoder(r.Body)
+	var decoded = make(map[string]string)
+	if err := decoder.Decode(&decoded); err != nil {
+		respond.UnprocessableEntity(w, err)
+	} else if defaultApp, ok := decoded["DefaultApp"]; !ok || len(decoded) != 1 {
+		respond.UnprocessableEntity(w, fmt.Errorf("Patch payload should contain exactly one parameter: 'DefaultApp"))
+	} else if err = setDefaultApp(mt.Id, defaultApp); err != nil {
+		respond.ServerError(w, err )
+	} else {
+		respond.Accepted(w)
+	}
+*/
+
+func SetDefaultApp(mimetypeId string, appId string) error {
+	if mt, ok := collectionStore.Load().(collection).mimetypes[mimetypeId]; ok {
+		if mt.DefaultApp == appId {
+			return nil
 		}
-
-func setDefaultApp(mimetypeId string, appId string) error {
+	}
 	path := xdg.ConfigHome + "/mimeapps.list"
-
+	fmt.Println("reading", path)
 	if iniFile, err := xdg.ReadIniFile(path); err != nil && !os.IsNotExist(err) {
 		return err
 	} else {
@@ -88,10 +99,10 @@ func setDefaultApp(mimetypeId string, appId string) error {
 		defaultApps = slice.PushFront(appId, slice.Remove(defaultApps, appId))
 		defaultAppsS = strings.Join(defaultApps, ";")
 		defaultGroup.Entries[mimetypeId] = defaultAppsS
+		fmt.Println("Write", path)
 		if err = xdg.WriteIniFile(path, iniFile); err != nil {
 			return err
 		}
 		return nil
 	}
 }
-*/

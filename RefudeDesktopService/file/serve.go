@@ -21,7 +21,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		} else if file == nil {
 			respond.NotFound(w)
 		} else if r.Method == "POST" {
-			if err := xdg.RunCmd("xdg-open", file.Path); err != nil {
+			if err := applications.OpenFile(file.Path, file.Mimetype); err != nil {
 				respond.ServerError(w, err)
 			} else {
 				respond.Accepted(w)
@@ -50,6 +50,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					respond.ServerError(w, err)
 				} else {
 					respond.Accepted(w)
+					go applications.SetDefaultApp(file.Mimetype, app.Id)
 				}
 			} else {
 				respond.AsJson(w, r, buildActionSF(file, app, "action"))
