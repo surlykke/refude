@@ -39,14 +39,10 @@ export class Osd extends React.Component {
 
 
     update = () => {
-        Axios.get(`http://localhost:7938/notification/osd`, {validateStatus: acceptNotFound})
+        Axios.get(`http://localhost:7938/notification/osd`)
             .then(resp => {
-                if (resp.status === 404) {
-                    this.setState({event: undefined})
-                } else {
-                    this.setState({ event: resp.data })
-                }
-                
+                console.log("Setting data: ", resp.data)
+                this.setState({ event: resp.data })
             })
             .catch(err => {
                 console.error(err)
