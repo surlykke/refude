@@ -5,7 +5,7 @@
 // Please refer to the GPL2 file for a copy of the license.
 //
 import React from 'react'
-import { getUrl, postUrl, iconUrl, monitorSSE } from "../common/monitor";
+import { getUrl, postUrl, iconUrl, monitorPath } from "../common/monitor";
 import { remote } from 'electron'
 const {Menu, MenuItem} = remote
 
@@ -106,7 +106,7 @@ export class NotifierItems extends React.Component {
         this.state = { items: [] };
         this.style = Object.assign({}, props.style);
         this.style.margin = "0px";
-        monitorSSE("status_item", this.getItems, this.getItems, () => {this.setState({items: []})})
+        monitorPath("/items", this.getItems, this.getItems, () => {this.setState({items: []})})
     }
 
     getItems = () => {

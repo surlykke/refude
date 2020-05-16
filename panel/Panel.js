@@ -56,6 +56,17 @@ export default class Panel extends React.Component {
         })
 
         this.resizeObserver.observe(this.content.current)
+
+        // Band-aid in case size doesn't get set correctly during startup
+        setTimeout(() => {
+            let content = document.getElementById("content")
+            if (content) {
+                ipcRenderer.send("panelSizeChange", {
+                    width: content.offsetWidth,
+                    height: content.offsetHeight
+                })
+            }
+        }, 1000)
     };
 
     render = () => {

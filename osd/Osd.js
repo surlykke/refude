@@ -6,7 +6,7 @@
 //
 import React from 'react'
 import ReactDOM from 'react-dom'
-import { getUrl, monitorSSE } from '../common/monitor';
+import { monitorPath } from '../common/monitor';
 import { ipcRenderer } from 'electron';
 import Axios from 'axios'
 
@@ -21,7 +21,7 @@ export class Osd extends React.Component {
     constructor(props) {
         super(props);
         this.state = {}
-        monitorSSE("osd", this.update, this.update, () => this.setState({ event: undefined }))
+        monitorPath("/notification/osd", this.update, this.update, () => this.setState({ event: undefined }))
     };
 
     componentDidUpdate = () => {

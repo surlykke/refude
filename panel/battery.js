@@ -12,7 +12,7 @@
  * Please refer to the LICENSE file for a copy of the license.
  */
 import React from 'react'
-import { getUrl, monitorSSE } from '../common/monitor';
+import { getUrl, monitorPath } from '../common/monitor';
 
 /**
  * We represent charge by a circle segment (cf https://en.wikipedia.org/wiki/Circular_segment)
@@ -30,7 +30,7 @@ export class Battery extends React.Component {
         super(props);
         this.state = { pct: -1, state: "Unknown" };
         this.etag = undefined;
-        monitorSSE("power_device", this.getDeviceData, this.getDeviceData, () => {this.setState({pct: -1, state: "Unknown"})})
+        monitorPath("/device/DisplayDevice", this.getDeviceData, this.getDeviceData, () => {this.setState({pct: -1, state: "Unknown"})})
     }
 
     getDeviceData = () => {

@@ -7,11 +7,9 @@
 
 import Axios from "axios";
 
-export let monitorSSE = (eventType, onMessage, onOpen, onError) => {
+export let monitorPath = (path, onMessage, onOpen, onError) => {
     let helper = () => {
-        let url = eventType ? `http://localhost:7938/events?type=${eventType}` : "http://localhost:7938/events"
-
-        let evtSource = new EventSource(url)
+        let evtSource = new EventSource(`http://localhost:7938/watch?path=${path}`)
 
         evtSource.onerror = event => {
             onError && onError()
