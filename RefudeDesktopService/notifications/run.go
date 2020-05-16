@@ -27,7 +27,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if current != nil {
 			respond.AsJson(w, r, current)
 		} else {
-			respond.NotFound(w)
+			respond.Ok(w)
 		}
 	} else if r.URL.Path == "/notifications" {
 		respond.AsJson(w, r, Collect(searchutils.Term(r)))
@@ -76,11 +76,12 @@ func CollectActionable(term string) respond.StandardFormatList {
 func AllPaths() []string {
 	lock.Lock()
 	defer lock.Unlock()
-	var paths = make([]string, 0, len(notifications)+1)
+	var paths = make([]string, 0, len(notifications)+2)
 	for _, n := range notifications {
 		paths = append(paths, n.path)
 	}
 	paths = append(paths, "/notifications")
+	paths = append(paths, "/notification/osd")
 	return paths
 }
 

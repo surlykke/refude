@@ -8,6 +8,10 @@ import (
 	"sort"
 )
 
+func Ok(w http.ResponseWriter) {
+	w.WriteHeader(http.StatusOK)
+}
+
 func NotFound(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusNotFound)
 }
