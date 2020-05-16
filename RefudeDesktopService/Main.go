@@ -17,44 +17,37 @@ import (
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/power"
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/search"
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/session"
-	"github.com/surlykke/RefudeServices/RefudeDesktopService/ss_events"
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/statusnotifications"
+	"github.com/surlykke/RefudeServices/RefudeDesktopService/watch"
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/windows"
 	"github.com/surlykke/RefudeServices/lib/respond"
 
 	"github.com/surlykke/RefudeServices/lib"
 )
 
-type dummy struct{}
+// Associate handler with path prefix
+var handlers = map[string]func(http.ResponseWriter, *http.Request){
+	"/window":       windows.ServeHTTP,
+	"/application":  applications.ServeHTTP,
+	"/mimetype":     applications.ServeHTTP,
+	"/notification": notifications.ServeHTTP,
+	"/device":       power.ServeHTTP,
+	"/item":         statusnotifications.ServeHTTP,
+	"/icon":         icons.ServeHTTP,
+	"/session":      session.ServeHTTP,
+	"/search":       search.ServeHTTP,
+	"/file":         file.ServeHTTP,
+	"/watch":        watch.ServeHTTP,
+}
 
-func (dummy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	var path = r.URL.Path
-	var prefix = func(p string) bool {
-		return strings.HasPrefix(path, p)
+func ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	for prefix, handler := range handlers {
+		if strings.HasPrefix(r.URL.Path, prefix) {
+			handler(w, r)
+			return
+		}
 	}
-	if prefix("/window") {
-		windows.ServeHTTP(w, r)
-	} else if prefix("/application") || prefix("/mimetype") {
-		applications.ServeHTTP(w, r)
-	} else if prefix("/notification") {
-		notifications.ServeHTTP(w, r)
-	} else if prefix("/device") {
-		power.ServeHTTP(w, r)
-	} else if prefix("/item") {
-		statusnotifications.ServeHTTP(w, r)
-	} else if prefix("/icon") {
-		icons.ServeHTTP(w, r)
-	} else if prefix("/session") {
-		session.ServeHTTP(w, r)
-	} else if prefix("/search") || path == "/complete" {
-		search.ServeHTTP(w, r)
-	} else if prefix("/file") {
-		file.ServeHTTP(w, r)
-	} else if path == "/events" {
-		ss_events.ServeHTTP(w, r)
-	} else {
-		respond.NotFound(w)
-	}
+	respond.NotFound(w)
 }
 
 func main() {
@@ -64,9 +57,8 @@ func main() {
 	go power.Run()
 	go statusnotifications.Run()
 	go icons.Run()
-	go ss_events.Run()
+	go watch.Run()
 
-	var handler = dummy{}
-	go lib.Serve("org.refude.desktop-service", handler)
-	_ = http.ListenAndServe(":7938", handler)
+	go lib.Serve("org.refude.desktop-service", http.HandlerFunc(ServeHTTP))
+	_ = http.ListenAndServe(":7938", http.HandlerFunc(ServeHTTP))
 }

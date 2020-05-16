@@ -5,7 +5,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/surlykke/RefudeServices/RefudeDesktopService/ss_events"
+	"github.com/surlykke/RefudeServices/RefudeDesktopService/watch"
 )
 
 func PublishMessage(id uint32, sender, title, message, iconName string) {
@@ -168,9 +168,7 @@ func updateCurrent() {
 			currentTimeout = time.Now().Add(6 * time.Second)
 		}
 	}
-	fmt.Println("Osd publish")
-	ss_events.Publish <- &ss_events.Event{Type: "osd", Path: "/notification/osd"}
-	fmt.Println("Osd published")
+	watch.SomethingChanged("/notification/osd")
 }
 
 func pop() {

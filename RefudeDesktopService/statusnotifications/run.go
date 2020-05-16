@@ -14,7 +14,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/surlykke/RefudeServices/RefudeDesktopService/ss_events"
+	"github.com/surlykke/RefudeServices/RefudeDesktopService/watch"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
 
 	"github.com/godbus/dbus/v5"
@@ -100,9 +100,12 @@ func Collect(term string) respond.StandardFormatList {
 func AllPaths() []string {
 	lock.Lock()
 	defer lock.Unlock()
-	var paths = make([]string, 0, len(items)+1)
-	for path, _ := range items {
+	var paths = make([]string, 0, 2*len(items)+1)
+	for path, item := range items {
 		paths = append(paths, path)
+		if item.Menu != "" {
+			paths = append(paths, item.Menu)
+		}
 	}
 	paths = append(paths, "/items")
 	return paths
@@ -159,6 +162,7 @@ func set(item *Item) {
 	items[self] = item
 	lock.Unlock()
 	sendEvent(self)
+	sendEvent("/items")
 }
 
 func get(path string) *Item {
@@ -173,8 +177,9 @@ func remove(sender string, itemPath dbus.ObjectPath) {
 	delete(items, self)
 	lock.Unlock()
 	sendEvent(self)
+	sendEvent("/items")
 }
 
 func sendEvent(path string) {
-	ss_events.Publish <- &ss_events.Event{Type: "status_item", Path: path}
+	watch.SomethingChanged(path)
 }

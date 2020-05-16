@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/notifications/osd"
-	"github.com/surlykke/RefudeServices/RefudeDesktopService/ss_events"
+	"github.com/surlykke/RefudeServices/RefudeDesktopService/watch"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
 
 	"github.com/surlykke/RefudeServices/lib/respond"
@@ -199,5 +199,5 @@ func Run() {
 }
 
 func sendEvent(path string) {
-	ss_events.Publish <- &ss_events.Event{Type: "notification", Path: path}
+	watch.SomethingChanged(path)
 }

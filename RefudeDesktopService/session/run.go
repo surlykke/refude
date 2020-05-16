@@ -11,7 +11,7 @@ import (
 )
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path == "/session/allowedactions" {
+	if r.URL.Path == "/session/actions" {
 		respond.AsJson(w, r, Collect(searchutils.Term(r)))
 	} else if action, ok := actions[r.URL.Path]; ok {
 		if r.Method == "POST" {
@@ -36,10 +36,11 @@ func Collect(term string) respond.StandardFormatList {
 }
 
 func AllPaths() []string {
-	var paths = make([]string, 0, len(actions))
+	var paths = make([]string, 0, len(actions)+1)
 	for path, _ := range actions {
 		paths = append(paths, path)
 	}
+	paths = append(paths, "/session/actions")
 	return paths
 }
 

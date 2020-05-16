@@ -6,25 +6,24 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
 	"github.com/surlykke/RefudeServices/lib/slice"
 )
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if "/applications" == r.URL.Path {
+	if r.URL.Path == "/applications" {
 		respond.AsJson(w, r, CollectApps(searchutils.Term(r)))
-	} else if "/mimetypes" == r.URL.Path {
+	} else if r.URL.Path == "/mimetypes" {
 		respond.AsJson(w, r, CollectMimetypes(searchutils.Term(r)))
+	} else if actions := findApplicationActions(r); actions != nil {
+		respond.AsJson(w, r, actions)
 	} else if app := findApplication(r); app != nil {
 		if r.Method == "POST" {
 			respond.AcceptedAndThen(w, func() { Launch(app.Exec, app.Terminal) })
 		} else {
 			respond.AsJson(w, r, app.ToStandardFormat())
 		}
-	} else if actions := findApplicationActions(r); actions != nil {
-		respond.AsJson(w, r, actions)
 	} else if act := findApplicationAction(r); act != nil {
 		if r.Method == "POST" {
 			respond.AcceptedAndThen(w, func() { Launch(act.Exec, false) })
@@ -60,16 +59,17 @@ func findApplicationActions(r *http.Request) respond.StandardFormatList {
 }
 
 func findApplicationAction(r *http.Request) *DesktopAction {
-	if strings.HasPrefix(r.URL.Path, "/application/action/") {
-		if app, ok := collectionStore.Load().(collection).applications[r.URL.Path[20:]]; ok {
-			if actionId := requests.GetSingleQueryParameter(r, "action", ""); actionId != "" {
-				if action, ok := app.DesktopActions[actionId]; ok {
-					return action
-				}
-			}
-		}
+	if !strings.HasPrefix(r.URL.Path, "/application/action/") {
+		return nil
+	} else if parts := strings.Split(r.URL.Path[20:], "/"); len(parts) != 2 {
+		return nil
+	} else if app := collectionStore.Load().(collection).applications[parts[0]]; app == nil {
+		return nil
+	} else if act := app.DesktopActions[parts[1]]; act == nil {
+		return nil
+	} else {
+		return act
 	}
-	return nil
 }
 
 func findMimetype(r *http.Request) *Mimetype {
@@ -100,7 +100,7 @@ func actionPath(appId, actionId string) string {
 		log.Println("Weird application id:", appId)
 		return ""
 	} else {
-		return "/application/action/" + appId + "?action=" + actionId
+		return "/application/action/" + appId + "/" + actionId
 	}
 }
 

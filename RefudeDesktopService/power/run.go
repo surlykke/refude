@@ -12,7 +12,7 @@ import (
 	"sync"
 
 	"github.com/godbus/dbus/v5"
-	"github.com/surlykke/RefudeServices/RefudeDesktopService/ss_events"
+	"github.com/surlykke/RefudeServices/RefudeDesktopService/watch"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
 
 	"github.com/surlykke/RefudeServices/lib/respond"
@@ -86,5 +86,5 @@ func setDevice(device *Device) {
 	defer deviceLock.Unlock()
 	var self = deviceSelf(device)
 	devices[self] = device
-	ss_events.Publish <- &ss_events.Event{Type: "power_device", Path: self}
+	watch.SomethingChanged(self)
 }

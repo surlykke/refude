@@ -26,8 +26,6 @@ import (
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch r.URL.Path {
-	case "/complete":
-		fallthrough // deprecated
 	case "/search/paths":
 		searchPaths(w, r)
 	case "/search/desktop":
@@ -93,5 +91,5 @@ func searchDesktop(w http.ResponseWriter, r *http.Request) {
 }
 
 func otherPaths() []string {
-	return []string{"/search/paths", "/search", "/search/events", "/search/desktop", "/complete"}
+	return []string{"/search/paths", "/search/desktop", "/watch"}
 }
