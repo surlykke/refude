@@ -8,6 +8,6 @@ if [[ "--restart" == "$1" ]]; then
 	kill `pgrep -f RefudeDesktopService`
 fi
 
-LOGFILE=/tmp/RefudeDesktopService_`date +%s`.log
+LOGFILE=/tmp/RefudeDesktopService_`date +%y.%m.%d-%H:%M:%S`.log
 nohup RefudeDesktopService >$LOGFILE 2>$LOGFILE &
 
