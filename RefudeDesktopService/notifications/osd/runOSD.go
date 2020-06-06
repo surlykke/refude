@@ -109,6 +109,20 @@ func last() *Event {
 	}
 }
 
+func same(m1, m2 []string) bool {
+	if len(m1) != len(m2) {
+		return false
+	} else {
+		for i := 0; i < len(m1); i++ {
+			if m1[i] != m2[i] {
+				return false
+			}
+		}
+	}
+
+	return true
+}
+
 func isAGaugeEvent(e *Event) bool {
 	return e.Gauge != nil
 }
@@ -123,12 +137,19 @@ func push(e *Event) {
 				updateCurrent()
 			}
 		} else {
-			if size > 0 && !isAGaugeEvent(last()) && last().Sender == e.Sender && last().Title == e.Title && len(last().Message) < 3 {
-				data[size-1] = &Event{
-					Sender:   e.Sender,
-					Title:    e.Title,
-					Message:  append(e.Message, data[size-1].Message...),
-					IconName: e.IconName,
+			if size > 0 &&
+				!isAGaugeEvent(last()) &&
+				last().Sender == e.Sender &&
+				last().Title == e.Title &&
+				len(last().Message) < 3 {
+
+				if !same(last().Message, e.Message) /* No point in showing same message twice */ {
+					data[size-1] = &Event{
+						Sender:   e.Sender,
+						Title:    e.Title,
+						Message:  append(e.Message, data[size-1].Message...),
+						IconName: e.IconName,
+					}
 				}
 			} else if size >= bufSize {
 				fmt.Println("Buffer full, dropping osd event")
