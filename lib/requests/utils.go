@@ -28,7 +28,7 @@ func GetSingleQueryParameter(r *http.Request, parameterName string, fallbackValu
  * Returns value from query if there, "" if not
  */
 func GetSingleParams(r *http.Request, paramNames ...string) (map[string]string, error) {
-	for queryParam, _ := range r.URL.Query() {
+	for queryParam := range r.URL.Query() {
 		var ok = false
 		for _, paramName := range paramNames {
 			if queryParam == paramName {

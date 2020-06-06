@@ -3,6 +3,7 @@ package file
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 
@@ -15,6 +16,7 @@ import (
 )
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("file.ServeHTTP, query:", r.URL.Query())
 	if r.URL.Path == "/file" {
 		if file, err := getFile(r); err != nil {
 			respond.ServerError(w, err)
@@ -46,7 +48,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			respond.NotFound(w)
 		} else {
 			if r.Method == "POST" {
-				if err := applications.LaunchWithArgs(app.Exec, []string{file.Path}, app.Terminal); err != nil {
+				if err := app.Run(file.Path); err != nil {
 					respond.ServerError(w, err)
 				} else {
 					respond.Accepted(w)
@@ -104,6 +106,7 @@ func getAdjustedPath(r *http.Request) string {
 	} else if path[0] != '/' {
 		return xdg.Home + "/" + path
 	} else {
+		fmt.Println("file.getAdjustedPath returning:", path)
 		return path
 	}
 
@@ -189,13 +192,13 @@ func DesktopSearch(term string) respond.StandardFormatList {
 }
 
 func fileSelf(file *File) string {
-	return "/file?path=" + file.Path
+	return "/file?path=" + url.QueryEscape(file.Path)
 }
 
 func otherActionsPath(file *File) string {
-	return "/file/otheractions?path=" + file.Path
+	return "/file/otheractions?path=" + url.QueryEscape(file.Path)
 }
 
 func appActionPath(file *File, app *applications.DesktopApplication) string {
-	return "/file/action?path=" + file.Path + "&app=" + app.Id
+	return "/file/action?path=" + url.QueryEscape(file.Path) + "&app=" + url.QueryEscape(app.Id)
 }

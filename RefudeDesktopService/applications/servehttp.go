@@ -20,13 +20,13 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		respond.AsJson(w, r, actions)
 	} else if app := findApplication(r); app != nil {
 		if r.Method == "POST" {
-			respond.AcceptedAndThen(w, func() { Launch(app.Exec, app.Terminal) })
+			respond.AcceptedAndThen(w, func() { app.Run("") })
 		} else {
 			respond.AsJson(w, r, app.ToStandardFormat())
 		}
 	} else if act := findApplicationAction(r); act != nil {
 		if r.Method == "POST" {
-			respond.AcceptedAndThen(w, func() { Launch(act.Exec, false) })
+			respond.AcceptedAndThen(w, func() { act.Run("") })
 		} else {
 			respond.AsJson(w, r, act.ToStandardFormat())
 		}

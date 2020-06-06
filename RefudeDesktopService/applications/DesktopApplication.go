@@ -74,11 +74,19 @@ func (d *DesktopApplication) collectActions(term string) respond.StandardFormatL
 	return sfl.SortByRank()
 }
 
+func (d *DesktopApplication) Run(arg string) error {
+	return run(d.Exec, arg, d.Terminal)
+}
+
 type DesktopAction struct {
 	self     string
 	Name     string
 	Exec     string
 	IconName string
+}
+
+func (da *DesktopAction) Run(arg string) error {
+	return run(da.Exec, arg, false)
 }
 
 func (da *DesktopAction) ToStandardFormat() *respond.StandardFormat {
@@ -97,7 +105,7 @@ func OpenFile(path string, mimetypeId string) error {
 	if mt, ok := c.mimetypes[mimetypeId]; ok {
 		if mt.DefaultApp != "" {
 			if app, ok := c.applications[mt.DefaultApp]; ok {
-				return LaunchWithArg(app.Exec, path, app.Terminal)
+				return app.Run(path)
 			}
 		}
 	}
@@ -105,18 +113,13 @@ func OpenFile(path string, mimetypeId string) error {
 	return xdg.RunCmd("xdg-open", path)
 }
 
-func Launch(exec string, inTerminal bool) {
-	LaunchWithArgs(exec, []string{}, inTerminal)
-}
-
 var argPlaceholders = regexp.MustCompile("%[uUfF]")
 
-func LaunchWithArg(exec string, arg string, inTerminal bool) error {
-	return LaunchWithArgs(exec, []string{arg}, inTerminal)
-}
-
-func LaunchWithArgs(exec string, args []string, inTerminal bool) error {
-	var argv = strings.Fields(argPlaceholders.ReplaceAllString(exec, strings.Join(args, " ")))
+func run(exec string, arg string, inTerminal bool) error {
+	var argv = strings.Fields(exec)
+	for i := 0; i < len(argv); i++ {
+		argv[i] = argPlaceholders.ReplaceAllString(argv[i], arg)
+	}
 
 	if inTerminal {
 		var terminal, ok = os.LookupEnv("TERMINAL")

@@ -58,6 +58,7 @@ func main() {
 	go statusnotifications.Run()
 	go icons.Run()
 	go watch.Run()
+	go file.Run()
 
 	go lib.Serve("org.refude.desktop-service", http.HandlerFunc(ServeHTTP))
 	_ = http.ListenAndServe(":7938", http.HandlerFunc(ServeHTTP))

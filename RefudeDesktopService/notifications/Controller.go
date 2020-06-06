@@ -152,7 +152,7 @@ func GetCapabilities() ([]string, *dbus.Error) {
 		nil
 }
 
-func notify(app_name string,
+func Notify(app_name string,
 	replaces_id uint32,
 	app_icon string,
 	summary string,
@@ -353,7 +353,7 @@ func DoDBus() {
 	_ = conn.ExportMethodTable(
 		map[string]interface{}{
 			"GetCapabilities":      GetCapabilities,
-			"Notify":               notify,
+			"Notify":               Notify,
 			"CloseNotification":    makeCloseFuntion(removals),
 			"GetServerInformation": GetServerInformation,
 		},
