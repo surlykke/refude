@@ -167,7 +167,7 @@ func push(e *Event) {
 
 func replaceEvent(e *Event) bool {
 	for i := uint8(0); i < size; i++ {
-		if e.notificationId == data[i].notificationId {
+		if e.notificationId != 0 && e.notificationId == data[i].notificationId {
 			data[i] = e
 			if i == 0 {
 				updateCurrent()

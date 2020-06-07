@@ -106,3 +106,16 @@ func SetDefaultApp(mimetypeId string, appId string) error {
 		return nil
 	}
 }
+
+func GetDefaultAppName(mimetypeId string) string {
+	var c = collectionStore.Load().(collection)
+	if mt, ok := c.mimetypes[mimetypeId]; ok {
+		if mt.DefaultApp != "" {
+			if app, ok := c.applications[mt.DefaultApp]; ok {
+				return app.Name
+			}
+		}
+	}
+
+	return ""
+}

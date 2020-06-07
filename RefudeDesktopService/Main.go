@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/applications"
+	"github.com/surlykke/RefudeServices/RefudeDesktopService/doc"
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/file"
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/icons"
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/notifications"
@@ -38,6 +39,7 @@ var handlers = map[string]func(http.ResponseWriter, *http.Request){
 	"/search":       search.ServeHTTP,
 	"/file":         file.ServeHTTP,
 	"/watch":        watch.ServeHTTP,
+	"/doc":          doc.ServeHTTP,
 }
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {

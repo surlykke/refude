@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"strings"
+	"sync"
+	"time"
 
-	"github.com/rakyll/magicmime"
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/applications"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/respond"
@@ -81,25 +81,6 @@ func getApp(r *http.Request) *applications.DesktopApplication {
 	return applications.GetApp(requests.GetSingleQueryParameter(r, "app", ""))
 }
 
-func makeFile(path string) (*File, error) {
-	if !strings.HasPrefix(path, "/") {
-		path = xdg.Home + "/" + path
-	}
-
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return nil, nil
-	} else if err != nil {
-		return nil, err
-	} else {
-		var mimetype, _ = magicmime.TypeByFile(path)
-		return &File{
-			Path:       path,
-			Mimetype:   mimetype,
-			DefaultApp: "TODO",
-		}, nil
-	}
-}
-
 func getAdjustedPath(r *http.Request) string {
 	if path := requests.GetSingleQueryParameter(r, "path", ""); path == "" {
 		return ""
@@ -145,49 +126,58 @@ func buildActionSF(f *File, app *applications.DesktopApplication, Type string) *
 	}
 }
 
-var searchDirectories []string
+var searchDirectories = make(map[string]bool, 9)
 
 func init() {
-	var added = make(map[string]bool)
-	var dirsToAdd = []string{
-		xdg.Home,
-		xdg.DesktopDir,
-		xdg.DownloadDir,
-		xdg.TemplatesDir,
-		xdg.PublicshareDir,
-		xdg.DocumentsDir,
-		xdg.MusicDir,
-		xdg.PicturesDir,
-		xdg.VideosDir,
-	}
-	for _, d := range dirsToAdd {
-		if !added[d] {
-			searchDirectories = append(searchDirectories, d)
-			added[d] = true
-		}
-	}
+	searchDirectories[xdg.Home] = true
+	searchDirectories[xdg.DesktopDir] = true
+	searchDirectories[xdg.DownloadDir] = true
+	searchDirectories[xdg.TemplatesDir] = true
+	searchDirectories[xdg.PublicshareDir] = true
+	searchDirectories[xdg.DocumentsDir] = true
+	searchDirectories[xdg.MusicDir] = true
+	searchDirectories[xdg.PicturesDir] = true
+	searchDirectories[xdg.VideosDir] = true
 }
 
+// Can't use filepath.Glob as it is case sensitive
 func DesktopSearch(term string) respond.StandardFormatList {
-	var result = make(respond.StandardFormatList, 0, 100)
-	for _, searchDirectory := range searchDirectories {
-		if dir, err := os.Open(searchDirectory); err != nil {
-			fmt.Println("Error opening", searchDirectory, err)
-		} else if names, err := dir.Readdirnames(-1); err != nil {
-			fmt.Println("Error reading", searchDirectory, err)
-		} else {
-			for _, name := range names {
-				if rank := searchutils.SimpleRank(name, "", term); rank > -1 {
-					if file, err := makeFile(searchDirectory + "/" + name); err != nil {
-						fmt.Println("Error making file:", err)
-					} else if file != nil {
-						result = append(result, file.ToStandardFormat().Ranked(rank))
+	if term == "" {
+		return listRecent()
+	} else {
+		var result = make(respond.StandardFormatList, 0, 100)
+		for searchDirectory, _ := range searchDirectories {
+			if dir, err := os.Open(searchDirectory); err != nil {
+				fmt.Println("Error opening", searchDirectory, err)
+			} else if names, err := dir.Readdirnames(-1); err != nil {
+				fmt.Println("Error reading", searchDirectory, err)
+			} else {
+				for _, name := range names {
+					if rank := searchutils.SimpleRank(name, "", term); rank > -1 {
+						if file, err := makeFile(searchDirectory + "/" + name); err != nil {
+							fmt.Println("Error making file:", err)
+						} else if file != nil {
+							result = append(result, file.ToStandardFormat().Ranked(rank))
+						}
 					}
 				}
 			}
 		}
-	}
 
+		return result
+	}
+}
+
+func listRecent() respond.StandardFormatList {
+	var paths = getRecentDownloads(30 * time.Second)
+	var result = make(respond.StandardFormatList, 0, len(paths))
+	for _, path := range paths {
+		if file, err := makeFile(path); err != nil {
+			fmt.Println("Error making file:", err)
+		} else if file != nil {
+			result = append(result, file.ToStandardFormat())
+		}
+	}
 	return result
 }
 
@@ -201,4 +191,34 @@ func otherActionsPath(file *File) string {
 
 func appActionPath(file *File, app *applications.DesktopApplication) string {
 	return "/file/action?path=" + url.QueryEscape(file.Path) + "&app=" + url.QueryEscape(app.Id)
+}
+
+type resentDownload struct {
+	path       string
+	downloaded time.Time
+}
+
+var recentDownloads = make([]resentDownload, 10)
+var recentDownloadsLock sync.Mutex
+
+func getRecentDownloads(noOlderThan time.Duration) []string {
+	recentDownloadsLock.Lock()
+	defer recentDownloadsLock.Unlock()
+	var paths = make([]string, 0, len(recentDownloads))
+	var since = time.Now().Add(-noOlderThan)
+	for _, resentDownload := range recentDownloads {
+		if resentDownload.downloaded.After(since) {
+			paths = append(paths, resentDownload.path)
+		}
+	}
+	return paths
+}
+
+func addRecentDownload(path string) {
+	recentDownloadsLock.Lock()
+	defer recentDownloadsLock.Unlock()
+	recentDownloads = append(recentDownloads, resentDownload{
+		path:       path,
+		downloaded: time.Now(),
+	})
 }
