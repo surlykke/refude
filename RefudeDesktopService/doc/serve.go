@@ -1,8 +1,10 @@
 package doc
 
 import (
+	"io/ioutil"
 	"net/http"
 
+	"github.com/gomarkdown/markdown"
 	. "github.com/surlykke/RefudeServices/lib/i18n"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/xdg"
@@ -76,9 +78,13 @@ var types = map[string]DocType{
 }
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path == "/doc/refudeservices.md" {
-		var path = xdg.DataHome + "/RefudeServices/assets/README.md"
-		http.ServeFile(w, r, path)
+	if r.URL.Path == "/doc" {
+		if bytes, err := ioutil.ReadFile(xdg.DataHome + "/RefudeServices/README.md"); err != nil {
+			respond.ServerError(w, err)
+		} else {
+			w.Header().Set("Content-Type", "text/html")
+			w.Write(markdown.ToHTML(bytes, nil, nil))
+		}
 	} else if r.URL.Path == "/doc/types" {
 		respond.AsJson(w, r, &respond.StandardFormat{
 			Self:  "/doc/types",

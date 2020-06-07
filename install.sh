@@ -7,7 +7,7 @@ GO_BIN_DIR=${GOPATH}/bin
 BASH_COMPLETION_DIR=${XDG_DATA_HOME:-${HOME}/.local/share}/bash/completions
 FISH_COMPLETION_DIR=${XDG_CONFIG_HOME:-${HOME}/.config}/fish/completions
 HICOLOR_ICON_DIR=${XDG_DATA_HOME:-${HOME}/.local/share}/icons/hicolor
-ASSETS_DIR=${XDG_DATA_HOME:-${HOME}/.local/share}/RefudeServices/assets
+ASSETS_DIR=${XDG_DATA_HOME:-${HOME}/.local/share}/RefudeServices
 mkdir -p $BIN_DIR $BASH_COMPLETION_DIR $FISH_COMPLETION_DIR $HICOLOR_ICON_DIR $ASSETS_DIR
 
 
@@ -18,7 +18,7 @@ for dir in refuc RefudeDesktopService; do
     fi
 done
 
-cp ./assets/* $ASSETS_DIR
+cp README.md $ASSETS_DIR
 
 cp -R ./icons/* $HICOLOR_ICON_DIR 
 
