@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gomarkdown/markdown"
+	"github.com/gomarkdown/markdown/parser"
 	. "github.com/surlykke/RefudeServices/lib/i18n"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/xdg"
@@ -83,7 +84,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			respond.ServerError(w, err)
 		} else {
 			w.Header().Set("Content-Type", "text/html")
-			w.Write(markdown.ToHTML(bytes, nil, nil))
+			w.Write(markdown.ToHTML(bytes, parser.NewWithExtensions(parser.CommonExtensions|parser.AutoHeadingIDs), nil))
 		}
 	} else if r.URL.Path == "/doc/types" {
 		respond.AsJson(w, r, &respond.StandardFormat{
