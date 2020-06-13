@@ -347,6 +347,13 @@ func (c *Connection) RaiseAndFocusWindow(wId uint32) {
 	C.XFlush(c.display)
 }
 
+func (c *Connection) CloseWindow(wId uint32) {
+	var event = C.createClientMessage32(C.Window(wId), c.atom("_NET_CLOSE_WINDOW"), 2, 0, 0, 0, 0)
+	var mask C.long = C.SubstructureRedirectMask | C.SubstructureNotifyMask
+	C.XSendEvent(c.display, c.rootWindow, 0, mask, &event)
+	C.XFlush(c.display)
+}
+
 func (c *Connection) GetScreenshotAsPng(wId uint32, downscale uint8) ([]byte, error) {
 	var _, _, w, h, err = c.GetGeometry(wId)
 	if err != nil {

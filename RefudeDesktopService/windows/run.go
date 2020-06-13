@@ -37,6 +37,11 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			defer dataMutex.Unlock()
 			dataConnection.RaiseAndFocusWindow(window.id)
 			respond.Accepted(w)
+		} else if r.Method == "DELETE" {
+			dataMutex.Lock()
+			defer dataMutex.Unlock()
+			dataConnection.CloseWindow(window.id)
+			respond.Accepted(w)
 		} else {
 			respond.AsJson(w, r, window.ToStandardFormat())
 		}
