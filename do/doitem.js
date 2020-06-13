@@ -22,6 +22,7 @@ export let DoItem = props => {
         position: "relative",
         marginRight: "5px",
         padding: "4px",
+        paddingRight: "18px",
         verticalAlign: "top",
         overflow: "hidden",
         height: "30px",

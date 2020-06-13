@@ -13,7 +13,6 @@ cp ./refude.sh ./refude.desktop refude-linux-x64
 echo Done building
 echo Installing under $PREFIX
 
-rm -rf $REFUDEDIR/*
 cp -R refude-linux-x64/* $REFUDEDIR
 ln -sf $REFUDEDIR/refude ${PREFIX}/bin
 ln -sf $REFUDEDIR/refude.sh ${PREFIX}/bin
