@@ -193,32 +193,47 @@ func appActionPath(file *File, app *applications.DesktopApplication) string {
 	return "/file/action?path=" + url.QueryEscape(file.Path) + "&app=" + url.QueryEscape(app.Id)
 }
 
-type resentDownload struct {
+type recentDownload struct {
 	path       string
 	downloaded time.Time
 }
 
-var recentDownloads = make([]resentDownload, 10)
+var recentDownloads = make([]recentDownload, 10)
 var recentDownloadsLock sync.Mutex
 
 func getRecentDownloads(noOlderThan time.Duration) []string {
 	recentDownloadsLock.Lock()
 	defer recentDownloadsLock.Unlock()
+
 	var paths = make([]string, 0, len(recentDownloads))
-	var since = time.Now().Add(-noOlderThan)
-	for _, resentDownload := range recentDownloads {
-		if resentDownload.downloaded.After(since) {
-			paths = append(paths, resentDownload.path)
+	for _, recentDownload := range recentDownloads {
+		if recentDownload.downloaded.After(time.Now().Add(-30 * time.Second)) {
+			paths = append(paths, recentDownload.path)
 		}
 	}
+
 	return paths
 }
 
 func addRecentDownload(path string) {
 	recentDownloadsLock.Lock()
 	defer recentDownloadsLock.Unlock()
-	recentDownloads = append(recentDownloads, resentDownload{
-		path:       path,
-		downloaded: time.Now(),
-	})
+
+	var newDownloads = make([]recentDownload, 0, len(recentDownloads)+1)
+	var alreadyThere = false
+
+	for _, rd := range recentDownloads {
+		if rd.path == path {
+			newDownloads = append(newDownloads, recentDownload{rd.path, time.Now()})
+			alreadyThere = true
+		} else if rd.downloaded.After(time.Now().Add(-time.Second * 30)) {
+			newDownloads = append(newDownloads, rd)
+		}
+	}
+
+	if !alreadyThere {
+		newDownloads = append(newDownloads, recentDownload{path, time.Now()})
+	}
+
+	recentDownloads = newDownloads
 }
