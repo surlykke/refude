@@ -121,6 +121,16 @@ func run(exec string, arg string, inTerminal bool) error {
 		argv[i] = argPlaceholders.ReplaceAllString(argv[i], arg)
 	}
 
+	// Get rid of empty arguments
+	var left = 0
+	for i := 0; i < len(argv); i++ {
+		if len(strings.TrimSpace(argv[i])) > 0 {
+			argv[left] = strings.TrimSpace(argv[i])
+			left++
+		}
+	}
+	argv = argv[0:left]
+
 	if inTerminal {
 		var terminal, ok = os.LookupEnv("TERMINAL")
 		if !ok {
