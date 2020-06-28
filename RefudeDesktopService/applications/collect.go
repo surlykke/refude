@@ -14,6 +14,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/icons"
@@ -43,6 +44,18 @@ func Collect() collection {
 	var c = makeCollection()
 	c.mimetypes = CollectMimeTypes()
 
+	// Add aliases as mimetypes
+	for _, mt := range c.mimetypes {
+		for _, alias := range aliasTypes(mt) {
+			if _, ok := c.mimetypes[alias.Id]; !ok {
+				c.mimetypes[alias.Id] = alias
+			}
+			for _, appId := range c.associations[mt.Id] {
+				c.associations[alias.Id] = slice.AppendIfNotThere(c.associations[alias.Id], appId)
+			}
+		}
+	}
+
 	for _, dir := range xdg.DataDirs {
 		c.collectApplications(dir + "/applications")
 		c.readMimeappsList(dir + "/applications/mimeapps.list")
@@ -64,12 +77,17 @@ func Collect() collection {
 		}
 	}
 
+	for _, app := range c.applications {
+		sort.Sort(slice.SortableStringSlice(app.Mimetypes))
+	}
+
 	// In case no default app is defined in a mimetypes.list somewhere
 	// we take as default app any (randomly chosen) app that handles this mimetype
 	for _, app := range c.applications {
 		for _, mimetypeId := range app.Mimetypes {
 			if mimetype, ok := c.mimetypes[mimetypeId]; ok {
 				mimetype.DefaultApp = app.Id
+				break
 			}
 		}
 	}
@@ -87,6 +105,18 @@ func Collect() collection {
 	}
 
 	return c
+}
+
+func aliasTypes(mt *Mimetype) []*Mimetype {
+	var result = make([]*Mimetype, 0, len(mt.Aliases))
+	for _, id := range mt.Aliases {
+		var copy = *mt
+		copy.Id = id
+		copy.Aliases = []string{}
+		result = append(result, &copy)
+	}
+
+	return result
 }
 
 func (c *collection) removeAssociations(app *DesktopApplication) {
