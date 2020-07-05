@@ -48,14 +48,12 @@ refude.sh
 ```
 and the refude panel should show.
 
-run ```refude.sh``` again, and the app switcher should show.  
-
-run ```refude.sh``` again, and the selection should move down one.
-
-run ```refude.sh up``` and the selection should move up one.
+- run ```refude.sh``` again, and the app switcher should show.  
+- run ```refude.sh``` again, and the selection should move down one.
+- run ```refude.sh up``` and the selection should move up one.
 
 Launching refude from a terminal is somewhat tedious, so you'll wan't to bind it to some keys. 
-I have, in ```.config/openbox/rc.xml```:
+I have, in ```~/.config/openbox/rc.xml```:
 
 ```
     <keybind key="S-Super_L">
