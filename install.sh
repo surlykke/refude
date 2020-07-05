@@ -2,8 +2,6 @@
 cd `dirname $0`
 
 BIN_DIR=${HOME}/.local/bin
-GOPATH=${GOPATH:-${HOME}/go}
-GO_BIN_DIR=${GOPATH}/bin
 BASH_COMPLETION_DIR=${XDG_DATA_HOME:-${HOME}/.local/share}/bash/completions
 FISH_COMPLETION_DIR=${XDG_CONFIG_HOME:-${HOME}/.config}/fish/completions
 HICOLOR_ICON_DIR=${XDG_DATA_HOME:-${HOME}/.local/share}/icons/hicolor
@@ -14,7 +12,7 @@ mkdir -p $BIN_DIR $BASH_COMPLETION_DIR $FISH_COMPLETION_DIR $HICOLOR_ICON_DIR $A
 
 for dir in refuc RefudeDesktopService; do
     if [[ -d $dir ]]; then
-        (cd $dir && echo "Building $dir" && go install) || exit 1
+        (cd $dir && echo "Building $dir" && GOBIN=${BIN_DIR} go install) || exit 1
     fi
 done
 
