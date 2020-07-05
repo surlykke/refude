@@ -33,10 +33,14 @@ so now 'refude' is just a name.
 To install:
 
 1. Install and ensure [RefudeServices](https://github.com/surlykke/RefudeServices) are running.
-1. Install node...
+1. Ensure that you have git, node.js, npm and curl installed. On ubuntu you can do 
+   ```
+   sudo apt install git nodejs npm curl
+   ```
 1. cd to /where/you/want/to/build/refude 
 1. git clone https://github.com/surlykke/refude.git
 1. cd refude
+1. npm install
 1. ./install.sh
 
 If all went well you should have an executable 'refude' in ~/.local/bin. Also there, you'll find 'refude.sh'
