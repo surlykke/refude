@@ -1,77 +1,79 @@
-# Refude - Restful Desktop Environment
+# refude - some tools for your desktop
 
 ## What is it?
 
-Refude is (going to be) a suite of applications that offer generic desktop funtionality. 
+refude constists of:
 
-Right now the first one is being developed:
+* A panel. When launched, refude will open a (small) panel, floating above ordinary windows. It contains:
+  * A clock
+  * A statusnotification area. Applications supporting the [statusnotification standard](https://www.freedesktop.org/wiki/Specifications/StatusNotifierItem/) can show icons here.
+  * A Battery indicator.
+* A window switcher/application launcher. With this you can:
+  * Switch between open windows
+  * Launch installed applications
+  * Open files from various directories
+  * Perform actions on recently received notifications
+* OSD notifications, somewhat inspired by how [ubuntu does that](https://wiki.ubuntu.com/NotifyOSD)
 
-- **RefudeDefaultApp** - Set default applications for your desktop.
+I use openbox as my desktop environment, and run refude inside that. It _should_ be possible to run refude on top of any EWMH compliant window manager, but I haven't really tried it.
 
-Future additions could be:
+Currently refude won't work with wayland, as it needs EWMH, and there is, to my knowledge, 
+no equivalent of that in the wayland world.
 
-- A program starter
-- An application menu
-- A notification daemon
-- A battery monitor
-- A leaving application (like power-off, hibernate, suspend, restart, logout... -ish)
+## The name
 
-## What's the idea?
+Originally, the name 'refude' was meant as an abreviation of **re**st**fu**l **d**esktop **e**nvironment, 
+as the accompanying project 'RefudeServices' was ment to be a set of restful services. 
+These, services, however, have turned out not restful in the 
+[strict sense](https://www.ics.uci.edu/~fielding/pubs/dissertation/top.htm), 
+so now 'refude' is just a name.
 
-To implement common desktop functionality in a way thats useful irrespective of what desktop you run.
+## Installing
 
-The idea of Refude is *not* to create a classical desktop: There wont be a desktop with widgets or a panel. Focus is on functionality that can be used in different desktop setups. 
-I hope in particular that Refude's applications could be particularly useful if you run a lightweight setup with just a window manager (Fluxbox, Openbox,...).
+To install:
 
-## No really - what's the idea?
+1. Install and ensure [RefudeServices](https://github.com/surlykke/RefudeServices) are running.
+1. Install node...
+1. cd to /where/you/want/to/build/refude 
+1. git clone https://github.com/surlykke/refude.git
+1. cd refude
+1. ./install.sh
 
-Well - I'm also the author of [RestfulIpc](https://github.com/surlykke/RestFulIpc) - 
-a project to allow processes to communicate with each other via a restful protocol. 
+If all went well you should have an executable 'refude' in ~/.local/bin. Also there, you'll find 'refude.sh'
+which acts as a wrapper for refude. 
 
-Refude works together with the companion project 
-[Refude Services](https://github.com/surlykke/refude-services). 
-Refude-services offers restful services that handles application logic and interacts 
-with the underlying system. Refude-services are restful and based on RestfulIpc.
-
-Refude's application(s) call Refude-services to make stuff happen.
-
-## What does the applications do?
-
-### RefudeDefaultApps 
-
-This application will show a list of known mimetypes, and allow you to set a default application for each mimetype, choosing from the applications you have installed on your system.
-
-
-It works with mimetypes and desktopfiles as defined by freedesktop.org (FDO) 
-(see [desktop entry specification](https://specifications.freedesktop.org/desktop-entry-spec/latest/index.html) 
-and [mimetype associations](https://specifications.freedesktop.org/mime-apps-spec/latest/) and references therein). 
-
-(*I plan to add implementations of xdg-open and xdg-mime that (unlike the implementations from FDO !) adhere to these standards. With that in place, you can open a document from your file manager or browser or some other program, and provided that program uses xdg-open to open the document, it should open in the application you chose.*)
-
-## How is it implemented?
-
-Refude written in angularjs as packaged chromium apps.
-
-## Why packaged apps?
-
-Partly because I wanted to learn angular, and partly because angularjs makes it possible to create rich UI's with very few lines of code. 
-
-Also, the fact that chromium packaged apps are sandboxed and don't allow acces to the local file system, enforces the dicipline of keeping logic in the services.
-
-## Install and run
-
-You need to have the 'DesktopService' from Refude-services installed and running - see [Refude-services](https://github.com/surlykke/refude-services).
-
-Somewhere in your filesystem where you'd like to install, do: 
-```bash
-git clone https://github.com/surlykke/refude.git
+From a terminal, run:
 ```
-Then install by running the app in chrome:
-```bash
-chromium --silent-launch --load-and-launch-app=/path../to../refude/refudedefaultapps
+refude.sh
 ```
-This installs RefudeDefaultApps in chrome.
+and the refude panel should show.
 
-After this, RefudeDefaultApps should show up in your application menu or your programstarter, whatever you use, and you can start it from there
+run ```refude.sh``` again, and the app switcher should show.  
 
-As you can see, this is very much work in progress. Right now (march 2016) search is not working, and mimetype icons neither. Hopefuly it will be sorted out soon.
+run ```refude.sh``` again, and the selection should move down one.
+
+run ```refude.sh up``` and the selection should move up one.
+
+Launching refude from a terminal is somewhat tedious, so you'll wan't to bind it to some keys. 
+I have, in ```.config/openbox/rc.xml```:
+
+```
+    <keybind key="S-Super_L">
+      <action name="Execute">
+        <command>refude.sh up</command>
+      </action>
+    </keybind>
+    <keybind key="Super_L">
+      <action name="Execute">
+        <command>refude.sh</command>
+      </action>
+    </keybind>
+
+```
+
+so when I hit the windows key, refude launches/opens the switcher/moves the selection down, and SHIFT+windows key moves the selection up.
+
+
+
+
+
