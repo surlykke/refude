@@ -46,7 +46,7 @@ type Device struct {
 
 func (d *Device) ToStandardFormat() *respond.StandardFormat {
 	return &respond.StandardFormat{
-		Self:  deviceSelf(d),
+		Self:  deviceSelf(d.DbusPath),
 		Type:  "power_device",
 		Title: string(d.DbusPath), // FIXME
 		Data:  d,
@@ -77,9 +77,8 @@ func deviceTecnology(index uint32) string {
 	return devTecnology[index]
 }
 
-func deviceSelf(device *Device) string {
-	var path = string(device.DbusPath)
-	if strings.HasPrefix(path, DevicePrefix) {
+func deviceSelf(path dbus.ObjectPath) string {
+	if strings.HasPrefix(string(path), DevicePrefix) {
 		path = path[len(DevicePrefix):]
 	}
 	return fmt.Sprintf("/device%s", path)

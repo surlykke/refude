@@ -20,7 +20,7 @@ const DevicePrefix = "/org/freedesktop/UPower/devices"
 const DisplayDevicePath = dbus.ObjectPath(DevicePrefix + "/DisplayDevice")
 const UPowerDeviceInterface = "org.freedesktop.UPower.Device"
 
-func subscribeToDeviceUpdates() chan *dbus.Signal {
+func subscribe() chan *dbus.Signal {
 	var signals = make(chan *dbus.Signal, 100)
 
 	dbusConn.Signal(signals)
@@ -28,6 +28,16 @@ func subscribeToDeviceUpdates() chan *dbus.Signal {
 		"org.freedesktop.DBus.AddMatch",
 		0,
 		"type='signal',interface='org.freedesktop.DBus.Properties',member='PropertiesChanged', sender='org.freedesktop.UPower'")
+
+	dbusConn.BusObject().Call(
+		"org.freedesktop.DBus.AddMatch",
+		0,
+		"type='signal',interface='org.freedesktop.UPower',member='DeviceAdded', sender='org.freedesktop.UPower'")
+
+	dbusConn.BusObject().Call(
+		"org.freedesktop.DBus.AddMatch",
+		0,
+		"type='signal',interface='org.freedesktop.UPower',member='DeviceRemoved', sender='org.freedesktop.UPower'")
 
 	return signals
 }

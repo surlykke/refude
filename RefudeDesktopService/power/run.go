@@ -7,6 +7,7 @@
 package power
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"sync"
@@ -52,10 +53,11 @@ func AllPaths() []string {
 
 func Run() {
 	var knownPaths = map[dbus.ObjectPath]bool{DisplayDevicePath: true}
-	var signals = subscribeToDeviceUpdates()
+	var signals = subscribe()
 
 	setDevice(retrieveDevice(DisplayDevicePath))
 	for _, dbusPath := range retrieveDevicePaths() {
+		fmt.Println("Adding device", dbusPath)
 		setDevice(retrieveDevice(dbusPath))
 		knownPaths[dbusPath] = true
 	}
@@ -63,13 +65,33 @@ func Run() {
 	for signal := range signals {
 		if signal.Name == "org.freedesktop.DBus.Properties.PropertiesChanged" {
 			if knownPaths[signal.Path] {
+				setDevice(retrieveDevice(signal.Path))
 			}
-			setDevice(retrieveDevice(signal.Path))
+		} else if signal.Name == "org.freedesktop.UPower.DeviceAdded" {
+			if path, ok := getAddedRemovedPath(signal); ok {
+				fmt.Println("Adding device", path)
+				setDevice(retrieveDevice(path))
+			}
+		} else if signal.Name == "org.freedesktop.UPower.DeviceRemoved" {
+			if path, ok := signal.Body[0].(dbus.ObjectPath); ok {
+				fmt.Println("Removing device", path)
+				removeDevice(path)
+			}
 		} else {
 			log.Println("Warn: Update on unknown device: ", signal.Path)
 		}
 	}
 
+}
+
+func getAddedRemovedPath(signal *dbus.Signal) (dbus.ObjectPath, bool) {
+	if len(signal.Body) == 0 {
+		return "", false
+	} else if path, ok := signal.Body[0].(dbus.ObjectPath); !ok {
+		return "", false
+	} else {
+		return path, true
+	}
 }
 
 var devices = make(map[string]*Device)
@@ -84,7 +106,13 @@ func getDevice(path string) *Device {
 func setDevice(device *Device) {
 	deviceLock.Lock()
 	defer deviceLock.Unlock()
-	var self = deviceSelf(device)
+	var self = deviceSelf(device.DbusPath)
 	devices[self] = device
 	watch.SomethingChanged(self)
+}
+
+func removeDevice(path dbus.ObjectPath) {
+	deviceLock.Lock()
+	defer deviceLock.Unlock()
+	delete(devices, deviceSelf(path))
 }
