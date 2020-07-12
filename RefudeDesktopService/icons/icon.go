@@ -7,16 +7,9 @@
 package icons
 
 import (
-	"errors"
 	"math"
-	"net/http"
-	"strconv"
-
-	"github.com/surlykke/RefudeServices/lib/respond"
 
 	"github.com/surlykke/RefudeServices/lib/slice"
-
-	"github.com/surlykke/RefudeServices/lib/requests"
 )
 
 type Icon struct {
@@ -32,42 +25,14 @@ type IconImage struct {
 	Path    string
 }
 
-type IconResource struct{}
-
-func (IconResource) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "GET" {
-		if name := requests.GetSingleQueryParameter(r, "name", ""); name == "" {
-			respond.UnprocessableEntity(w, errors.New("no name given"))
-		} else {
-			var themeId = requests.GetSingleQueryParameter(r, "theme", "hicolor")
-			var size = uint64(32)
-			var err error
-			if len(r.URL.Query()["size"]) > 0 {
-				size, err = strconv.ParseUint(r.URL.Query()["size"][0], 10, 32)
-				if err != nil {
-					respond.UnprocessableEntity(w, errors.New("Invalid size given:"+r.URL.Query()["size"][0]))
-				}
-			}
-
-			if image, ok := findImage(themeId, name, uint32(size)); !ok {
-				w.WriteHeader(http.StatusNotFound)
-			} else {
-				http.ServeFile(w, r, image.Path)
-			}
-		}
-	} else {
-		respond.NotAllowed(w)
-	}
-}
-
-func findImage(themeId string, iconName string, size uint32) (IconImage, bool) {
+func findImage(themeId string, size uint32, iconNames ...string) (IconImage, bool) {
 	lock.Lock()
 	defer lock.Unlock()
 
 	var idsToVisit = []string{themeId}
 	for i := 0; i < len(idsToVisit); i++ {
 		if theme, ok := themes["/icontheme/"+idsToVisit[i]]; ok {
-			if imageList, ok := themeIcons[idsToVisit[i]][iconName]; ok {
+			if imageList, ok := findImageListInMap(themeIcons[idsToVisit[i]], iconNames...); ok {
 				return findBestMatch(imageList, size), true
 			} else {
 				for _, parentThemeId := range theme.Inherits {
@@ -79,16 +44,35 @@ func findImage(themeId string, iconName string, size uint32) (IconImage, bool) {
 		}
 	}
 
-	if imageList, ok := themeIcons["hicolor"][iconName]; ok {
+	if imageList, ok := findImageListInMap(themeIcons["hicolor"], iconNames...); ok {
 		return findBestMatch(imageList, size), true
 	}
 
-	if imageList, ok := sessionIcons[iconName]; ok {
+	if imageList, ok := findImageListInMap(sessionIcons, iconNames...); ok {
 		return findBestMatch(imageList, size), true
 	}
 
-	image, ok := otherIcons[iconName]
+	image, ok := findImageInMap(otherIcons, iconNames...)
 	return image, ok
+}
+
+func findImageListInMap(m map[string][]IconImage, iconNames ...string) ([]IconImage, bool) {
+	for _, iconName := range iconNames {
+		if list, ok := m[iconName]; ok {
+			return list, true
+		}
+	}
+	return nil, false
+}
+
+func findImageInMap(m map[string]IconImage, iconNames ...string) (IconImage, bool) {
+	for _, iconName := range iconNames {
+		if image, ok := m[iconName]; ok {
+			return image, true
+		}
+	}
+
+	return IconImage{}, false
 }
 
 func findBestMatch(images []IconImage, size uint32) IconImage {

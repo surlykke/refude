@@ -31,9 +31,10 @@ const iconthemePrefixLength = len("/icontheme/")
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == "/icon" {
 		if r.Method == "GET" {
-			if name := requests.GetSingleQueryParameter(r, "name", ""); name == "" {
+			if names := r.URL.Query()["name"]; len(names) == 0 {
 				respond.UnprocessableEntity(w, errors.New("no name given"))
 			} else {
+				names = dashSplit(names)
 				var themeId = requests.GetSingleQueryParameter(r, "theme", "hicolor")
 				var size = uint64(32)
 				var err error
@@ -44,7 +45,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					}
 				}
 
-				if image, ok := findImage(themeId, name, uint32(size)); !ok {
+				if image, ok := findImage(themeId, uint32(size), names...); !ok {
 					w.WriteHeader(http.StatusNotFound)
 				} else {
 					http.ServeFile(w, r, image.Path)
@@ -60,6 +61,26 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	} else {
 		respond.NotFound(w)
 	}
+}
+
+/**
+ * By the icon naming specification, dash ('-') seperates 'levels of specificity'. So given an icon name
+ * 'input-mouse-usb', the levels of spcicificy, and the names and order we search will be: 'input-mouse-usb',
+ * 'input-mouse' and 'input'
+ */
+func dashSplit(names []string) []string {
+	var res = make([]string, 0, len(names)*2)
+	for _, name := range names {
+		for {
+			res = append(res, name)
+			if pos := strings.LastIndex(name, "-"); pos > 0 {
+				name = name[0:pos]
+			} else {
+				break
+			}
+		}
+	}
+	return res
 }
 
 func CollectThemes(term string) respond.StandardFormatList {

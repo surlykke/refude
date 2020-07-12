@@ -35,7 +35,7 @@ var (
 	lock              = &sync.Mutex{} // Global lock. TODO: lock with finer granularity
 	themes            = make(map[string]*IconTheme)
 	themeIcons        = make(map[string]map[string][]IconImage) // themeid -> iconname -> []IconImage
-	wannabeThemeIcons = []themeIconImage{}                      // Icon images that seem to belong to a theme, but we seen the theme.index file yet.
+	wannabeThemeIcons = []themeIconImage{}                      // Icon images that seem to belong to a theme, but we not seen the theme.index file yet.
 	sessionIcons      = make(map[string][]IconImage)            // name -> []IconImage
 	otherIcons        = make(map[string]IconImage)              // name -> IconImage
 )
