@@ -22,6 +22,7 @@ type Device struct {
 	Serial           string
 	UpdateTime       uint64
 	Type             string
+	IconName         string
 	PowerSupply      bool
 	HasHistory       bool
 	HasStatistics    bool
@@ -34,7 +35,7 @@ type Device struct {
 	Voltage          float64
 	TimeToEmpty      int64
 	TimeToFull       int64
-	Percentage       float64
+	Percentage       int8
 	IsPresent        bool
 	State            string
 	IsRechargeable   bool
@@ -45,12 +46,37 @@ type Device struct {
 }
 
 func (d *Device) ToStandardFormat() *respond.StandardFormat {
-	return &respond.StandardFormat{
-		Self:  deviceSelf(d.DbusPath),
-		Type:  "power_device",
-		Title: string(d.DbusPath), // FIXME
-		Data:  d,
+	var sf = &respond.StandardFormat{
+		Self:     deviceSelf(d.DbusPath),
+		Type:     "power_device",
+		IconName: d.IconName,
+		Data:     d,
 	}
+
+	// Try to, with the info we have from UPower, make a meaningful Title and Comment
+	switch d.Type {
+	case "Unknown":
+		sf.Title = "Unknown power device"
+	case "Line Power":
+		sf.Title = "Line Power"
+		if d.Online {
+			sf.Comment = "Online"
+		} else {
+			sf.Comment = "Offline"
+		}
+	case "Battery":
+		sf.Title = "Battery " + d.Model
+		if d.State == "Charging" || d.State == "Discharging" {
+			sf.Comment = fmt.Sprintf("%s %d%%", d.State, d.Percentage)
+		} else {
+			sf.Comment = d.State
+		}
+	default:
+		sf.Title = d.Model
+		sf.Comment = fmt.Sprintf("Level: %d%%", d.Percentage)
+	}
+
+	return sf
 }
 
 func deviceType(index uint32) string {

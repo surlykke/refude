@@ -9,7 +9,6 @@ package power
 import (
 	"fmt"
 	"log"
-	"net/http"
 	"sync"
 
 	"github.com/godbus/dbus/v5"
@@ -18,14 +17,6 @@ import (
 
 	"github.com/surlykke/RefudeServices/lib/respond"
 )
-
-func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path == "/devices" {
-		respond.AsJson(w, r, Collect(searchutils.Term(r)))
-	} else if device := getDevice(r.URL.Path); device != nil {
-		respond.AsJson(w, r, device.ToStandardFormat())
-	}
-}
 
 func Collect(term string) respond.StandardFormatList {
 	deviceLock.Lock()

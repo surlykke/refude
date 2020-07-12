@@ -76,6 +76,7 @@ func searchDesktop(w http.ResponseWriter, r *http.Request) {
 		sfl = append(sfl, applications.CollectApps(term)...)
 		sfl = append(sfl, session.Collect(term)...)
 		sfl = append(sfl, file.DesktopSearch(term)...)
+		sfl = append(sfl, power.DesktopSearch(term)...)
 	}
 
 	var j = 0

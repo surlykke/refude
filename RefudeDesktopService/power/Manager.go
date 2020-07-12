@@ -105,11 +105,13 @@ func updateDevice(d *Device, m map[string]dbus.Variant) {
 		case "TimeToFull":
 			d.TimeToFull = variant.Value().(int64)
 		case "Percentage":
-			d.Percentage = variant.Value().(float64)
+			d.Percentage = int8(variant.Value().(float64))
 		case "IsPresent":
 			d.IsPresent = variant.Value().(bool)
 		case "State":
 			d.State = deviceState(variant.Value().(uint32))
+		case "IconName":
+			d.IconName = variant.Value().(string)
 		case "IsRechargeable":
 			d.IsRechargeable = variant.Value().(bool)
 		case "Capacity":
