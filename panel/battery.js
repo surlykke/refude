@@ -15,7 +15,9 @@ import React from 'react'
 import { getUrl, monitorPath } from '../common/monitor';
 
 /**
- * We represent charge by a circle segment (cf https://en.wikipedia.org/wiki/Circular_segment)
+ * We represent charge by a circle segment (cf https://en.wikipedia.org/wiki/Circular_segment, though
+ * we have the segment at the bottom of the circle.)
+ *  
  * The segment is constructed so that:
  *
  *     (area of segment)/(area of the circle) ~ charge percentage.
