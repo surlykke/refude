@@ -11,7 +11,7 @@
     "acorn": ">=6.4.1",
     "axios": "^0.18.1",
     "kind-of": ">=6.0.3",
-    "lodash": ">=4.17.12",
+    "lodash": ">=4.17.19",
     "react": "^16.6.3",
     "react-dom": "^16.6.3",
     "serialize-javascript": ">=2.1.1"
@@ -22,13 +22,13 @@
     "@babel/preset-env": "^7.2.0",
     "@babel/preset-react": "^7.0.0",
     "babel-loader": "^8.0.4",
-    "copy-webpack-plugin": "^4.6.0",
-    "webpack-cli": "^3.3.5",
-    "webpack-shell-plugin": "^0.5.0",
-    "nw-builder": "^3.5.7",
-    "minimist": ">=0.2.1",
+    "copy-webpack-plugin": "^6.0.3",
     "electron": "^8.2.4",
+    "electron-packager": "^14.2.1",
+    "minimist": ">=0.2.1",
+    "nw-builder": "^3.5.7",
     "webpack": "^4.35.3",
-    "electron-packager": "^14.2.1"
+    "webpack-cli": "^3.3.5",
+    "webpack-shell-plugin": "^0.5.0"
   }
 }
