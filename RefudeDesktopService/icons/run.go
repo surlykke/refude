@@ -7,18 +7,13 @@
 package icons
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"os"
 	"path"
-	"strconv"
 	"strings"
 	"sync"
 
-	"github.com/surlykke/RefudeServices/lib/searchutils"
-
-	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/respond"
 
 	"github.com/surlykke/RefudeServices/lib/xdg"
@@ -26,74 +21,31 @@ import (
 	"github.com/surlykke/RefudeServices/lib/image"
 )
 
-const iconthemePrefixLength = len("/icontheme/")
-
-func ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func Handler(r *http.Request) http.Handler {
 	if r.URL.Path == "/icon" {
-		if r.Method == "GET" {
-			if names := r.URL.Query()["name"]; len(names) == 0 {
-				respond.UnprocessableEntity(w, errors.New("no name given"))
-			} else {
-				names = dashSplit(names)
-				var themeId = requests.GetSingleQueryParameter(r, "theme", "hicolor")
-				var size = uint64(32)
-				var err error
-				if len(r.URL.Query()["size"]) > 0 {
-					size, err = strconv.ParseUint(r.URL.Query()["size"][0], 10, 32)
-					if err != nil {
-						respond.UnprocessableEntity(w, errors.New("Invalid size given:"+r.URL.Query()["size"][0]))
-					}
-				}
-
-				if image, ok := findImage(themeId, uint32(size), names...); !ok {
-					w.WriteHeader(http.StatusNotFound)
-				} else {
-					http.ServeFile(w, r, image.Path)
-				}
-			}
-		} else {
-			respond.NotAllowed(w)
-		}
+		return IconResource{}
 	} else if r.URL.Path == "/iconthemes" {
-		respond.AsJson(w, r, CollectThemes(searchutils.Term(r)))
-	} else if iconTheme := getTheme(r.URL.Path); iconTheme != nil {
-		respond.AsJson(w, r, iconTheme.ToStandardFormat())
-	} else {
-		respond.NotFound(w)
-	}
-}
-
-/**
- * By the icon naming specification, dash ('-') seperates 'levels of specificity'. So given an icon name
- * 'input-mouse-usb', the levels of spcicificy, and the names and order we search will be: 'input-mouse-usb',
- * 'input-mouse' and 'input'
- */
-func dashSplit(names []string) []string {
-	var res = make([]string, 0, len(names)*2)
-	for _, name := range names {
-		for {
-			res = append(res, name)
-			if pos := strings.LastIndex(name, "-"); pos > 0 {
-				name = name[0:pos]
-			} else {
-				break
-			}
+		return CollectThemes()
+	} else if strings.HasPrefix(r.URL.Path, "/icontheme/") {
+		if theme := getTheme(r.URL.Path); theme == nil {
+			return nil
+		} else {
+			return theme
 		}
+	} else {
+		return nil
 	}
-	return res
 }
 
-func CollectThemes(term string) respond.StandardFormatList {
+func CollectThemes() respond.StandardFormatList {
 	lock.Lock()
 	defer lock.Unlock()
 	var sfl = make(respond.StandardFormatList, 0, len(themes))
 	for _, theme := range themes {
-		if rank := searchutils.SimpleRank(theme.Name, theme.Comment, term); rank > -1 {
-			sfl = append(sfl, theme.ToStandardFormat().Ranked(rank))
-		}
+		sfl = append(sfl, theme.ToStandardFormat())
 	}
 
-	return sfl.SortByRank()
+	return sfl
 }
 
 func AllPaths() []string {

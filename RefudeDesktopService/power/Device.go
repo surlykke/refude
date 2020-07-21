@@ -8,6 +8,7 @@ package power
 
 import (
 	"fmt"
+	"net/http"
 	"strings"
 
 	"github.com/godbus/dbus/v5"
@@ -77,6 +78,14 @@ func (d *Device) ToStandardFormat() *respond.StandardFormat {
 	}
 
 	return sf
+}
+
+func (d *Device) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
+		respond.AsJson2(w, d.ToStandardFormat())
+	} else {
+		respond.NotAllowed(w)
+	}
 }
 
 func deviceType(index uint32) string {

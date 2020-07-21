@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/slice"
 
 	"github.com/surlykke/RefudeServices/lib/respond"
@@ -31,34 +32,32 @@ type WindowData struct {
 	States   []string
 }
 
-type Window struct {
-	self string
-	id   uint32
-}
+type Window uint32
 
-func (w Window) ToStandardFormat() *respond.StandardFormat {
-	var wd = WindowData{Id: w.id}
+func (win Window) ToStandardFormat() *respond.StandardFormat {
+	var id = uint32(win)
+	var wd = WindowData{Id: id}
 	dataMutex.Lock()
-	if parent, err := dataConnection.GetParent(w.id); err == nil {
+	if parent, err := dataConnection.GetParent(id); err == nil {
 		if parent != 0 {
 			wd.X, wd.Y, wd.W, wd.H, err = dataConnection.GetGeometry(parent)
 		} else {
-			wd.X, wd.Y, wd.W, wd.H, err = dataConnection.GetGeometry(w.id)
+			wd.X, wd.Y, wd.W, wd.H, err = dataConnection.GetGeometry(id)
 		}
 	}
-	if name, err := dataConnection.GetName(w.id); err == nil {
+	if name, err := dataConnection.GetName(id); err == nil {
 		wd.Name = name
 	}
-	if iconName, err := GetIconName(w.id); err == nil {
+	if iconName, err := GetIconName(id); err == nil {
 		wd.IconName = iconName
 	}
-	if states, err := dataConnection.GetState(w.id); err == nil {
+	if states, err := dataConnection.GetState(id); err == nil {
 		wd.States = states
 	}
 	defer dataMutex.Unlock()
 
 	return &respond.StandardFormat{
-		Self:      fmt.Sprintf("/window/%d", w.id),
+		Self:      fmt.Sprintf("/window/%d", id),
 		Type:      "window",
 		Title:     wd.Name,
 		OnPost:    "Raise and focus",
@@ -69,13 +68,55 @@ func (w Window) ToStandardFormat() *respond.StandardFormat {
 	}
 }
 
-var dataConnection = xlib.MakeConnection()
-var dataMutex = &sync.Mutex{}
-
-func makeExecuter(wId uint32) func(http.ResponseWriter, *http.Request) {
-	return func(http.ResponseWriter, *http.Request) {
+func (win Window) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
+		respond.AsJson2(w, win.ToStandardFormat())
+	} else if r.Method == "POST" {
+		dataMutex.Lock()
+		defer dataMutex.Unlock()
+		dataConnection.RaiseAndFocusWindow(uint32(win))
+		respond.Accepted(w)
+	} else if r.URL.Path == "DELETE" {
+		dataMutex.Lock()
+		defer dataMutex.Unlock()
+		dataConnection.CloseWindow(uint32(win))
+		respond.Accepted(w)
+	} else {
+		respond.NotAllowed(w)
 	}
 }
+
+type ScreenShot uint32
+
+func (ss ScreenShot) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
+		var downscaleS = requests.GetSingleQueryParameter(r, "downscale", "1")
+		if len(downscaleS) != 1 || downscaleS[0] < '1' || downscaleS[0] > '5' {
+			respond.UnprocessableEntity(w, fmt.Errorf("downscale should be a number between 1 and 5 (inclusive)"))
+
+		} else {
+			var downscale = downscaleS[0] - '0'
+			if bytes, err := getScreenshot(uint32(ss), downscale); err == nil {
+				w.Header().Set("Content-Type", "image/png")
+				w.Write(bytes)
+			} else {
+				respond.ServerError(w, err)
+			}
+		}
+	} else {
+		respond.NotAllowed(w)
+	}
+}
+
+func getScreenshot(wId uint32, downscale byte) ([]byte, error) {
+	dataMutex.Lock()
+	defer dataMutex.Unlock()
+
+	return dataConnection.GetScreenshotAsPng(wId, downscale)
+}
+
+var dataConnection = xlib.MakeConnection()
+var dataMutex = &sync.Mutex{}
 
 // Pulling icons from X11 (as GetIconName below does) is somewhat costly. For example 'Visual Studio Code' has a
 // window icon of size 1024x1024, so it contains ~ 4 Mb. Hence the caching.
@@ -135,11 +176,4 @@ func GetIconName(wId uint32) (string, error) {
 		setIconNameInCache(wId, iconName)
 		return iconName, nil
 	}
-}
-
-func getScreenshot(wId uint32, downscale byte) ([]byte, error) {
-	dataMutex.Lock()
-	defer dataMutex.Unlock()
-
-	return dataConnection.GetScreenshotAsPng(wId, downscale)
 }

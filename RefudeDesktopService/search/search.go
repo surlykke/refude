@@ -24,72 +24,72 @@ import (
 	"github.com/surlykke/RefudeServices/lib/slice"
 )
 
-func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	switch r.URL.Path {
-	case "/search/paths":
-		searchPaths(w, r)
-	case "/search/desktop":
-		searchDesktop(w, r)
-	default:
-		respond.NotFound(w)
-	}
-}
-
-func searchPaths(w http.ResponseWriter, r *http.Request) {
-
-	var prefix = requests.GetSingleQueryParameter(r, "prefix", "")
-	var paths = make([]string, 0, 2000)
-
-	paths = append(paths, windows.AllPaths()...)
-	paths = append(paths, applications.AllPaths()...)
-	paths = append(paths, icons.AllPaths()...)
-	paths = append(paths, statusnotifications.AllPaths()...)
-	paths = append(paths, session.AllPaths()...)
-	paths = append(paths, notifications.AllPaths()...)
-	paths = append(paths, power.AllPaths()...)
-	paths = append(paths, otherPaths()...)
-
-	var found = 0
-	for i := 0; i < len(paths); i++ {
-		if strings.HasPrefix(paths[i], prefix) {
-			paths[found] = paths[i]
-			found++
-		}
-	}
-	paths = paths[:found]
-
-	sort.Sort(slice.SortableStringSlice(paths))
-	respond.AsJson(w, r, paths)
-}
-
-func searchDesktop(w http.ResponseWriter, r *http.Request) {
-	var term = searchutils.Term(r)
-
-	var sfl = make(respond.StandardFormatList, 0, 1000)
-	if term == "" {
-		sfl = append(sfl, file.DesktopSearch("")...)
-		sfl = append(sfl, notifications.CollectActionable("")...)
-		sfl = append(sfl, windows.Collect("")...)
+func Handler(r *http.Request) http.Handler {
+	if r.URL.Path == "/search/paths" {
+		return PathSearcher{}
+	} else if r.URL.Path == "/search/desktop" {
+		return DesktopSearcher{}
 	} else {
-		sfl = append(sfl, notifications.CollectActionable(term)...)
-		sfl = append(sfl, windows.Collect(term)...)
-		sfl = append(sfl, applications.CollectApps(term)...)
-		sfl = append(sfl, session.Collect(term)...)
-		sfl = append(sfl, file.DesktopSearch(term)...)
-		sfl = append(sfl, power.DesktopSearch(term)...)
+		return nil
 	}
+}
 
-	var j = 0
-	for i := 0; i < len(sfl); i++ {
-		if !sfl[i].NoDisplay {
-			sfl[j] = sfl[i]
-			j++
+type PathSearcher struct{}
+
+func (p PathSearcher) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
+		var prefix = requests.GetSingleQueryParameter(r, "prefix", "")
+		var paths = make([]string, 0, 2000)
+
+		paths = append(paths, windows.AllPaths()...)
+		paths = append(paths, applications.AllPaths()...)
+		paths = append(paths, icons.AllPaths()...)
+		paths = append(paths, statusnotifications.AllPaths()...)
+		paths = append(paths, session.AllPaths()...)
+		paths = append(paths, notifications.AllPaths()...)
+		paths = append(paths, power.AllPaths()...)
+		paths = append(paths, otherPaths()...)
+
+		var found = 0
+		for i := 0; i < len(paths); i++ {
+			if strings.HasPrefix(paths[i], prefix) {
+				paths[found] = paths[i]
+				found++
+			}
 		}
+		paths = paths[:found]
+
+		sort.Sort(slice.SortableStringSlice(paths))
+		respond.AsJson2(w, paths)
+	} else {
+		respond.NotAllowed(w)
 	}
+}
 
-	sfl = sfl[:j]
+type DesktopSearcher struct{}
 
-	respond.AsJson(w, r, sfl)
+func (d DesktopSearcher) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
+		var term = searchutils.Term(r)
+
+		var sfl = make(respond.StandardFormatList, 0, 1000)
+		if term == "" {
+			sfl = append(sfl, file.Recent().Filter("")...)
+			sfl = append(sfl, notifications.CollectActionable().Filter("")...)
+			sfl = append(sfl, windows.Windows().Filter("")...)
+		} else {
+			sfl = append(sfl, notifications.CollectActionable().Filter(term).Sort()...)
+			sfl = append(sfl, windows.Windows().Filter(term).Sort()...)
+			sfl = append(sfl, applications.Applications().Filter(term).Sort()...)
+			sfl = append(sfl, session.Collect().Filter(term).Sort()...)
+			sfl = append(sfl, file.DesktopSearch(term).Filter(term).Sort()...)
+			sfl = append(sfl, power.DesktopSearch().Filter(term).Sort()...)
+		}
+
+		respond.AsJson2(w, sfl)
+	} else {
+		respond.NotAllowed(w)
+	}
 }
 
 func otherPaths() []string {

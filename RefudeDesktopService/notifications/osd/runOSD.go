@@ -2,10 +2,12 @@ package osd
 
 import (
 	"fmt"
+	"net/http"
 	"sync/atomic"
 	"time"
 
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/watch"
+	"github.com/surlykke/RefudeServices/lib/respond"
 )
 
 func PublishMessage(id uint32, sender, title, message, iconName string) {
@@ -82,6 +84,14 @@ type Event struct {
 	Title          string   `json:",omitempty"`
 	Message        []string `json:",omitempty"`
 	IconName       string   `json:",omitempty"`
+}
+
+func (e *Event) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
+		respond.AsJson2(w, e)
+	} else {
+		respond.NotAllowed(w)
+	}
 }
 
 const bufSize = 64

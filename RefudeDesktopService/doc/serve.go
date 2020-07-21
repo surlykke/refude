@@ -11,6 +11,33 @@ import (
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
+func Handler(r *http.Request) http.Handler {
+	if r.URL.Path == "/doc" {
+		return readme
+	} else if r.URL.Path == "/doc/types" {
+		return DocTypes
+	} else {
+		return nil
+	}
+}
+
+type Readme struct{}
+
+func (d Readme) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
+		if bytes, err := ioutil.ReadFile(xdg.DataHome + "/RefudeServices/README.md"); err != nil {
+			respond.ServerError(w, err)
+		} else {
+			w.Header().Set("Content-Type", "text/html")
+			w.Write(markdown.ToHTML(bytes, parser.NewWithExtensions(parser.CommonExtensions|parser.AutoHeadingIDs), nil))
+		}
+	} else {
+		respond.NotAllowed(w)
+	}
+}
+
+var readme Readme
+
 type DocType struct {
 	Type       string
 	Name       string
@@ -19,7 +46,23 @@ type DocType struct {
 	Doc        string
 }
 
-var types = map[string]DocType{
+type TypeMap map[string]DocType
+
+func (tm TypeMap) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
+		respond.AsJson2(w, &respond.StandardFormat{
+			Self:  "/doc/types",
+			Type:  "doctypes",
+			Title: "Refude document types",
+			Data:  tm,
+		})
+	} else {
+		respond.NotAllowed(w)
+	}
+
+}
+
+var DocTypes = TypeMap{
 	"application": {
 		Type:       "application",
 		Name:       Tr("Application"),
@@ -76,24 +119,4 @@ var types = map[string]DocType{
 		Collection: "/session/actions",
 		Doc:        "TODO",
 	},
-}
-
-func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path == "/doc" {
-		if bytes, err := ioutil.ReadFile(xdg.DataHome + "/RefudeServices/README.md"); err != nil {
-			respond.ServerError(w, err)
-		} else {
-			w.Header().Set("Content-Type", "text/html")
-			w.Write(markdown.ToHTML(bytes, parser.NewWithExtensions(parser.CommonExtensions|parser.AutoHeadingIDs), nil))
-		}
-	} else if r.URL.Path == "/doc/types" {
-		respond.AsJson(w, r, &respond.StandardFormat{
-			Self:  "/doc/types",
-			Type:  "doctypes",
-			Title: "Refude document types",
-			Data:  types,
-		})
-	} else {
-		respond.NotFound(w)
-	}
 }

@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
+
+	"github.com/surlykke/RefudeServices/lib/searchutils"
 )
 
 func Ok(w http.ResponseWriter) {
@@ -43,15 +45,6 @@ func AcceptedAndThen(w http.ResponseWriter, f func()) {
 	f()
 }
 
-type VersionedResource interface {
-	GetEtag() string
-}
-
-type RefudeResource interface {
-	http.Handler
-	VersionedResource
-}
-
 type StandardFormat struct {
 	Self         string
 	OnPost       string `json:",omitempty"`
@@ -69,51 +62,61 @@ type StandardFormat struct {
 
 type StandardFormatList []*StandardFormat
 
-type rankSortable StandardFormatList
-
-func (rs rankSortable) Len() int { return len(rs) }
-
-func (rs rankSortable) Less(i int, j int) bool {
-	if rs[i].Rank == rs[j].Rank {
-		return rs[i].Self < rs[j].Self
+func (sfl StandardFormatList) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
+		AsJson2(w, sfl.Filter(searchutils.Term(r)).Sort())
 	} else {
-		return rs[i].Rank < rs[j].Rank
+		NotAllowed(w)
 	}
 }
 
-func (rs rankSortable) Swap(i int, j int) { rs[i], rs[j] = rs[j], rs[i] }
-
-type pathSortable StandardFormatList
-
-func (ps pathSortable) Len() int               { return len(ps) }
-func (ps pathSortable) Less(i int, j int) bool { return ps[i].Rank < ps[j].Rank }
-func (ps pathSortable) Swap(i int, j int)      { ps[i], ps[j] = ps[j], ps[i] }
-
-func (sf *StandardFormat) Ranked(rank int) *StandardFormat {
-	sf.Rank = rank
-	return sf
+func (sfl StandardFormatList) Rank(rank int) {
+	for _, sf := range sfl {
+		sf.Rank = rank
+	}
 }
 
-func (sf StandardFormatList) SortByRank() StandardFormatList {
-	sort.Sort(rankSortable(sf))
-	return sf
+func (sfl StandardFormatList) Filter(term string) StandardFormatList {
+	var filtered = make(StandardFormatList, 0, len(sfl))
+	for _, sf := range sfl {
+		if sf.NoDisplay {
+			continue
+		}
+		var rank = searchutils.SimpleRank(sf.Title, sf.Comment, term)
+		if rank <= -1 {
+			continue
+		}
+
+		sf.Rank = sf.Rank + rank
+		filtered = append(filtered, sf)
+	}
+
+	return filtered
 }
 
-func (sf StandardFormatList) SortByPath() StandardFormatList {
-	sort.Sort(pathSortable(sf))
+func (sfl StandardFormatList) Len() int { return len(sfl) }
+
+func (sfl StandardFormatList) Less(i int, j int) bool {
+	if sfl[i].Rank == sfl[j].Rank {
+		return sfl[i].Self < sfl[j].Self
+	} else {
+		return sfl[i].Rank < sfl[j].Rank
+	}
+}
+
+func (sfl StandardFormatList) Swap(i int, j int) { sfl[i], sfl[j] = sfl[j], sfl[i] }
+
+func (sf StandardFormatList) Sort() StandardFormatList {
+	sort.Sort(sf)
 	return sf
 }
 
 // -----
 
-func AsJson(w http.ResponseWriter, r *http.Request, data interface{}) {
-	if r.Method == "GET" {
-		var json = ToJson(data)
-		w.Header().Set("Content-Type", "application/json")
-		w.Write(json)
-	} else {
-		NotAllowed(w)
-	}
+func AsJson2(w http.ResponseWriter, data interface{}) {
+	var json = ToJson(data)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(json)
 }
 
 func ToJson(res interface{}) []byte {

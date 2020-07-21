@@ -8,6 +8,7 @@ package notifications
 
 import (
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/surlykke/RefudeServices/lib/respond"
@@ -36,6 +37,26 @@ func (n *Notification) ToStandardFormat() *respond.StandardFormat {
 		OnPost:   n.Actions["default"],
 		OnDelete: "Dismiss",
 		Data:     n,
+	}
+}
+
+func (n *Notification) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
+		respond.AsJson2(w, n.ToStandardFormat())
+	} else if r.Method == "POST" {
+		// TODO otheractions
+		if n.haveDefaultAction() {
+			respond.AcceptedAndThen(w, func() {
+				conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".ActionInvoked", n.Id, "default")
+			})
+		} else {
+			respond.NotAllowed(w)
+		}
+	} else if r.Method == "DELETE" {
+		respond.AcceptedAndThen(w, func() { removals <- removal{id: n.Id, reason: Dismissed} })
+
+	} else {
+		respond.NotAllowed(w)
 	}
 }
 

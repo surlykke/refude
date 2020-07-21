@@ -7,10 +7,65 @@
 package icons
 
 import (
+	"errors"
 	"math"
+	"net/http"
+	"strconv"
+	"strings"
 
+	"github.com/surlykke/RefudeServices/lib/requests"
+	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/slice"
 )
+
+type IconResource struct{}
+
+func (ir IconResource) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
+		if names := r.URL.Query()["name"]; len(names) == 0 {
+			respond.UnprocessableEntity(w, errors.New("no name given"))
+		} else {
+			names = dashSplit(names)
+			var themeId = requests.GetSingleQueryParameter(r, "theme", "hicolor")
+			var size = uint64(32)
+			var err error
+			if len(r.URL.Query()["size"]) > 0 {
+				size, err = strconv.ParseUint(r.URL.Query()["size"][0], 10, 32)
+				if err != nil {
+					respond.UnprocessableEntity(w, errors.New("Invalid size given:"+r.URL.Query()["size"][0]))
+				}
+			}
+
+			if image, ok := findImage(themeId, uint32(size), names...); !ok {
+				w.WriteHeader(http.StatusNotFound)
+			} else {
+				http.ServeFile(w, r, image.Path)
+			}
+		}
+	} else {
+		respond.NotAllowed(w)
+	}
+}
+
+/**
+ * By the icon naming specification, dash ('-') seperates 'levels of specificity'. So given an icon name
+ * 'input-mouse-usb', the levels of spcicificy, and the names and order we search will be: 'input-mouse-usb',
+ * 'input-mouse' and 'input'
+ */
+func dashSplit(names []string) []string {
+	var res = make([]string, 0, len(names)*2)
+	for _, name := range names {
+		for {
+			res = append(res, name)
+			if pos := strings.LastIndex(name, "-"); pos > 0 {
+				name = name[0:pos]
+			} else {
+				break
+			}
+		}
+	}
+	return res
+}
 
 type Icon struct {
 	Name   string

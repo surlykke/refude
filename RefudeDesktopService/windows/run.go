@@ -10,13 +10,12 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strings"
+	"regexp"
+	"strconv"
 	"sync/atomic"
 
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/windows/xlib"
-	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/respond"
-	"github.com/surlykke/RefudeServices/lib/searchutils"
 )
 
 const (
@@ -28,84 +27,47 @@ const (
 	NET_WM_STATE             = "_NET_WM_STATE"
 )
 
-func ServeHTTP(w http.ResponseWriter, r *http.Request) {
+var windowPath = regexp.MustCompile("^/window/(\\d+)(/screenshot)?$")
+
+func Handler(r *http.Request) http.Handler {
 	if r.URL.Path == "/windows" {
-		respond.AsJson(w, r, Collect(searchutils.Term(r)))
-	} else if window, ok := getWindow(r.URL.Path); ok {
-		if r.Method == "POST" {
-			dataMutex.Lock()
-			defer dataMutex.Unlock()
-			dataConnection.RaiseAndFocusWindow(window.id)
-			respond.Accepted(w)
-		} else if r.Method == "DELETE" {
-			dataMutex.Lock()
-			defer dataMutex.Unlock()
-			dataConnection.CloseWindow(window.id)
-			respond.Accepted(w)
-		} else {
-			respond.AsJson(w, r, window.ToStandardFormat())
-		}
-	} else if window, ok := getWindowForScreenShot(r.URL.Path); ok {
-		if r.Method == "GET" {
-			var downscaleS = requests.GetSingleQueryParameter(r, "downscale", "1")
-			var downscale = downscaleS[0] - '0'
-			if downscale < 1 || downscale > 5 {
-				respond.UnprocessableEntity(w, fmt.Errorf("downscale should be >= 1 and <= 5"))
-			} else if bytes, err := getScreenshot(window.id, downscale); err == nil {
-				w.Header().Set("Content-Type", "image/png")
-				w.Write(bytes)
-			} else {
-				respond.ServerError(w, err)
-			}
-		} else {
-			respond.NotAllowed(w)
-		}
+		return Windows()
+	} else if matches := windowPath.FindStringSubmatch(r.URL.Path); matches == nil {
+		return nil
+	} else if val, err := strconv.ParseUint(matches[1], 10, 32); err != nil {
+		return nil
 	} else {
-		respond.NotFound(w)
-	}
-}
-
-func getWindowForScreenShot(path string) (Window, bool) {
-	if strings.HasSuffix(path, "/screenshot") {
-		return getWindow(path[0 : len(path)-11])
-	}
-	return Window{}, false
-}
-
-func getWindow(path string) (Window, bool) {
-	for _, w := range windows.Load().([]Window) {
-		if w.self == path {
-			return w, true
+		var id = uint32(val)
+		var screenShot = matches[2] != ""
+		for _, wId := range windows.Load().([]uint32) {
+			if id == wId {
+				if screenShot {
+					return ScreenShot(id)
+				} else {
+					return Window(id)
+				}
+			}
 		}
+
 	}
-	return Window{}, false
+	return nil
 }
 
-func Collect(term string) respond.StandardFormatList {
-	var winList = windows.Load().([]Window)
-	var sfl = make(respond.StandardFormatList, 0, len(winList))
-	for _, win := range winList {
-		var sf = win.ToStandardFormat()
-		if rank := searchutils.SimpleRank(sf.Title, "", term); rank > -1 {
-			sfl = append(sfl, sf)
-		}
+func Windows() respond.StandardFormatList {
+	var idList = windows.Load().([]uint32)
+	var sfl = make(respond.StandardFormatList, 0, len(idList))
+	for _, id := range idList {
+		sfl = append(sfl, Window(id).ToStandardFormat())
 	}
-
 	return sfl
 }
 
-func SearchWindows(collector *searchutils.Collector) {
-	for _, wi := range windows.Load().([]Window) {
-		collector.Collect(wi.ToStandardFormat())
-	}
-}
-
 func AllPaths() []string {
-	var windowList = windows.Load().([]Window)
+	var windowList = windows.Load().([]uint32)
 	var paths = make([]string, 0, 2*len(windowList)+1)
 	for _, window := range windowList {
-		paths = append(paths, window.self)
-		paths = append(paths, window.self+"/screenshot")
+		paths = append(paths, fmt.Sprintf("/window/%d", window))
+		paths = append(paths, fmt.Sprintf("/window/%d/screenshot", window))
 	}
 	paths = append(paths, "/windows")
 	return paths
@@ -119,12 +81,12 @@ func Run() {
 	for {
 		if wIds, err := eventConnection.GetUint32s(0, NET_CLIENT_LIST_STACKING); err != nil {
 			log.Println("WARN: Unable to retrieve _NET_CLIENT_LIST_STACKING", err)
-			windows.Store([]Window{})
+			windows.Store([]uint32{})
 		} else {
-			var list = make([]Window, len(wIds), len(wIds))
+			var list = make([]uint32, len(wIds), len(wIds))
 			// Revert so highest in stach comes first
 			for i := 0; i < len(wIds); i++ {
-				list[i] = Window{self: fmt.Sprintf("/window/%d", wIds[len(wIds)-i-1]), id: wIds[len(wIds)-i-1]}
+				list[i] = wIds[len(wIds)-i-1]
 			}
 			windows.Store(list)
 		}
@@ -136,5 +98,5 @@ func Run() {
 var windows atomic.Value
 
 func init() {
-	windows.Store([]Window{})
+	windows.Store([]uint32{})
 }

@@ -13,29 +13,26 @@ import (
 
 	"github.com/godbus/dbus/v5"
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/watch"
-	"github.com/surlykke/RefudeServices/lib/searchutils"
 
 	"github.com/surlykke/RefudeServices/lib/respond"
 )
 
-func Collect(term string) respond.StandardFormatList {
+func Collect() respond.StandardFormatList {
 	deviceLock.Lock()
 	defer deviceLock.Unlock()
 	var sfl = make(respond.StandardFormatList, 0, len(devices))
 	for _, device := range devices {
-		if rank := searchutils.SimpleRank(string(device.DbusPath), "", term); rank > -1 {
-			sfl = append(sfl, device.ToStandardFormat().Ranked(rank))
-		}
+		sfl = append(sfl, device.ToStandardFormat())
 	}
 
-	return sfl.SortByRank()
+	return sfl
 }
 
 func AllPaths() []string {
 	deviceLock.Lock()
 	defer deviceLock.Unlock()
 	var paths = make([]string, 0, len(devices)+1)
-	for path, _ := range devices {
+	for path := range devices {
 		paths = append(paths, path)
 	}
 	paths = append(paths, "/devices")

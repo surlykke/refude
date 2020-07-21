@@ -3,41 +3,50 @@ package session
 import (
 	"net/http"
 
-	"github.com/surlykke/RefudeServices/lib/searchutils"
-
 	"github.com/surlykke/RefudeServices/lib/respond"
 
 	"github.com/godbus/dbus/v5"
 )
 
-func ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func Handler(r *http.Request) http.Handler {
 	if r.URL.Path == "/session/actions" {
-		respond.AsJson(w, r, Collect(searchutils.Term(r)))
-	} else if action, ok := actions[r.URL.Path]; ok {
-		if r.Method == "POST" {
-			login1Object.Call(endpoint[action.Self], dbus.Flags(0), false)
-			respond.Accepted(w)
-		} else {
-			respond.AsJson(w, r, action)
-		}
+		return Collect()
+	} else if _, ok := actions[r.URL.Path]; ok {
+		return Action(r.URL.Path)
 	} else {
-		respond.NotFound(w)
+		return nil
 	}
 }
 
-func Collect(term string) respond.StandardFormatList {
+type Action string
+
+func (a Action) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	var sf = actions[string(a)]
+	if r.Method == "GET" {
+		respond.AsJson2(w, sf)
+	} else if r.Method == "POST" {
+		var call = login1Object.Call(endpoint[sf.Self], dbus.Flags(0), false)
+		if call.Err != nil {
+			respond.ServerError(w, call.Err)
+		} else {
+			respond.Accepted(w)
+		}
+	} else {
+		respond.NotAllowed(w)
+	}
+}
+
+func Collect() respond.StandardFormatList {
 	var sfl = make(respond.StandardFormatList, 0, len(actions))
 	for _, action := range actions {
-		if rank := searchutils.SimpleRank(action.Title, action.Comment, term); rank > -1 {
-			sfl = append(sfl, action)
-		}
+		sfl = append(sfl, action)
 	}
-	return sfl.SortByRank()
+	return sfl
 }
 
 func AllPaths() []string {
 	var paths = make([]string, 0, len(actions)+1)
-	for path, _ := range actions {
+	for path := range actions {
 		paths = append(paths, path)
 	}
 	paths = append(paths, "/session/actions")

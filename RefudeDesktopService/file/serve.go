@@ -3,77 +3,45 @@ package file
 import (
 	"fmt"
 	"net/http"
-	"net/url"
 	"os"
+	"regexp"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/applications"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/respond"
-	"github.com/surlykke/RefudeServices/lib/searchutils"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
-func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("file.ServeHTTP, query:", r.URL.Query())
-	if r.URL.Path == "/file" {
-		if file, err := getFile(r); err != nil {
-			respond.ServerError(w, err)
-		} else if file == nil {
-			respond.NotFound(w)
-		} else if r.Method == "POST" {
-			if err := applications.OpenFile(file.Path, file.Mimetype); err != nil {
-				respond.ServerError(w, err)
-			} else {
-				respond.Accepted(w)
-			}
-		} else {
-			respond.AsJson(w, r, file.ToStandardFormat())
-		}
-	} else if r.URL.Path == "/file/otheractions" {
-		if file, err := getFile(r); err != nil {
-			respond.ServerError(w, err)
-		} else if file == nil {
-			respond.NotFound(w)
-		} else {
-			respond.AsJson(w, r, otherActions(file, searchutils.Term(r)))
-		}
-	} else if r.URL.Path == "/file/action" {
-		if file, err := getFile(r); err != nil {
-			respond.ServerError(w, err)
-		} else if file == nil {
-			respond.NotFound(w)
-		} else if app := getApp(r); app == nil {
-			respond.NotFound(w)
-		} else {
-			if r.Method == "POST" {
-				if err := app.Run(file.Path); err != nil {
-					respond.ServerError(w, err)
-				} else {
-					respond.Accepted(w)
-					go applications.SetDefaultApp(file.Mimetype, app.Id)
-				}
-			} else {
-				respond.AsJson(w, r, buildActionSF(file, app, "action"))
-			}
-		}
+var filePathPattern = regexp.MustCompile(`^/file$|^/file(/actions)$|^/file/action/([^/]+)$`)
+
+func Handler(r *http.Request) http.Handler {
+	if matches := filePathPattern.FindStringSubmatch(r.URL.Path); matches == nil {
+		return nil
+	} else if file := getFile(r); file == nil {
+		return nil
+	} else if matches[1] != "" {
+		return file.collectActions()
+	} else if matches[2] != "" {
+		return file.action(matches[2])
 	} else {
-		respond.NotFound(w)
+		return file
 	}
 }
 
 var noPathError = fmt.Errorf("No path given")
 
-func getFile(r *http.Request) (*File, error) {
+func getFile(r *http.Request) *File {
 	if path := getAdjustedPath(r); path == "" {
-		return nil, noPathError
+		return nil
 	} else if file, err := makeFile(path); err != nil {
-		return nil, err
+		return nil
 	} else if file == nil {
-		return nil, nil
+		return nil
 	} else {
-		return file, nil
+		return file
 	}
 }
 
@@ -87,43 +55,9 @@ func getAdjustedPath(r *http.Request) string {
 	} else if path[0] != '/' {
 		return xdg.Home + "/" + path
 	} else {
-		fmt.Println("file.getAdjustedPath returning:", path)
 		return path
 	}
 
-}
-
-func otherActions(f *File, term string) respond.StandardFormatList {
-	var sfl = make(respond.StandardFormatList, 0, 100)
-	var recommendedApps, otherApps = applications.GetAppsForMimetype(f.Mimetype)
-	for _, app := range recommendedApps {
-		var sf = buildActionSF(f, app, "recommended")
-		if sf.Rank = searchutils.SimpleRank(sf.Title, sf.Comment, term); sf.Rank > -1 {
-			sfl = append(sfl, sf)
-		}
-	}
-	sfl.SortByRank()
-	var numRecommended = len(sfl)
-	for _, app := range otherApps {
-		var sf = buildActionSF(f, app, "other")
-		if sf.Rank = searchutils.SimpleRank(sf.Title, sf.Comment, term); sf.Rank > -1 {
-			sfl = append(sfl, sf)
-		}
-	}
-
-	sfl[numRecommended:].SortByRank()
-
-	return sfl
-}
-
-func buildActionSF(f *File, app *applications.DesktopApplication, Type string) *respond.StandardFormat {
-	return &respond.StandardFormat{
-		Self:     appActionPath(f, app),
-		Type:     Type,
-		Title:    app.Name,
-		Comment:  app.Comment,
-		IconName: app.IconName,
-	}
 }
 
 var searchDirectories = make(map[string]bool, 9)
@@ -141,10 +75,12 @@ func init() {
 }
 
 // Can't use filepath.Glob as it is case sensitive
+
 func DesktopSearch(term string) respond.StandardFormatList {
-	if term == "" {
-		return listRecent()
+	if len(term) < 3 {
+		return respond.StandardFormatList{}
 	} else {
+		term = strings.ToLower(term)
 		var result = make(respond.StandardFormatList, 0, 100)
 		for searchDirectory, _ := range searchDirectories {
 			if dir, err := os.Open(searchDirectory); err != nil {
@@ -153,22 +89,22 @@ func DesktopSearch(term string) respond.StandardFormatList {
 				fmt.Println("Error reading", searchDirectory, err)
 			} else {
 				for _, name := range names {
-					if rank := searchutils.SimpleRank(name, "", term); rank > -1 {
+					if strings.Contains(strings.ToLower(name), term) {
 						if file, err := makeFile(searchDirectory + "/" + name); err != nil {
 							fmt.Println("Error making file:", err)
 						} else if file != nil {
-							result = append(result, file.ToStandardFormat().Ranked(rank))
+							fmt.Println("including...")
+							result = append(result, file.ToStandardFormat())
 						}
 					}
 				}
 			}
 		}
-
 		return result
 	}
 }
 
-func listRecent() respond.StandardFormatList {
+func Recent() respond.StandardFormatList {
 	var paths = getRecentDownloads(30 * time.Second)
 	var result = make(respond.StandardFormatList, 0, len(paths))
 	for _, path := range paths {
@@ -179,18 +115,6 @@ func listRecent() respond.StandardFormatList {
 		}
 	}
 	return result
-}
-
-func fileSelf(file *File) string {
-	return "/file?path=" + url.QueryEscape(file.Path)
-}
-
-func otherActionsPath(file *File) string {
-	return "/file/otheractions?path=" + url.QueryEscape(file.Path)
-}
-
-func appActionPath(file *File, app *applications.DesktopApplication) string {
-	return "/file/action?path=" + url.QueryEscape(file.Path) + "&app=" + url.QueryEscape(app.Id)
 }
 
 type recentDownload struct {

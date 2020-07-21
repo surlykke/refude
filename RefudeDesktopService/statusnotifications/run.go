@@ -7,94 +7,46 @@
 package statusnotifications
 
 import (
-	"fmt"
 	"net/http"
-	"strconv"
-	"strings"
+	"regexp"
 	"sync"
-	"time"
 
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/watch"
-	"github.com/surlykke/RefudeServices/lib/searchutils"
 
 	"github.com/godbus/dbus/v5"
-	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/respond"
-	"github.com/surlykke/RefudeServices/lib/slice"
 )
 
-func ServeHTTP(w http.ResponseWriter, r *http.Request) {
+var itemPathPattern = regexp.MustCompile("^(/item/[^/]+)(/menu)?")
+
+func Handler(r *http.Request) http.Handler {
 	if r.URL.Path == "/items" {
-		respond.AsJson(w, r, Collect(searchutils.Term(r)))
-	} else if item := get(r.URL.Path); item != nil {
-		if r.Method == "POST" {
-			dbusObj := conn.Object(item.sender, item.itemPath)
-			action := requests.GetSingleQueryParameter(r, "action", "Activate")
-			x, _ := strconv.Atoi(requests.GetSingleQueryParameter(r, "x", "0"))
-			y, _ := strconv.Atoi(requests.GetSingleQueryParameter(r, "y", "0"))
-
-			if !slice.Among(action, "Activate", "SecondaryActivate", "ContextMenu") {
-				respond.UnprocessableEntity(w, fmt.Errorf("action must be 'Activate', 'SecondaryActivate' or 'ContextMenu'"))
+		return Collect()
+	} else if match := itemPathPattern.FindStringSubmatch(r.URL.Path); match != nil {
+		if item := get(match[1]); item == nil {
+			return nil
+		} else if match[2] == "/menu" {
+			if item.menuPath == "" {
+				return nil
 			} else {
-				var call = dbusObj.Call("org.kde.StatusNotifierItem."+action, dbus.Flags(0), x, y)
-				if call.Err != nil {
-					respond.ServerError(w, call.Err)
-				} else {
-					respond.Accepted(w)
-				}
+				return &Menu{self: itemSelf(item.sender, item.itemPath) + "/menu", sender: item.sender, path: item.menuPath}
 			}
 		} else {
-			respond.AsJson(w, r, item.ToStandardFormat())
+			return item
 		}
-	} else if item = getItemForMenu(r.URL.Path); item != nil {
-		if menuItems, err := item.menu(); err != nil {
-			respond.ServerError(w, err)
-		} else if menuItems != nil {
-			if r.Method == "POST" {
-				id := requests.GetSingleQueryParameter(r, "id", "")
-				idAsInt, _ := strconv.Atoi(id)
-				data := dbus.MakeVariant("")
-				time := uint32(time.Now().Unix())
-				dbusObj := conn.Object(item.sender, item.menuPath)
-				call := dbusObj.Call("com.canonical.dbusmenu.Event", dbus.Flags(0), idAsInt, "clicked", data, time)
-				if call.Err != nil {
-					respond.ServerError(w, err)
-				} else {
-					respond.Accepted(w)
-				}
-			} else {
-				respond.AsJson(w, r, menuToStandardFormat(r.URL.Path, menuItems))
-			}
-		} else {
-			respond.NotFound(w)
-		}
-	} else {
-		respond.NotFound(w)
-	}
-}
-
-func getItemForMenu(path string) *Item {
-	var item *Item = nil
-	if strings.HasSuffix(path, "/menu") {
-		item = get(path[0 : len(path)-5])
-	}
-	if item != nil && item.Menu != "" {
-		return item
 	} else {
 		return nil
 	}
 }
 
-func Collect(term string) respond.StandardFormatList {
+func Collect() respond.StandardFormatList {
 	lock.Lock()
 	defer lock.Unlock()
 	var sfl = make(respond.StandardFormatList, 0, len(items))
 	for _, item := range items {
-		if rank := searchutils.SimpleRank(item.Title, "", term); rank > -1 {
-			sfl = append(sfl, item.ToStandardFormat().Ranked(rank))
-		}
+		sfl = append(sfl, item.ToStandardFormat())
 	}
-	return sfl.SortByRank()
+	return sfl
 }
 
 func AllPaths() []string {

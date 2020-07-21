@@ -26,30 +26,47 @@ import (
 	"github.com/surlykke/RefudeServices/lib"
 )
 
-// Associate handler with path prefix
-var handlers = map[string]func(http.ResponseWriter, *http.Request){
-	"/window":       windows.ServeHTTP,
-	"/application":  applications.ServeHTTP,
-	"/mimetype":     applications.ServeHTTP,
-	"/notification": notifications.ServeHTTP,
-	"/device":       power.ServeHTTP,
-	"/item":         statusnotifications.ServeHTTP,
-	"/icon":         icons.ServeHTTP,
-	"/session":      session.ServeHTTP,
-	"/search":       search.ServeHTTP,
-	"/file":         file.ServeHTTP,
-	"/watch":        watch.ServeHTTP,
-	"/doc":          doc.ServeHTTP,
+type jsonRes interface {
+	ToStandardFormat() *respond.StandardFormat
+}
+
+func pathStartsWith(r *http.Request, s string) bool {
+	return strings.HasPrefix(r.URL.Path, s)
 }
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	for prefix, handler := range handlers {
-		if strings.HasPrefix(r.URL.Path, prefix) {
-			handler(w, r)
-			return
-		}
+	var handler http.Handler = nil
+
+	if pathStartsWith(r, "/application") || pathStartsWith(r, "/mimetype") {
+		handler = applications.Handler(r)
+	} else if pathStartsWith(r, "/doc") {
+		handler = doc.Handler(r)
+	} else if pathStartsWith(r, "/file") {
+		handler = file.Handler(r)
+	} else if pathStartsWith(r, "/icon") {
+		handler = icons.Handler(r)
+	} else if pathStartsWith(r, "/notification") {
+		handler = notifications.Handler(r)
+	} else if pathStartsWith(r, "/device") {
+		handler = power.Handler(r)
+	} else if pathStartsWith(r, "/search") {
+		handler = search.Handler(r)
+	} else if pathStartsWith(r, "/session") {
+		handler = session.Handler(r)
+	} else if pathStartsWith(r, "/item") {
+		handler = statusnotifications.Handler(r)
+	} else if pathStartsWith(r, "/watch") {
+		handler = watch.Handler(r)
+	} else if pathStartsWith(r, "/window") {
+		handler = windows.Handler(r)
 	}
-	respond.NotFound(w)
+
+	if handler != nil {
+		handler.ServeHTTP(w, r)
+	} else {
+		respond.NotFound(w)
+	}
+
 }
 
 func main() {

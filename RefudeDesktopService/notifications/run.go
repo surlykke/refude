@@ -16,58 +16,44 @@ import (
 
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/notifications/osd"
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/watch"
-	"github.com/surlykke/RefudeServices/lib/searchutils"
 
 	"github.com/surlykke/RefudeServices/lib/respond"
 )
 
-func ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func Handler(r *http.Request) http.Handler {
 	if r.URL.Path == "/notification/osd" {
-		var current = osd.CurrentlyShowing()
-		if current != nil {
-			respond.AsJson(w, r, current)
+		if osd.CurrentlyShowing() == nil {
+			return nil
 		} else {
-			respond.Ok(w)
+			return osd.CurrentlyShowing()
 		}
 	} else if r.URL.Path == "/notifications" {
-		respond.AsJson(w, r, Collect(searchutils.Term(r)))
+		return Collect()
 	} else if notification := getNotification(r.URL.Path); notification != nil {
-		if r.Method == "POST" && notification.haveDefaultAction() {
-			respond.AcceptedAndThen(w, func() {
-				conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".ActionInvoked", notification.Id, "default")
-			})
-		} else if r.Method == "DELETE" {
-			respond.AcceptedAndThen(w, func() { removals <- removal{id: notification.Id, reason: Dismissed} })
-		} else {
-			respond.AsJson(w, r, notification.ToStandardFormat())
-		}
+		return notification
 	} else {
-		respond.NotFound(w)
+		return nil
 	}
 }
 
-func Collect(term string) respond.StandardFormatList {
+func Collect() respond.StandardFormatList {
 	lock.Lock()
 	defer lock.Unlock()
 	var sfl = make(respond.StandardFormatList, 0, len(notifications))
 	for _, notification := range notifications {
-		if rank := searchutils.SimpleRank(notification.Subject, notification.Body, term); rank > -1 {
-			sfl = append(sfl, notification.ToStandardFormat().Ranked(rank))
-		}
+		sfl = append(sfl, notification.ToStandardFormat())
 	}
 	return sfl
 }
 
 // Notifications that have a default action
-func CollectActionable(term string) respond.StandardFormatList {
+func CollectActionable() respond.StandardFormatList {
 	lock.Lock()
 	defer lock.Unlock()
 	var sfl = make(respond.StandardFormatList, 0, len(notifications))
 	for _, notification := range notifications {
 		if _, ok := notification.Actions["default"]; ok {
-			if rank := searchutils.SimpleRank(notification.Subject, notification.Body, term); rank > -1 {
-				sfl = append(sfl, notification.ToStandardFormat().Ranked(rank))
-			}
+			sfl = append(sfl, notification.ToStandardFormat())
 		}
 	}
 	return sfl

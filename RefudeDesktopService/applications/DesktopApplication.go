@@ -8,12 +8,12 @@ package applications
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"regexp"
 	"strings"
 
 	"github.com/surlykke/RefudeServices/lib/respond"
-	"github.com/surlykke/RefudeServices/lib/searchutils"
 
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
@@ -49,7 +49,7 @@ func (d *DesktopApplication) ToStandardFormat() *respond.StandardFormat {
 	var self = appSelf(d.Id)
 	var otherActions string
 	if len(d.DesktopActions) > 0 {
-		otherActions = otherActionsPath(d.Id)
+		otherActions = self + "/actions"
 	}
 	return &respond.StandardFormat{
 		Self:         self,
@@ -64,18 +64,30 @@ func (d *DesktopApplication) ToStandardFormat() *respond.StandardFormat {
 	}
 }
 
+func (d *DesktopApplication) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
+		respond.AsJson2(w, d.ToStandardFormat())
+	} else if r.Method == "POST" {
+		respond.AcceptedAndThen(w, func() { d.Run("") })
+	} else {
+		respond.NotAllowed(w)
+	}
+}
+
 func (d *DesktopApplication) collectActions(term string) respond.StandardFormatList {
 	var sfl = make(respond.StandardFormatList, 0, len(d.DesktopActions))
 	for _, act := range d.DesktopActions {
-		if rank := searchutils.SimpleRank(act.Name, "", term); rank > -1 {
-			sfl = append(sfl, act.ToStandardFormat().Ranked(rank))
-		}
+		sfl = append(sfl, act.ToStandardFormat())
 	}
-	return sfl.SortByRank()
+	return sfl
 }
 
 func (d *DesktopApplication) Run(arg string) error {
 	return run(d.Exec, arg, d.Terminal)
+}
+
+func appSelf(appId string) string {
+	return "/application/" + appId
 }
 
 type DesktopAction struct {
@@ -97,6 +109,16 @@ func (da *DesktopAction) ToStandardFormat() *respond.StandardFormat {
 		Title:    da.Name,
 		IconName: da.IconName,
 		Data:     da,
+	}
+}
+
+func (da *DesktopAction) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
+		respond.AsJson2(w, da.ToStandardFormat())
+	} else if r.Method == "POST" {
+		respond.AcceptedAndThen(w, func() { da.Run("") })
+	} else {
+		respond.NotAllowed(w)
 	}
 }
 

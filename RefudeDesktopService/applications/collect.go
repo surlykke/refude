@@ -388,7 +388,7 @@ func readDesktopFile(path string, id string) (*DesktopApplication, []string, err
 					iconName = icons.AddFileIcon(iconName)
 				}
 				da.DesktopActions[currentAction] = &DesktopAction{
-					self:     actionPath(da.Id, currentAction),
+					self:     "/application/" + da.Id + "/action/" + currentAction,
 					Name:     name,
 					Exec:     actionGroup.Entries["Exec"],
 					IconName: iconName,

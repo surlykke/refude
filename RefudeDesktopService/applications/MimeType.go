@@ -8,6 +8,7 @@ package applications
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"regexp"
 	"strings"
@@ -64,19 +65,30 @@ func (mt *Mimetype) ToStandardFormat() *respond.StandardFormat {
 	}
 }
 
-/*	case "PATCH":
-	var decoder = json.NewDecoder(r.Body)
-	var decoded = make(map[string]string)
-	if err := decoder.Decode(&decoded); err != nil {
-		respond.UnprocessableEntity(w, err)
-	} else if defaultApp, ok := decoded["DefaultApp"]; !ok || len(decoded) != 1 {
-		respond.UnprocessableEntity(w, fmt.Errorf("Patch payload should contain exactly one parameter: 'DefaultApp"))
-	} else if err = setDefaultApp(mt.Id, defaultApp); err != nil {
-		respond.ServerError(w, err )
+func mimetypeSelf(mimetypeId string) string {
+	return fmt.Sprintf("/mimetype/%s", mimetypeId)
+}
+
+func (mt *Mimetype) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
+		respond.AsJson2(w, mt.ToStandardFormat())
+		/*} else if r.Method == "PATCH" {
+		var decoder = json.NewDecoder(r.Body)
+		var decoded = make(map[string]string)
+		if err := decoder.Decode(&decoded); err != nil {
+			respond.UnprocessableEntity(w, err)
+		} else if defaultApp, ok := decoded["DefaultApp"]; !ok || len(decoded) != 1 {
+			respond.UnprocessableEntity(w, fmt.Errorf("Patch payload should contain exactly one parameter: 'DefaultApp"))
+		} else if err = setDefaultApp(mt.Id, defaultApp); err != nil {
+			respond.ServerError(w, err)
+		} else {
+			respond.Accepted(w)
+		}
+		*/
 	} else {
-		respond.Accepted(w)
+		respond.NotAllowed(w)
 	}
-*/
+}
 
 func SetDefaultApp(mimetypeId string, appId string) error {
 	if mt, ok := collectionStore.Load().(collection).mimetypes[mimetypeId]; ok {
