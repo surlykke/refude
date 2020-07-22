@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"sort"
 
+	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
 )
 
@@ -64,7 +65,7 @@ type StandardFormatList []*StandardFormat
 
 func (sfl StandardFormatList) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		AsJson2(w, sfl.Filter(searchutils.Term(r)).Sort())
+		AsJson2(w, sfl.Filter(requests.Term(r)).Sort())
 	} else {
 		NotAllowed(w)
 	}

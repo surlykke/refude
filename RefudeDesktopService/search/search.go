@@ -5,8 +5,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/surlykke/RefudeServices/lib/searchutils"
-
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/file"
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/notifications"
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/power"
@@ -70,7 +68,7 @@ type DesktopSearcher struct{}
 
 func (d DesktopSearcher) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		var term = searchutils.Term(r)
+		var term = requests.Term(r)
 
 		var sfl = make(respond.StandardFormatList, 0, 1000)
 		if term == "" {
