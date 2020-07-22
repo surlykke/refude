@@ -76,7 +76,7 @@ func (win Window) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		defer dataMutex.Unlock()
 		dataConnection.RaiseAndFocusWindow(uint32(win))
 		respond.Accepted(w)
-	} else if r.URL.Path == "DELETE" {
+	} else if r.Method == "DELETE" {
 		dataMutex.Lock()
 		defer dataMutex.Unlock()
 		dataConnection.CloseWindow(uint32(win))
