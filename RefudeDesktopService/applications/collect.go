@@ -95,9 +95,9 @@ func Collect() collection {
 	for mimetypeId, appIds := range c.defaultApps {
 		if mimetype, ok := c.mimetypes[mimetypeId]; ok {
 			for _, appId := range appIds {
-				if _, ok := c.applications[appId]; ok {
+				if app, ok := c.applications[appId]; ok {
 					mimetype.DefaultApp = appId
-					mimetype.DefaultAppPath = appSelf(appId)
+					mimetype.DefaultAppPath = app.self
 					break
 				}
 			}
@@ -333,7 +333,7 @@ func readDesktopFile(path string, id string) (*DesktopApplication, []string, err
 	} else if len(iniFile) == 0 || iniFile[0].Name != "Desktop Entry" {
 		return nil, nil, errors.New("File must start with '[Desktop Entry]'")
 	} else {
-		var da = DesktopApplication{Id: id}
+		var da = DesktopApplication{self: "/application/" + id, Id: id}
 		var mimetypes = []string{}
 		da.DesktopActions = make(map[string]*DesktopAction)
 		var actionNames = []string{}

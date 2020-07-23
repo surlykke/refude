@@ -29,3 +29,14 @@ func DesktopSearch() respond.StandardFormatList {
 
 	return res
 }
+
+func AllPaths() []string {
+	deviceLock.Lock()
+	defer deviceLock.Unlock()
+	var paths = make([]string, 0, len(devices)+1)
+	for path := range devices {
+		paths = append(paths, path)
+	}
+	paths = append(paths, "/devices")
+	return paths
+}

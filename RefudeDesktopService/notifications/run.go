@@ -64,7 +64,7 @@ func AllPaths() []string {
 	defer lock.Unlock()
 	var paths = make([]string, 0, len(notifications)+2)
 	for _, n := range notifications {
-		paths = append(paths, n.path)
+		paths = append(paths, n.self)
 	}
 	paths = append(paths, "/notifications")
 	paths = append(paths, "/notification/osd")
@@ -78,7 +78,7 @@ func getNotification(path string) *Notification {
 	lock.Lock()
 	defer lock.Unlock()
 	for _, notification := range notifications {
-		if notification.path == path {
+		if notification.self == path {
 			return notification
 		}
 	}
@@ -164,16 +164,16 @@ func Run() {
 		case notification := <-incomingNotifications:
 			upsert(notification)
 			sendToOsd(notification)
-			sendEvent(notification.path)
+			sendEvent(notification)
 		case rem := <-removals:
 			if notification := removeNotification(rem.id); notification != nil {
-				sendEvent(notification.path)
+				sendEvent(notification)
 				conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", rem.id, rem.reason)
 			}
 		case id := <-reaper:
 			if notification, wasExpired := removeIfExpired(id); notification != nil {
 				if wasExpired {
-					sendEvent(notificationSelf(id))
+					sendEvent(notification)
 					conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", id, Expired)
 				} else {
 					time.AfterFunc(notification.Expires.Sub(time.Now())+100*time.Millisecond, func() {
@@ -185,6 +185,6 @@ func Run() {
 	}
 }
 
-func sendEvent(path string) {
-	watch.SomethingChanged(path)
+func sendEvent(n *Notification) {
+	watch.SomethingChanged(n.self)
 }

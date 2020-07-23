@@ -16,6 +16,7 @@ import (
 )
 
 type Device struct {
+	self             string
 	DbusPath         dbus.ObjectPath
 	NativePath       string
 	Vendor           string
@@ -48,7 +49,7 @@ type Device struct {
 
 func (d *Device) ToStandardFormat() *respond.StandardFormat {
 	var sf = &respond.StandardFormat{
-		Self:     deviceSelf(d.DbusPath),
+		Self:     d.self,
 		Type:     "power_device",
 		IconName: d.IconName,
 		Data:     d,

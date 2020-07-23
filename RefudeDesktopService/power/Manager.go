@@ -49,6 +49,7 @@ func retrieveDevicePaths() []dbus.ObjectPath {
 
 func retrieveDevice(path dbus.ObjectPath) *Device {
 	var device = &Device{}
+	device.self = deviceSelf(path)
 	device.DisplayDevice = path == DisplayDevicePath
 	device.DbusPath = path
 	var lastSlash = strings.LastIndex(string(path), "/")

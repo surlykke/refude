@@ -19,6 +19,7 @@ import (
 )
 
 type DesktopApplication struct {
+	self            string
 	Type            string
 	Version         string `json:",omitempty"`
 	Name            string
@@ -46,7 +47,7 @@ type DesktopApplication struct {
 }
 
 func (d *DesktopApplication) ToStandardFormat() *respond.StandardFormat {
-	var self = appSelf(d.Id)
+	var self = d.self
 	var otherActions string
 	if len(d.DesktopActions) > 0 {
 		otherActions = self + "/actions"
@@ -84,10 +85,6 @@ func (d *DesktopApplication) collectActions(term string) respond.StandardFormatL
 
 func (d *DesktopApplication) Run(arg string) error {
 	return run(d.Exec, arg, d.Terminal)
-}
-
-func appSelf(appId string) string {
-	return "/application/" + appId
 }
 
 type DesktopAction struct {

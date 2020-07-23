@@ -25,6 +25,7 @@ import (
 )
 
 type Item struct {
+	self                    string
 	sender                  string
 	itemPath                dbus.ObjectPath
 	Id                      string
@@ -46,7 +47,7 @@ type Item struct {
 
 func (item *Item) ToStandardFormat() *respond.StandardFormat {
 	return &respond.StandardFormat{
-		Self:     itemSelf(item.sender, item.itemPath),
+		Self:     item.self,
 		Type:     "status_item",
 		Title:    item.Title,
 		IconName: item.IconName,

@@ -28,17 +28,6 @@ func Collect() respond.StandardFormatList {
 	return sfl
 }
 
-func AllPaths() []string {
-	deviceLock.Lock()
-	defer deviceLock.Unlock()
-	var paths = make([]string, 0, len(devices)+1)
-	for path := range devices {
-		paths = append(paths, path)
-	}
-	paths = append(paths, "/devices")
-	return paths
-}
-
 func Run() {
 	var knownPaths = map[dbus.ObjectPath]bool{DisplayDevicePath: true}
 	var signals = subscribe()
@@ -94,9 +83,8 @@ func getDevice(path string) *Device {
 func setDevice(device *Device) {
 	deviceLock.Lock()
 	defer deviceLock.Unlock()
-	var self = deviceSelf(device.DbusPath)
-	devices[self] = device
-	watch.SomethingChanged(self)
+	devices[device.self] = device
+	watch.SomethingChanged(device.self)
 }
 
 func removeDevice(path dbus.ObjectPath) {

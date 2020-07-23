@@ -7,7 +7,6 @@
 package notifications
 
 import (
-	"fmt"
 	"net/http"
 	"time"
 
@@ -15,6 +14,7 @@ import (
 )
 
 type Notification struct {
+	self     string
 	Id       uint32
 	Sender   string
 	Subject  string
@@ -24,12 +24,11 @@ type Notification struct {
 	Expires  time.Time `json:",omitempty"`
 	Actions  map[string]string
 	Hints    map[string]interface{}
-	path     string
 }
 
 func (n *Notification) ToStandardFormat() *respond.StandardFormat {
 	return &respond.StandardFormat{
-		Self:     n.path,
+		Self:     n.self,
 		Type:     "notification",
 		Title:    n.Subject,
 		Comment:  n.Body,
@@ -63,8 +62,4 @@ func (n *Notification) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (n *Notification) haveDefaultAction() bool {
 	_, ok := n.Actions["default"]
 	return ok
-}
-
-func notificationSelf(id uint32) string {
-	return fmt.Sprintf("/notification/%d", id)
 }

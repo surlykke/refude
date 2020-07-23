@@ -55,17 +55,17 @@ func Mimetypes() respond.StandardFormatList {
 func AllPaths() []string {
 	var c = collectionStore.Load().(collection)
 	var paths = make([]string, 0, len(c.applications)+len(c.mimetypes)+100)
-	for appId, app := range c.applications {
-		paths = append(paths, appSelf(appId))
+	for _, app := range c.applications {
+		paths = append(paths, app.self)
 		if len(app.DesktopActions) > 0 {
-			paths = append(paths, "/application/"+appId+"/actions")
+			paths = append(paths, app.self+"/actions")
 			for _, act := range app.DesktopActions {
 				paths = append(paths, act.self)
 			}
 		}
 	}
-	for mimetypeId := range c.mimetypes {
-		paths = append(paths, mimetypeSelf(mimetypeId))
+	for _, mt := range c.mimetypes {
+		paths = append(paths, mt.self)
 	}
 	paths = append(paths, "/applications", "/mimetypes")
 	return paths

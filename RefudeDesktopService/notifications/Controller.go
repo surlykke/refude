@@ -205,6 +205,7 @@ func Notify(app_name string,
 	}
 
 	notification := &Notification{
+		self:     fmt.Sprintf("/notification/%d", id),
 		Id:       id,
 		Sender:   app_name,
 		Created:  created,
@@ -214,7 +215,6 @@ func Notify(app_name string,
 		Body:     sanitize(body, allowedTags, allowedEscapes),
 		Actions:  map[string]string{},
 		Hints:    map[string]interface{}{},
-		path:     notificationSelf(id),
 	}
 
 	time.AfterFunc(notification.Expires.Sub(notification.Created)+100*time.Millisecond, func() {

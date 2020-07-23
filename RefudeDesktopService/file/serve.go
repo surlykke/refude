@@ -93,7 +93,6 @@ func DesktopSearch(term string) respond.StandardFormatList {
 						if file, err := makeFile(searchDirectory + "/" + name); err != nil {
 							fmt.Println("Error making file:", err)
 						} else if file != nil {
-							fmt.Println("including...")
 							result = append(result, file.ToStandardFormat())
 						}
 					}

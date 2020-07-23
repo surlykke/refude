@@ -23,6 +23,7 @@ import (
 const freedesktopOrgXml = "/usr/share/mime/packages/freedesktop.org.xml"
 
 type Mimetype struct {
+	self            string
 	Id              string
 	Comment         string
 	Acronym         string `json:",omitempty"`
@@ -44,6 +45,7 @@ func MakeMimetype(id string) (*Mimetype, error) {
 		return nil, errors.New("Incomprehensible mimetype: " + id)
 	} else {
 		return &Mimetype{
+			self:        "/mimetype/" + id,
 			Id:          id,
 			Aliases:     []string{},
 			Globs:       []string{},
@@ -56,17 +58,13 @@ func MakeMimetype(id string) (*Mimetype, error) {
 
 func (mt *Mimetype) ToStandardFormat() *respond.StandardFormat {
 	return &respond.StandardFormat{
-		Self:     mimetypeSelf(mt.Id),
+		Self:     mt.self,
 		Type:     "mimetype",
 		Title:    mt.Comment,
 		Comment:  mt.Acronym,
 		IconName: mt.IconName,
 		Data:     mt,
 	}
-}
-
-func mimetypeSelf(mimetypeId string) string {
-	return fmt.Sprintf("/mimetype/%s", mimetypeId)
 }
 
 func (mt *Mimetype) ServeHTTP(w http.ResponseWriter, r *http.Request) {

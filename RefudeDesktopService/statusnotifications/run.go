@@ -29,7 +29,7 @@ func Handler(r *http.Request) http.Handler {
 			if item.menuPath == "" {
 				return nil
 			} else {
-				return &Menu{self: itemSelf(item.sender, item.itemPath) + "/menu", sender: item.sender, path: item.menuPath}
+				return &Menu{self: item.self + "/menu", sender: item.sender, path: item.menuPath}
 			}
 		} else {
 			return item

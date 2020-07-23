@@ -157,12 +157,12 @@ func updateWatcherProperties() {
 }
 
 func buildItem(sender string, path dbus.ObjectPath) *Item {
-	var item = &Item{sender: sender, itemPath: path}
+	var item = &Item{self: itemSelf(sender, path), sender: sender, itemPath: path}
 	var props = dbuscall.GetAllProps(conn, item.sender, item.itemPath, ITEM_INTERFACE)
 	item.Id = getStringOr(props["Id"])
 	item.Category = getStringOr(props["Category"])
 	if item.menuPath = getDbusPath(props["Menu"]); item.menuPath != "" {
-		item.Menu = itemSelf(item.sender, item.itemPath) + "/menu"
+		item.Menu = item.self + "/menu"
 	}
 	item.Title = getStringOr(props["Title"])
 	item.Status = getStringOr(props["Status"])
