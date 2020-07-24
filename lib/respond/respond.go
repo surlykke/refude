@@ -58,22 +58,16 @@ type StandardFormat struct {
 	IconName     string      `json:",omitempty"`
 	Data         interface{} `json:",omitempty"`
 	NoDisplay    bool        `json:"-"`
-	Rank         int         `json:"-"`
+	Rank         uint        //`json:"-"`
 }
 
 type StandardFormatList []*StandardFormat
 
 func (sfl StandardFormatList) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		AsJson2(w, sfl.Filter(requests.Term(r)).Sort())
+		AsJson(w, sfl.Filter(requests.Term(r)).Sort())
 	} else {
 		NotAllowed(w)
-	}
-}
-
-func (sfl StandardFormatList) Rank(rank int) {
-	for _, sf := range sfl {
-		sf.Rank = rank
 	}
 }
 
@@ -83,16 +77,20 @@ func (sfl StandardFormatList) Filter(term string) StandardFormatList {
 		if sf.NoDisplay {
 			continue
 		}
-		var rank = searchutils.SimpleRank(sf.Title, sf.Comment, term)
-		if rank <= -1 {
-			continue
+		if rank, ok := searchutils.SimpleRank(sf.Title, sf.Comment, term); ok {
+			sf.Rank = sf.Rank + rank
+			filtered = append(filtered, sf)
 		}
-
-		sf.Rank = sf.Rank + rank
-		filtered = append(filtered, sf)
 	}
 
 	return filtered
+}
+
+func (sfl StandardFormatList) ShiftRank(delta uint) StandardFormatList {
+	for _, sf := range sfl {
+		sf.Rank = sf.Rank + delta
+	}
+	return sfl
 }
 
 func (sfl StandardFormatList) Len() int { return len(sfl) }
@@ -114,7 +112,7 @@ func (sf StandardFormatList) Sort() StandardFormatList {
 
 // -----
 
-func AsJson2(w http.ResponseWriter, data interface{}) {
+func AsJson(w http.ResponseWriter, data interface{}) {
 	var json = ToJson(data)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(json)

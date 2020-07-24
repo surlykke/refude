@@ -8,6 +8,7 @@ package requests
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/surlykke/RefudeServices/lib/parser"
 )
@@ -21,7 +22,7 @@ func GetSingleQueryParameter(r *http.Request, parameterName string, fallbackValu
 }
 
 func Term(r *http.Request) string {
-	return GetSingleQueryParameter(r, "term", "")
+	return strings.ToLower(strings.TrimSpace(GetSingleQueryParameter(r, "term", "")))
 }
 
 func GetMatcher(r *http.Request) (parser.Matcher, error) {

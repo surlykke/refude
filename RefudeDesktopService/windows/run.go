@@ -56,8 +56,10 @@ func Handler(r *http.Request) http.Handler {
 func Windows() respond.StandardFormatList {
 	var idList = windows.Load().([]uint32)
 	var sfl = make(respond.StandardFormatList, 0, len(idList))
-	for _, id := range idList {
-		sfl = append(sfl, Window(id).ToStandardFormat())
+	for i, id := range idList {
+		var sf = Window(id).ToStandardFormat()
+		sf.Rank = 10 * uint(i)
+		sfl = append(sfl, sf)
 	}
 	return sfl
 }
@@ -84,7 +86,7 @@ func Run() {
 			windows.Store([]uint32{})
 		} else {
 			var list = make([]uint32, len(wIds), len(wIds))
-			// Revert so highest in stach comes first
+			// Revert so highest in stack comes first
 			for i := 0; i < len(wIds); i++ {
 				list[i] = wIds[len(wIds)-i-1]
 			}

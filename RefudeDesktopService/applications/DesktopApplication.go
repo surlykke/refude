@@ -67,7 +67,7 @@ func (d *DesktopApplication) ToStandardFormat() *respond.StandardFormat {
 
 func (d *DesktopApplication) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		respond.AsJson2(w, d.ToStandardFormat())
+		respond.AsJson(w, d.ToStandardFormat())
 	} else if r.Method == "POST" {
 		respond.AcceptedAndThen(w, func() { d.Run("") })
 	} else {
@@ -111,7 +111,7 @@ func (da *DesktopAction) ToStandardFormat() *respond.StandardFormat {
 
 func (da *DesktopAction) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		respond.AsJson2(w, da.ToStandardFormat())
+		respond.AsJson(w, da.ToStandardFormat())
 	} else if r.Method == "POST" {
 		respond.AcceptedAndThen(w, func() { da.Run("") })
 	} else {

@@ -50,7 +50,7 @@ type TypeMap map[string]DocType
 
 func (tm TypeMap) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		respond.AsJson2(w, &respond.StandardFormat{
+		respond.AsJson(w, &respond.StandardFormat{
 			Self:  "/doc/types",
 			Type:  "doctypes",
 			Title: "Refude document types",

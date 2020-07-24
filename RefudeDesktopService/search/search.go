@@ -24,17 +24,15 @@ import (
 
 func Handler(r *http.Request) http.Handler {
 	if r.URL.Path == "/search/paths" {
-		return PathSearcher{}
+		return http.HandlerFunc(Paths)
 	} else if r.URL.Path == "/search/desktop" {
-		return DesktopSearcher{}
+		return http.HandlerFunc(DesktopResources)
 	} else {
 		return nil
 	}
 }
 
-type PathSearcher struct{}
-
-func (p PathSearcher) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func Paths(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		var prefix = requests.GetSingleQueryParameter(r, "prefix", "")
 		var paths = make([]string, 0, 2000)
@@ -46,7 +44,7 @@ func (p PathSearcher) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		paths = append(paths, session.AllPaths()...)
 		paths = append(paths, notifications.AllPaths()...)
 		paths = append(paths, power.AllPaths()...)
-		paths = append(paths, otherPaths()...)
+		paths = append(paths, "/search/paths", "/search/desktop", "/watch")
 
 		var found = 0
 		for i := 0; i < len(paths); i++ {
@@ -58,38 +56,30 @@ func (p PathSearcher) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		paths = paths[:found]
 
 		sort.Sort(slice.SortableStringSlice(paths))
-		respond.AsJson2(w, paths)
+		respond.AsJson(w, paths)
 	} else {
 		respond.NotAllowed(w)
 	}
 }
 
-type DesktopSearcher struct{}
-
-func (d DesktopSearcher) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func DesktopResources(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		var term = requests.Term(r)
 
 		var sfl = make(respond.StandardFormatList, 0, 1000)
-		if term == "" {
-			sfl = append(sfl, file.Recent().Filter("")...)
-			sfl = append(sfl, notifications.CollectActionable().Filter("")...)
-			sfl = append(sfl, windows.Windows().Filter("")...)
-		} else {
-			sfl = append(sfl, notifications.CollectActionable().Filter(term).Sort()...)
-			sfl = append(sfl, windows.Windows().Filter(term).Sort()...)
-			sfl = append(sfl, applications.Applications().Filter(term).Sort()...)
-			sfl = append(sfl, session.Collect().Filter(term).Sort()...)
-			sfl = append(sfl, file.DesktopSearch(term).Filter(term).Sort()...)
-			sfl = append(sfl, power.DesktopSearch().Filter(term).Sort()...)
+		sfl = append(sfl, file.Recent().Filter("")...)
+		sfl = append(sfl, notifications.CollectActionable().Filter(term).ShiftRank(50)...)
+		sfl = append(sfl, windows.Windows().Filter(term).ShiftRank(100)...)
+
+		if len(term) > 0 {
+			sfl = append(sfl, applications.Applications().Filter(term).ShiftRank(150)...)
+			sfl = append(sfl, session.Collect().Filter(term).ShiftRank(200)...)
+			sfl = append(sfl, file.DesktopSearch(term).Filter(term).ShiftRank(250)...)
+			sfl = append(sfl, power.DesktopSearch().Filter(term).ShiftRank(300)...)
 		}
 
-		respond.AsJson2(w, sfl)
+		respond.AsJson(w, sfl.Sort())
 	} else {
 		respond.NotAllowed(w)
 	}
-}
-
-func otherPaths() []string {
-	return []string{"/search/paths", "/search/desktop", "/watch"}
 }

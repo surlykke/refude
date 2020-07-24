@@ -83,7 +83,7 @@ func (d *Device) ToStandardFormat() *respond.StandardFormat {
 
 func (d *Device) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		respond.AsJson2(w, d.ToStandardFormat())
+		respond.AsJson(w, d.ToStandardFormat())
 	} else {
 		respond.NotAllowed(w)
 	}

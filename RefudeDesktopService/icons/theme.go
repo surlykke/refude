@@ -40,7 +40,7 @@ func (it *IconTheme) ToStandardFormat() *respond.StandardFormat {
 
 func (it *IconTheme) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		respond.AsJson2(w, it.ToStandardFormat())
+		respond.AsJson(w, it.ToStandardFormat())
 	} else {
 		respond.NotAllowed(w)
 	}

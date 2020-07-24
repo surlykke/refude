@@ -58,7 +58,7 @@ func (item *Item) ToStandardFormat() *respond.StandardFormat {
 
 func (item *Item) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		respond.AsJson2(w, item.ToStandardFormat())
+		respond.AsJson(w, item.ToStandardFormat())
 	} else if r.Method == "POST" {
 		dbusObj := conn.Object(item.sender, item.itemPath)
 		action := requests.GetSingleQueryParameter(r, "action", "Activate")
@@ -120,7 +120,7 @@ func (m *Menu) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if entries, err := m.entries(); err != nil {
 			respond.ServerError(w, err)
 		} else {
-			respond.AsJson2(w, m.ToStandardFormat(entries))
+			respond.AsJson(w, m.ToStandardFormat(entries))
 		}
 	} else if r.Method == "POST" {
 		id := requests.GetSingleQueryParameter(r, "id", "")

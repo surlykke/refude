@@ -23,7 +23,7 @@ type Action string
 func (a Action) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var sf = actions[string(a)]
 	if r.Method == "GET" {
-		respond.AsJson2(w, sf)
+		respond.AsJson(w, sf)
 	} else if r.Method == "POST" {
 		var call = login1Object.Call(endpoint[sf.Self], dbus.Flags(0), false)
 		if call.Err != nil {

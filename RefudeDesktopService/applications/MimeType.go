@@ -69,7 +69,7 @@ func (mt *Mimetype) ToStandardFormat() *respond.StandardFormat {
 
 func (mt *Mimetype) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		respond.AsJson2(w, mt.ToStandardFormat())
+		respond.AsJson(w, mt.ToStandardFormat())
 		/*} else if r.Method == "PATCH" {
 		var decoder = json.NewDecoder(r.Body)
 		var decoded = make(map[string]string)

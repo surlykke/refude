@@ -70,7 +70,7 @@ func (win Window) ToStandardFormat() *respond.StandardFormat {
 
 func (win Window) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		respond.AsJson2(w, win.ToStandardFormat())
+		respond.AsJson(w, win.ToStandardFormat())
 	} else if r.Method == "POST" {
 		dataMutex.Lock()
 		defer dataMutex.Unlock()

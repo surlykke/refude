@@ -88,7 +88,7 @@ type Event struct {
 
 func (e *Event) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		respond.AsJson2(w, e)
+		respond.AsJson(w, e)
 	} else {
 		respond.NotAllowed(w)
 	}

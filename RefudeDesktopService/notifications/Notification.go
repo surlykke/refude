@@ -41,7 +41,7 @@ func (n *Notification) ToStandardFormat() *respond.StandardFormat {
 
 func (n *Notification) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		respond.AsJson2(w, n.ToStandardFormat())
+		respond.AsJson(w, n.ToStandardFormat())
 	} else if r.Method == "POST" {
 		// TODO otheractions
 		if n.haveDefaultAction() {

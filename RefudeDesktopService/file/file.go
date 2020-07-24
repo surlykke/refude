@@ -44,7 +44,7 @@ func (f *File) ToStandardFormat() *respond.StandardFormat {
 
 func (f *File) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		respond.AsJson2(w, f.ToStandardFormat())
+		respond.AsJson(w, f.ToStandardFormat())
 	} else if r.Method == "POST" {
 		if err := applications.OpenFile(f.Path, f.Mimetype); err != nil {
 			respond.ServerError(w, err)
@@ -127,7 +127,7 @@ func (fa *FileAction) ToStandardFormat() *respond.StandardFormat {
 
 func (fa *FileAction) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		respond.AsJson2(w, fa.ToStandardFormat)
+		respond.AsJson(w, fa.ToStandardFormat)
 	} else if r.Method == "POST" {
 		if err := fa.application.Run(fa.file.Path); err != nil {
 			respond.ServerError(w, err)
