@@ -165,7 +165,7 @@ export class Do extends React.Component {
             </div>
             <div key="itemListDiv" id="itemListDiv" style={itemListStyle}>
                 {this.state.resources.map((r,i,resources) => 
-                    <DoItem key={r.Self} res={r} prevRes={resources[i-1]} selected={this.state.selected === r.Self} 
+                    <DoItem key={r.Self} res={r} selected={this.state.selected === r.Self} 
                             onClick={() => this.select(r)} onDoubleClick={() => this.activate(r.Self)}/>)
                 }
             </div>

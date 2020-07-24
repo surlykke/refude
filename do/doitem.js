@@ -8,15 +8,7 @@ import React from 'react';
 
 export let DoItem = props => {
 
-    let {res, prevRes, selected, onClick, onDoubleClick} = props;
-
-    let headingStyle = {
-        fontSize: "0.9em",
-        color: "gray",
-        fontStyle: "italic",
-        marginTop: "5px",
-        marginBottom: "3px",
-    };
+    let {res, selected, onClick, onDoubleClick} = props;
 
     let style =  {
         position: "relative",
@@ -75,9 +67,6 @@ export let DoItem = props => {
     }
 
     return [ 
-        !(prevRes && prevRes.Type === res.Type) &&
-        <div key="heading" style={headingStyle}>{res.Type}</div>,
-        
         <div key="body" id={res.Self} style={style} onClick={onClick} onDoubleClick={onDoubleClick}> 
             {res.OnDelete &&
             <svg width="10" height="10" viewBox="0 0 100 100" style={{position: "absolute", top: "2px", right: "2px"}}>
