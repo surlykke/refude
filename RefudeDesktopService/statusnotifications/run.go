@@ -78,7 +78,8 @@ func Run() {
 		default:
 			var path = itemSelf(event.sender, event.path)
 			if item := get(path); item != nil {
-				var itemCopy = &(*item)
+				var tmp = *item
+				var itemCopy = &tmp
 				switch event.eventName {
 				case "org.kde.StatusNotifierItem.NewTitle":
 					updateTitle(itemCopy)

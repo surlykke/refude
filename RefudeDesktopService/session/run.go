@@ -39,7 +39,8 @@ func (a Action) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func Collect() respond.StandardFormatList {
 	var sfl = make(respond.StandardFormatList, 0, len(actions))
 	for _, action := range actions {
-		sfl = append(sfl, action)
+		var copy = *action
+		sfl = append(sfl, &copy)
 	}
 	return sfl
 }
