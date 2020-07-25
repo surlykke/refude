@@ -68,14 +68,14 @@ func DesktopResources(w http.ResponseWriter, r *http.Request) {
 
 		var sfl = make(respond.StandardFormatList, 0, 1000)
 		sfl = append(sfl, file.Recent().Filter("")...)
-		sfl = append(sfl, notifications.CollectActionable().Filter(term).ShiftRank(50)...)
-		sfl = append(sfl, windows.Windows().Filter(term).ShiftRank(100)...)
+		sfl = append(sfl, notifications.CollectActionable().Filter(term).ShiftRank(100)...)
+		sfl = append(sfl, windows.Windows().Filter(term).ShiftRank(200)...)
 
 		if len(term) > 0 {
-			sfl = append(sfl, applications.Applications().Filter(term).ShiftRank(150)...)
-			sfl = append(sfl, session.Collect().Filter(term).ShiftRank(200)...)
-			sfl = append(sfl, file.DesktopSearch(term).Filter(term).ShiftRank(250)...)
-			sfl = append(sfl, power.DesktopSearch().Filter(term).ShiftRank(300)...)
+			sfl = append(sfl, applications.Applications().Filter(term).ShiftRank(300)...)
+			sfl = append(sfl, session.Collect().Filter(term).ShiftRank(300)...)
+			sfl = append(sfl, file.DesktopSearch(term).Filter(term).ShiftRank(300)...)
+			sfl = append(sfl, power.DesktopSearch().Filter(term).ShiftRank(600)...)
 		}
 
 		respond.AsJson(w, sfl.Sort())

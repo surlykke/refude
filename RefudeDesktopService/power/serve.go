@@ -20,8 +20,8 @@ func DesktopSearch() respond.StandardFormatList {
 	deviceLock.Lock()
 	defer deviceLock.Unlock()
 	var res = make(respond.StandardFormatList, 0, len(devices))
-	for path, device := range devices {
-		if path != "/device/DisplayDevice" {
+	for _, device := range devices {
+		if device.self != "/device/DisplayDevice" && device.Type != "Line Power" {
 			res = append(res, device.ToStandardFormat())
 			continue
 		}
