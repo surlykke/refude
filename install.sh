@@ -9,7 +9,7 @@ mkdir -p ${REFUDEDIR}
 
 echo Creating javascript bundles
 (cd ./bundle && rm *)
-./node_modules/.bin/webpack --mode=production
+./node_modules/.bin/webpack --silent --mode=production
 
 ./node_modules/electron-packager/bin/electron-packager.js . --asar || exit 1
 cp ./refude.sh ./refude.desktop refude-linux-x64
