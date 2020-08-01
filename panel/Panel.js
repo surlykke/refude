@@ -19,24 +19,8 @@ import { NotifierItems } from './notifieritems'
 import { DragField } from './dragfield'
 import { CloseButton } from "./closebutton";
 import { ipcRenderer, webFrame } from 'electron'
+import './Panel.css'
 
-const style = {
-    margin: "0px",
-    paddingLeft: "6px",
-    paddingRight: "6px",
-    width: "fit-content",
-    backgroundColor: "rgba(255,255,255,0.8)"
-}
-
-const pluginStyle = {
-    display: "inline-block",
-    height: "100%",
-    marginTop: "0px",
-    marginLeft: "0px",
-    marginBottom: "0px",
-    marginRight: "5px",
-    verticalAlign: "middle"
-}
 
 export default class Panel extends React.Component {
     content = React.createRef()
@@ -71,12 +55,12 @@ export default class Panel extends React.Component {
 
     render = () => {
         return <div style={{ width: "500px" }}>
-            <div style={style} id="content" ref={this.content}>
-                <Clock style={pluginStyle} />
-                <NotifierItems style={pluginStyle} />
-                <Battery style={pluginStyle} />
-                <DragField style={pluginStyle} />
-                <CloseButton style={pluginStyle} />
+            <div id="content" className="panel" ref={this.content}>
+                <Clock/>
+                <NotifierItems/>
+                <Battery/>
+                <DragField/>
+                <CloseButton/>
             </div>
         </div>
     }

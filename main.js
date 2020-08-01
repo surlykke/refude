@@ -55,7 +55,7 @@ let createDoWindow = () => {
                 doWindow.webContents.send("doReset")
                 indicatorWindow.send("screens", screen.getAllDisplays())
             } else {
-                doWindow.send("doMove", req.url !== "/up")
+                doWindow.send("doMove", req.url === "/up")
                 doWindow.focus()
             }
 
@@ -119,8 +119,6 @@ let createOsdWindow = () => {
             let zf = panelWindow.webContents.zoomFactor
             let [width, height] = [Math.round(zf*rect.width), Math.round(zf*rect.height)]
             width = Math.max(width, pb.width)
-            console.log("Got rect:", rect, "zf: ", zf, "panelWindow.zoomFactor:", panelWindow.zoomFactor)
-            console.log("set bounds:", { x: pb.x, y: pb.y + pb.height + 12, width: Math.round(zf * rect.width), height: Math.round(zf * rect.height) })
             osdWindow.setBounds({ x: pb.x, y: pb.y + pb.height + 12, width: width, height: height})
             osdWindow.webContents.zoomFactor = zf
             osdWindow.showInactive()

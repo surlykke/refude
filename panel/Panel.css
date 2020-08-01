@@ -1,0 +1,21 @@
+.panel  {
+    margin: 0px;
+    padding-left: 6px;
+    padding-right: 6px;
+    width: fit-content;
+    background-color: rgba(255,255,255,0.6);
+}
+
+.plugin {
+    display: inline-block;
+    height: 100%;
+    margin-top: 0px;
+    margin-left: 0px;
+    margin-bottom: 0px;
+    margin-right: 5px;
+    vertical-align: middle;
+}
+
+.drag {
+    -webkit-app-region: drag;
+}

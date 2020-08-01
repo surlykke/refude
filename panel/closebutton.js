@@ -6,6 +6,7 @@
 //
 import React from 'react'
 import { ipcRenderer } from 'electron'
+import './Panel.css'
 
 let quit = () => {
 	ipcRenderer.send("panelClose")
@@ -13,7 +14,7 @@ let quit = () => {
 
 export class CloseButton extends React.Component {
 	render = () => {
-		return <div style={this.props.style} onClick={quit}>
+		return <div className="plugin" onClick={quit}>
 			<svg width="14" height="14" viewBox="0 0 100 100">
 				<g fillOpacity="0" strokeWidth="12" stroke="black">
 					<line x1="15" y1="15" x2="85" y2="85"/>

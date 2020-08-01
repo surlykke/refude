@@ -7,10 +7,10 @@
 
 import React from 'react'
 import { DoItem } from "./doitem"
-import { getUrl, postUrl, deleteUrl } from '../common/monitor';
+import { getUrl} from '../common/monitor';
 import { ipcRenderer } from 'electron';
 import { keyDownHandler } from './keyhandler';
-
+import './Do.css'
 export class ResourceList extends React.Component {
     constructor(props) {
         super(props);
@@ -20,9 +20,7 @@ export class ResourceList extends React.Component {
 
     };
 
-    componentDidMount = () => {
-        this.setTerm(this.props.term)
-    }
+    componentDidMount = () => this.setTerm(this.props.term)
 
     componentDidUpdate = () => {
         // Scroll selected item into view
@@ -38,76 +36,41 @@ export class ResourceList extends React.Component {
             }
         }
 
+        ipcRenderer.send("doResourceSelected", this.selectedResource()) // TODO Optimize
     };
 
-    updateResourceList = () => {
-        getUrl(`/search/desktop\?term=${this.state.term}`, resp => {
-            this.setState({ resources: resp.data, index: 0})
-        })
-    }
-
+    updateResourceList = () => getUrl(`/search/desktop\?term=${this.state.term}`, resp => this.setState({ resources: resp.data, index: 0 }))
     selectedResource = () => this.state.resources[this.state.index]
-
-    setTerm = (term) => {
-        this.setState({ term: term.toLowerCase() }, this.updateResourceList)
-    }
-
+    setTerm = (term) => this.setState({ term: term.toLowerCase() }, this.updateResourceList)
     curRes = () => this.state.resources[this.state.index]
     resLen = () => this.state.resources.length
     index = () => this.state.index
-
-    up = () => { this.setState({index: this.resLen() > 0 ? (this.index() + this.resLen() - 1) % this.resLen() : 0})}
-    down = () => { this.setState({index: this.resLen() > 0 ? (this.index() + 1) % this.resLen() : 0})}
-    right = () => { this.curRes() && this.curRes().Actions && this.props.showRes(this.curRes(), this.state.term)}
-    post = () => { this.curRes() && this.props.post(this.curRes().Self) }
-    del = () => { this.curRes() && this.props.del(this.curRes().Self)}
-
+    up = () => this.setState({ index: this.resLen() > 0 ? (this.index() + this.resLen() - 1) % this.resLen() : 0 })
+    down = () => this.setState({ index: this.resLen() > 0 ? (this.index() + 1) % this.resLen() : 0 })
+    right = () => this.curRes() && this.curRes().Actions && this.props.showRes(this.curRes(), this.state.term)
+    post = () => this.curRes() && this.props.post(this.curRes().Self)
+    del = () => this.curRes() && this.props.del(this.curRes().Self)
+    reset = () => this.setState({ term: "", index: 0 }, this.updateResourceList)
+    
     keyHandler = keyDownHandler(this.up, this.down, undefined, this.right, this.post, this.del, this.props.dismiss)
 
-    reset = () => this.setState({ term: "", index: 0 }, this.updateResourceList)
-
-    render = () => {
-
-        let searchBoxStyle = {
-            boxSizing: "border-box",
-            paddingRight: "5px",
-            width: "calc(100% - 16px)",
-            marginTop: "4px",
-            marginBottom: "6px",
-        };
-
-        let inputStyle = {
-            width: "100%",
-            height: "36px",
-            borderRadius: "5px",
-            outlineStyle: "none",
-        };
-
-        let itemListStyle = {
-            flexGrow: "1",
-            overflowY: "scroll"
-        };
-
-        ipcRenderer.send("doResourceSelected", this.selectedResource()) // TODO Optimize
-
-        return <div>
-            <div key="searchBox" style={searchBoxStyle} onKeyDown={this.keyHandler}> 
-                <input id="input"
-                    style={inputStyle}
-                    type="search"
-                    onChange={e => this.setTerm(e.target.value)}
-                    value={this.state.term}
-                    autoComplete="off"
-                    autoFocus />
-            </div>
-            <div key="itemListDiv" id="itemListDiv" style={itemListStyle}>
-                {this.state.resources.map((r, i, resources) =>
-                    <DoItem key={r.Self} res={r} 
-                        selected={this.state.index === i}
-                        onClick={() => this.setState({index: i})} 
-                        onDoubleClick={() => this.setState({index: i}, this.post)} />)
-                }
-            </div>
+    render = () => <>
+        <div key="searchBox" className="searchbox" onKeyDown={this.keyHandler}>
+            <input id="input"
+                className="searchinput"
+                type="search"
+                onChange={e => this.setTerm(e.target.value)}
+                value={this.state.term}
+                autoComplete="off"
+                autoFocus />
         </div>
-    }
+        <div key="itemListDiv" id="itemListDiv" className="itemlist">
+            {this.state.resources.map((r, i, resources) =>
+                <DoItem key={r.Self} res={r}
+                    selected={this.state.index === i}
+                    onClick={() => this.setState({ index: i })}
+                    onDoubleClick={() => this.setState({ index: i }, this.post)} />)
+            }
+        </div>
+    </>
 }

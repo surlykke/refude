@@ -9,7 +9,7 @@ import ReactDOM from 'react-dom'
 import { monitorPath } from '../common/monitor';
 import { ipcRenderer } from 'electron';
 import Axios from 'axios'
-
+import './Osd.css'
 
 let acceptNotFound = status => {
     return (status >= 200 && status < 300) || status === 404; // default
@@ -54,68 +54,28 @@ export class Osd extends React.Component {
     render = () => {
         let { event } = this.state
         if (event) {
-            let style = {
-                position: "relative",
-                backgroundColor: "white",
-                width: "30em",
-                height: "7em",
-            }
-            let iconStyle = {
-                position: "absolute",
-                width: "2.2em",
-                height: "2.2em",
-                padding: "0.5em",
-            }
-
-            let messageStyle = {
-                position: "absolute",
-                left: "3.2em",
-                overflow: "hidden",
-                padding: "0.5em 0.5em 0.5em 0em",
-                minWidth: "6em",
-                maxWidth: "18em",
-            };
-
-            let titleStyle = {
-                fontSize: "0.9em",
-                whiteSpace: "nowrap",
-            };
-
-            let bodyStyle = {
-                maxHeight: "2.2em",
-                fontSize: "0.7em",
-                paddingTop: "0.2em",
-                paddingBottom: "0.2em",
-                overflowY: "hidden",
-            };
-
             let iconUrl = event.IconName && `http://localhost:7938/icon?name=${event.IconName}&theme=oxygen&size=48`
 
-            let messageDiv
-            if (event.Gauge !== undefined) {
-                messageDiv = 
-                    <div id="messageDiv" style={messageStyle}>
-                        <meter min="0" max="100" value={event.Gauge}></meter>
-                    </div>
-            } else {
-                messageDiv =
-                   <div id="messageDiv" style={messageStyle}>
-                        <div style={titleStyle}>
-                            {event.Title}
-                        </div>
-                        {event.Message.map((m, i) =>
-                            <div key={`line${i}`} style={bodyStyle}>
-                                {m}
-                            </div>)
-                        }
-                    </div>
-            }
-
-            return <div id="osdDiv" style={style}>
-                <div id="iconDiv" style={iconStyle}>
+            return <div id="osdDiv" className="osd">
+                <div id="iconDiv" className="icon">
                     <img width="100%" height="100%" src={iconUrl} alt="" />
                 </div>
-                {messageDiv} 
+                <div id="messageDiv" className="message">
+                    {
+                        event.Gauge !== undefined ?
+                        <meter min="0" max="100" value={event.Gauge}></meter> :
+                        <> 
+                            <div className="title">
+                                {event.Title}
+                            </div>
+                            {event.Message.map((m, i) =>
+                                <div key={`line${i}`} className="body">
+                                    {m}
+                                </div>)
+                            }
+                        </>
+                    }
+                </div>
             </div>
         } else {
             ipcRenderer.send("osdHide")

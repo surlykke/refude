@@ -8,6 +8,7 @@ import React from 'react'
 import { getUrl, postUrl, iconUrl, monitorPath } from "../common/monitor";
 import { remote } from 'electron'
 const {Menu, MenuItem} = remote
+import './Panel.css'
 
 export class NotifierItem extends React.Component {
     constructor(props) {
@@ -115,7 +116,7 @@ export class NotifierItems extends React.Component {
 
 
     render = () => {
-        return <div style={this.style}>
+        return <div className="plugin">
             {this.state.items.map(item => (<NotifierItem key={item.Self} item={item} />))}
         </div>
     }

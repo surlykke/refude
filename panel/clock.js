@@ -12,7 +12,7 @@
  * Please refer to the LICENSE file for a copy of the license.
  */
 import React from 'react'
-
+import './Panel.css'
 
 // TODO i18n
 const monthNames = ["jan", "feb", "mar", "apr", "maj", "jun", "jul", "aug", "sep", "okt", "nov", "dec"];
@@ -41,7 +41,7 @@ class Clock extends React.Component {
 	}
 
 	render = () => {
-		return <div id="clock" style={this.style}>
+		return <div id="clock" className="plugin">
 					<div>{this.state.clockString}</div>
 				</div>
 	}
