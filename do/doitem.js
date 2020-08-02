@@ -34,7 +34,7 @@ export let DoItem = props => {
                 <circle cx="50" cy="50" r="48" stroke="black" strokeWidth="4" fill="none" />
             </svg>}
 
-            {res.OtherActions &&
+            {res.Actions &&
             <svg width="18" height="6" viewBox="0 0 300 100" style={{position: "absolute", zAxis: "10", bottom: "2px", right: "5px"}}>
                 <circle cx="50" cy="50" r="30" stroke="gray" strokeWidth="4" fill="gray" />
                 <circle cx="150" cy="50" r="30" stroke="gray" strokeWidth="4" fill="gray" />
