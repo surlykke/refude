@@ -9,7 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/surlykke/RefudeServices/RefudeDesktopService/applications"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/xdg"
@@ -18,17 +17,13 @@ import (
 var filePathPattern = regexp.MustCompile(`^/file$|^/file(/actions)$|^/file/action/([^/]+)$`)
 
 func Handler(r *http.Request) http.Handler {
-	if matches := filePathPattern.FindStringSubmatch(r.URL.Path); matches == nil {
-		return nil
-	} else if file := getFile(r); file == nil {
-		return nil
-	} else if matches[1] != "" {
-		return file.collectActions()
-	} else if matches[2] != "" {
-		return file.action(matches[2])
-	} else {
-		return file
+	if r.URL.Path == "/file" {
+		if file := getFile(r); file != nil {
+			return file
+		}
 	}
+
+	return nil
 }
 
 var noPathError = fmt.Errorf("No path given")
@@ -43,10 +38,6 @@ func getFile(r *http.Request) *File {
 	} else {
 		return file
 	}
-}
-
-func getApp(r *http.Request) *applications.DesktopApplication {
-	return applications.GetApp(requests.GetSingleQueryParameter(r, "app", ""))
 }
 
 func getAdjustedPath(r *http.Request) string {
@@ -82,7 +73,7 @@ func DesktopSearch(term string) respond.StandardFormatList {
 	} else {
 		term = strings.ToLower(term)
 		var result = make(respond.StandardFormatList, 0, 100)
-		for searchDirectory, _ := range searchDirectories {
+		for searchDirectory := range searchDirectories {
 			if dir, err := os.Open(searchDirectory); err != nil {
 				fmt.Println("Error opening", searchDirectory, err)
 			} else if names, err := dir.Readdirnames(-1); err != nil {

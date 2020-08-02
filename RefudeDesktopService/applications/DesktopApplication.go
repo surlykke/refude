@@ -13,6 +13,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/respond"
 
 	"github.com/surlykke/RefudeServices/lib/xdg"
@@ -41,27 +42,29 @@ type DesktopApplication struct {
 	StartupNotify   bool
 	StartupWmClass  string `json:",omitempty"`
 	Url             string `json:",omitempty"`
-	DesktopActions  map[string]*DesktopAction
+	DesktopActions  []DesktopAction
 	Id              string
 	Mimetypes       []string
 }
 
 func (d *DesktopApplication) ToStandardFormat() *respond.StandardFormat {
 	var self = d.self
-	var otherActions string
+	var actions []respond.Action
 	if len(d.DesktopActions) > 0 {
-		otherActions = self + "/actions"
+		for _, da := range d.DesktopActions {
+			actions = append(actions, respond.Action{Title: da.Name, IconName: da.IconName, Path: d.self + "?actionid=" + da.id})
+		}
 	}
 	return &respond.StandardFormat{
-		Self:         self,
-		OnPost:       "Launch",
-		OtherActions: otherActions,
-		Type:         "application",
-		Title:        d.Name,
-		Comment:      d.Comment,
-		IconName:     d.IconName,
-		Data:         d,
-		NoDisplay:    d.NoDisplay,
+		Self:      self,
+		OnPost:    "Launch",
+		Actions:   actions,
+		Type:      "application",
+		Title:     d.Name,
+		Comment:   d.Comment,
+		IconName:  d.IconName,
+		Data:      d,
+		NoDisplay: d.NoDisplay,
 	}
 }
 
@@ -69,18 +72,22 @@ func (d *DesktopApplication) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		respond.AsJson(w, d.ToStandardFormat())
 	} else if r.Method == "POST" {
-		respond.AcceptedAndThen(w, func() { d.Run("") })
+
+		var exec = d.Exec
+		var actionId = requests.GetSingleQueryParameter(r, "actionid", "")
+		if actionId != "" {
+			if action, ok := d.action(actionId); ok {
+				exec = action.Exec
+			} else {
+				respond.UnprocessableEntity(w, fmt.Errorf("Invalid actionid: %s", actionId))
+				return
+			}
+		}
+
+		respond.AcceptedAndThen(w, func() { run(exec, "", d.Terminal) })
 	} else {
 		respond.NotAllowed(w)
 	}
-}
-
-func (d *DesktopApplication) collectActions(term string) respond.StandardFormatList {
-	var sfl = make(respond.StandardFormatList, 0, len(d.DesktopActions))
-	for _, act := range d.DesktopActions {
-		sfl = append(sfl, act.ToStandardFormat())
-	}
-	return sfl
 }
 
 func (d *DesktopApplication) Run(arg string) error {
@@ -88,7 +95,7 @@ func (d *DesktopApplication) Run(arg string) error {
 }
 
 type DesktopAction struct {
-	self     string
+	id       string
 	Name     string
 	Exec     string
 	IconName string
@@ -98,25 +105,14 @@ func (da *DesktopAction) Run(arg string) error {
 	return run(da.Exec, arg, false)
 }
 
-func (da *DesktopAction) ToStandardFormat() *respond.StandardFormat {
-	return &respond.StandardFormat{
-		Self:     da.self,
-		OnPost:   "Launch",
-		Type:     "applicationaction",
-		Title:    da.Name,
-		IconName: da.IconName,
-		Data:     da,
+func (d *DesktopApplication) action(id string) (DesktopAction, bool) {
+	for _, a := range d.DesktopActions {
+		if a.id == id {
+			return a, true
+		}
 	}
-}
 
-func (da *DesktopAction) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "GET" {
-		respond.AsJson(w, da.ToStandardFormat())
-	} else if r.Method == "POST" {
-		respond.AcceptedAndThen(w, func() { da.Run("") })
-	} else {
-		respond.NotAllowed(w)
-	}
+	return DesktopAction{}, false
 }
 
 func OpenFile(path string, mimetypeId string) error {

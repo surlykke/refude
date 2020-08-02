@@ -335,7 +335,7 @@ func readDesktopFile(path string, id string) (*DesktopApplication, []string, err
 	} else {
 		var da = DesktopApplication{self: "/application/" + id, Id: id}
 		var mimetypes = []string{}
-		da.DesktopActions = make(map[string]*DesktopAction)
+		da.DesktopActions = []DesktopAction{}
 		var actionNames = []string{}
 		group := iniFile[0]
 
@@ -387,12 +387,12 @@ func readDesktopFile(path string, id string) (*DesktopApplication, []string, err
 				if strings.HasPrefix(iconName, "/") {
 					iconName = icons.AddFileIcon(iconName)
 				}
-				da.DesktopActions[currentAction] = &DesktopAction{
-					self:     "/application/" + da.Id + "/action/" + currentAction,
+				da.DesktopActions = append(da.DesktopActions, DesktopAction{
+					id:       currentAction,
 					Name:     name,
 					Exec:     actionGroup.Entries["Exec"],
 					IconName: iconName,
-				}
+				})
 			}
 		}
 		mimetypes = slice.Split(group.Entries["MimeType"], ";")

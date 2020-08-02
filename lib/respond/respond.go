@@ -46,19 +46,25 @@ func AcceptedAndThen(w http.ResponseWriter, f func()) {
 	f()
 }
 
+type Action struct {
+	Title    string
+	IconName string
+	Path     string
+}
+
 type StandardFormat struct {
-	Self         string
-	OnPost       string `json:",omitempty"`
-	OnPatch      string `json:",omitempty"`
-	OnDelete     string `json:",omitempty"`
-	OtherActions string `json:",omitempty"`
-	Type         string
-	Title        string
-	Comment      string      `json:",omitempty"`
-	IconName     string      `json:",omitempty"`
-	Data         interface{} `json:",omitempty"`
-	NoDisplay    bool        `json:"-"`
-	Rank         uint        //`json:"-"`
+	Self      string
+	OnPost    string   `json:",omitempty"`
+	OnPatch   string   `json:",omitempty"`
+	OnDelete  string   `json:",omitempty"`
+	Actions   []Action `json:",omitempty"`
+	Type      string
+	Title     string
+	Comment   string      `json:",omitempty"`
+	IconName  string      `json:",omitempty"`
+	Data      interface{} `json:",omitempty"`
+	NoDisplay bool        `json:"-"`
+	Rank      uint        //`json:"-"`
 }
 
 type StandardFormatList []*StandardFormat
