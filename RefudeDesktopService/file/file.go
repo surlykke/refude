@@ -22,9 +22,9 @@ type File struct {
 func (f *File) ToStandardFormat() *respond.StandardFormat {
 	var self = "/file?path=" + url.QueryEscape(f.Path)
 
-	var comment = "Open"
-	if f.DefaultApp != "" {
-		comment += " with " + f.DefaultApp
+	var comment = ""
+	if mt := applications.GetMimetype(f.Mimetype); mt != nil {
+		comment = mt.Comment
 	}
 
 	var Actions = make([]respond.Action, 0, 10)
@@ -87,7 +87,7 @@ func makeFile(path string) (*File, error) {
 		return &File{
 			Path:       path,
 			Mimetype:   mimetype,
-			DefaultApp: applications.GetDefaultAppName(mimetype),
+			DefaultApp: applications.GetDefaultApp(mimetype),
 		}, nil
 	}
 }
