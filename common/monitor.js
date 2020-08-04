@@ -49,9 +49,6 @@ export let deleteUrl = (path, handler) => {
     }).catch(err => console.error(err))
 }
 
-
-export let iconUrl = (iconName) => {
-    // TODO make icontheme configurable
-    return `http://localhost:7938/icon?name=${iconName}&theme=oxygen`;
-}
+    
+export let iconUrl = (iconName) => iconName ? `http://localhost:7938/icon?name=${iconName}&theme=oxygen` : ''
 

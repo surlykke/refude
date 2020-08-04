@@ -7,6 +7,7 @@
 import React from 'react';
 import { keyDownHandler } from './keyhandler';
 import './Do.css'
+import { iconUrl } from '../common/monitor';
 
 export class Resource extends React.Component {
     constructor(props) {
@@ -27,8 +28,6 @@ export class Resource extends React.Component {
     render = () => {
         let { res } = this.props;
 
-        let iconUrl = res.IconName ? `http://localhost:7938/icon?name=${res.IconName}&theme=oxygen` : '';
-
         let iconClassName = "icon"
         if (res.Type === "window") {
             iconClassName += " window"
@@ -41,15 +40,19 @@ export class Resource extends React.Component {
 
         return <>
                 <div key="body" id={res.Self} className="item" tabIndex="-1" onKeyDown={this.keyHandler}>
-                    <img width="24px" height="24px" className={iconClassName} src={iconUrl} alt="" />
+                    <img width="24px" height="24px" className={iconClassName} src={iconUrl(res.IconName)} alt="" />
                     <div className="name">{res.Title}</div>
                     <div className="comment">{res.Comment}</div>
                 </div>
-                {res.Actions.map((a, i) => 
-                    <div key={a.Path}> 
-                        <div key={i} className={actionClassName(i)}>{a.Title}</div> 
-                    </div>
-                )}
+                <fieldset className="group">
+                    <legend>Actions</legend>
+                    {res.Actions.map((a, i) => 
+                        <div key={a.Path} className={actionClassName(i)}> 
+                            <img className={iconClassName} src={iconUrl(a.IconName)} alt="" height="18" width="18"/>
+                            <div key={i}> {a.Title}</div> 
+                        </div>
+                    )}
+                </fieldset>
             </>
     }
 }

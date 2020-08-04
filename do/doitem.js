@@ -6,11 +6,11 @@
 
 import React from 'react';
 import './Do.css'
+import { iconUrl } from '../common/monitor';
 
 export let DoItem = props => {
 
     let {res, selected, onClick, onDoubleClick} = props;
-    let iconUrl = res.IconName ? `http://localhost:7938/icon?name=${res.IconName}&theme=oxygen` : '';
 
     let itemClassName = "item" + (selected ? " selected" : "")
     let iconClassName = "icon"
@@ -40,7 +40,7 @@ export let DoItem = props => {
                 <circle cx="150" cy="50" r="30" stroke="gray" strokeWidth="4" fill="gray" />
                 <circle cx="250" cy="50" r="30" stroke="gray" strokeWidth="4" fill="gray" />
             </svg>}
-            <img className={iconClassName} width="24px" height="24px"  src={iconUrl} alt="" />
+            <img className={iconClassName} width="24px" height="24px"  src={iconUrl(res.IconName)} alt="" />
             <div className="name">{res.Title}</div>
             <div className="comment">{res.Comment}</div>
         </div>

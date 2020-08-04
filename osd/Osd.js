@@ -6,7 +6,7 @@
 //
 import React from 'react'
 import ReactDOM from 'react-dom'
-import { monitorPath } from '../common/monitor';
+import { monitorPath, iconUrl } from '../common/monitor';
 import { ipcRenderer } from 'electron';
 import Axios from 'axios'
 import './Osd.css'
@@ -54,11 +54,9 @@ export class Osd extends React.Component {
     render = () => {
         let { event } = this.state
         if (event) {
-            let iconUrl = event.IconName && `http://localhost:7938/icon?name=${event.IconName}&theme=oxygen&size=48`
-
             return <div id="osdDiv" className="osd">
                 <div id="iconDiv" className="icon">
-                    <img width="100%" height="100%" src={iconUrl} alt="" />
+                    <img width="100%" height="100%" src={iconUrl(event.IconName)} alt="" />
                 </div>
                 <div id="messageDiv" className="message">
                     {
