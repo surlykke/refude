@@ -17,15 +17,15 @@ import (
 	"github.com/surlykke/RefudeServices/lib/respond"
 )
 
-func Collect() respond.StandardFormatList {
+func Collect() respond.Links {
 	deviceLock.Lock()
 	defer deviceLock.Unlock()
-	var sfl = make(respond.StandardFormatList, 0, len(devices))
+	var links = make(respond.Links, 0, len(devices))
 	for _, device := range devices {
-		sfl = append(sfl, device.ToStandardFormat())
+		links = append(links, device.Link())
 	}
 
-	return sfl
+	return links
 }
 
 func Run() {
@@ -82,8 +82,8 @@ func getDevice(path string) *Device {
 
 func setDevice(device *Device) {
 	deviceLock.Lock()
-	defer deviceLock.Unlock()
 	devices[device.self] = device
+	deviceLock.Unlock()
 	watch.SomethingChanged(device.self)
 }
 

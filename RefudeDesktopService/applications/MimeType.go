@@ -13,6 +13,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/surlykke/RefudeServices/RefudeDesktopService/icons"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/slice"
 	"github.com/surlykke/RefudeServices/lib/xdg"
@@ -23,7 +24,7 @@ import (
 const freedesktopOrgXml = "/usr/share/mime/packages/freedesktop.org.xml"
 
 type Mimetype struct {
-	self            string
+	respond.Links   `json:"_links"`
 	Id              string
 	Comment         string
 	Acronym         string `json:",omitempty"`
@@ -35,6 +36,7 @@ type Mimetype struct {
 	GenericIcon     string
 	DefaultApp      string `json:",omitempty"`
 	DefaultAppPath  string `json:",omitempty"`
+	self            string
 }
 
 var mimetypePattern = regexp.MustCompile(`^([^/]+)/([^/]+)$`)
@@ -44,32 +46,22 @@ func MakeMimetype(id string) (*Mimetype, error) {
 	if !mimetypePattern.MatchString(id) {
 		return nil, errors.New("Incomprehensible mimetype: " + id)
 	} else {
-		return &Mimetype{
-			self:        "/mimetype/" + id,
+		var mt = Mimetype{
 			Id:          id,
 			Aliases:     []string{},
 			Globs:       []string{},
 			SubClassOf:  []string{},
 			IconName:    "unknown",
 			GenericIcon: "unknown",
-		}, nil
-	}
-}
-
-func (mt *Mimetype) ToStandardFormat() *respond.StandardFormat {
-	return &respond.StandardFormat{
-		Self:     mt.self,
-		Type:     "mimetype",
-		Title:    mt.Comment,
-		Comment:  mt.Acronym,
-		IconName: mt.IconName,
-		Data:     mt,
+			self:        "/mimetype/" + id,
+		}
+		return &mt, nil
 	}
 }
 
 func (mt *Mimetype) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		respond.AsJson(w, mt.ToStandardFormat())
+		respond.AsJson(w, mt)
 		/*} else if r.Method == "PATCH" {
 		var decoder = json.NewDecoder(r.Body)
 		var decoded = make(map[string]string)
@@ -128,4 +120,16 @@ func GetDefaultApp(mimetypeId string) string {
 	}
 
 	return ""
+}
+
+func IconForMimetype(mimetypeId string) string {
+	var tmp = mimetypeId
+	if tmp != "" {
+		tmp = strings.ReplaceAll(tmp, "/", "-")
+	}
+	if tmp != "" {
+		tmp = icons.IconUrlTemplate(tmp)
+	}
+
+	return tmp
 }

@@ -26,7 +26,7 @@ func (ir IconResource) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			respond.UnprocessableEntity(w, errors.New("no name given"))
 		} else {
 			names = dashSplit(names)
-			var themeId = requests.GetSingleQueryParameter(r, "theme", "hicolor")
+			var themeId = requests.GetSingleQueryParameter(r, "theme", defaultIconTheme)
 			var size = uint64(32)
 			var err error
 			if len(r.URL.Query()["size"]) > 0 {

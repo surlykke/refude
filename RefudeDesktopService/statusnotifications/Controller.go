@@ -18,6 +18,7 @@ import (
 	"github.com/godbus/dbus/v5/introspect"
 	"github.com/godbus/dbus/v5/prop"
 	dbuscall "github.com/surlykke/RefudeServices/lib/dbusutils"
+	"github.com/surlykke/RefudeServices/lib/respond"
 )
 
 const WATCHER_SERVICE = "org.kde.StatusNotifierWatcher"
@@ -157,7 +158,7 @@ func updateWatcherProperties() {
 }
 
 func buildItem(sender string, path dbus.ObjectPath) *Item {
-	var item = &Item{self: itemSelf(sender, path), sender: sender, itemPath: path}
+	var item = Item{self: itemSelf(sender, path), sender: sender, itemPath: path}
 	var props = dbuscall.GetAllProps(conn, item.sender, item.itemPath, ITEM_INTERFACE)
 	item.Id = getStringOr(props["Id"])
 	item.Category = getStringOr(props["Category"])
@@ -186,7 +187,11 @@ func buildItem(sender string, path dbus.ObjectPath) *Item {
 
 	item.useOverlayIconPixmap = getStringOr(props["OverlayIconName"]) == "" // TODO
 
-	return item
+	item.Links = respond.Links{item.itemLink(respond.Self)}
+	if item.menuPath != "" {
+		item.Links = append(item.Links, item.menuLink(respond.Related))
+	}
+	return &item
 }
 
 func updateTitle(item *Item) {

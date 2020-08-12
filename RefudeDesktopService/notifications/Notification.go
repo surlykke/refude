@@ -14,34 +14,21 @@ import (
 )
 
 type Notification struct {
-	self     string
-	Id       uint32
-	Sender   string
-	Subject  string
-	Body     string
-	IconName string `json:",omitempty"`
-	Created  time.Time
-	Expires  time.Time `json:",omitempty"`
-	Actions  map[string]string
-	Hints    map[string]interface{}
-}
-
-func (n *Notification) ToStandardFormat() *respond.StandardFormat {
-	return &respond.StandardFormat{
-		Self:     n.self,
-		Type:     "notification",
-		Title:    n.Subject,
-		Comment:  n.Body,
-		IconName: n.IconName,
-		OnPost:   n.Actions["default"],
-		OnDelete: "Dismiss",
-		Data:     n,
-	}
+	respond.Links `json:"_links"`
+	Id            uint32
+	Sender        string
+	Subject       string
+	Body          string
+	Created       time.Time
+	Expires       time.Time `json:",omitempty"`
+	Actions       map[string]string
+	Hints         map[string]interface{}
+	self          string
 }
 
 func (n *Notification) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		respond.AsJson(w, n.ToStandardFormat())
+		respond.AsJson(w, n)
 	} else if r.Method == "POST" {
 		// TODO otheractions
 		if n.haveDefaultAction() {

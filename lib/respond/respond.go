@@ -5,10 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"sort"
-
-	"github.com/surlykke/RefudeServices/lib/requests"
-	"github.com/surlykke/RefudeServices/lib/searchutils"
 )
 
 func Ok(w http.ResponseWriter) {
@@ -46,81 +42,11 @@ func AcceptedAndThen(w http.ResponseWriter, f func()) {
 	f()
 }
 
-type Action struct {
-	Title    string
-	IconName string
-	Path     string
-}
-
-type StandardFormat struct {
-	Self      string
-	OnPost    string   `json:",omitempty"`
-	OnPatch   string   `json:",omitempty"`
-	OnDelete  string   `json:",omitempty"`
-	Actions   []Action `json:",omitempty"`
-	Type      string
-	Title     string
-	Comment   string      `json:",omitempty"`
-	IconName  string      `json:",omitempty"`
-	Data      interface{} `json:",omitempty"`
-	NoDisplay bool        `json:"-"`
-	Rank      uint        //`json:"-"`
-}
-
-type StandardFormatList []*StandardFormat
-
-func (sfl StandardFormatList) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "GET" {
-		AsJson(w, sfl.Filter(requests.Term(r)).Sort())
-	} else {
-		NotAllowed(w)
-	}
-}
-
-func (sfl StandardFormatList) Filter(term string) StandardFormatList {
-	var filtered = make(StandardFormatList, 0, len(sfl))
-	for _, sf := range sfl {
-		if sf.NoDisplay {
-			continue
-		}
-		if rank, ok := searchutils.SimpleRank(sf.Title, sf.Comment, term); ok {
-			sf.Rank = sf.Rank + rank
-			filtered = append(filtered, sf)
-		}
-	}
-
-	return filtered
-}
-
-func (sfl StandardFormatList) ShiftRank(delta uint) StandardFormatList {
-	for _, sf := range sfl {
-		sf.Rank = sf.Rank + delta
-	}
-	return sfl
-}
-
-func (sfl StandardFormatList) Len() int { return len(sfl) }
-
-func (sfl StandardFormatList) Less(i int, j int) bool {
-	if sfl[i].Rank == sfl[j].Rank {
-		return sfl[i].Self < sfl[j].Self
-	} else {
-		return sfl[i].Rank < sfl[j].Rank
-	}
-}
-
-func (sfl StandardFormatList) Swap(i int, j int) { sfl[i], sfl[j] = sfl[j], sfl[i] }
-
-func (sf StandardFormatList) Sort() StandardFormatList {
-	sort.Sort(sf)
-	return sf
-}
-
 // -----
 
 func AsJson(w http.ResponseWriter, data interface{}) {
 	var json = ToJson(data)
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "application/vnd.refude+json")
 	w.Write(json)
 }
 

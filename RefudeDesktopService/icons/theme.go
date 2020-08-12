@@ -21,26 +21,17 @@ import (
 )
 
 type IconTheme struct {
-	Id       string
-	Name     string
-	Comment  string
-	Inherits []string
-	Dirs     map[string]IconDir
-}
-
-func (it *IconTheme) ToStandardFormat() *respond.StandardFormat {
-	return &respond.StandardFormat{
-		Self:    "/icontheme/" + it.Id,
-		Type:    "icontheme",
-		Title:   it.Name,
-		Comment: it.Comment,
-		Data:    it,
-	}
+	respond.Links `json:"_links"`
+	Id            string
+	Name          string
+	Comment       string
+	Inherits      []string
+	Dirs          map[string]IconDir
 }
 
 func (it *IconTheme) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		respond.AsJson(w, it.ToStandardFormat())
+		respond.AsJson(w, it)
 	} else {
 		respond.NotAllowed(w)
 	}
@@ -74,7 +65,7 @@ func readTheme(indexThemeFilePath string) (*IconTheme, bool) {
 
 	themeGroup := iniFile[0]
 
-	theme := &IconTheme{}
+	theme := IconTheme{}
 	theme.Id = themeId
 	theme.Name = themeGroup.Entries["Name"]
 	theme.Comment = themeGroup.Entries["Comment"]
@@ -123,7 +114,8 @@ func readTheme(indexThemeFilePath string) (*IconTheme, bool) {
 		theme.Dirs[iniGroup.Name] = IconDir{iniGroup.Name, minSize, maxSize, iniGroup.Entries["Context"]}
 	}
 
-	return theme, true
+	theme.Links = respond.Links{{Href: "/icontheme/" + theme.Id, Rel: respond.Self, Profile: "/profile/icontheme"}}
+	return &theme, true
 }
 
 func readUint32(uintAsString string) (uint32, bool) {

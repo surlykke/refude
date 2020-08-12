@@ -51,7 +51,6 @@ func Run() {
 					filtered = append(filtered, ch)
 				}
 			}
-			fmt.Println("Closing for", s.path)
 			close(s.ch)
 			subscriptionMap[s.path] = filtered
 		}
@@ -101,7 +100,6 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		for {
 			select {
 			case <-done:
-				fmt.Println("Got done for", path)
 				cancel(subscription)
 				done = nil
 			case _, ok := <-subscription.ch:

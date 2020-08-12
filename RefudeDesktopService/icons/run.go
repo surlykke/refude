@@ -8,9 +8,11 @@ package icons
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"path"
+	"regexp"
 	"strings"
 	"sync"
 
@@ -37,22 +39,22 @@ func Handler(r *http.Request) http.Handler {
 	}
 }
 
-func CollectThemes() respond.StandardFormatList {
+func CollectThemes() respond.Links {
 	lock.Lock()
 	defer lock.Unlock()
-	var sfl = make(respond.StandardFormatList, 0, len(themes))
+	var links = make(respond.Links, 0, len(themes))
 	for _, theme := range themes {
-		sfl = append(sfl, theme.ToStandardFormat())
+		links = append(links, theme.Link())
 	}
 
-	return sfl
+	return links
 }
 
 func AllPaths() []string {
 	lock.Lock()
 	defer lock.Unlock()
 	var paths = make([]string, 0, len(themes)+1)
-	for path, _ := range themes {
+	for path := range themes {
 		paths = append(paths, path)
 	}
 	paths = append(paths, "/icon")
@@ -60,12 +62,45 @@ func AllPaths() []string {
 }
 
 func Run() {
+	determineDefaultIconTheme()
 	AddBaseDir(xdg.Home + "/.icons")
 	AddBaseDir(xdg.DataHome + "/icons")
 	for _, dataDir := range xdg.DataDirs {
 		AddBaseDir(dataDir + "/icons")
 	}
 	AddBaseDir("/usr/share/pixmaps")
+}
+
+var defaultIconTheme = "hicolor"
+
+var filesToLookAt = []string{
+	xdg.ConfigHome + "/gtk-4.0/settings.ini",
+	"/etc/gtk-4.0/settings.ini",
+	xdg.ConfigHome + "/gtk-3.0/settings.ini",
+	"/etc/gtk-3.0/settings.ini",
+	xdg.ConfigHome + "/gtk-2.0/settings.ini",
+	"/etc/gtk-2.0/settings.ini",
+	xdg.Home + "/.gtkrc-2.0",
+	"/etc/gtk-2.0/gtkrc",
+}
+
+var iconThemeDefPattern = regexp.MustCompile("gtk-icon-theme-name=(\\S+)")
+
+func determineDefaultIconTheme() {
+	fmt.Println("Look for REFUDE_ICON_THEME")
+	if theme, ok := os.LookupEnv("REFUDE_ICON_THEME"); ok {
+		fmt.Println("Got:", theme)
+		defaultIconTheme = theme
+	} else {
+		for _, fileToLookAt := range filesToLookAt {
+			if bytes, err := ioutil.ReadFile(fileToLookAt); err == nil {
+				if matches := iconThemeDefPattern.FindStringSubmatch(string(bytes)); matches != nil {
+					defaultIconTheme = matches[1]
+				}
+				return
+			}
+		}
+	}
 }
 
 func getTheme(path string) *IconTheme {
@@ -111,7 +146,6 @@ func AddFileIcon(filePath string) string {
 			return ""
 		} else {
 			AddOtherIcon(name, filePath)
-			return name
 		}
 	}
 	return name
@@ -143,3 +177,11 @@ func (css *ConcurrentStringSet) haveNotAdded(val string) bool {
 }
 
 var reg = &ConcurrentStringSet{added: make(map[string]bool)}
+
+func IconUrlTemplate(name string) string {
+	if name == "" {
+		return ""
+	} else {
+		return fmt.Sprintf("/icon?name=%s{?size}{?theme}", name)
+	}
+}

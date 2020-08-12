@@ -26,10 +26,6 @@ import (
 	"github.com/surlykke/RefudeServices/lib"
 )
 
-type jsonRes interface {
-	ToStandardFormat() *respond.StandardFormat
-}
-
 func pathStartsWith(r *http.Request, s string) bool {
 	return strings.HasPrefix(r.URL.Path, s)
 }

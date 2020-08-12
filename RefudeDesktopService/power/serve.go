@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/surlykke/RefudeServices/lib/respond"
+	"github.com/surlykke/RefudeServices/lib/searchutils"
 )
 
 func Handler(r *http.Request) http.Handler {
@@ -16,18 +17,21 @@ func Handler(r *http.Request) http.Handler {
 	}
 }
 
-func DesktopSearch() respond.StandardFormatList {
+func DesktopSearch(term string, baserank int) respond.Links {
 	deviceLock.Lock()
 	defer deviceLock.Unlock()
-	var res = make(respond.StandardFormatList, 0, len(devices))
+	var links = make(respond.Links, 0, len(devices))
 	for _, device := range devices {
-		if device.self != "/device/DisplayDevice" && device.Type != "Line Power" {
-			res = append(res, device.ToStandardFormat())
-			continue
+		if deviceSelf(device.DbusPath) != "/device/DisplayDevice" && device.Type != "Line Power" {
+			var link = device.Link()
+			var ok bool
+			if link.Rank, ok = searchutils.Rank(link.Title, term, baserank); ok {
+				links = append(links, link)
+			}
 		}
 	}
 
-	return res
+	return links
 }
 
 func AllPaths() []string {

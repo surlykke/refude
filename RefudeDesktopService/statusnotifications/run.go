@@ -29,7 +29,7 @@ func Handler(r *http.Request) http.Handler {
 			if item.menuPath == "" {
 				return nil
 			} else {
-				return &Menu{self: item.self + "/menu", sender: item.sender, path: item.menuPath}
+				return item.buildMenu()
 			}
 		} else {
 			return item
@@ -39,14 +39,14 @@ func Handler(r *http.Request) http.Handler {
 	}
 }
 
-func Collect() respond.StandardFormatList {
+func Collect() respond.Links {
 	lock.Lock()
 	defer lock.Unlock()
-	var sfl = make(respond.StandardFormatList, 0, len(items))
+	var links = make(respond.Links, 0, len(items))
 	for _, item := range items {
-		sfl = append(sfl, item.ToStandardFormat())
+		links = append(links, item.Link())
 	}
-	return sfl
+	return links
 }
 
 func AllPaths() []string {

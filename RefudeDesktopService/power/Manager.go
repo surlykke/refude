@@ -7,10 +7,12 @@
 package power
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/godbus/dbus/v5"
 	dbuscall "github.com/surlykke/RefudeServices/lib/dbusutils"
+	"github.com/surlykke/RefudeServices/lib/respond"
 )
 
 const UPowService = "org.freedesktop.UPower"
@@ -48,14 +50,19 @@ func retrieveDevicePaths() []dbus.ObjectPath {
 }
 
 func retrieveDevice(path dbus.ObjectPath) *Device {
-	var device = &Device{}
-	device.self = deviceSelf(path)
+	var device = Device{}
 	device.DisplayDevice = path == DisplayDevicePath
 	device.DbusPath = path
 	var lastSlash = strings.LastIndex(string(path), "/")
-	device.title = strings.Title(strings.Join(strings.Split(string(path)[lastSlash+1:], "_"), " "))
-	updateDevice(device, dbuscall.GetAllProps(dbusConn, UPowService, path, UPowerDeviceInterface))
-	return device
+	var title = strings.Title(strings.Join(strings.Split(string(path)[lastSlash+1:], "_"), " "))
+	updateDevice(&device, dbuscall.GetAllProps(dbusConn, UPowService, path, UPowerDeviceInterface))
+	if strings.HasPrefix(string(device.DbusPath), DevicePrefix) {
+		device.self = fmt.Sprintf("/device%s", device.DbusPath[len(DevicePrefix):])
+	} else {
+		device.self = fmt.Sprintf("/device%s", device.DbusPath)
+	}
+	device.Links = respond.Links{{Href: device.self, Rel: respond.Self, Title: title}}
+	return &device
 }
 
 var dbusConn = func() *dbus.Conn {

@@ -12,10 +12,12 @@ import (
 	"net/http"
 	"regexp"
 	"strconv"
+	"strings"
 	"sync/atomic"
 
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/windows/xlib"
 	"github.com/surlykke/RefudeServices/lib/respond"
+	"github.com/surlykke/RefudeServices/lib/searchutils"
 )
 
 const (
@@ -53,15 +55,28 @@ func Handler(r *http.Request) http.Handler {
 	return nil
 }
 
-func Windows() respond.StandardFormatList {
+func Windows() respond.Links {
 	var idList = windows.Load().([]uint32)
-	var sfl = make(respond.StandardFormatList, 0, len(idList))
-	for i, id := range idList {
-		var sf = Window(id).ToStandardFormat()
-		sf.Rank = 10 * uint(i)
-		sfl = append(sfl, sf)
+	var links = make(respond.Links, 0, len(idList))
+	for _, id := range idList {
+		links = append(links, Window(id).ToData().Link())
 	}
-	return sfl
+	return links
+}
+
+func DesktopSearch(term string, baserank int) respond.Links {
+	var idList = windows.Load().([]uint32)
+	var links = make(respond.Links, 0, len(idList))
+	for _, id := range idList {
+		var wd = Window(id).ToData()
+		if rank, ok := searchutils.Rank(strings.ToLower(wd.Name), term, baserank); ok {
+			var link = wd.Link()
+			link.Rank = rank
+			links = append(links, link)
+		}
+	}
+
+	return links
 }
 
 func AllPaths() []string {

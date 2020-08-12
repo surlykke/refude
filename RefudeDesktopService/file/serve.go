@@ -11,6 +11,7 @@ import (
 
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/respond"
+	"github.com/surlykke/RefudeServices/lib/searchutils"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
@@ -67,12 +68,12 @@ func init() {
 
 // Can't use filepath.Glob as it is case sensitive
 
-func DesktopSearch(term string) respond.StandardFormatList {
+func DesktopSearch(term string, baserank int) respond.Links {
 	if len(term) < 3 {
-		return respond.StandardFormatList{}
+		return respond.Links{}
 	} else {
 		term = strings.ToLower(term)
-		var result = make(respond.StandardFormatList, 0, 100)
+		var result = make(respond.Links, 0, 100)
 		for searchDirectory := range searchDirectories {
 			if dir, err := os.Open(searchDirectory); err != nil {
 				fmt.Println("Error opening", searchDirectory, err)
@@ -80,12 +81,15 @@ func DesktopSearch(term string) respond.StandardFormatList {
 				fmt.Println("Error reading", searchDirectory, err)
 			} else {
 				for _, name := range names {
-					if strings.Contains(strings.ToLower(name), term) {
+					if rank, ok := searchutils.Rank(name, term, baserank); ok {
 						if file, err := makeFile(searchDirectory + "/" + name); err != nil {
 							fmt.Println("Error making file:", err)
 						} else if file != nil {
-							result = append(result, file.ToStandardFormat())
+							var link = file.Link()
+							link.Rank = rank
+							result = append(result, link)
 						}
+
 					}
 				}
 			}
@@ -94,14 +98,18 @@ func DesktopSearch(term string) respond.StandardFormatList {
 	}
 }
 
-func Recent() respond.StandardFormatList {
+func Recent(term string, baserank int) respond.Links {
 	var paths = getRecentDownloads(30 * time.Second)
-	var result = make(respond.StandardFormatList, 0, len(paths))
+	var result = make(respond.Links, 0, len(paths))
 	for _, path := range paths {
 		if file, err := makeFile(path); err != nil {
 			fmt.Println("Error making file:", err)
 		} else if file != nil {
-			result = append(result, file.ToStandardFormat())
+			var link = file.Link()
+			var ok bool
+			if link.Rank, ok = searchutils.Rank(file.Path, term, baserank); ok {
+				result = append(result, file.Link())
+			}
 		}
 	}
 	return result

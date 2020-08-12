@@ -12,7 +12,6 @@ import (
 	"sync"
 
 	"github.com/surlykke/RefudeServices/lib/requests"
-	"github.com/surlykke/RefudeServices/lib/slice"
 
 	"github.com/surlykke/RefudeServices/lib/respond"
 
@@ -23,18 +22,19 @@ import (
 )
 
 type WindowData struct {
-	Id       uint32
-	Parent   uint32
-	X, Y     int32
-	W, H     uint32
-	Name     string
-	IconName string `json:",omitempty"`
-	States   []string
+	respond.Links `json:"_links"`
+	Id            uint32
+	Parent        uint32
+	X, Y          int32
+	W, H          uint32
+	Name          string
+	IconName      string `json:",omitempty"`
+	States        []string
 }
 
 type Window uint32
 
-func (win Window) ToStandardFormat() *respond.StandardFormat {
+func (win Window) ToData() *WindowData {
 	var id = uint32(win)
 	var wd = WindowData{Id: id}
 	dataMutex.Lock()
@@ -54,23 +54,23 @@ func (win Window) ToStandardFormat() *respond.StandardFormat {
 	if states, err := dataConnection.GetState(id); err == nil {
 		wd.States = states
 	}
-	defer dataMutex.Unlock()
+	dataMutex.Unlock()
 
-	return &respond.StandardFormat{
-		Self:      fmt.Sprintf("/window/%d", id),
-		Type:      "window",
-		Title:     wd.Name,
-		OnPost:    "Raise and focus",
-		OnDelete:  "Close window",
-		IconName:  wd.IconName,
-		Data:      wd,
-		NoDisplay: slice.Contains(wd.States, "_NET_WM_STATE_ABOVE", "_NET_WM_STATE_SKIP_TASKBAR"),
-	}
+	wd.Links = respond.Links{{
+		Href:    fmt.Sprintf("/window/%d", id),
+		Rel:     respond.Self,
+		Title:   wd.Name,
+		Profile: "/profile/window",
+		Icon:    icons.IconUrlTemplate(wd.IconName),
+	}}
+
+	return &wd
+
 }
 
 func (win Window) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		respond.AsJson(w, win.ToStandardFormat())
+		respond.AsJson(w, win.ToData())
 	} else if r.Method == "POST" {
 		dataMutex.Lock()
 		defer dataMutex.Unlock()

@@ -17,6 +17,7 @@ import (
 	"github.com/godbus/dbus/v5/introspect"
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/icons"
 	"github.com/surlykke/RefudeServices/lib/image"
+	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
@@ -186,6 +187,11 @@ func Notify(app_name string,
 		}
 	}
 
+	var iconUrl string
+	if iconName != "" {
+		iconUrl = icons.IconUrlTemplate(iconName)
+	}
+
 	// Get expirery
 	var created = time.Now()
 	var expires time.Time
@@ -204,18 +210,18 @@ func Notify(app_name string,
 		expires = created.Add(time.Minute)
 	}
 
-	notification := &Notification{
-		self:     fmt.Sprintf("/notification/%d", id),
-		Id:       id,
-		Sender:   app_name,
-		Created:  created,
-		Expires:  expires,
-		IconName: iconName,
-		Subject:  sanitize(summary, []string{}, []string{}),
-		Body:     sanitize(body, allowedTags, allowedEscapes),
-		Actions:  map[string]string{},
-		Hints:    map[string]interface{}{},
+	notification := Notification{
+		Id:      id,
+		Sender:  app_name,
+		Created: created,
+		Expires: expires,
+		Subject: sanitize(summary, []string{}, []string{}),
+		Body:    sanitize(body, allowedTags, allowedEscapes),
+		Actions: map[string]string{},
+		Hints:   map[string]interface{}{},
+		self:    fmt.Sprintf("/notification/%d", id),
 	}
+	notification.Links = respond.Links{{Href: notification.self, Rel: respond.Self, Profile: "/profile/notification", Icon: iconUrl}}
 
 	time.AfterFunc(notification.Expires.Sub(notification.Created)+100*time.Millisecond, func() {
 		reaper <- notification.Id
@@ -232,7 +238,7 @@ func Notify(app_name string,
 		}
 	}
 
-	incomingNotifications <- notification
+	incomingNotifications <- &notification
 	return id, nil
 }
 

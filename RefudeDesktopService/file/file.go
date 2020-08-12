@@ -14,45 +14,15 @@ import (
 )
 
 type File struct {
-	Path       string
-	Mimetype   string
-	DefaultApp string
-}
-
-func (f *File) ToStandardFormat() *respond.StandardFormat {
-	var self = "/file?path=" + url.QueryEscape(f.Path)
-
-	var comment = ""
-	if mt := applications.GetMimetype(f.Mimetype); mt != nil {
-		comment = mt.Comment
-	}
-
-	var Actions = make([]respond.Action, 0, 10)
-	var recommendedApps, _ = applications.GetAppsForMimetype(f.Mimetype)
-
-	for _, app := range recommendedApps {
-		Actions = append(Actions, respond.Action{
-			Title:    app.Name,
-			IconName: app.IconName,
-			Path:     self + "&appid=" + app.Id,
-		})
-	}
-
-	return &respond.StandardFormat{
-		Self:     self,
-		Type:     "file",
-		Title:    f.Path,
-		Comment:  comment,
-		IconName: strings.ReplaceAll(f.Mimetype, "/", "-"),
-		OnPost:   "Open",
-		Actions:  Actions,
-		Data:     f,
-	}
+	respond.Links `json:"_links"`
+	Path          string
+	Mimetype      string
+	DefaultApp    string
 }
 
 func (f *File) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		respond.AsJson(w, f.ToStandardFormat())
+		respond.AsJson(w, f)
 	} else if r.Method == "POST" {
 		if appId := requests.GetSingleQueryParameter(r, "appid", ""); appId != "" {
 			if app := applications.GetApp(appId); app != nil {
@@ -83,11 +53,31 @@ func makeFile(path string) (*File, error) {
 	} else if err != nil {
 		return nil, err
 	} else {
+		var self = "/file?path=" + url.QueryEscape(path)
 		var mimetype, _ = magicmime.TypeByFile(path)
-		return &File{
+		var f = File{
+			Links: respond.Links{{
+				Href:    self,
+				Rel:     respond.Self,
+				Title:   path,
+				Profile: "/profile/file",
+				Icon:    applications.IconForMimetype(mimetype),
+			}},
 			Path:       path,
 			Mimetype:   mimetype,
 			DefaultApp: applications.GetDefaultApp(mimetype),
-		}, nil
+		}
+
+		var recommendedApps, _ = applications.GetAppsForMimetype(f.Mimetype)
+		for _, app := range recommendedApps {
+			f.Links = append(f.Links, respond.Link{
+				Href:  self + "&appid=" + app.Id,
+				Title: "Open with " + app.Name,
+				Icon:  applications.Icon2IconUrl(app.Icon),
+				Rel:   respond.Action,
+			})
+		}
+
+		return &f, nil
 	}
 }

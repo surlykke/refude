@@ -64,21 +64,24 @@ func Paths(w http.ResponseWriter, r *http.Request) {
 
 func DesktopResources(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		var term = requests.Term(r)
+		var term = strings.ToLower(requests.Term(r))
 
-		var sfl = make(respond.StandardFormatList, 0, 1000)
-		sfl = append(sfl, file.Recent().Filter("")...)
-		sfl = append(sfl, notifications.CollectActionable().Filter(term).ShiftRank(100)...)
-		sfl = append(sfl, windows.Windows().Filter(term).ShiftRank(200)...)
+		var sfl = make(respond.Links, 0, 1000)
+		sfl = append(sfl, file.Recent(term, 0)...)
+		sfl = append(sfl, notifications.DesktopSearch(term, 100)...)
+		sfl = append(sfl, windows.DesktopSearch(term, 200)...)
 
 		if len(term) > 0 {
-			sfl = append(sfl, applications.Applications().Filter(term).ShiftRank(300)...)
-			sfl = append(sfl, session.Collect().Filter(term).ShiftRank(300)...)
-			sfl = append(sfl, file.DesktopSearch(term).Filter(term).ShiftRank(300)...)
-			sfl = append(sfl, power.DesktopSearch().Filter(term).ShiftRank(600)...)
+			sfl = append(sfl, applications.DesktopSearch(term, 300)...)
+			if link, ok := session.DesktopSearch(term, 300); ok {
+				sfl = append(sfl, link)
+			}
+			sfl = append(sfl, file.DesktopSearch(term, 300)...)
+			sfl = append(sfl, power.DesktopSearch(term, 600)...)
 		}
 
-		respond.AsJson(w, sfl.Sort())
+		sort.Sort(sfl)
+		respond.AsJson(w, map[string]respond.Links{"_links": sfl})
 	} else {
 		respond.NotAllowed(w)
 	}

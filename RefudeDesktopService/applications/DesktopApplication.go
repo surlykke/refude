@@ -20,14 +20,14 @@ import (
 )
 
 type DesktopApplication struct {
-	self            string
+	respond.Links   `json:"_links"`
 	Type            string
 	Version         string `json:",omitempty"`
 	Name            string
 	GenericName     string `json:",omitempty"`
 	NoDisplay       bool
 	Comment         string `json:",omitempty"`
-	IconName        string `json:",omitempty"`
+	Icon            string `json:",omitempty"`
 	Hidden          bool
 	OnlyShowIn      []string
 	NotShowIn       []string
@@ -45,32 +45,12 @@ type DesktopApplication struct {
 	DesktopActions  []DesktopAction
 	Id              string
 	Mimetypes       []string
-}
-
-func (d *DesktopApplication) ToStandardFormat() *respond.StandardFormat {
-	var self = d.self
-	var actions []respond.Action
-	if len(d.DesktopActions) > 0 {
-		for _, da := range d.DesktopActions {
-			actions = append(actions, respond.Action{Title: da.Name, IconName: da.IconName, Path: d.self + "?actionid=" + da.id})
-		}
-	}
-	return &respond.StandardFormat{
-		Self:      self,
-		OnPost:    "Launch",
-		Actions:   actions,
-		Type:      "application",
-		Title:     d.Name,
-		Comment:   d.Comment,
-		IconName:  d.IconName,
-		Data:      d,
-		NoDisplay: d.NoDisplay,
-	}
+	Self            string `json:"-"`
 }
 
 func (d *DesktopApplication) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		respond.AsJson(w, d.ToStandardFormat())
+		respond.AsJson(w, d)
 	} else if r.Method == "POST" {
 
 		var exec = d.Exec
@@ -95,10 +75,10 @@ func (d *DesktopApplication) Run(arg string) error {
 }
 
 type DesktopAction struct {
-	id       string
-	Name     string
-	Exec     string
-	IconName string
+	id   string
+	Name string
+	Exec string
+	Icon string
 }
 
 func (da *DesktopAction) Run(arg string) error {

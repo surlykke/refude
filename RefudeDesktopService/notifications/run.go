@@ -9,6 +9,7 @@ package notifications
 import (
 	"fmt"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -18,7 +19,10 @@ import (
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/watch"
 
 	"github.com/surlykke/RefudeServices/lib/respond"
+	"github.com/surlykke/RefudeServices/lib/searchutils"
 )
+
+var notificationPathPattern = regexp.MustCompile("^/notification/(\\d+)$")
 
 func Handler(r *http.Request) http.Handler {
 	if r.URL.Path == "/notification/osd" {
@@ -29,34 +33,45 @@ func Handler(r *http.Request) http.Handler {
 		}
 	} else if r.URL.Path == "/notifications" {
 		return Collect()
-	} else if notification := getNotification(r.URL.Path); notification != nil {
-		return notification
-	} else {
-		return nil
-	}
-}
-
-func Collect() respond.StandardFormatList {
-	lock.Lock()
-	defer lock.Unlock()
-	var sfl = make(respond.StandardFormatList, 0, len(notifications))
-	for _, notification := range notifications {
-		sfl = append(sfl, notification.ToStandardFormat())
-	}
-	return sfl
-}
-
-// Notifications that have a default action
-func CollectActionable() respond.StandardFormatList {
-	lock.Lock()
-	defer lock.Unlock()
-	var sfl = make(respond.StandardFormatList, 0, len(notifications))
-	for _, notification := range notifications {
-		if _, ok := notification.Actions["default"]; ok {
-			sfl = append(sfl, notification.ToStandardFormat())
+	} else if matches := notificationPathPattern.FindStringSubmatch(r.URL.Path); matches != nil {
+		fmt.Print("Submatch: ", matches)
+		if id, err := strconv.Atoi(matches[1]); err == nil {
+			fmt.Println("id:", id)
+			if notification := getNotification(uint32(id)); notification != nil {
+				return notification
+			}
 		}
 	}
-	return sfl
+
+	return nil
+}
+
+func Collect() respond.Links {
+	lock.Lock()
+	defer lock.Unlock()
+	var links = make(respond.Links, 0, len(notifications))
+	for _, notification := range notifications {
+		links = append(links, notification.Link())
+	}
+	return links
+}
+
+func DesktopSearch(term string, baserank int) respond.Links {
+	lock.Lock()
+	defer lock.Unlock()
+	var links = make(respond.Links, 0, len(notifications))
+	for _, notification := range notifications {
+		if _, ok := notification.Actions["default"]; ok {
+			var link = notification.Link()
+			if link.Rank, ok = searchutils.Rank(notification.Subject, term, baserank); !ok {
+				link.Rank, ok = searchutils.Rank(notification.Body, term, baserank+100)
+			}
+			if ok {
+				links = append(links, link)
+			}
+		}
+	}
+	return links
 }
 
 func AllPaths() []string {
@@ -74,11 +89,11 @@ func AllPaths() []string {
 var lock sync.Mutex
 var notifications = []*Notification{}
 
-func getNotification(path string) *Notification {
+func getNotification(id uint32) *Notification {
 	lock.Lock()
 	defer lock.Unlock()
 	for _, notification := range notifications {
-		if notification.self == path {
+		if notification.Id == id {
 			return notification
 		}
 	}
@@ -106,13 +121,13 @@ func sendToOsd(n *Notification) {
 				} else if tmp < 0 || tmp > 100 {
 					fmt.Println("gauge not in acceptable range:", tmp)
 				} else {
-					osd.PublishGauge(n.Id, n.Sender, n.IconName, uint8(tmp))
+					osd.PublishGauge(n.Id, n.Sender, "" /*n.IconName*/, uint8(tmp))
 					return
 				}
 			}
 		}
 	}
-	osd.PublishMessage(n.Id, n.Sender, n.Subject, n.Body, n.IconName)
+	osd.PublishMessage(n.Id, n.Sender, n.Subject, n.Body, "" /*n.IconName*/)
 }
 
 func removeNotification(id uint32) *Notification {

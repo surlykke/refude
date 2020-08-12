@@ -25,7 +25,7 @@ import (
 )
 
 type Item struct {
-	self                    string
+	respond.Links           `json:"_links"`
 	sender                  string
 	itemPath                dbus.ObjectPath
 	Id                      string
@@ -43,22 +43,12 @@ type Item struct {
 	useIconPixmap           bool
 	useAttentionIconPixmap  bool
 	useOverlayIconPixmap    bool
-}
-
-func (item *Item) ToStandardFormat() *respond.StandardFormat {
-	return &respond.StandardFormat{
-		Self:     item.self,
-		Type:     "status_item",
-		Title:    item.Title,
-		IconName: item.IconName,
-		OnPost:   "Activate",
-		Data:     item,
-	}
+	self                    string
 }
 
 func (item *Item) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		respond.AsJson(w, item.ToStandardFormat())
+		respond.AsJson(w, item)
 	} else if r.Method == "POST" {
 		dbusObj := conn.Object(item.sender, item.itemPath)
 		action := requests.GetSingleQueryParameter(r, "action", "Activate")
@@ -80,8 +70,42 @@ func (item *Item) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (item *Item) buildMenu() *Menu {
+	if item.menuPath == "" {
+		return nil
+	} else {
+		var menu = Menu{sender: item.sender, menuPath: item.menuPath}
+		var err error
+		if menu.Entries, err = menuEntries(item.sender, item.menuPath); err != nil {
+			return nil
+		}
+		menu.Links = respond.Links{item.menuLink(respond.Self), item.itemLink(respond.Related)}
+
+		return &menu
+	}
+}
+
 func itemSelf(sender string, path dbus.ObjectPath) string {
 	return fmt.Sprintf("/item/%s", strings.Replace(sender+string(path), "/", "-", -1))
+}
+
+func (item *Item) itemLink(rel respond.Relation) respond.Link {
+	return respond.Link{
+		Href:    itemSelf(item.sender, item.itemPath),
+		Rel:     respond.Self,
+		Profile: "/profile/statusnotificationitem",
+		Title:   item.Title,
+		Icon:    icons.IconUrlTemplate(item.IconName),
+	}
+}
+
+func (item *Item) menuLink(rel respond.Relation) respond.Link {
+	return respond.Link{
+		Href:    itemSelf(item.sender, item.itemPath) + "/menu",
+		Rel:     rel,
+		Profile: "/profile/statusnotificationmenu",
+		Title:   item.Title + " menu",
+	}
 }
 
 type ItemMap map[string]*Item
@@ -100,35 +124,22 @@ type MenuEntry struct {
 }
 
 type Menu struct {
-	self   string
-	sender string
-	path   dbus.ObjectPath
-}
-
-func (m *Menu) ToStandardFormat(entries []MenuEntry) *respond.StandardFormat {
-	return &respond.StandardFormat{
-		Self:   m.self,
-		Title:  "Menu",
-		Type:   "status_item_menu",
-		OnPost: "Activate",
-		Data:   entries,
-	}
+	respond.Links `json:"_links"`
+	Entries       []MenuEntry
+	sender        string
+	menuPath      dbus.ObjectPath
 }
 
 func (m *Menu) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		if entries, err := m.entries(); err != nil {
-			respond.ServerError(w, err)
-		} else {
-			respond.AsJson(w, m.ToStandardFormat(entries))
-		}
+		respond.AsJson(w, m)
 	} else if r.Method == "POST" {
 		id := requests.GetSingleQueryParameter(r, "id", "")
 		idAsInt, _ := strconv.Atoi(id)
 		data := dbus.MakeVariant("")
 		time := uint32(time.Now().Unix())
-		dbusObj := conn.Object(m.sender, m.path)
-		fmt.Println("Kalder", m.sender, m.path, "com.canonical.dbusmenu.Event", dbus.Flags(0), idAsInt, "clicked", data, time)
+		dbusObj := conn.Object(m.sender, m.menuPath)
+		fmt.Println("Kalder", m.sender, m.menuPath, "com.canonical.dbusmenu.Event", dbus.Flags(0), idAsInt, "clicked", data, time)
 		call := dbusObj.Call("com.canonical.dbusmenu.Event", dbus.Flags(0), idAsInt, "clicked", data, time)
 		if call.Err != nil {
 			respond.ServerError(w, call.Err)
@@ -140,8 +151,8 @@ func (m *Menu) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (m *Menu) entries() ([]MenuEntry, error) {
-	obj := conn.Object(m.sender, m.path)
+func menuEntries(sender string, menuPath dbus.ObjectPath) ([]MenuEntry, error) {
+	obj := conn.Object(sender, menuPath)
 	if call := obj.Call(MENU_INTERFACE+".GetLayout", dbus.Flags(0), 0, -1, []string{}); call.Err != nil {
 		return nil, call.Err
 	} else if len(call.Body) < 2 {

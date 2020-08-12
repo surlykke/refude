@@ -16,7 +16,7 @@ import (
 )
 
 type Device struct {
-	self             string
+	respond.Links    `json:"_links"`
 	DbusPath         dbus.ObjectPath
 	NativePath       string
 	Vendor           string
@@ -44,46 +44,27 @@ type Device struct {
 	Capacity         float64
 	Technology       string
 	DisplayDevice    bool
-	title            string
+	self             string
 }
 
-func (d *Device) ToStandardFormat() *respond.StandardFormat {
-	var sf = &respond.StandardFormat{
-		Self:     d.self,
-		Type:     "power_device",
-		IconName: d.IconName,
-		Data:     d,
-	}
+func Title(d *Device) string {
 
 	// Try to, with the info we have from UPower, make a meaningful Title and Comment
 	switch d.Type {
 	case "Unknown":
-		sf.Title = "Unknown power device"
+		return "Unknown power device"
 	case "Line Power":
-		sf.Title = "Line Power"
-		if d.Online {
-			sf.Comment = "Online"
-		} else {
-			sf.Comment = "Offline"
-		}
+		return "Line Power"
 	case "Battery":
-		sf.Title = "Battery " + d.Model
-		if d.State == "Charging" || d.State == "Discharging" {
-			sf.Comment = fmt.Sprintf("%s %d%%", d.State, d.Percentage)
-		} else {
-			sf.Comment = d.State
-		}
+		return "Battery " + d.Model
 	default:
-		sf.Title = d.Model
-		sf.Comment = fmt.Sprintf("Level: %d%%", d.Percentage)
+		return d.Model
 	}
-
-	return sf
 }
 
 func (d *Device) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		respond.AsJson(w, d.ToStandardFormat())
+		respond.AsJson(w, d)
 	} else {
 		respond.NotAllowed(w)
 	}

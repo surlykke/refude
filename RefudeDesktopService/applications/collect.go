@@ -18,6 +18,7 @@ import (
 	"strings"
 
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/icons"
+	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/slice"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 	"golang.org/x/text/language"
@@ -97,7 +98,7 @@ func Collect() collection {
 			for _, appId := range appIds {
 				if app, ok := c.applications[appId]; ok {
 					mimetype.DefaultApp = appId
-					mimetype.DefaultAppPath = app.self
+					mimetype.DefaultAppPath = app.Self
 					break
 				}
 			}
@@ -134,6 +135,7 @@ func CollectMimeTypes() map[string]*Mimetype {
 			fmt.Println("Problem making mimetype", id)
 		} else {
 			mimetype.Comment = comment
+			mimetype.Links = respond.Links{{Href: mimetype.self, Rel: respond.Self, Title: mimetype.Comment, Profile: "/profile/mimetype"}}
 			res[id] = mimetype
 		}
 	}
@@ -234,6 +236,7 @@ func CollectMimeTypes() map[string]*Mimetype {
 			for locale := range collectedLocales {
 				tags = append(tags, language.Make(locale))
 			}
+			mimeType.Links = respond.Links{{Href: mimeType.self, Rel: respond.Self, Title: mimeType.Comment, Profile: "/profile/mimetype"}}
 
 			res[mimeType.Id] = mimeType
 		}
@@ -333,7 +336,7 @@ func readDesktopFile(path string, id string) (*DesktopApplication, []string, err
 	} else if len(iniFile) == 0 || iniFile[0].Name != "Desktop Entry" {
 		return nil, nil, errors.New("File must start with '[Desktop Entry]'")
 	} else {
-		var da = DesktopApplication{self: "/application/" + id, Id: id}
+		var da = DesktopApplication{Id: id}
 		var mimetypes = []string{}
 		da.DesktopActions = []DesktopAction{}
 		var actionNames = []string{}
@@ -350,12 +353,8 @@ func readDesktopFile(path string, id string) (*DesktopApplication, []string, err
 		da.GenericName = group.Entries["GenericName"]
 		da.NoDisplay = group.Entries["NoDisplay"] == "true"
 		da.Comment = group.Entries["Comment"]
-		icon := group.Entries["Icon"]
-		if strings.HasPrefix(icon, "/") {
-			da.IconName = icons.AddFileIcon(icon)
-		} else {
-			da.IconName = icon
-		}
+		da.Icon = group.Entries["Icon"]
+
 		da.Hidden = group.Entries["Hidden"] == "true"
 		da.OnlyShowIn = slice.Split(group.Entries["OnlyShowIn"], ";")
 		da.NotShowIn = slice.Split(group.Entries["NotShowIn"], ";")
@@ -383,20 +382,47 @@ func readDesktopFile(path string, id string) (*DesktopApplication, []string, err
 				if name == "" {
 					return nil, nil, errors.New("Desktop file invalid, action " + actionGroup.Name + " has no default 'Name'")
 				}
-				var iconName = actionGroup.Entries["icon"]
-				if strings.HasPrefix(iconName, "/") {
-					iconName = icons.AddFileIcon(iconName)
-				}
+
 				da.DesktopActions = append(da.DesktopActions, DesktopAction{
-					id:       currentAction,
-					Name:     name,
-					Exec:     actionGroup.Entries["Exec"],
-					IconName: iconName,
+					id:   currentAction,
+					Name: name,
+					Exec: actionGroup.Entries["Exec"],
+					Icon: actionGroup.Entries["icon"],
 				})
 			}
 		}
 		mimetypes = slice.Split(group.Entries["MimeType"], ";")
+		da.Links = make(respond.Links, 0, 1+len(da.DesktopActions))
+
+		var self = "/application/" + da.Id
+		da.Links = append(da.Links, respond.Link{
+			Href:    self,
+			Rel:     respond.Self,
+			Profile: "/profile/desktopapplication",
+			Title:   da.Name,
+			Icon:    Icon2IconUrl(da.Icon),
+		})
+
+		for _, act := range da.DesktopActions {
+			da.Links = append(da.Links, respond.Link{
+				Href: self + "actionid=" + act.id,
+				Rel:  respond.Action,
+				Icon: Icon2IconUrl(act.Icon),
+			})
+		}
 
 		return &da, mimetypes, nil
 	}
+
+}
+
+func Icon2IconUrl(icon string) string {
+	if strings.HasPrefix(icon, "/") {
+		icon = icons.AddFileIcon(icon)
+	}
+	if icon != "" {
+		icon = icons.IconUrlTemplate(icon)
+	}
+
+	return icon
 }
