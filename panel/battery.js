@@ -12,8 +12,9 @@
  * Please refer to the LICENSE file for a copy of the license.
  */
 import React from 'react'
-import { getUrl, monitorPath } from '../common/monitor';
+import { getUrl} from '../common/monitor';
 import './Panel.css'
+import { ipcRenderer } from 'electron';
 
 /**
  * We represent charge by a circle segment (cf https://en.wikipedia.org/wiki/Circular_segment, though
@@ -34,18 +35,33 @@ export class Battery extends React.Component {
     constructor(props) {
         super(props);
         this.state = { pct: -1, state: "Unknown" };
-        this.etag = undefined;
-        monitorPath("/device/DisplayDevice", this.getDeviceData, this.getDeviceData, () => {this.setState({pct: -1, state: "Unknown"})})
+    }
+
+    componentDidMount = () => {
+        ipcRenderer.on("sseopen", this.getDeviceData) 
+        ipcRenderer.on("/device/DisplayDevice", this.getDeviceData)
+        ipcRenderer.on("sseerror", this.error)
+        this.getDeviceData()
+    }
+
+    componentWillUnmount = () => {
+        ipcRenderer.removeListener("sseopen", this.getDeviceData) 
+        ipcRenderer.removeListener("/device/DisplayDevice", this.getDeviceData)
+        ipcRenderer.removeListener("sseerror", this.error)
     }
 
     getDeviceData = () => {
+        console.log("battery getDeviceData")
         getUrl("/device/DisplayDevice", resp => {
             this.setState({
-                pct: resp.data.Data.State === "Unknown" ? 0 : resp.data.Data.Percentage,
-                state: resp.data.Data.State
+                pct: resp.data.State === "Unknown" ? 0 : resp.data.Percentage,
+                state: resp.data.State
             })
         })
     }
+
+    error = () => {this.setState({pct: -1, state: "Unknown"})}
+
 
     /**
      * See angles array above

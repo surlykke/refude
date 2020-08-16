@@ -5,21 +5,34 @@
 // Please refer to the GPL2 file for a copy of the license.
 //
 import React from 'react'
-import { getUrl, postUrl, iconUrl, monitorPath } from "../common/monitor";
-import { remote } from 'electron'
+import { getUrl, postUrl, findLink, path2Url } from "../common/monitor";
+import { remote, ipcRenderer } from 'electron'
 const {Menu, MenuItem} = remote
 import './Panel.css'
 
 export class NotifierItem extends React.Component {
     constructor(props) {
         super(props);
-        this.state = { item: props.item };
+        this.state = { };
+        this.getItem()
     }
 
-    componentWillReceiveProps = (props) => {
-        this.setState({ item: props.item });
-    };
+    componentDidMount = () => {
+        ipcRenderer.on("sseopen", this.getItem) 
+        ipcRenderer.on(this.props.link.href, this.getItem)
+        this.getItem()
+    }
 
+    componentWillUnmount = () => {
+        ipcRenderer.removeListener("sseopen", this.getItem) 
+        ipcRenderer.removeListener(this.props.link.href, this.getItem)
+    }
+
+
+    getItem = () => {
+        getUrl(this.props.link.href, resp => this.setState({item: resp.data, self: findLink(resp.data, "self")}))
+    }
+   
 
     render = () => {
         let showMenu = (event) => {
@@ -27,7 +40,7 @@ export class NotifierItem extends React.Component {
             let menuSelf
             
             let clickHandler = (id) => {
-                return () => {postUrl(`${menuSelf}?id=${id}`)}
+                return () => {postUrl(`${this.state.item.Menu}?id=${id}`)}
             }
            
             let buildMenu = entries => {
@@ -52,11 +65,9 @@ export class NotifierItem extends React.Component {
                 return menu
             }
 
-            if (this.state.item.Data.Menu) {
-                getUrl(this.state.item.Data.Menu, resp => {
-                    let menu = resp.data 
-                    menuSelf = menu.Self
-                    let m = buildMenu(menu.Data)
+            if (this.state.item.Menu) {
+                getUrl(this.state.item.Menu, resp => {
+                    let m = buildMenu(resp.data.Entries)
                     m.popup()
                 })
             }
@@ -85,7 +96,7 @@ export class NotifierItem extends React.Component {
         let onRightClick = (event) => {
             event.persist()
             event.preventDefault()
-            if (this.state.item.Data.Menu) {
+            if (this.state.item.Menu) {
                 showMenu(event)
             } else {
                 let { x, y } = getXY(event)
@@ -94,7 +105,7 @@ export class NotifierItem extends React.Component {
         }
 
         return this.state.item ?
-            <img src={iconUrl(this.state.item.IconName)} alt="" height="14px" width="14px"
+            <img src={path2Url(this.state.self.icon)} alt="" height="14px" width="14px"
                 style={{ paddingRight: "5px" }} onClick={onClick} onContextMenu={onRightClick} /> :
             null
     }
@@ -107,18 +118,29 @@ export class NotifierItems extends React.Component {
         this.state = { items: [] };
         this.style = Object.assign({}, props.style);
         this.style.margin = "0px";
-        monitorPath("/items", this.getItems, this.getItems, () => {this.setState({items: []})})
     }
 
-    getItems = () => {
-        getUrl("/items", resp => this.setState({ items: resp.data}));
-    };
+    componentDidMount = () => {
+        ipcRenderer.on("/items", this.getItems) 
+        ipcRenderer.on("sseopen", this.getItems)
+        ipcRenderer.on("sseerror", this.error)
+        this.getItems()
+    }
+  
+    componentWillUnmount = () => {
+        ipcRenderer.removeListener("/items", this.getItems) 
+        ipcRenderer.removeListener("sseopen", this.getItems)
+        ipcRenderer.removeListener("sseerror", this.error)
+    }
+   
+    getItems = () => getUrl("/items", resp => this.setState({ links: resp.data}))
 
+    error = () => this.setState({links: undefined})
 
     render = () => {
-        return <div className="plugin">
-            {this.state.items.map(item => (<NotifierItem key={item.Self} item={item} />))}
-        </div>
+        return this.state.links ? <div className="plugin">
+            {this.state.links.map(link => (<NotifierItem key={link.href} link={link} />))}
+        </div> : null
     }
 
 }

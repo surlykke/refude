@@ -6,6 +6,23 @@ let url = require('url')
 let path = require('path')
 let http = require('http')
 
+
+let setupWatch = () => {
+    let windows = [panelWindow, doWindow, osdWindow, indicatorWindow]
+    ipcMain.on("sseopen", () => {
+        windows.forEach(w => w.webContents.send("sseopen"))
+    })
+    
+    ipcMain.on("sseerror", () => {
+        windows.forEach(w => w.webContents.send("sseerror"))
+    })
+    
+    ipcMain.on("ssemessage", (event, path) => {
+        windows.forEach(w => w.webContents.send(path))
+    })
+
+}
+
 let panelWindow
 
 let createPanel = () => {
@@ -52,7 +69,7 @@ let createDoWindow = () => {
                 let pb = panelWindow.getBounds()
                 doWindow.setPosition(pb.x, pb.y + pb.height + 12)
                 doWindow.show()
-                doWindow.webContents.send("doReset")
+                doWindow.webContents.send("doShow")
                 indicatorWindow.send("screens", screen.getAllDisplays())
             } else {
                 doWindow.send("doMove", req.url === "/up")
@@ -65,10 +82,10 @@ let createDoWindow = () => {
         manageWindow(doWindow, "do", false, true)
         doWindow.on('closed', () => { win = undefined })
         
-        ipcMain.on("doResourceSelected", (evt, res) => {
-            if (doWindow.isVisible() && res && res.Type === "window") {
+        ipcMain.on("doLinkSelected", (evt, link) => {
+            if (doWindow.isVisible() && link && link.profile === "/profile/window" && (!link.meta || link.meta["state"] !== "minimized")) {
                 indicatorWindow.showInactive()
-                indicatorWindow.webContents.send("resource", res)
+                indicatorWindow.webContents.send("linkSelected", link)
             } else {
                 indicatorWindow.hide()
             }
@@ -99,6 +116,7 @@ let createIndicatorWindow = () => {
         manageWindow(indicatorWindow, "indicator", true, true)
     }).catch(error => console.error(error))
 
+    //indicatorWindow.webContents.openDevTools()
 }
 
 let osdWindow
@@ -130,11 +148,11 @@ let createOsdWindow = () => {
 }
 
 app.on('ready', () => {
-
     createPanel()
     createDoWindow()
     createIndicatorWindow()
     createOsdWindow()
+    setupWatch()
 
     ipcMain.on('panelClose', () => app.quit())
 

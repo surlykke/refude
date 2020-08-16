@@ -6,7 +6,7 @@
 //
 import React from 'react'
 import ReactDOM from 'react-dom'
-import { monitorPath, iconUrl } from '../common/monitor';
+import { monitorPath, findLink, path2Url } from '../common/monitor';
 import { ipcRenderer } from 'electron';
 import Axios from 'axios'
 import './Osd.css'
@@ -21,8 +21,19 @@ export class Osd extends React.Component {
     constructor(props) {
         super(props);
         this.state = {}
-        monitorPath("/notification/osd", this.update, this.update, () => this.setState({ event: undefined }))
     };
+
+    componentDidMount = () => {
+        ipcRenderer.on("sseopen", this.update)
+        ipcRenderer.on("sseerror", this.error)
+        ipcRenderer.on("/notification/osd", this.update)
+    }
+
+    componentWillUnmount = () => {
+        ipcRenderer.removeListener("sseopen", this.update)
+        ipcRenderer.removeListener("sseerror", this.error)
+        ipcRenderer.removeListener("/notification/osd", this.update)
+    }
 
     componentDidUpdate = () => {
 
@@ -42,31 +53,37 @@ export class Osd extends React.Component {
         Axios.get(`http://localhost:7938/notification/osd`)
             .then(resp => {
                 console.log("Setting data: ", resp.data)
-                this.setState({ event: resp.data })
+                let self = findLink(resp.data, "self")
+                console.log("self:", self)
+                this.setState({ event: resp.data, self: self })
             })
             .catch(err => {
                 console.error(err)
-                this.setState({ event: undefined })
+                this.error()
             })
     }
 
+    error = () => {
+        this.setState({event: undefined})
+    }
 
     render = () => {
-        let { event } = this.state
-        if (event) {
+        let { event, self } = this.state
+        console.log("Render", event, "", self)
+        if (event && self) {
             return <div id="osdDiv" className="osd">
                 <div id="iconDiv" className="icon">
-                    <img width="100%" height="100%" src={iconUrl(event.IconName)} alt="" />
+                    <img width="100%" height="100%" src={path2Url(self.icon)} alt="" />
                 </div>
                 <div id="messageDiv" className="message">
                     {
-                        event.Gauge !== undefined ?
+                        event.Type === "gauge" ?
                         <meter min="0" max="100" value={event.Gauge}></meter> :
                         <> 
                             <div className="title">
-                                {event.Title}
+                                {event.Subject}
                             </div>
-                            {event.Message.map((m, i) =>
+                            {event.Body.map((m, i) =>
                                 <div key={`line${i}`} className="body">
                                     {m}
                                 </div>)

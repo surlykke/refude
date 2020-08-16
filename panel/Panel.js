@@ -18,8 +18,36 @@ import { Battery } from './battery'
 import { NotifierItems } from './notifieritems'
 import { DragField } from './dragfield'
 import { CloseButton } from "./closebutton";
-import { ipcRenderer, webFrame } from 'electron'
+import { ipcRenderer} from 'electron'
 import './Panel.css'
+
+
+// Annoyingly, browsers and hence electron, only allows a very limited set of server-sent-event-streams
+// so we make do with one and do client-side dispatching.
+// We cannot open a sse in the main process (has to be in a render process), so we do it here in panel 
+// (which is the main window), forward events to the main process, which, in turn, dispatches to relevant 
+// windows. (sigh).
+let watchSse = () => {
+    console.log("monitorPaths")
+    let evtSource = new EventSource("http://localhost:7938/watch")
+
+    evtSource.onerror = event => {
+        ipcRenderer.send("sseerror") 
+        if (evtSource.readyState === 2) {
+            setTimeout(watchSse, 5000)
+        }
+    }
+
+    evtSource.onopen = () => {
+        ipcRenderer.send("sseopen") 
+    }
+
+    evtSource.onmessage = event => {
+        ipcRenderer.send("ssemessage", event.data) 
+    }
+}
+
+watchSse()
 
 
 export default class Panel extends React.Component {

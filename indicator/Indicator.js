@@ -7,7 +7,8 @@
 import React from 'react';
 import ReactDOM from 'react-dom'
 
-import {ipcRenderer } from 'electron'
+import { ipcRenderer } from 'electron'
+import { getUrl, findLink, path2Url, addParam } from '../common/monitor';
 
 let nocache = 1
 
@@ -15,14 +16,18 @@ export class Indicator extends React.Component {
 
     constructor(props) {
         super(props)
-        this.state = {resource: null}
-        
+        this.state = { resource: null }
+
         ipcRenderer.on("screens", (evt, displays) => {
             this.getScreens(displays)
         })
-        
-        ipcRenderer.on("resource", (evt, resource) => {
-            this.setState({ resource: resource })
+
+        ipcRenderer.on("linkSelected", (evt, link) => {
+            if (link && link.profile == "/profile/window") {
+                getUrl(link.href, resp => this.setState({ resource: resp.data }))
+            } else {
+                this.setState({ resource: undefined })
+            }
         })
     }
 
@@ -58,20 +63,20 @@ export class Indicator extends React.Component {
 
     render = () => {
         let res = this.state.resource
-        if (res && res.Type === "window") {
-            let { X, Y, W, H } = res.Data
-            let screenShotUrl = `http://localhost:7938${res.Self}/screenshot?downscale=3&nocache=${nocache++}`
+        if (res) {
+            let screenshotLink = findLink(res, "related", "/profile/window-screenshot")
+            let screenShotUrl = path2Url(addParam(addParam(screenshotLink.href, "downscale", "3"), nocache, nocache++))
+            let { X, Y, W, H } = res
             let viewBox = `${this.display.x - 3} ${this.display.y - 3} ${this.display.w + 6} ${this.display.h + 6}`;
             let rects = this.screens.map((scr, i) => <rect key={`screenRect_${i}`} x={scr.x} y={scr.y} width={scr.w} height={scr.h} fill="lightgrey" />);
-            //rects.push(<rect key="winRect" x={window.X} y={window.Y} width={window.W} height={window.H} fill="grey" />);
             rects.push(<image key="winRect" x={X} y={Y} width={W} height={H} xlinkHref={screenShotUrl} />);
             return <svg key="windows" xmlns="http://www.w3.org/2000/svg" width="calc(100% - 16px)" style={{ margin: "8px" }} viewBox={viewBox}>
                 {rects}
-            </svg>;
+            </svg>
         } else {
             return null
         }
     }
 }
 
-ReactDOM.render(<Indicator/>, document.getElementById('indicator'))
+ReactDOM.render(<Indicator />, document.getElementById('indicator'))

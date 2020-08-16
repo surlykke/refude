@@ -7,28 +7,10 @@
 
 import Axios from "axios";
 
-export let monitorPath = (path, onMessage, onOpen, onError) => {
-    let helper = () => {
-        let evtSource = new EventSource(`http://localhost:7938/watch?path=${path}`)
-
-        evtSource.onerror = event => {
-            onError && onError()
-            if (evtSource.readyState === 2) {
-                setTimeout(helper, 5000)
-            }
-        }
-
-        evtSource.onopen = onOpen
-        evtSource.onmessage = onMessage
-    }
-
-    helper()
-}
-
 export let getUrl = (path, handler, errHandler) => {
     Axios.get(`http://localhost:7938${path}`)
         .then(resp => handler(resp))
-        .catch(errHandler || (err => console.error(err)))
+        .catch(err => errHandler && errHandler(err))
 }
 
 export let postUrl = (path, handler) => {
@@ -49,6 +31,11 @@ export let deleteUrl = (path, handler) => {
     }).catch(err => console.error(err))
 }
 
-    
-export let iconUrl = (iconName) => iconName ? `http://localhost:7938/icon?name=${iconName}&theme=oxygen` : ''
+export let addParam = (path, name, value) => {
+    let separator = path.indexOf('?') > -1 ? '&' : '?'
+    return path + separator + name + '=' + value
+}
 
+export let path2Url = path => "http://localhost:7938" + path
+
+export let findLink = (res, rel, profile) => res && res._links && res._links.find(l => (l.rel === rel && (!profile || l.profile === profile)))

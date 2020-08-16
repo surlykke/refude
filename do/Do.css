@@ -53,6 +53,14 @@
    opacity: 0.7;
 }
 
+.title {
+   overflow: hidden;
+   white-space: nowrap;
+   margin-right: 6px;
+}
+
+
+
 .name {
    overflow: hidden;
    white-space: nowrap;
