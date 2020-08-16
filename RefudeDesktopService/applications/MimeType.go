@@ -123,13 +123,5 @@ func GetDefaultApp(mimetypeId string) string {
 }
 
 func IconForMimetype(mimetypeId string) string {
-	var tmp = mimetypeId
-	if tmp != "" {
-		tmp = strings.ReplaceAll(tmp, "/", "-")
-	}
-	if tmp != "" {
-		tmp = icons.IconUrlTemplate(tmp)
-	}
-
-	return tmp
+	return icons.IconUrl(strings.ReplaceAll(mimetypeId, "/", "-"))
 }

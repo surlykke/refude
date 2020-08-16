@@ -12,6 +12,7 @@ import (
 	"sync"
 
 	"github.com/surlykke/RefudeServices/lib/requests"
+	"github.com/surlykke/RefudeServices/lib/slice"
 
 	"github.com/surlykke/RefudeServices/lib/respond"
 
@@ -56,12 +57,24 @@ func (win Window) ToData() *WindowData {
 	}
 	dataMutex.Unlock()
 
-	wd.Links = respond.Links{{
-		Href:    fmt.Sprintf("/window/%d", id),
+	var self = fmt.Sprintf("/window/%d", id)
+	var link = respond.Link{
+		Href:    self,
 		Rel:     respond.Self,
 		Title:   wd.Name,
 		Profile: "/profile/window",
-		Icon:    icons.IconUrlTemplate(wd.IconName),
+		Icon:    icons.IconUrl(wd.IconName),
+	}
+
+	if slice.Contains(wd.States, "_NET_WM_STATE_HIDDEN") {
+		link.Meta = map[string]string{"state": "minimized"}
+	}
+
+	wd.Links = respond.Links{link, {
+		Href:    self + "/screenshot",
+		Rel:     respond.Related,
+		Title:   "screenshot of " + wd.Name,
+		Profile: "/profile/window-screenshot",
 	}}
 
 	return &wd

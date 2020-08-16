@@ -178,10 +178,10 @@ func (css *ConcurrentStringSet) haveNotAdded(val string) bool {
 
 var reg = &ConcurrentStringSet{added: make(map[string]bool)}
 
-func IconUrlTemplate(name string) string {
+func IconUrl(name string) string {
 	if name == "" {
 		return ""
 	} else {
-		return fmt.Sprintf("/icon?name=%s{?size}{?theme}", name)
+		return fmt.Sprintf("/icon?name=%s", name)
 	}
 }

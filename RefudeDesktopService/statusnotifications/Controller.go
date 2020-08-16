@@ -222,6 +222,9 @@ func updateIcon(item *Item) {
 			item.IconName = getStringOr(v)
 		}
 	}
+	if len(item.Links) > 0 && item.Links[0].Rel == respond.Self {
+		item.Links[0].Icon = icons.IconUrl(item.IconName)
+	}
 }
 
 func updateIconThemePath(item *Item) {

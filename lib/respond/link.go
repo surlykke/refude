@@ -28,7 +28,7 @@ type Links []Link
  */
 func (ll Links) Link() Link {
 	var copy = ll[0]
-	copy.Rel = None
+	copy.Rel = Related
 	return copy
 }
 

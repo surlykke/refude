@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/surlykke/RefudeServices/RefudeDesktopService/icons"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
@@ -89,31 +90,31 @@ var allLinks = map[string]respond.Link{
 		Href:  "/session?actionid=shutdown",
 		Rel:   respond.Action,
 		Title: "Shutdown",
-		Icon:  "system-shutdown",
+		Icon:  icons.IconUrl("system-shutdown"),
 	},
 	"suspend": {
 		Href:  "/session?actionid=suspend",
 		Rel:   respond.Self,
 		Title: "Suspend",
-		Icon:  "system-suspend",
+		Icon:  icons.IconUrl("system-suspend"),
 	},
 	"hibernate": {
 		Href:  "/session?actionid=hibernate",
 		Rel:   respond.Action,
 		Title: "Hibernate",
-		Icon:  "system-suspend-hibernate",
+		Icon:  icons.IconUrl("system-suspend-hibernate"),
 	},
 	"hybridsleep": {
 		Href:  "/session?action=hybridsleep",
 		Rel:   respond.Action,
 		Title: "Hybrid sleep",
-		Icon:  "system-suspend-hibernate",
+		Icon:  icons.IconUrl("system-suspend-hibernate"),
 	},
 	"reboot": {
 		Href:  "/session?action=reboot",
 		Rel:   respond.Action,
 		Title: "Reboot",
-		Icon:  "system-reboot",
+		Icon:  icons.IconUrl("system-reboot"),
 	},
 }
 

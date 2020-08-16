@@ -405,9 +405,10 @@ func readDesktopFile(path string, id string) (*DesktopApplication, []string, err
 
 		for _, act := range da.DesktopActions {
 			da.Links = append(da.Links, respond.Link{
-				Href: self + "actionid=" + act.id,
-				Rel:  respond.Action,
-				Icon: Icon2IconUrl(act.Icon),
+				Href:  self + "?actionid=" + act.id,
+				Title: act.Name,
+				Rel:   respond.Action,
+				Icon:  Icon2IconUrl(act.Icon),
 			})
 		}
 
@@ -418,11 +419,8 @@ func readDesktopFile(path string, id string) (*DesktopApplication, []string, err
 
 func Icon2IconUrl(icon string) string {
 	if strings.HasPrefix(icon, "/") {
-		icon = icons.AddFileIcon(icon)
+		return icons.IconUrl(icons.AddFileIcon(icon))
+	} else {
+		return icons.IconUrl(icon)
 	}
-	if icon != "" {
-		icon = icons.IconUrlTemplate(icon)
-	}
-
-	return icon
 }

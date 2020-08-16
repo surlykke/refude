@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/godbus/dbus/v5"
+	"github.com/surlykke/RefudeServices/RefudeDesktopService/icons"
 	dbuscall "github.com/surlykke/RefudeServices/lib/dbusutils"
 	"github.com/surlykke/RefudeServices/lib/respond"
 )
@@ -61,7 +62,7 @@ func retrieveDevice(path dbus.ObjectPath) *Device {
 	} else {
 		device.self = fmt.Sprintf("/device%s", device.DbusPath)
 	}
-	device.Links = respond.Links{{Href: device.self, Rel: respond.Self, Title: title}}
+	device.Links = respond.Links{{Href: device.self, Rel: respond.Self, Title: title, Icon: icons.IconUrl(device.IconName)}}
 	return &device
 }
 

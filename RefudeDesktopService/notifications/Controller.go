@@ -187,10 +187,7 @@ func Notify(app_name string,
 		}
 	}
 
-	var iconUrl string
-	if iconName != "" {
-		iconUrl = icons.IconUrlTemplate(iconName)
-	}
+	var iconUrl = icons.IconUrl(iconName)
 
 	// Get expirery
 	var created = time.Now()
@@ -211,21 +208,18 @@ func Notify(app_name string,
 	}
 
 	notification := Notification{
-		Id:      id,
-		Sender:  app_name,
-		Created: created,
-		Expires: expires,
-		Subject: sanitize(summary, []string{}, []string{}),
-		Body:    sanitize(body, allowedTags, allowedEscapes),
-		Actions: map[string]string{},
-		Hints:   map[string]interface{}{},
-		self:    fmt.Sprintf("/notification/%d", id),
+		Id:       id,
+		Sender:   app_name,
+		Created:  created,
+		Expires:  expires,
+		Subject:  sanitize(summary, []string{}, []string{}),
+		Body:     sanitize(body, allowedTags, allowedEscapes),
+		Actions:  map[string]string{},
+		Hints:    map[string]interface{}{},
+		self:     fmt.Sprintf("/notification/%d", id),
+		iconName: iconName,
 	}
-	notification.Links = respond.Links{{Href: notification.self, Rel: respond.Self, Profile: "/profile/notification", Icon: iconUrl}}
-
-	time.AfterFunc(notification.Expires.Sub(notification.Created)+100*time.Millisecond, func() {
-		reaper <- notification.Id
-	})
+	notification.Links = respond.Links{{Href: notification.self, Title: notification.Subject, Rel: respond.Self, Profile: "/profile/notification", Icon: iconUrl}}
 
 	// Add actions given in notification (We are aware that one of these may overwrite the dismiss action added above)
 	for i := 0; i+1 < len(actions); i = i + 2 {

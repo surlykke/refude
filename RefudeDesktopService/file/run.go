@@ -8,7 +8,6 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/rakyll/magicmime"
-	"github.com/surlykke/RefudeServices/RefudeDesktopService/notifications/osd"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
@@ -27,12 +26,12 @@ func Run() {
 			if ev.Op&fsnotify.Create == fsnotify.Create && worthyOfAttention(ev.Name) {
 				if file, err := makeFile(ev.Name); err == nil {
 					addRecentDownload(file.Path)
-					var fileName = filepath.Base(file.Path)
+					/*var fileName = filepath.Base(file.Path)
 					var iconName string = "folder-download"
 					if file.Mimetype != "" {
 						iconName = strings.ReplaceAll(file.Mimetype, "/", "-")
 					}
-					osd.PublishMessage(0, "org.refude.RefudeServices", "New download", fileName, iconName)
+					//FIXME osd.PublishMessage(0, "org.refude.RefudeServices", "New download", fileName, iconName)*/
 
 				}
 			}

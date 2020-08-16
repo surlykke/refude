@@ -95,7 +95,7 @@ func (item *Item) itemLink(rel respond.Relation) respond.Link {
 		Rel:     respond.Self,
 		Profile: "/profile/statusnotificationitem",
 		Title:   item.Title,
-		Icon:    icons.IconUrlTemplate(item.IconName),
+		Icon:    icons.IconUrl(item.IconName),
 	}
 }
 

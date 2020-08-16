@@ -18,6 +18,7 @@ import (
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/windows/xlib"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
+	"github.com/surlykke/RefudeServices/lib/slice"
 )
 
 const (
@@ -69,6 +70,10 @@ func DesktopSearch(term string, baserank int) respond.Links {
 	var links = make(respond.Links, 0, len(idList))
 	for _, id := range idList {
 		var wd = Window(id).ToData()
+		if slice.Contains(wd.States, "_NET_WM_STATE_ABOVE", "_NET_WM_STATE_SKIP_TASKBAR") {
+			continue
+		}
+
 		if rank, ok := searchutils.Rank(strings.ToLower(wd.Name), term, baserank); ok {
 			var link = wd.Link()
 			link.Rank = rank

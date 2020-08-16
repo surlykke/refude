@@ -26,34 +26,29 @@ import (
 	"github.com/surlykke/RefudeServices/lib"
 )
 
-func pathStartsWith(r *http.Request, s string) bool {
-	return strings.HasPrefix(r.URL.Path, s)
-}
-
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var handler http.Handler = nil
-
-	if pathStartsWith(r, "/application") || pathStartsWith(r, "/mimetype") {
+	if strings.HasPrefix(r.URL.Path, "/application") || strings.HasPrefix(r.URL.Path, "/mimetype") {
 		handler = applications.Handler(r)
-	} else if pathStartsWith(r, "/doc") {
+	} else if strings.HasPrefix(r.URL.Path, "/doc") {
 		handler = doc.Handler(r)
-	} else if pathStartsWith(r, "/file") {
+	} else if strings.HasPrefix(r.URL.Path, "/file") {
 		handler = file.Handler(r)
-	} else if pathStartsWith(r, "/icon") {
+	} else if strings.HasPrefix(r.URL.Path, "/icon") {
 		handler = icons.Handler(r)
-	} else if pathStartsWith(r, "/notification") {
+	} else if strings.HasPrefix(r.URL.Path, "/notification") {
 		handler = notifications.Handler(r)
-	} else if pathStartsWith(r, "/device") {
+	} else if strings.HasPrefix(r.URL.Path, "/device") {
 		handler = power.Handler(r)
-	} else if pathStartsWith(r, "/search") {
+	} else if strings.HasPrefix(r.URL.Path, "/search") {
 		handler = search.Handler(r)
-	} else if pathStartsWith(r, "/session") {
+	} else if strings.HasPrefix(r.URL.Path, "/session") {
 		handler = session.Handler(r)
-	} else if pathStartsWith(r, "/item") {
+	} else if strings.HasPrefix(r.URL.Path, "/item") {
 		handler = statusnotifications.Handler(r)
-	} else if pathStartsWith(r, "/watch") {
+	} else if strings.HasPrefix(r.URL.Path, "/watch") {
 		handler = watch.Handler(r)
-	} else if pathStartsWith(r, "/window") {
+	} else if strings.HasPrefix(r.URL.Path, "/window") {
 		handler = windows.Handler(r)
 	}
 

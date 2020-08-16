@@ -8,91 +8,45 @@ package notifications
 
 import (
 	"fmt"
-	"net/http"
-	"regexp"
 	"strconv"
-	"strings"
-	"sync"
+	"sync/atomic"
 	"time"
 
-	"github.com/surlykke/RefudeServices/RefudeDesktopService/notifications/osd"
+	"github.com/surlykke/RefudeServices/RefudeDesktopService/icons"
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/watch"
-
 	"github.com/surlykke/RefudeServices/lib/respond"
-	"github.com/surlykke/RefudeServices/lib/searchutils"
 )
 
-var notificationPathPattern = regexp.MustCompile("^/notification/(\\d+)$")
+var box, box2 atomic.Value
 
-func Handler(r *http.Request) http.Handler {
-	if r.URL.Path == "/notification/osd" {
-		if osd.CurrentlyShowing() == nil {
-			return nil
-		} else {
-			return osd.CurrentlyShowing()
-		}
-	} else if r.URL.Path == "/notifications" {
-		return Collect()
-	} else if matches := notificationPathPattern.FindStringSubmatch(r.URL.Path); matches != nil {
-		fmt.Print("Submatch: ", matches)
-		if id, err := strconv.Atoi(matches[1]); err == nil {
-			fmt.Println("id:", id)
-			if notification := getNotification(uint32(id)); notification != nil {
-				return notification
-			}
-		}
-	}
-
-	return nil
+func init() {
+	box.Store([]*Notification{})
+	box2.Store(osdEvent{Type: none})
 }
 
-func Collect() respond.Links {
-	lock.Lock()
-	defer lock.Unlock()
-	var links = make(respond.Links, 0, len(notifications))
-	for _, notification := range notifications {
-		links = append(links, notification.Link())
-	}
-	return links
-}
+var incomingNotifications = make(chan *Notification)
+var removals = make(chan removal)
+var expireHints = make(chan struct{})
+var scheduler = makeScheduler()
 
-func DesktopSearch(term string, baserank int) respond.Links {
-	lock.Lock()
-	defer lock.Unlock()
-	var links = make(respond.Links, 0, len(notifications))
-	for _, notification := range notifications {
-		if _, ok := notification.Actions["default"]; ok {
-			var link = notification.Link()
-			if link.Rank, ok = searchutils.Rank(notification.Subject, term, baserank); !ok {
-				link.Rank, ok = searchutils.Rank(notification.Body, term, baserank+100)
-			}
-			if ok {
-				links = append(links, link)
-			}
+func Run() {
+	go DoDBus()
+	go scheduler.run()
+
+	for {
+		select {
+		case notification := <-incomingNotifications:
+			upsert(notification)
+		case rem := <-removals:
+			removeNotification(rem.id, rem.reason)
+		case <-scheduler.ping:
+			doMaintenance()
 		}
 	}
-	return links
 }
-
-func AllPaths() []string {
-	lock.Lock()
-	defer lock.Unlock()
-	var paths = make([]string, 0, len(notifications)+2)
-	for _, n := range notifications {
-		paths = append(paths, n.self)
-	}
-	paths = append(paths, "/notifications")
-	paths = append(paths, "/notification/osd")
-	return paths
-}
-
-var lock sync.Mutex
-var notifications = []*Notification{}
 
 func getNotification(id uint32) *Notification {
-	lock.Lock()
-	defer lock.Unlock()
-	for _, notification := range notifications {
+	for _, notification := range box.Load().([]*Notification) {
 		if notification.Id == id {
 			return notification
 		}
@@ -101,103 +55,167 @@ func getNotification(id uint32) *Notification {
 }
 
 func upsert(notification *Notification) {
-	lock.Lock()
-	defer lock.Unlock()
-	for i := 0; i < len(notifications); i++ {
-		if notifications[i].Id == notification.Id {
-			notifications[i] = notification
-			return
+	var notifications = box.Load().([]*Notification)
+	var next = make([]*Notification, len(notifications)+1, len(notifications)+1)
+	var found = false
+	for i, n := range notifications {
+		if n.Id == notification.Id {
+			next[i+1] = notification
+			found = true
+		} else {
+			next[i+1] = n
 		}
 	}
-	notifications = append(notifications, notification)
+	if found {
+		next = next[1:]
+	} else {
+		next[0] = notification
+	}
+	box.Store(next)
+
+	doMaintenance()
 }
 
-func sendToOsd(n *Notification) {
-	if categoryHint, ok := n.Hints["category"]; ok {
-		if category, ok := categoryHint.(string); ok {
-			if strings.HasPrefix(category, "x-org.refude.gauge.") {
+func removeNotification(id uint32, reason uint32) {
+	var notifications = box.Load().([]*Notification)
+	var next = make([]*Notification, 0, len(notifications))
+	for _, n := range notifications {
+		if n.Id == id {
+			watch.SomethingChanged(n.self)
+			watch.SomethingChanged("/notifications") // Should only happen once for the loop
+			conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", n.Id, reason)
+		} else {
+			next = append(next, n)
+		}
+	}
+
+	box.Store(next)
+	doMaintenance()
+}
+
+func find(notifications []*Notification, id uint32) int {
+	for i, n := range notifications {
+		if n.Id == id {
+			return i
+		}
+	}
+	return -1
+}
+
+func doMaintenance() {
+	removeExpired()
+
+	var e1 = box2.Load().(osdEvent)
+	var e2 = getOsdEvent()
+	var same = e1.Type == e2.Type &&
+		e1.Expires == e2.Expires &&
+		e1.Sender == e2.Sender &&
+		e1.Subject == e2.Subject &&
+		len(e1.Body) == len(e2.Body) // oh well...
+
+	if !same {
+		if e2.Type != none {
+			e2.Links = respond.Links{{
+				Href:  "/notification/osd",
+				Title: e2.Subject,
+
+				Rel:     respond.Self,
+				Profile: "/profile/osd",
+			}}
+			if e2.iconName != "" {
+				e2.Links[0].Icon = icons.IconUrl(e2.iconName)
+			} else if e2.Type == critical {
+				e2.Links[0].Icon = icons.IconUrl("dialog-warning")
+			} else if e2.Type == normal {
+				e2.Links[0].Icon = icons.IconUrl("dialog-information")
+			}
+		}
+		box2.Store(e2)
+		watch.SomethingChanged("/notification/osd")
+	}
+
+	var nextMaintenance = time.Now().Add(1000 * time.Hour)
+	if e2.Type != none {
+		nextMaintenance = e2.Expires
+	}
+	for _, n := range box.Load().([]*Notification) {
+		if n.Expires.Before(nextMaintenance) {
+			nextMaintenance = n.Expires
+		}
+	}
+	scheduler.schedule <- nextMaintenance.Add(100 * time.Millisecond)
+}
+
+func removeExpired() {
+	var notifications = box.Load().([]*Notification)
+	var now = time.Now()
+	var haveRemovals bool
+	var next = make([]*Notification, 0, len(notifications))
+	for _, n := range notifications {
+		if n.Expires.Before(now) {
+			haveRemovals = true
+			watch.SomethingChanged(n.self)
+			conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", n.Id, Expired)
+		} else {
+			next = append(next, n)
+		}
+	}
+	box.Store(next)
+	if haveRemovals {
+		watch.SomethingChanged("/notifications")
+	}
+}
+
+func getOsdEvent() osdEvent {
+	var now = time.Now()
+	var gaugeTimeout = 2 * time.Second
+	var normalTimeout = 6 * time.Second
+	var urgentTimeout = 20 * time.Second
+	var notifications = box.Load().([]*Notification)
+	var event = osdEvent{Type: none}
+	for _, n := range notifications {
+		if n.isGauge() {
+			if event.Type == none && now.Before(n.Created.Add(gaugeTimeout)) {
 				if tmp, err := strconv.Atoi(n.Body); err != nil {
 					fmt.Println("Error converting body to int: ", err)
 				} else if tmp < 0 || tmp > 100 {
 					fmt.Println("gauge not in acceptable range:", tmp)
 				} else {
-					osd.PublishGauge(n.Id, n.Sender, "" /*n.IconName*/, uint8(tmp))
-					return
+					event.Type = gauge
+					event.Expires = n.Created.Add(gaugeTimeout)
+					event.Sender = n.Sender
+					event.Gauge = uint8(tmp)
+					event.iconName = n.iconName
 				}
 			}
-		}
-	}
-	osd.PublishMessage(n.Id, n.Sender, n.Subject, n.Body, "" /*n.IconName*/)
-}
-
-func removeNotification(id uint32) *Notification {
-	lock.Lock()
-	defer lock.Unlock()
-	for i := 0; i < len(notifications); i++ {
-		if notifications[i].Id == id {
-			var notification = notifications[i]
-			notifications = append(notifications[:i], notifications[i+1:]...)
-			return notification
-		}
-	}
-	return nil
-}
-
-/**
- * Returns:
- * if not found: nil, false
- * if found, but not expired, notification, false, and notification is not removed
- * if found and expired, notification, true, and notification is removed
- */
-func removeIfExpired(id uint32) (*Notification, bool) {
-	lock.Lock()
-	defer lock.Unlock()
-	for i := 0; i < len(notifications); i++ {
-		if notifications[i].Id == id {
-			var notification = notifications[i]
-			if notification.Expires.Before(time.Now()) {
-				notifications = append(notifications[:i], notifications[i+1:]...)
-				return notification, true
-			} else {
-				return notification, false
-			}
-		}
-	}
-	return nil, false
-}
-
-var incomingNotifications = make(chan *Notification)
-var removals = make(chan removal)
-var reaper = make(chan uint32)
-
-func Run() {
-	go osd.RunOSD()
-	go DoDBus()
-
-	for {
-		select {
-		case notification := <-incomingNotifications:
-			upsert(notification)
-			sendToOsd(notification)
-			sendEvent(notification)
-		case rem := <-removals:
-			if notification := removeNotification(rem.id); notification != nil {
-				sendEvent(notification)
-				conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", rem.id, rem.reason)
-			}
-		case id := <-reaper:
-			if notification, wasExpired := removeIfExpired(id); notification != nil {
-				if wasExpired {
-					sendEvent(notification)
-					conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", id, Expired)
-				} else {
-					time.AfterFunc(notification.Expires.Sub(time.Now())+100*time.Millisecond, func() {
-						reaper <- notification.Id
-					})
+		} else if !n.isUrgent() {
+			if event.Type != critical && now.Before(n.Created.Add(normalTimeout)) {
+				if event.Type != normal {
+					event.Type = normal
+					event.Expires = n.Created.Add(normalTimeout)
+					event.Sender = n.Sender
+					event.Subject = n.Subject
+					event.Body = []string{n.Body}
+					event.Links = respond.Links{n.Link()}
+					event.iconName = n.iconName
+				} else if event.Sender == n.Sender && event.Subject == n.Subject && len(event.Body) < 3 {
+					event.Body = append(event.Body, n.Body)
 				}
 			}
+		} else {
+			if event.Type != critical && now.Before(n.Created.Add(urgentTimeout)) {
+				event.Type = critical
+				event.Expires = n.Created.Add(urgentTimeout)
+				event.Sender = n.Sender
+				event.Subject = n.Subject
+				event.Body = []string{n.Body}
+				event.Links = respond.Links{n.Link()}
+				event.iconName = n.iconName
+			}
+
 		}
 	}
+	return event
 }
 
 func sendEvent(n *Notification) {

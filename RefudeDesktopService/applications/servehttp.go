@@ -44,6 +44,9 @@ func DesktopSearch(term string, baserank int) respond.Links {
 	var applications = collectionStore.Load().(collection).applications
 	var links = make(respond.Links, 0, len(applications))
 	for _, app := range applications {
+		if app.NoDisplay {
+			continue
+		}
 		var rank int
 		var ok bool
 		var name = strings.ToLower(app.Name)

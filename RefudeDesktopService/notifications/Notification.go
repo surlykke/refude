@@ -7,7 +7,9 @@
 package notifications
 
 import (
+	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/surlykke/RefudeServices/lib/respond"
@@ -24,6 +26,7 @@ type Notification struct {
 	Actions       map[string]string
 	Hints         map[string]interface{}
 	self          string
+	iconName      string
 }
 
 func (n *Notification) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -49,4 +52,12 @@ func (n *Notification) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (n *Notification) haveDefaultAction() bool {
 	_, ok := n.Actions["default"]
 	return ok
+}
+
+func (n *Notification) isUrgent() bool {
+	return fmt.Sprintf("%d", n.Hints["urgency"]) == "2"
+}
+
+func (n *Notification) isGauge() bool {
+	return strings.HasPrefix(fmt.Sprintf("%s", n.Hints["category"]), "x-org.refude.gauge.")
 }
