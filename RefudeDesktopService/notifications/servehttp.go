@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"sort"
 	"strconv"
 
 	"github.com/surlykke/RefudeServices/lib/respond"
@@ -41,6 +42,7 @@ func Collect() respond.Links {
 	for _, notification := range notifications {
 		links = append(links, notification.Link())
 	}
+	sort.Sort(links)
 	return links
 }
 

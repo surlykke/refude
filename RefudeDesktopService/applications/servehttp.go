@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/surlykke/RefudeServices/lib/respond"
@@ -37,6 +38,7 @@ func Applications() respond.Links {
 	for _, app := range c.applications {
 		links = append(links, app.Link())
 	}
+	sort.Sort(links)
 	return links
 }
 
@@ -70,6 +72,7 @@ func Mimetypes() respond.Links {
 	for _, mt := range c.mimetypes {
 		links = append(links, mt.Link())
 	}
+	sort.Sort(links)
 	return links
 }
 

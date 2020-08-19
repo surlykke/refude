@@ -11,6 +11,7 @@ import (
 	"log"
 	"net/http"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -62,6 +63,7 @@ func Windows() respond.Links {
 	for _, id := range idList {
 		links = append(links, Window(id).ToData().Link())
 	}
+	sort.Sort(links)
 	return links
 }
 

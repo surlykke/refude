@@ -9,6 +9,7 @@ package power
 import (
 	"fmt"
 	"log"
+	"sort"
 	"sync"
 
 	"github.com/godbus/dbus/v5"
@@ -25,6 +26,7 @@ func Collect() respond.Links {
 		links = append(links, device.Link())
 	}
 
+	sort.Sort(links)
 	return links
 }
 

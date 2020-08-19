@@ -9,6 +9,7 @@ package statusnotifications
 import (
 	"net/http"
 	"regexp"
+	"sort"
 	"sync"
 
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/watch"
@@ -46,6 +47,7 @@ func Collect() respond.Links {
 	for _, item := range items {
 		links = append(links, item.Link())
 	}
+	sort.Sort(links)
 	return links
 }
 

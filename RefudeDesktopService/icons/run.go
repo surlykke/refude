@@ -13,6 +13,7 @@ import (
 	"os"
 	"path"
 	"regexp"
+	"sort"
 	"strings"
 	"sync"
 
@@ -46,7 +47,7 @@ func CollectThemes() respond.Links {
 	for _, theme := range themes {
 		links = append(links, theme.Link())
 	}
-
+	sort.Sort(links)
 	return links
 }
 
