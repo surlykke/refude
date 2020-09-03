@@ -120,6 +120,11 @@ export class Do extends React.Component {
         let {links} = this.state
         links && links.length > 0 && this.setState({index: (i + links.length)%links.length})
     }
+
+    selectAndActivate = i => {
+        let {links} = this.state
+        links && links.length > 0 && this.setState({index: (i + links.length)%links.length}, this.activate)
+    }
     
     setTerm = term => {
         this.setState({term: term}, this.fetch)
@@ -165,7 +170,10 @@ export class Do extends React.Component {
 
                 <div className="itemlist" id="itemlistDiv">
                 {links && links.map((l, i) => {
-                    return <div key={l.href} id={l.href} className={className(i)}>
+                    return <div key={l.href} id={l.href} 
+                                className={className(i)} 
+                                onClick={()=> this.select(i)} 
+                                onDoubleClick={() => this.selectAndActivate(i)}>
                             <img className={iconClassName(l)} src={path2Url(l.icon)} alt="" height="24" width="24" />
                             <div className="title"> {l.title}</div>
                         </div>
