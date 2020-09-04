@@ -73,9 +73,7 @@ func DesktopResources(w http.ResponseWriter, r *http.Request) {
 
 		if len(term) > 0 {
 			sfl = append(sfl, applications.DesktopSearch(term, 300)...)
-			if link, ok := session.DesktopSearch(term, 300); ok {
-				sfl = append(sfl, link)
-			}
+			sfl = append(sfl, session.DesktopSearch(term, 300)...)
 			sfl = append(sfl, file.DesktopSearch(term, 300)...)
 			sfl = append(sfl, power.DesktopSearch(term, 600)...)
 		}

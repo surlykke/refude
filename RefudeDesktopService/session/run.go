@@ -31,7 +31,7 @@ func (s Session) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		respond.AsJson(w, s)
 	} else if r.Method == "POST" {
-		var actionId = requests.GetSingleQueryParameter(r, "actionid", "suspend")
+		var actionId = requests.GetSingleQueryParameter(r, "actionid", "")
 		if ep, ok := endpoint[actionId]; !ok {
 			respond.NotFound(w)
 		} else {
@@ -51,21 +51,27 @@ func Collect() respond.Links {
 	return respond.Links{session.Link()}
 }
 
-func DesktopSearch(term string, baserank int) (respond.Link, bool) {
+func DesktopSearch(term string, baserank int) respond.Links {
 	var rank int
 	var ok bool
+	var result = make(respond.Links, 0, 6)
+
 	for _, link := range session.Links {
+		var rel respond.Relation = respond.Action
+		if link.Rel == respond.Self {
+			rel = respond.Related
+		}
 		if rank, ok = searchutils.Rank(strings.ToLower(link.Title), term, baserank); ok {
-			break
+			result = append(result, respond.Link{
+				Href:  link.Href,
+				Rel:   rel,
+				Title: link.Title,
+				Icon:  link.Icon,
+				Rank:  rank,
+			})
 		}
 	}
-	if ok {
-		var link = session.Link()
-		link.Rank = rank
-		return link, true
-	} else {
-		return respond.Link{}, false
-	}
+	return result
 }
 
 func AllPaths() []string {
@@ -94,7 +100,7 @@ var allLinks = map[string]respond.Link{
 	},
 	"suspend": {
 		Href:  "/session?actionid=suspend",
-		Rel:   respond.Self,
+		Rel:   respond.Action,
 		Title: "Suspend",
 		Icon:  icons.IconUrl("system-suspend"),
 	},
@@ -135,9 +141,14 @@ var availabilityEndpoint = map[string]string{
 }
 
 func init() {
-	session.Links = make(respond.Links, 0, 5)
-	session.Links = append(session.Links, allLinks["suspend"]) // Assume this is always available (?)
-	for _, action := range []string{"reboot", "shutdown", "hibernate", "hybridsleep"} {
+	session.Links = make(respond.Links, 0, 6)
+	session.Links = append(session.Links, respond.Link{
+		Href:    "/session",
+		Rel:     respond.Self,
+		Title:   "Session",
+		Profile: "/profile/session",
+	})
+	for _, action := range []string{"suspend", "reboot", "shutdown", "hibernate", "hybridsleep"} {
 		if "yes" == login1Object.Call(availabilityEndpoint[action], dbus.Flags(0)).Body[0].(string) {
 			session.Links = append(session.Links, allLinks[action])
 		}

@@ -62,7 +62,7 @@ func retrieveDevice(path dbus.ObjectPath) *Device {
 	} else {
 		device.self = fmt.Sprintf("/device%s", device.DbusPath)
 	}
-	device.Links = respond.Links{{Href: device.self, Rel: respond.Self, Title: title, Icon: icons.IconUrl(device.IconName)}}
+	device.Links = respond.Links{{Href: device.self, Rel: respond.Self, Title: title, Icon: icons.IconUrl(device.IconName), Profile: "/profile/device"}}
 	return &device
 }
 
