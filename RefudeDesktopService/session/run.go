@@ -111,13 +111,13 @@ var allLinks = map[string]respond.Link{
 		Icon:  icons.IconUrl("system-suspend-hibernate"),
 	},
 	"hybridsleep": {
-		Href:  "/session?action=hybridsleep",
+		Href:  "/session?actionid=hybridsleep",
 		Rel:   respond.Action,
 		Title: "Hybrid sleep",
 		Icon:  icons.IconUrl("system-suspend-hibernate"),
 	},
 	"reboot": {
-		Href:  "/session?action=reboot",
+		Href:  "/session?actionid=reboot",
 		Rel:   respond.Action,
 		Title: "Reboot",
 		Icon:  icons.IconUrl("system-reboot"),
