@@ -85,11 +85,11 @@ export class NotifierItem extends React.Component {
             event.preventDefault()
 
             let { x, y } = getXY(event)
+            let self = findLink(this.state.item, "self").href
             if (event.button === 0) {
-                let url = this.state.item.Self + '?action=Activate&x=' + x + '&y=' + y;
-                postUrl(url);
+                postUrl(self + '?action=Activate&x=' + x + '&y=' + y);
             } else if (event.button === 1) {
-                postUrl(this.state.item.Self + '?action=middle&x=' + x + '&y=' + y);
+                postUrl(self + '?action=middle&x=' + x + '&y=' + y);
             }
         }
 
