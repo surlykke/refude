@@ -23,7 +23,7 @@
     "@babel/preset-react": "^7.0.0",
     "babel-loader": "^8.0.4",
     "copy-webpack-plugin": "^6.0.3",
-    "electron": "^8.2.4",
+    "electron": "^8.5.1",
     "electron-packager": "^14.2.1",
     "minimist": ">=0.2.1",
     "nw-builder": "^3.5.7",
