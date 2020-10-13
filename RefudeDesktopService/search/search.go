@@ -71,14 +71,17 @@ func DesktopResources(w http.ResponseWriter, r *http.Request) {
 		sfl = append(sfl, notifications.DesktopSearch(term, 100)...)
 		sfl = append(sfl, windows.DesktopSearch(term, 200)...)
 
+		var pos = len(sfl)
+
 		if len(term) > 0 {
 			sfl = append(sfl, applications.DesktopSearch(term, 300)...)
 			sfl = append(sfl, session.DesktopSearch(term, 300)...)
 			sfl = append(sfl, file.DesktopSearch(term, 300)...)
 			sfl = append(sfl, power.DesktopSearch(term, 600)...)
 		}
-
-		sort.Sort(sfl)
+		if len(sfl) > pos { // We do not want to change order of files, notifikations and windows, so no sorting for them
+			sort.Sort(sfl[pos:])
+		}
 		respond.AsJson(w, map[string]respond.Links{"_links": sfl})
 	} else {
 		respond.NotAllowed(w)
