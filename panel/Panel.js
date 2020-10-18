@@ -18,7 +18,7 @@ import { Battery } from './battery'
 import { NotifierItems } from './notifieritems'
 import { DragField } from './dragfield'
 import { CloseButton } from "./closebutton";
-import { ipcRenderer} from 'electron'
+import { ipcRenderer } from 'electron'
 import './Panel.css'
 
 
@@ -32,18 +32,18 @@ let watchSse = () => {
     let evtSource = new EventSource("http://localhost:7938/watch")
 
     evtSource.onerror = event => {
-        ipcRenderer.send("sseerror") 
+        ipcRenderer.send("sseerror")
         if (evtSource.readyState === 2) {
             setTimeout(watchSse, 5000)
         }
     }
 
     evtSource.onopen = () => {
-        ipcRenderer.send("sseopen") 
+        ipcRenderer.send("sseopen")
     }
 
     evtSource.onmessage = event => {
-        ipcRenderer.send("ssemessage", event.data) 
+        ipcRenderer.send("ssemessage", event.data)
     }
 }
 
@@ -59,36 +59,32 @@ export default class Panel extends React.Component {
 
     componentDidMount = () => {
         this.resizeObserver = new ResizeObserver((observed) => {
-            if (observed[0] && observed[0].contentRect) {
-               ipcRenderer.send("panelSizeChange", {
-                   width: observed[0].contentRect.width, 
-                   height: observed[0].contentRect.height
-                })
+            let content = document.getElementById('content');
+            if (content) { // shouldn't be nessecary 
+                let width = 
+                    parseFloat(window.getComputedStyle(content).getPropertyValue("width")) +
+                    parseFloat(window.getComputedStyle(content).getPropertyValue("padding-left")) +
+                    parseFloat(window.getComputedStyle(content).getPropertyValue("padding-right"))
+                let height = 
+                    parseFloat(window.getComputedStyle(content).getPropertyValue("height")) +
+                    parseFloat(window.getComputedStyle(content).getPropertyValue("padding-top")) +
+                    parseFloat(window.getComputedStyle(content).getPropertyValue("padding-bottom"))
+                
+                ipcRenderer.send("panelSizeChange", width, height);
             }
         })
 
         this.resizeObserver.observe(this.content.current)
-
-        // Band-aid in case size doesn't get set correctly during startup
-        setTimeout(() => {
-            let content = document.getElementById("content")
-            if (content) {
-                ipcRenderer.send("panelSizeChange", {
-                    width: content.offsetWidth,
-                    height: content.offsetHeight
-                })
-            }
-        }, 1000)
     };
 
     render = () => {
         return <div style={{ width: "500px" }}>
             <div id="content" className="panel" ref={this.content}>
-                <Clock/>
-                <NotifierItems/>
-                <Battery/>
-                <DragField/>
-                <CloseButton/>
+                <Clock />
+                <NotifierItems />
+                <Battery />
+                <DragField />
+                <CloseButton />
             </div>
         </div>
     }

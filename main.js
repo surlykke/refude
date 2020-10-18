@@ -36,15 +36,15 @@ let createPanel = () => {
     panelWindow.once('ready-to-show', () => {
         manageWindow(panelWindow, 'panel', true, false)
         panelWindow.show()
-        ipcMain.on('panelSizeChange', (evt, rect) => {
-            let width = Math.round(panelWindow.webContents.zoomFactor * rect.width) + 8
-            let height = Math.round(panelWindow.webContents.zoomFactor * rect.height) + 1
-            panelWindow.setSize(width, height)
+        ipcMain.on('panelSizeChange', (evt, width, height) => {
+            let scaledWidth = Math.round(panelWindow.webContents.zoomFactor * width)
+            let scaledHeight = Math.round(panelWindow.webContents.zoomFactor * height)
+            panelWindow.setSize(scaledWidth, scaledHeight)
         })
 
     })
     panelWindow.on('closed', app.quit)
-    //panelWindow.webContents.openDevTools()
+    // panelWindow.webContents.openDevTools()
 }
 
 let doWindow
