@@ -13,8 +13,8 @@ let quit = () => {
 }
 
 export class CloseButton extends React.Component {
-	render = () => {
-		return <div className="plugin" onClick={quit}>
+	render = () => 
+		<div onClick={quit}>
 			<svg width="14" height="14" viewBox="0 0 100 100">
 				<g fillOpacity="0" strokeWidth="12" stroke="black">
 					<line x1="15" y1="15" x2="85" y2="85"/>
@@ -22,6 +22,5 @@ export class CloseButton extends React.Component {
 				</g>
 			</svg>
 		</div>
-	}
 }
 

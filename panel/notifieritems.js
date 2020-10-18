@@ -105,8 +105,10 @@ export class NotifierItem extends React.Component {
         }
 
         return this.state.item ?
-            <img src={path2Url(this.state.self.icon)} alt="" height="14px" width="14px"
-                style={{ paddingRight: "5px" }} onClick={onClick} onContextMenu={onRightClick} /> :
+            <div>
+                <img src={path2Url(this.state.self.icon)} alt="" height="14px" width="14px"
+                    onClick={onClick} onContextMenu={onRightClick} /> 
+            </div>:
             null
     }
 }
@@ -137,11 +139,7 @@ export class NotifierItems extends React.Component {
 
     error = () => this.setState({links: undefined})
 
-    render = () => {
-        return this.state.links ? <div className="plugin">
-            {this.state.links.map(link => (<NotifierItem key={link.href} link={link} />))}
-        </div> : null
-    }
+    render = () => this.state.links ? this.state.links.map(link => (<NotifierItem key={link.href} link={link} />)) : []
 
 }
 

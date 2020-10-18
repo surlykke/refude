@@ -9,6 +9,7 @@ import ReactDOM from 'react-dom'
 import { postUrl, deleteUrl, addParam, getUrl, iconUrl, findLink, path2Url } from '../common/monitor';
 import { ipcRenderer } from 'electron'
 import "./Do.css"
+import { DragField } from '../panel/dragfield';
 
 export class Do extends React.Component {
     constructor(props) {
@@ -167,7 +168,6 @@ export class Do extends React.Component {
                             autoFocus />
                     </div>
                 }
-
                 <div className="itemlist" id="itemlistDiv">
                 {links && links.map((l, i) => {
                     return <div key={l.href} id={l.href} 
