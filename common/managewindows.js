@@ -45,7 +45,7 @@ let persist = () => {
     }
 }
 
-let saveBounds = (windowName, bounds) => {
+let rememberBounds = (windowName, bounds) => {
     let signature = getSignature()
     windowData[signature][windowName] = bounds
     persist()
@@ -60,15 +60,10 @@ let manageWindow = (window, windowName, managePosition, manageSize) => {
     initialize()
     let set = () => {
         let bounds = loadBounds(windowName)
-        if (bounds) {
-            managePosition && window.setPosition(bounds.x, bounds.y)
-            manageSize && window.setSize(bounds.width, bounds.height)
-        }
+        bounds && window.setBounds(bounds)
     }
     set()
     screen.on('display-metrics-changed', set)
-    window.on('move', () => saveBounds(windowName, window.getBounds()))
-    window.on('resize', () => saveBounds(windowName, window.getBounds()))
 }
 
-module.exports = {manageWindow} 
+module.exports = {rememberBounds, manageWindow} 

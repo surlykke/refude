@@ -1,7 +1,7 @@
 process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = true
 
 const { app, BrowserWindow, ipcMain, screen } = require('electron')
-let { manageWindow } = require('./common/managewindows')
+let { rememberBounds, manageWindow } = require('./common/managewindows')
 let url = require('url')
 let path = require('path')
 let http = require('http')
@@ -67,7 +67,6 @@ let createDoWindow = () => {
 
             if (!doWindow.isVisible()) {
                 let pb = panelWindow.getBounds()
-                doWindow.setPosition(pb.x, pb.y + pb.height + 12)
                 doWindow.show()
                 doWindow.webContents.send("doShow")
                 indicatorWindow.send("screens", screen.getAllDisplays())
@@ -93,6 +92,9 @@ let createDoWindow = () => {
 
         
         ipcMain.on("doClose", () => {
+            rememberBounds('panel', panelWindow.getBounds())
+            rememberBounds('do', doWindow.getBounds())
+            rememberBounds('indicator', indicatorWindow.getBounds())
             doWindow.hide()
             indicatorWindow.hide()
         })
