@@ -126,7 +126,7 @@ let indicatorWindow
 
 let createIndicatorWindow = () => {
     indicatorWindow = new BrowserWindow({
-        show: false, skipTaskbar: true, transparent: true, webPreferences: { nodeIntegration: true }
+        show: false, skipTaskbar: true, webPreferences: { nodeIntegration: true }
     })
 
     indicatorWindow.removeMenu()
