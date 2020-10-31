@@ -183,6 +183,8 @@ app.on('ready', () => {
     createOsdWindow()
     setupWatch()
 
-    ipcMain.on('panelClose', () => app.quit())
+    ipcMain.on('panelClose', () => {
+        app.exit(0)
+    })
 
 })
