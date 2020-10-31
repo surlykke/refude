@@ -14,7 +14,9 @@
     "lodash": ">=4.17.19",
     "react": "^16.6.3",
     "react-dom": "^16.6.3",
-    "serialize-javascript": ">=3.1.0"
+    "serialize-javascript": ">=3.1.0",
+    "bl": ">=1.2.3",
+    "dot-prop": ">=4.2.1"
   },
   "devDependencies": {
     "@babel/core": "^7.2.0",
@@ -22,15 +24,17 @@
     "@babel/preset-env": "^7.2.0",
     "@babel/preset-react": "^7.0.0",
     "babel-loader": "^8.0.4",
+    "bl": ">=1.2.3",
     "copy-webpack-plugin": "^6.0.3",
-    "electron": "^8.5.1",
-    "electron-packager": "^14.2.1",
-    "minimist": ">=0.2.1",
-    "nw-builder": "^3.5.7",
-    "webpack": "^4.35.3",
-    "webpack-cli": "^3.3.5",
-    "webpack-shell-plugin": "^0.5.0",
     "css-loader": "^4.2.0",
-    "style-loader": "^1.2.1"
+    "dot-prop": ">=4.2.1",
+    "electron": "^8.5.2",
+    "electron-packager": "^14.2.1",
+    "minimist": ">=1.2.3",
+    "nw-builder": "^3.5.7",
+    "style-loader": "^1.2.1",
+    "webpack": "^4.44.2",
+    "webpack-cli": "^3.3.5",
+    "webpack-shell-plugin": "^0.5.0"
   }
 }
