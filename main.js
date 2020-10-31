@@ -34,7 +34,7 @@ let createPanel = () => {
         slashes: true
     }))
     panelWindow.once('ready-to-show', () => {
-        manageWindow(panelWindow, 'panel', true, false)
+        manageWindow(panelWindow, 'panel')
         panelWindow.show()
         ipcMain.on('panelSizeChange', (evt, width, height) => {
             let scaledWidth = Math.round(panelWindow.webContents.zoomFactor * width)
@@ -66,7 +66,6 @@ let createDoWindow = () => {
             res.end('')
 
             if (!doWindow.isVisible()) {
-                let pb = panelWindow.getBounds()
                 doWindow.show()
                 doWindow.webContents.send("doShow")
                 indicatorWindow.send("screens", screen.getAllDisplays())
@@ -78,7 +77,7 @@ let createDoWindow = () => {
         }).listen("/run/user/1000/org.refude.panel.do");
 
  
-        manageWindow(doWindow, "do", false, true)
+        manageWindow(doWindow, "do")
         doWindow.on('closed', () => { win = undefined })
         
         ipcMain.on("doLinkSelected", (evt, link) => {
@@ -115,7 +114,7 @@ let createIndicatorWindow = () => {
         protocol: 'file:',
         slashes: true
     })).then(() => {
-        manageWindow(indicatorWindow, "indicator", true, true)
+        manageWindow(indicatorWindow, "indicator")
     }).catch(error => console.error(error))
 
     //indicatorWindow.webContents.openDevTools()

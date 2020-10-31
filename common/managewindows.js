@@ -56,7 +56,7 @@ let loadBounds = (windowName) => {
     return windowData[signature][windowName]
 }
 
-let manageWindow = (window, windowName, managePosition, manageSize) => {
+let manageWindow = (window, windowName) => {
     initialize()
     let set = () => {
         let bounds = loadBounds(windowName)
