@@ -114,7 +114,7 @@ export class Do extends React.Component {
 
 
     dismiss = () => {
-        this.setState({url: "/search/desktop", term: "", index: 0, resource: undefined}, () => ipcRenderer.send("doClose"))
+        this.setState({url: "/search/desktop", term: "", index: 0, resource: undefined}, () => ipcRenderer.send("dismiss"))
     }
     
     select = i => {

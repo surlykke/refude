@@ -49,12 +49,14 @@ let createPanel = () => {
 
 let doWindow
 let server
+let indicatorDismissedInThisShowing = false
 
 let createDoWindow = () => {
     doWindow = new BrowserWindow({
         x: 100, y: 100, width: 300, height: 500,
-        show: false, frame: false, alwaysOnTop: true, webPreferences: { nodeIntegration: true }
+        show: false, alwaysOnTop: true, webPreferences: { nodeIntegration: true }
     })
+    doWindow.removeMenu()
 
     doWindow.loadURL(url.format({
         pathname: path.join(__dirname, '/do/do.html'),
@@ -64,9 +66,12 @@ let createDoWindow = () => {
         
        server = http.createServer(function (req, res) {
             res.end('')
+            
+            rememberBounds('panel', panelWindow.getBounds())
 
             if (!doWindow.isVisible()) {
                 doWindow.show()
+                indicatorDismissedInThisShowing = false 
                 doWindow.webContents.send("doShow")
                 indicatorWindow.send("screens", screen.getAllDisplays())
             } else {
@@ -78,10 +83,14 @@ let createDoWindow = () => {
 
  
         manageWindow(doWindow, "do")
-        doWindow.on('closed', () => { win = undefined })
         
         ipcMain.on("doLinkSelected", (evt, link) => {
-            if (doWindow.isVisible() && link && link.profile === "/profile/window" && (!link.meta || link.meta["state"] !== "minimized")) {
+            if (!indicatorDismissedInThisShowing && 
+                doWindow.isVisible() && 
+                link && 
+                link.profile === "/profile/window" && 
+                (!link.meta || link.meta["state"] !== "minimized")) {
+
                 indicatorWindow.showInactive()
                 indicatorWindow.webContents.send("linkSelected", link)
             } else {
@@ -89,24 +98,43 @@ let createDoWindow = () => {
             }
         })
 
-        
-        ipcMain.on("doClose", () => {
-            rememberBounds('panel', panelWindow.getBounds())
-            rememberBounds('do', doWindow.getBounds())
-            rememberBounds('indicator', indicatorWindow.getBounds())
-            doWindow.hide()
-            indicatorWindow.hide()
+        doWindow.on('close', e => {
+            e.preventDefault()
+            dismissDo()
         })
+
+        ipcMain.on("dismiss", dismissDo)
     })
         
     //doWindow.webContents.openDevTools()
 }
 
+let dismissDo = () => {
+    if (doWindow) {
+        rememberBounds('do', doWindow.getBounds())
+        doWindow.hide()
+    }
+
+    if (indicatorWindow) {
+        rememberBounds('indicator', indicatorWindow.getBounds())
+        indicatorWindow.hide()
+    }
+}
+
+
 let indicatorWindow
 
 let createIndicatorWindow = () => {
     indicatorWindow = new BrowserWindow({
-        show: false, frame: false, skipTaskbar: true, transparent: true, webPreferences: { nodeIntegration: true }
+        show: false, skipTaskbar: true, transparent: true, webPreferences: { nodeIntegration: true }
+    })
+
+    indicatorWindow.removeMenu()
+
+    indicatorWindow.on('close', e => {
+        e.preventDefault()
+        indicatorDismissedInThisShowing = true
+        indicatorWindow.hide()
     })
 
     indicatorWindow.loadURL(url.format({
