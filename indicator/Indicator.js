@@ -10,6 +10,8 @@ import ReactDOM from 'react-dom'
 import { ipcRenderer } from 'electron'
 import { getUrl, findLink, path2Url, addParam } from '../common/monitor';
 
+import "../common/common.css"
+
 let nocache = 1
 
 export class Indicator extends React.Component {
@@ -68,11 +70,16 @@ export class Indicator extends React.Component {
             let screenShotUrl = path2Url(addParam(addParam(screenshotLink.href, "downscale", "3"), nocache, nocache++))
             let { X, Y, W, H } = res
             let viewBox = `${this.display.x - 3} ${this.display.y - 3} ${this.display.w + 6} ${this.display.h + 6}`;
-            let rects = this.screens.map((scr, i) => <rect key={`screenRect_${i}`} x={scr.x} y={scr.y} width={scr.w} height={scr.h} fill="lightgrey" />);
+            let rects = this.screens.map((scr, i) => <rect key={`screenRect_${i}`} x={scr.x} y={scr.y} width={scr.w} height={scr.h} stroke="black" fill="white" />);
             rects.push(<image key="winRect" x={X} y={Y} width={W} height={H} xlinkHref={screenShotUrl} />);
-            return <svg key="windows" xmlns="http://www.w3.org/2000/svg" width="calc(100% - 16px)" style={{ margin: "8px" }} viewBox={viewBox}>
-                {rects}
-            </svg>
+            rects.push(<rect x={X} y={Y} width={W} height={H} stroke="black" fill="none"/>)
+        
+            return <>
+                <div className="topbar"/>
+                <svg key="windows" xmlns="http://www.w3.org/2000/svg" width="calc(100% - 16px)" style={{ margin: "8px" }} viewBox={viewBox}>
+                    {rects}
+                </svg>
+            </>
         } else {
             return null
         }

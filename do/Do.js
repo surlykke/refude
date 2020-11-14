@@ -9,6 +9,7 @@ import ReactDOM from 'react-dom'
 import { postUrl, deleteUrl, addParam, getUrl, iconUrl, findLink, path2Url } from '../common/monitor';
 import { ipcRenderer } from 'electron'
 import "./Do.css"
+import "../common/common.css"
 import { DragField } from '../panel/dragfield';
 
 export class Do extends React.Component {
@@ -150,15 +151,8 @@ export class Do extends React.Component {
 
         return resource ?
             <>
-                {self &&
-                <div key="resource" id={self.href} className="item">
-                    <img width="24px" height="24px" className={iconClassName(self)} src={path2Url(self.icon)} alt="" />
-                    <div className="name">{self.title}</div>
-                </div>}            
-
-                
+                <div className="topbar">
                 {(!self || links.length > 5) && 
-                    <div key="searchBox" className="searchbox" onKeyDown={null}>
                         <input id="input"
                             className="searchinput"
                             type="search"
@@ -166,8 +160,14 @@ export class Do extends React.Component {
                             value={this.state.term}
                             autoComplete="off"
                             autoFocus />
-                    </div>
                 }
+                </div>
+                {self &&
+                <div key="resource" id={self.href} className="item">
+                    <img width="24px" height="24px" className={iconClassName(self)} src={path2Url(self.icon)} alt="" />
+                    <div className="name">{self.title}</div>
+                </div>}            
+
                 <div className="itemlist" id="itemlistDiv">
                 {links && links.map((l, i) => {
                     return <div key={l.href} id={l.href} 

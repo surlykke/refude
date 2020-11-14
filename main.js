@@ -54,7 +54,7 @@ let indicatorDismissedInThisShowing = false
 let createDoWindow = () => {
     doWindow = new BrowserWindow({
         x: 100, y: 100, width: 300, height: 500,
-        show: false, alwaysOnTop: true, webPreferences: { nodeIntegration: true }
+        show: false, frame: false, alwaysOnTop: true, webPreferences: { nodeIntegration: true }
     })
     doWindow.removeMenu()
 
@@ -126,7 +126,7 @@ let indicatorWindow
 
 let createIndicatorWindow = () => {
     indicatorWindow = new BrowserWindow({
-        show: false, skipTaskbar: true, webPreferences: { nodeIntegration: true }
+        show: false, frame: false, skipTaskbar: true, webPreferences: { nodeIntegration: true }
     })
 
     indicatorWindow.removeMenu()
