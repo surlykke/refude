@@ -1,6 +1,6 @@
 process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = true
 
-const { app, BrowserWindow, ipcMain, screen } = require('electron')
+const { app, BrowserWindow, ipcMain, screen} = require('electron')
 let { rememberBounds, manageWindow } = require('./common/managewindows')
 let url = require('url')
 let path = require('path')
@@ -26,7 +26,7 @@ let setupWatch = () => {
 let panelWindow
 
 let createPanel = () => {
-    panelWindow = new BrowserWindow({ show: false, frame: false, alwaysOnTop: true, webPreferences: { nodeIntegration: true } })
+    panelWindow = new BrowserWindow({ show: false, frame: false, alwaysOnTop: true, webPreferences: { nodeIntegration: true, enableRemoteModule: true } })
 
     panelWindow.loadURL(url.format({
         pathname: path.join(__dirname, '/panel/panel.html'),
@@ -44,7 +44,7 @@ let createPanel = () => {
 
     })
     panelWindow.on('closed', app.quit)
-    // panelWindow.webContents.openDevTools()
+    //panelWindow.webContents.openDevTools()
 }
 
 let doWindow
@@ -52,11 +52,7 @@ let server
 let indicatorDismissedInThisShowing = false
 
 let createDoWindow = () => {
-    doWindow = new BrowserWindow({
-        x: 100, y: 100, width: 300, height: 500,
-        show: false, frame: false, alwaysOnTop: true, webPreferences: { nodeIntegration: true }
-    })
-    doWindow.removeMenu()
+    doWindow = new BrowserWindow({show: false, frame: false, alwaysOnTop: true, webPreferences: { nodeIntegration: true } })
 
     doWindow.loadURL(url.format({
         pathname: path.join(__dirname, '/do/do.html'),
@@ -81,7 +77,7 @@ let createDoWindow = () => {
 
         }).listen("/run/user/1000/org.refude.panel.do");
 
- 
+        
         manageWindow(doWindow, "do")
         
         ipcMain.on("doLinkSelected", (evt, link) => {
@@ -126,10 +122,13 @@ let indicatorWindow
 
 let createIndicatorWindow = () => {
     indicatorWindow = new BrowserWindow({
-        show: false, frame: false, skipTaskbar: true, webPreferences: { nodeIntegration: true }
+        show: false, frame: false, skipTaskbar: false, webPreferences: { nodeIntegration: true }
     })
+    indicatorWindow.webContents.setZoomFactor(3.0)
+    indicatorWindow.webContents.setZoomLevel(3.0)
+    indicatorWindow.webContents.on("zoom-changed", event => console.log(event))
 
-    indicatorWindow.removeMenu()
+    indicatorWindow.on('keydown', e => console.log(e))
 
     indicatorWindow.on('close', e => {
         e.preventDefault()
