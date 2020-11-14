@@ -16,11 +16,10 @@ import ReactDOM from 'react-dom'
 import { Clock } from './clock'
 import { Battery } from './battery'
 import { NotifierItems } from './notifieritems'
-import { DragField } from './dragfield'
 import { CloseButton } from "./closebutton";
 import { ipcRenderer } from 'electron'
 import './Panel.css'
-
+import '../common/common.css'
 
 // Annoyingly, browsers and hence electron, only allows a very limited set of server-sent-event-streams
 // so we make do with one and do client-side dispatching.
@@ -79,11 +78,10 @@ export default class Panel extends React.Component {
 
     render = () => {
         return <div style={{ width: "500px" }}>
-            <div id="content" className="panel" ref={this.content}>
+            <div id="content" className="panel topbar" ref={this.content}>
                 <Clock />
                 <NotifierItems />
                 <Battery />
-                <DragField />
                 <CloseButton />
             </div>
         </div>

@@ -14,7 +14,7 @@ let quit = () => {
 
 export class CloseButton extends React.Component {
 	render = () => 
-		<div onClick={quit}>
+		<div onClick={quit} className="clickable">
 			<svg width="14" height="14" viewBox="0 0 100 100">
 				<g fillOpacity="0" strokeWidth="12" stroke="black">
 					<line x1="15" y1="15" x2="85" y2="85"/>

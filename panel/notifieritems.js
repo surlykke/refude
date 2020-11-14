@@ -105,7 +105,7 @@ export class NotifierItem extends React.Component {
         }
 
         return this.state.item ?
-            <div>
+            <div className="clickable">
                 <img src={path2Url(this.state.self.icon)} alt="" height="14px" width="14px"
                     onClick={onClick} onContextMenu={onRightClick} /> 
             </div>:

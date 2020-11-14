@@ -10,7 +10,6 @@ import { postUrl, deleteUrl, addParam, getUrl, iconUrl, findLink, path2Url } fro
 import { ipcRenderer } from 'electron'
 import "./Do.css"
 import "../common/common.css"
-import { DragField } from '../panel/dragfield';
 
 export class Do extends React.Component {
     constructor(props) {
