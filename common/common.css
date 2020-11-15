@@ -9,7 +9,7 @@ html, body {
    background-color: lightgrey;
    -webkit-app-region: drag;
    border: none;
-   height: 32px;
+   height: 48px;
 }
 
 *:focus {

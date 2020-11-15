@@ -78,7 +78,7 @@ export default class Panel extends React.Component {
 
     render = () => {
         return <div style={{ width: "500px" }}>
-            <div id="content" className="panel topbar" ref={this.content}>
+            <div id="content" className="panel" ref={this.content}>
                 <Clock />
                 <NotifierItems />
                 <Battery />
