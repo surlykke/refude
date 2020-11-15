@@ -9,17 +9,15 @@ import { ipcRenderer } from 'electron'
 import './Panel.css'
 
 let quit = () => {
-	ipcRenderer.send("panelClose")
+	ipcRenderer.send("panelMinimize")
 }
 
-export class CloseButton extends React.Component {
-	render = () => 
-		<div onClick={quit} className="clickable" title="Close refude">
+export class MinimizeButton extends React.Component {
+	render = () =>
+		<div onClick={quit} className="clickable" title="Hide panel for 5 seconds">
 			<svg width="20" height="20" viewBox="0 0 100 100">
-				<g fillOpacity="0" strokeWidth="12" stroke="black">
-					<line x1="15" y1="15" x2="85" y2="85"/>
-					<line x1="15" y1="85" x2="85" y2="15"/>
-				</g>
+				<path d="M 0 30 C 30 10, 60 0, 55 90" stroke="black" stroke-width="16" fill="none" />
+				<path d="M 20 60 L 55 90 L 90 60" stroke="black" stroke-width="18" fill="none" />
 			</svg>
 		</div>
 }

@@ -17,6 +17,7 @@ import { Clock } from './clock'
 import { Battery } from './battery'
 import { NotifierItems } from './notifieritems'
 import { CloseButton } from "./closebutton";
+import { MinimizeButton } from "./minimizebutton";
 import { ipcRenderer } from 'electron'
 import './Panel.css'
 import '../common/common.css'
@@ -82,6 +83,7 @@ export default class Panel extends React.Component {
                 <Clock />
                 <NotifierItems />
                 <Battery />
+                <MinimizeButton />
                 <CloseButton />
             </div>
         </div>

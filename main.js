@@ -102,7 +102,7 @@ let createDoWindow = () => {
         ipcMain.on("dismiss", dismissDo)
     })
         
-    //doWindow.webContents.openDevTools()
+    // doWindow.webContents.openDevTools()
 }
 
 let dismissDo = () => {
@@ -186,4 +186,8 @@ app.on('ready', () => {
         app.exit(0)
     })
 
+    ipcMain.on('panelMinimize', () => {
+        panelWindow.minimize()
+        setTimeout(() => panelWindow.restore(), 5000)
+    })
 })

@@ -57,7 +57,6 @@ export class Do extends React.Component {
     }
 
     keydownHandler = (event) => {
-        console.log(event);
         let { key, ctrlKey, shiftKey, altKey, metaKey } = event;
 
         if ((key === "Tab" && !ctrlKey && shiftKey && !altKey && !metaKey) ||
