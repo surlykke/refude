@@ -22,13 +22,13 @@
 }
 
 .title {
-    font-size: 0.9em;
+    font-size: 1.2em;
     white-space: nowrap;
 }
 
 .body {
     max-height: 2.2em;
-    font-size: 0.7em;
+    font-size: 1em;
     padding-top: 0.2em;
     padding-bottom: 0.2em;
     overflow-y: hidden;

@@ -11,3 +11,7 @@ html, body {
    border: none;
    height: 32px;
 }
+
+*:focus {
+    outline: none;
+}
