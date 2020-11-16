@@ -187,7 +187,7 @@ app.on('ready', () => {
     })
 
     ipcMain.on('panelMinimize', () => {
-        panelWindow.minimize()
-        setTimeout(() => panelWindow.restore(), 5000)
+        panelWindow.hide()
+        setTimeout(() => panelWindow.showInactive(), 5000)
     })
 })
