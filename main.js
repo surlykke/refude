@@ -35,7 +35,7 @@ let createPanel = () => {
     }))
     panelWindow.once('ready-to-show', () => {
         manageWindow(panelWindow, 'panel')
-        panelWindow.show()
+        panelWindow.showInactive()
         ipcMain.on('panelSizeChange', (evt, width, height) => {
             let scaledWidth = Math.round(panelWindow.webContents.zoomFactor * width)
             let scaledHeight = Math.round(panelWindow.webContents.zoomFactor * height)
