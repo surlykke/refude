@@ -173,7 +173,7 @@ export class Do extends React.Component {
                                 className={className(i)} 
                                 onClick={()=> this.select(i)} 
                                 onDoubleClick={() => this.selectAndActivate(i)}>
-                            <img className={iconClassName(l)} src={path2Url(l.icon)} alt="" height="24" width="24" />
+                            {l.icon && <img className={iconClassName(l)} src={path2Url(l.icon)} height="24" width="24" />}
                             <div className="title"> {l.title}</div>
                         </div>
                 }
