@@ -42,7 +42,7 @@ export class Do extends React.Component {
     }
 
 
-    fetch = term => {
+    fetch = () => {
         getUrl(addParam(this.state.url, "term", this.state.term), resp => {
             this.setState({
                 resource: resp.data, 
@@ -59,26 +59,26 @@ export class Do extends React.Component {
     keydownHandler = (event) => {
         let { key, ctrlKey, shiftKey, altKey, metaKey } = event;
 
-        if ((key === "Tab" && !ctrlKey && shiftKey && !altKey && !metaKey) ||
-            (key === "ArrowUp" && !ctrlKey && !shiftKey && !altKey && !metaKey) ||
+        if ((key === "Tab" && shiftKey && !altKey && !metaKey) ||
+            (key === "ArrowUp" && !shiftKey && !altKey && !metaKey) ||
             (key === "k" && ctrlKey && !shiftKey && !altKey && !metaKey)) {
             this.up()
-        } else if ((key === "Tab" && !ctrlKey && !shiftKey && !altKey && !metaKey) ||
-            (key === "ArrowDown" && !ctrlKey && !shiftKey && !altKey && !metaKey) ||
+        } else if ((key === "Tab" && !shiftKey && !altKey && !metaKey) ||
+            (key === "ArrowDown" && !shiftKey && !altKey && !metaKey) ||
             (key === "j" && ctrlKey && !shiftKey && !altKey && !metaKey)) {
             this.down()
-        } else if ((key === "ArrowLeft" && !ctrlKey && !shiftKey && !altKey && !metaKey) ||
+        } else if ((key === "ArrowLeft" && !shiftKey && !altKey && !metaKey) ||
             (key === "h" && ctrlKey && !shiftKey && !altKey && !metaKey)) {
             this.goBack()
-        } else if ((key === "ArrowRight" && !ctrlKey && !shiftKey && !altKey && !metaKey) ||
+        } else if ((key === "ArrowRight" && !shiftKey && !altKey && !metaKey) ||
             (key === "l" && ctrlKey && !shiftKey && !altKey && !metaKey)) {
             this.go()
-        } else if ((key === "Enter" && !ctrlKey && !shiftKey && !altKey && !metaKey) ||
-            (key === " " && !ctrlKey && !shiftKey && !altKey && !metaKey)) {
-            this.activate()
-        } else if (key === "Delete" && !ctrlKey && !shiftKey && !altKey && !metaKey) {
-            this.delete()
-        } else if (key === "Escape" && !ctrlKey && !shiftKey && !altKey && !metaKey) {
+        } else if ((key === "Enter" && !shiftKey && !altKey && !metaKey) ||
+            (key === " " && !shiftKey && !altKey && !metaKey)) {
+            this.activate(ctrlKey)
+        } else if (key === "Delete" && !shiftKey && !altKey && !metaKey) {
+            this.delete(ctrlKey)
+        } else if (key === "Escape" && !shiftKey && !altKey && !metaKey) {
             this.dismiss()
         } else {
             return;
@@ -90,12 +90,12 @@ export class Do extends React.Component {
 
     down = () => this.select(this.state.index + 1)
 
-    activate = () => {
-        this.curLink() && postUrl(this.curLink().href, this.dismiss)
+    activate = (keep) => {
+        this.curLink() && postUrl(this.curLink().href, keep ? this.fetch : this.dismiss)
     }
 
-    delete = () => {
-        this.curLink() && deleteUrl(this.curLink().href, this.dismiss)
+    delete = (keep) => {
+        this.curLink() && deleteUrl(this.curLink().href, keep ? this.fetch : this.dismiss)
     }
 
     go = () => {
