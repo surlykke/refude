@@ -7,6 +7,7 @@
 package main
 
 import (
+	"log"
 	"net/http"
 	"strings"
 
@@ -24,6 +25,8 @@ import (
 	"github.com/surlykke/RefudeServices/lib/respond"
 
 	"github.com/surlykke/RefudeServices/lib"
+
+	_ "net/http/pprof"
 )
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -49,7 +52,9 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	} else if strings.HasPrefix(r.URL.Path, "/watch") {
 		handler = watch.Handler(r)
 	} else if strings.HasPrefix(r.URL.Path, "/window") {
-		handler = windows.Handler(r)
+		handler = windows.WindowHandler(r)
+	} else if strings.HasPrefix(r.URL.Path, "/monitor") {
+		handler = windows.MonitorHandler(r)
 	}
 
 	if handler != nil {
@@ -69,6 +74,10 @@ func main() {
 	go icons.Run()
 	go watch.Run()
 	go file.Run()
+
+	go func() {
+		log.Println(http.ListenAndServe("localhost:7939", nil))
+	}()
 
 	go lib.Serve("org.refude.desktop-service", http.HandlerFunc(ServeHTTP))
 	_ = http.ListenAndServe(":7938", http.HandlerFunc(ServeHTTP))

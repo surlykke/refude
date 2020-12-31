@@ -5,7 +5,8 @@
 #
 
 if [[ "--restart" == "$1" ]]; then
-	kill `pgrep -f RefudeDesktopService`
+	pid=$(pgrep -f RefudeDesktopService)
+	[[ -n "$pid" ]] && kill $pid
 fi
 
 LOGFILE=/tmp/RefudeDesktopService_`date +%y.%m.%d-%H:%M:%S`.log

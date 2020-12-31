@@ -19,7 +19,6 @@ import (
 	"github.com/surlykke/RefudeServices/lib/image"
 
 	"github.com/surlykke/RefudeServices/RefudeDesktopService/icons"
-	"github.com/surlykke/RefudeServices/RefudeDesktopService/windows/xlib"
 )
 
 type WindowData struct {
@@ -57,25 +56,29 @@ func (win Window) ToData() *WindowData {
 	}
 	dataMutex.Unlock()
 
-	var self = fmt.Sprintf("/window/%d", id)
-	var link = respond.Link{
-		Href:    self,
-		Rel:     respond.Self,
-		Title:   wd.Name,
-		Profile: "/profile/window",
-		Icon:    icons.IconUrl(wd.IconName),
-	}
-
+	var monitorList = monitors.Load().([]*Monitor)
+	var href = fmt.Sprintf("/window/%d", id)
+	var actionPrefix = href + "?action="
+	var state map[string]string
 	if slice.Contains(wd.States, "_NET_WM_STATE_HIDDEN") {
-		link.Meta = map[string]string{"state": "minimized"}
+		state = map[string]string{"state": "minimized"}
+	}
+	wd.Links = make(respond.Links, 0, 5+len(monitorList))
+	wd.Links = wd.Links.Add(href, wd.Name, icons.IconUrl(wd.IconName), respond.Self, "/profile/window", state)
+
+	wd.Links = wd.Links.Add(href+"/screenshot", "Screenshot of "+wd.Name, "", respond.Related, "/profile/window-screenshot", nil)
+	//wd.Links = wd.Links.Add(actionPrefix+"raise", "Raise and focus", "", respond.Action, "", nil)
+
+	if slice.Contains(wd.States, NET_WM_STATE_HIDDEN) || (slice.Contains(wd.States, NET_WM_STATE_MAXIMIZED_HORZ) && slice.Contains(wd.States, NET_WM_STATE_MAXIMIZED_VERT)) {
+		wd.Links = wd.Links.Add(actionPrefix+"restore", "Restore", "", respond.Action, "", nil)
+	} else {
+		wd.Links = wd.Links.Add(actionPrefix+"minimize", "Minimize", "", respond.Action, "", nil)
+		wd.Links = wd.Links.Add(actionPrefix+"maximize", "Maximize", "", respond.Action, "", nil)
 	}
 
-	wd.Links = respond.Links{link, {
-		Href:    self + "/screenshot",
-		Rel:     respond.Related,
-		Title:   "screenshot of " + wd.Name,
-		Profile: "/profile/window-screenshot",
-	}}
+	for _, m := range monitorList {
+		wd.Links = wd.Links.Add(actionPrefix+"move&monitor="+m.Name, "Move to monitor "+m.Name, "", respond.Action, "", nil)
+	}
 
 	return &wd
 
@@ -85,10 +88,49 @@ func (win Window) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		respond.AsJson(w, win.ToData())
 	} else if r.Method == "POST" {
-		dataMutex.Lock()
-		defer dataMutex.Unlock()
-		dataConnection.RaiseAndFocusWindow(uint32(win))
-		respond.Accepted(w)
+		var action = requests.Action(r)
+		switch action {
+		case "":
+			dataMutex.Lock()
+			defer dataMutex.Unlock()
+			dataConnection.RaiseAndFocusWindow(uint32(win))
+			respond.Accepted(w)
+		case "restore":
+			dataMutex.Lock()
+			defer dataMutex.Unlock()
+			if states, err := dataConnection.GetState(uint32(win)); err != nil {
+				respond.NotFound(w)
+			} else if slice.Contains(states, NET_WM_STATE_HIDDEN) {
+				dataConnection.RemoveWmState(uint32(win), NET_WM_STATE_HIDDEN)
+			} else {
+				dataConnection.RemoveWmState(uint32(win), NET_WM_STATE_MAXIMIZED_HORZ)
+				dataConnection.RemoveWmState(uint32(win), NET_WM_STATE_MAXIMIZED_VERT)
+			}
+		case "maximize":
+			fmt.Println("maximizing")
+			dataMutex.Lock()
+			defer dataMutex.Unlock()
+			dataConnection.AddWmState(uint32(win), NET_WM_STATE_MAXIMIZED_HORZ)
+			dataConnection.AddWmState(uint32(win), NET_WM_STATE_MAXIMIZED_VERT)
+			respond.Accepted(w)
+		case "minimize":
+			dataMutex.Lock()
+			defer dataMutex.Unlock()
+			dataConnection.AddWmState(uint32(win), NET_WM_STATE_HIDDEN)
+			respond.Accepted(w)
+		case "move":
+			monitorName := requests.GetSingleQueryParameter(r, "monitor", "")
+			fmt.Println("moving to ", monitorName)
+			dataMutex.Lock()
+			defer dataMutex.Unlock()
+			if err := dataConnection.MoveToMonitor(uint32(win), monitorName); err != nil {
+				respond.UnprocessableEntity(w, err)
+			} else {
+				respond.Accepted(w)
+			}
+		default:
+			respond.UnprocessableEntity(w, fmt.Errorf("Unknown action %s", action))
+		}
 	} else if r.Method == "DELETE" {
 		dataMutex.Lock()
 		defer dataMutex.Unlock()
@@ -128,7 +170,7 @@ func getScreenshot(wId uint32, downscale byte) ([]byte, error) {
 	return dataConnection.GetScreenshotAsPng(wId, downscale)
 }
 
-var dataConnection = xlib.MakeConnection()
+var dataConnection = MakeConnection()
 var dataMutex = &sync.Mutex{}
 
 // Pulling icons from X11 (as GetIconName below does) is somewhat costly. For example 'Visual Studio Code' has a

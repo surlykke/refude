@@ -25,6 +25,10 @@ func Term(r *http.Request) string {
 	return strings.ToLower(strings.TrimSpace(GetSingleQueryParameter(r, "term", "")))
 }
 
+func Action(r *http.Request) string {
+	return strings.TrimSpace(GetSingleQueryParameter(r, "action", ""))
+}
+
 func GetMatcher(r *http.Request) (parser.Matcher, error) {
 	if q, ok := r.URL.Query()["q"]; ok && len(q) > 0 {
 		return parser.Parse(q[0])

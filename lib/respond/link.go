@@ -32,6 +32,16 @@ func (ll Links) Link() Link {
 	return copy
 }
 
+func (ll Links) Add(href string, title string, icon string, rel Relation, profile string, meta map[string]string) Links {
+	return append(ll, Link{
+		Href:    href,
+		Title:   title,
+		Icon:    icon,
+		Rel:     rel,
+		Profile: profile,
+	})
+}
+
 func (ll Links) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		AsJson(w, ll)
