@@ -5,17 +5,17 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/surlykke/RefudeServices/RefudeDesktopService/file"
-	"github.com/surlykke/RefudeServices/RefudeDesktopService/notifications"
-	"github.com/surlykke/RefudeServices/RefudeDesktopService/power"
-	"github.com/surlykke/RefudeServices/RefudeDesktopService/session"
-	"github.com/surlykke/RefudeServices/RefudeDesktopService/windows"
+	"github.com/surlykke/RefudeServices/file"
+	"github.com/surlykke/RefudeServices/notifications"
+	"github.com/surlykke/RefudeServices/power"
+	"github.com/surlykke/RefudeServices/session"
+	"github.com/surlykke/RefudeServices/windows"
 
-	"github.com/surlykke/RefudeServices/RefudeDesktopService/statusnotifications"
+	"github.com/surlykke/RefudeServices/statusnotifications"
 
-	"github.com/surlykke/RefudeServices/RefudeDesktopService/icons"
+	"github.com/surlykke/RefudeServices/icons"
 
-	"github.com/surlykke/RefudeServices/RefudeDesktopService/applications"
+	"github.com/surlykke/RefudeServices/applications"
 
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/respond"

@@ -12,7 +12,7 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/surlykke/RefudeServices/RefudeDesktopService/watch"
+	"github.com/surlykke/RefudeServices/watch"
 
 	"github.com/godbus/dbus/v5"
 	"github.com/surlykke/RefudeServices/lib/respond"

@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/rakyll/magicmime"
-	"github.com/surlykke/RefudeServices/RefudeDesktopService/applications"
+	"github.com/surlykke/RefudeServices/applications"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/xdg"

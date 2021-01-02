@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/godbus/dbus/v5"
-	"github.com/surlykke/RefudeServices/RefudeDesktopService/icons"
+	"github.com/surlykke/RefudeServices/icons"
 	dbuscall "github.com/surlykke/RefudeServices/lib/dbusutils"
 	"github.com/surlykke/RefudeServices/lib/respond"
 )

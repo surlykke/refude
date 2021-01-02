@@ -12,9 +12,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/surlykke/RefudeServices/RefudeDesktopService/icons"
-	"github.com/surlykke/RefudeServices/RefudeDesktopService/watch"
+	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/respond"
+	"github.com/surlykke/RefudeServices/watch"
 )
 
 var box, box2 atomic.Value

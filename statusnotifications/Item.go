@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"github.com/godbus/dbus/v5"
-	"github.com/surlykke/RefudeServices/RefudeDesktopService/icons"
+	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/image"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/respond"

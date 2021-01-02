@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/surlykke/RefudeServices/RefudeDesktopService/icons"
+	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/searchutils"

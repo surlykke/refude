@@ -18,7 +18,7 @@ import (
 
 	"github.com/surlykke/RefudeServices/lib/image"
 
-	"github.com/surlykke/RefudeServices/RefudeDesktopService/icons"
+	"github.com/surlykke/RefudeServices/icons"
 )
 
 type WindowData struct {
