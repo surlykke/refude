@@ -17,6 +17,7 @@ export class Do extends React.Component {
         this.history = []
         this.state = {url: "/search/desktop", index: 0, term: ""}
         ipcRenderer.on("doShow", this.fetch)
+        ipcRenderer.on("/search/desktop", this.fetch)
         ipcRenderer.on("doMove", (evt, up) => up ? this.up() : this.down())
     };
 
