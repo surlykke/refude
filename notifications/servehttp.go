@@ -37,7 +37,7 @@ func Handler(r *http.Request) http.Handler {
 }
 
 func Collect() respond.Links {
-	var notifications = box.Load().([]*Notification)
+	var notifications = loadNotifications()
 	var links = make(respond.Links, 0, len(notifications))
 	for _, notification := range notifications {
 		links = append(links, notification.Link())
@@ -47,7 +47,7 @@ func Collect() respond.Links {
 }
 
 func DesktopSearch(term string, baserank int) respond.Links {
-	var notifications = box.Load().([]*Notification)
+	var notifications = loadNotifications()
 	var links = make(respond.Links, 0, len(notifications))
 	for _, notification := range notifications {
 		if _, ok := notification.Actions["default"]; ok {
@@ -64,7 +64,7 @@ func DesktopSearch(term string, baserank int) respond.Links {
 }
 
 func AllPaths() []string {
-	var notifications = box.Load().([]*Notification)
+	var notifications = loadNotifications()
 	var paths = make([]string, 0, len(notifications)+2)
 	for _, n := range notifications {
 		paths = append(paths, n.self)

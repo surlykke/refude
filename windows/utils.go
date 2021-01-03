@@ -162,6 +162,26 @@ func WaitForEvent(c *Connection) int {
 	}
 }
 
+// Will hang until either a property change or a configure event happens
+func (c *Connection) NextEvent() (Event, error) {
+	var event C.XEvent
+	for {
+		if err := CheckError(C.XNextEvent(c.display, &event)); err != nil {
+			return Event{}, err // TODO Maybe some max error count and then a panic.. To prevent looping at 100% cpu
+		} else {
+			switch C.getType(&event) {
+			case C.PropertyNotify:
+				var xproperty = C.xproperty(&event)
+				return Event{Window: uint32(xproperty.window), Property: c.atomName(xproperty.atom)}, nil
+			case C.ConfigureNotify:
+				var xconfigure = C.xconfigure(&event)
+				return Event{Window: uint32(xconfigure.window),
+					X: int(xconfigure.x), Y: int(xconfigure.y), W: int(xconfigure.width), H: int(xconfigure.height)}, nil
+			}
+		}
+	}
+}
+
 func (c *Connection) atom(name string) C.Atom {
 	if val, ok := c.atomCache[name]; ok {
 		return val
@@ -446,8 +466,10 @@ func (c *Connection) RaiseAndFocusWindow(wId uint32) {
 func (c *Connection) CloseWindow(wId uint32) {
 	var event = C.createClientMessage32(C.Window(wId), c.atom("_NET_CLOSE_WINDOW"), 2, 0, 0, 0, 0)
 	var mask C.long = C.SubstructureRedirectMask | C.SubstructureNotifyMask
+	log.Println("Sending close event")
 	C.XSendEvent(c.display, c.rootWindow, 0, mask, &event)
 	C.XFlush(c.display)
+	log.Println("Close event sent")
 }
 
 func (c *Connection) GetScreenshotAsPng(wId uint32, downscale uint8) ([]byte, error) {

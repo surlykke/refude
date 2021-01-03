@@ -1,7 +1,7 @@
 #!/bin/bash
 cd `dirname $0`
 
-GOBIN=${HOME}/.local/bin
+export GOBIN=${HOME}/.local/bin
 BASH_COMPLETION_DIR=${XDG_DATA_HOME:-${HOME}/.local/share}/bash/completions
 FISH_COMPLETION_DIR=${XDG_CONFIG_HOME:-${HOME}/.config}/fish/completions
 HICOLOR_ICON_DIR=${XDG_DATA_HOME:-${HOME}/.local/share}/icons/hicolor

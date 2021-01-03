@@ -7,9 +7,11 @@
 package windows
 
 import (
+	"log"
 	"sync/atomic"
 
 	"github.com/surlykke/RefudeServices/lib/respond"
+	"github.com/surlykke/RefudeServices/watch"
 )
 
 // Maintains windows  and monitors lists
@@ -20,14 +22,19 @@ func Run() {
 	storeMonitorList(c)
 
 	for {
-		var i = WaitForEvent(c)
-		if i == 1 {
-			storeMonitorList(c)
-		} else if i == 2 {
-			storeWindowList(c)
+		if event, err := c.NextEvent(); err != nil {
+			log.Println("Error from NextEvent", err)
+		} else {
+			switch event.Property {
+			case NET_CLIENT_LIST_STACKING:
+				storeWindowList(c)
+			case NET_DESKTOP_GEOMETRY:
+				storeMonitorList(c)
+			}
 		}
 	}
 }
+
 
 var windows atomic.Value
 var monitors atomic.Value
@@ -47,8 +54,10 @@ func storeMonitorList(c *Connection) {
 		}}
 	}
 	monitors.Store(monitorList)
+	watch.DesktopSearchMayHaveChanged()
 }
 
 func storeWindowList(c *Connection) {
 	windows.Store(GetStack(c))
+	watch.DesktopSearchMayHaveChanged()
 }

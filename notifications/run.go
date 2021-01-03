@@ -24,6 +24,15 @@ func init() {
 	box2.Store(osdEvent{Type: none})
 }
 
+func loadNotifications() []*Notification {
+	return box.Load().([]*Notification)
+}
+
+func saveNotifications(notifications []*Notification) {
+	box.Store(notifications)
+	watch.DesktopSearchMayHaveChanged()
+}
+
 var incomingNotifications = make(chan *Notification)
 var removals = make(chan removal)
 var expireHints = make(chan struct{})
@@ -46,7 +55,7 @@ func Run() {
 }
 
 func getNotification(id uint32) *Notification {
-	for _, notification := range box.Load().([]*Notification) {
+	for _, notification := range loadNotifications() {
 		if notification.Id == id {
 			return notification
 		}
@@ -55,7 +64,7 @@ func getNotification(id uint32) *Notification {
 }
 
 func upsert(notification *Notification) {
-	var notifications = box.Load().([]*Notification)
+	var notifications = loadNotifications()
 	var next = make([]*Notification, len(notifications)+1, len(notifications)+1)
 	var found = false
 	for i, n := range notifications {
@@ -71,25 +80,23 @@ func upsert(notification *Notification) {
 	} else {
 		next[0] = notification
 	}
-	box.Store(next)
+	saveNotifications(next)
 
 	doMaintenance()
 }
 
 func removeNotification(id uint32, reason uint32) {
-	var notifications = box.Load().([]*Notification)
+	var notifications = loadNotifications()
 	var next = make([]*Notification, 0, len(notifications))
 	for _, n := range notifications {
 		if n.Id == id {
-			watch.SomethingChanged(n.self)
-			watch.SomethingChanged("/notifications") // Should only happen once for the loop
 			conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", n.Id, reason)
 		} else {
 			next = append(next, n)
 		}
 	}
 
-	box.Store(next)
+	saveNotifications(next)
 	doMaintenance()
 }
 
@@ -138,7 +145,7 @@ func doMaintenance() {
 	if e2.Type != none {
 		nextMaintenance = e2.Expires
 	}
-	for _, n := range box.Load().([]*Notification) {
+	for _, n := range loadNotifications() {
 		if n.Expires.Before(nextMaintenance) {
 			nextMaintenance = n.Expires
 		}
@@ -146,24 +153,21 @@ func doMaintenance() {
 	scheduler.schedule <- nextMaintenance.Add(100 * time.Millisecond)
 }
 
-func removeExpired() {
-	var notifications = box.Load().([]*Notification)
+func removeExpired() bool {
+	var notifications = loadNotifications()
 	var now = time.Now()
 	var haveRemovals bool
 	var next = make([]*Notification, 0, len(notifications))
 	for _, n := range notifications {
 		if n.Expires.Before(now) {
 			haveRemovals = true
-			watch.SomethingChanged(n.self)
 			conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", n.Id, Expired)
 		} else {
 			next = append(next, n)
 		}
 	}
-	box.Store(next)
-	if haveRemovals {
-		watch.SomethingChanged("/notifications")
-	}
+	saveNotifications(next)
+	return haveRemovals
 }
 
 func getOsdEvent() osdEvent {
@@ -171,7 +175,7 @@ func getOsdEvent() osdEvent {
 	var gaugeTimeout = 2 * time.Second
 	var normalTimeout = 6 * time.Second
 	var urgentTimeout = 20 * time.Second
-	var notifications = box.Load().([]*Notification)
+	var notifications = loadNotifications()
 	var event = osdEvent{Type: none}
 	for _, n := range notifications {
 		if n.isGauge() {
@@ -216,8 +220,4 @@ func getOsdEvent() osdEvent {
 		}
 	}
 	return event
-}
-
-func sendEvent(n *Notification) {
-	watch.SomethingChanged(n.self)
 }

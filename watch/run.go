@@ -15,6 +15,10 @@ var subscriptions = make(chan subscription)
 var cancellations = make(chan subscription)
 var subscriptionSet = make(map[subscription]bool)
 
+func DesktopSearchMayHaveChanged() {
+	changedPaths <- "/search/desktop"
+}
+
 func SomethingChanged(path string) {
 	changedPaths <- path
 }
