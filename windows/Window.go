@@ -9,6 +9,7 @@ package windows
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/surlykke/RefudeServices/lib/requests"
@@ -59,12 +60,8 @@ func (win Window) ToData() *WindowData {
 	var monitorList = monitors.Load().([]*Monitor)
 	var href = fmt.Sprintf("/window/%d", id)
 	var actionPrefix = href + "?action="
-	var state map[string]string
-	if slice.Contains(wd.States, "_NET_WM_STATE_HIDDEN") {
-		state = map[string]string{"state": "minimized"}
-	}
 	wd.Links = make(respond.Links, 0, 5+len(monitorList))
-	wd.Links = wd.Links.Add(href, wd.Name, icons.IconUrl(wd.IconName), respond.Self, "/profile/window", state)
+	wd.Links = wd.Links.Add(href, wd.Name, icons.IconUrl(wd.IconName), respond.Self, "/profile/window", map[string]string{"states": strings.Join(wd.States, ",")})
 
 	wd.Links = wd.Links.Add(href+"/screenshot", "Screenshot of "+wd.Name, "", respond.Related, "/profile/window-screenshot", nil)
 	//wd.Links = wd.Links.Add(actionPrefix+"raise", "Raise and focus", "", respond.Action, "", nil)

@@ -17,7 +17,7 @@ type Link struct {
 	Icon    string            `json:"icon,omitempty"`
 	Rel     Relation          `json:"rel,omitempty"`
 	Profile string            `json:"profile,omitempty"`
-	Meta    map[string]string `json:"meta,omitempty"`
+	Hints   map[string]string `json:"hints,omitempty"`
 	Rank    int               `json:"-"`
 }
 
@@ -32,13 +32,14 @@ func (ll Links) Link() Link {
 	return copy
 }
 
-func (ll Links) Add(href string, title string, icon string, rel Relation, profile string, meta map[string]string) Links {
+func (ll Links) Add(href string, title string, icon string, rel Relation, profile string, hints map[string]string) Links {
 	return append(ll, Link{
 		Href:    href,
 		Title:   title,
 		Icon:    icon,
 		Rel:     rel,
 		Profile: profile,
+		Hints:   hints,
 	})
 }
 
