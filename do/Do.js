@@ -15,8 +15,8 @@ export class Do extends React.Component {
     constructor(props) {
         super(props)
         this.history = []
-        this.state = {url: "/search/desktop", index: 0, term: ""}
-        ipcRenderer.on("doShow", this.fetch)
+        this.state = { url: "/search/desktop", links: [], term: "" }
+        ipcRenderer.on("doShow", () => {this.fetch()})
         ipcRenderer.on("/search/desktop", this.fetch)
         ipcRenderer.on("doMove", (evt, up) => up ? this.up() : this.down())
     };
@@ -24,7 +24,7 @@ export class Do extends React.Component {
 
     componentDidUpdate = () => {
         // Scroll selected item into view
-        let selectedDiv = this.curLink() && this.curLink().href && document.getElementById(this.curLink().href)
+        let selectedDiv = this.state.curLink && this.state.curLink.href && document.getElementById(this.state.curLink.href)
         if (selectedDiv) {
             let listDiv = document.getElementById("itemlistDiv");
             if (listDiv) {
@@ -35,7 +35,6 @@ export class Do extends React.Component {
             }
         }
 
-        ipcRenderer.send("doLinkSelected", this.curLink()) // TODO Optimize
     };
 
     componentDidMount = () => {
@@ -45,16 +44,13 @@ export class Do extends React.Component {
 
     fetch = () => {
         getUrl(addParam(this.state.url, "term", this.state.term), resp => {
+            let curLink = this.state.curLink
             this.setState({
-                resource: resp.data, 
-                links: resp.data._links.filter(l => l.rel !== "self"), 
-                self: findLink(resp.data, "self")
-            })
+                resource: resp.data,
+                links: resp.data._links.filter(l => l.rel !== "self"),
+                self: findLink(resp.data, "self"),
+            }, () => this.select(curLink))
         })
-    }
-
-    curLink = () => {
-        return this.state.links && this.state.links[this.state.index]
     }
 
     keydownHandler = (event) => {
@@ -78,68 +74,94 @@ export class Do extends React.Component {
             (key === " " && !shiftKey && !altKey && !metaKey)) {
             this.activate(ctrlKey)
         } else if (key === "Delete" && !shiftKey && !altKey && !metaKey) {
-            this.delete(ctrlKey)
+            this.del(ctrlKey)
         } else if (key === "Escape" && !shiftKey && !altKey && !metaKey) {
             this.dismiss()
         } else {
             return;
         }
         event.preventDefault();
-    } 
-
-    up = () => this.select(this.state.index - 1)
-
-    down = () => this.select(this.state.index + 1)
-
-    activate = (keep) => {
-        this.curLink() && postUrl(this.curLink().href, keep ? this.fetch : this.dismiss)
     }
 
-    delete = (keep) => {
-        this.curLink() && deleteUrl(this.curLink().href, keep ? this.fetch : this.dismiss)
+    index = () => {
+        let result 
+        if (this.state.curLink) {
+            result =  this.state.links.findIndex(l => {
+                return this.state.curLink.href === l.href
+            })
+        }
+        return result
+    }
+
+    up = () => this.move(-1)
+    down = () => this.move(1)
+
+    move = step => {
+        if (!this.state.curLink) {
+            return
+        }
+        let i = this.index();
+        if (i > -1) {
+            this.select(this.state.links[(i + step + this.state.links.length) % this.state.links.length])
+        } else {
+            this.select()
+        }
+    }
+
+
+    activate = (keep) => {
+        this.state.curLink && postUrl(this.state.curLink.href, keep ? undefined : this.dismiss)
+    }
+
+    del = (keep) => {
+        this.state.curLink && deleteUrl(this.state.curLink.href, keep ? undefined : this.dismiss)
     }
 
     go = () => {
-        if (this.curLink() && this.curLink().rel === "related") {
-            this.history.unshift({url: this.state.url, term: this.state.term, index: this.state.index})
-            this.setState({url: this.curLink().href, index: 0, term: ""}, this.fetch)
+        if (this.state.curLink && this.state.curLink.rel === "related") {
+            this.history.unshift({ url: this.state.url, term: this.state.term, curLink: this.state.curLink })
+            let curLink = this.state.curLink
+            this.setState({ url: curLink.href, curLink: undefined, term: "" }, this.fetch)
         }
     }
 
     goBack = () => {
         let tmp = this.history.shift()
         if (tmp) {
-            this.setState({url: tmp.url, term: tmp.term, index: tmp.index}, this.fetch)
+            this.setState({ url: tmp.url, term: tmp.term, curLink: tmp.curLink }, this.fetch)
         }
     }
 
 
     dismiss = () => {
-        this.setState({url: "/search/desktop", term: "", index: 0, resource: undefined}, () => ipcRenderer.send("dismiss"))
-    }
-    
-    select = i => {
-        let {links} = this.state
-        links && links.length > 0 && this.setState({index: (i + links.length)%links.length})
+        this.setState({ url: "/search/desktop", term: "", links: [], curLink: undefined, resource: undefined }, () => ipcRenderer.send("dismiss"))
     }
 
-    selectAndActivate = i => {
-        let {links} = this.state
-        links && links.length > 0 && this.setState({index: (i + links.length)%links.length}, this.activate)
+
+    select = (link) => {
+        if (!link || !this.state.links.find(l => l.href === link.href)) {
+            link = this.state.links[0]
+        }
+        this.setState({curLink: link}, () => ipcRenderer.send("doLinkSelected", this.state.curLink))
     }
-    
+
+    selectAndActivate = link => {
+        this.select(link)
+        this.activate()
+    }
+
     setTerm = term => {
-        this.setState({term: term}, this.fetch)
+        this.setState({ term: term }, this.fetch)
     }
 
-    
+
     render = () => {
-            
-        let {resource, links, self} = this.state
-        let className = i => i === this.state.index ? "item selected" : "item"
+
+        let { resource, links, self } = this.state
+        let className = link => this.state.curLink && this.state.curLink.href == link.href ? "item selected" : "item"
         let iconClassName = link => {
             if (link.profile === "/profile/window") {
-                if (link.meta && link.meta.state === "minimized") {
+                if (link.hints && link.hints.States && link.hints.States.indexOf("_NET_WM_STATE_HIDDEN") > -1) {
                     return "icon window minimized"
                 } else {
                     return "icon window"
@@ -152,7 +174,7 @@ export class Do extends React.Component {
         return resource ?
             <>
                 <div className="topbar">
-                {(!self || links.length > 5) && 
+                    {(!self || links.length > 5) &&
                         <input id="input"
                             className="searchinput"
                             type="search"
@@ -160,29 +182,29 @@ export class Do extends React.Component {
                             value={this.state.term}
                             autoComplete="off"
                             autoFocus />
-                }
+                    }
                 </div>
                 {self &&
-                <div key="resource" id={self.href} className="item">
-                    <img width="24px" height="24px" className={iconClassName(self)} src={path2Url(self.icon)} alt="" />
-                    <div className="name">{self.title}</div>
-                </div>}            
+                    <div key="resource" id={self.href} className="item">
+                        <img width="24px" height="24px" className={iconClassName(self)} src={path2Url(self.icon)} alt="" />
+                        <div className="name">{self.title}</div>
+                    </div>}
 
                 <div className="itemlist" id="itemlistDiv">
-                {links && links.map((l, i) => {
-                    return <div key={l.href} id={l.href} 
-                                className={className(i)} 
-                                onClick={()=> this.select(i)} 
-                                onDoubleClick={() => this.selectAndActivate(i)}>
+                    {links && links.map(l => {
+                        return <div key={l.href} id={l.href}
+                            className={className(l)}
+                            onClick={() => this.select(l)}
+                            onDoubleClick={() => this.selectAndActivate(l)}>
                             {l.icon && <img className={iconClassName(l)} src={path2Url(l.icon)} height="24" width="24" />}
                             <div className="title"> {l.title}</div>
                         </div>
-                }
-                )}
+                    }
+                    )}
                 </div>
             </> :
             <div />
-    } 
+    }
 }
 
 ReactDOM.render(<Do />, document.getElementById('do'))

@@ -51,7 +51,6 @@ export class Battery extends React.Component {
     }
 
     getDeviceData = () => {
-        console.log("battery getDeviceData")
         getUrl("/device/DisplayDevice", resp => {
             this.setState({
                 pct: resp.data.State === "Unknown" ? 0 : resp.data.Percentage,

@@ -26,7 +26,7 @@ export class Indicator extends React.Component {
 
         ipcRenderer.on("linkSelected", (evt, link) => {
             if (link && link.profile == "/profile/window") {
-                getUrl(link.href, resp => this.setState({ resource: resp.data }))
+                getUrl(link.href, resp => this.setState({ resource: resp.data }), err => this.setState({resource: undefined}))
             } else {
                 this.setState({ resource: undefined })
             }

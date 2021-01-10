@@ -28,7 +28,6 @@ import '../common/common.css'
 // (which is the main window), forward events to the main process, which, in turn, dispatches to relevant 
 // windows. (sigh).
 let watchSse = () => {
-    console.log("monitorPaths")
     let evtSource = new EventSource("http://localhost:7938/watch")
 
     evtSource.onerror = event => {

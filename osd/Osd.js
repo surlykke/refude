@@ -52,9 +52,7 @@ export class Osd extends React.Component {
     update = () => {
         Axios.get(`http://localhost:7938/notification/osd`)
             .then(resp => {
-                console.log("Setting data: ", resp.data)
                 let self = findLink(resp.data, "self")
-                console.log("self:", self)
                 this.setState({ event: resp.data, self: self })
             })
             .catch(err => {
@@ -69,7 +67,6 @@ export class Osd extends React.Component {
 
     render = () => {
         let { event, self } = this.state
-        console.log("Render", event, "", self)
         if (event && self) {
             return <div id="osdDiv" className="osd">
                 <div id="iconDiv" className="icon">

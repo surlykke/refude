@@ -68,7 +68,6 @@ let createDoWindow = () => {
             if (!doWindow.isVisible()) {
                 doWindow.show()
                 indicatorDismissedInThisShowing = false 
-                doWindow.webContents.send("doShow")
                 indicatorWindow.send("screens", screen.getAllDisplays())
             } else {
                 doWindow.send("doMove", req.url === "/up")
@@ -77,7 +76,8 @@ let createDoWindow = () => {
 
         }).listen("/run/user/1000/org.refude.panel.do");
 
-        
+        doWindow.on('show', () =>  doWindow.webContents.send("doShow"))
+
         manageWindow(doWindow, "do")
         
         ipcMain.on("doLinkSelected", (evt, link) => {
@@ -85,7 +85,7 @@ let createDoWindow = () => {
                 doWindow.isVisible() && 
                 link && 
                 link.profile === "/profile/window" && 
-                (!link.meta || link.meta["state"] !== "minimized")) {
+                !(link.hints && link.hints.States && link.hints.States.indexOf("_NET_WM_STATE_HIDDEN") > -1)) {
 
                 indicatorWindow.showInactive()
                 indicatorWindow.webContents.send("linkSelected", link)
@@ -102,7 +102,7 @@ let createDoWindow = () => {
         ipcMain.on("dismiss", dismissDo)
     })
         
-    // doWindow.webContents.openDevTools()
+    //doWindow.webContents.openDevTools()
 }
 
 let dismissDo = () => {
@@ -122,13 +122,10 @@ let indicatorWindow
 
 let createIndicatorWindow = () => {
     indicatorWindow = new BrowserWindow({
-        show: false, frame: false, skipTaskbar: false, webPreferences: { nodeIntegration: true }
+        show: false, frame: false, skipTaskbar: true, webPreferences: { nodeIntegration: true }
     })
     indicatorWindow.webContents.setZoomFactor(3.0)
     indicatorWindow.webContents.setZoomLevel(3.0)
-    indicatorWindow.webContents.on("zoom-changed", event => console.log(event))
-
-    indicatorWindow.on('keydown', e => console.log(e))
 
     indicatorWindow.on('close', e => {
         e.preventDefault()
@@ -144,7 +141,7 @@ let createIndicatorWindow = () => {
         manageWindow(indicatorWindow, "indicator")
     }).catch(error => console.error(error))
 
-    //indicatorWindow.webContents.openDevTools()
+    // indicatorWindow.webContents.openDevTools()
 }
 
 let osdWindow
