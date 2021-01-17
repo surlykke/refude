@@ -11,7 +11,6 @@ import (
 	"log"
 	"sync/atomic"
 
-	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/watch"
 )
 
@@ -44,31 +43,21 @@ func Run() {
 	}
 }
 
+var deskopLayout atomic.Value
 var windows atomic.Value
 var monitors atomic.Value
 
 func init() {
+	deskopLayout.Store(&DesktopLayout{})
 	windows.Store([]*Window{})
-	monitors.Store([]*Monitor{})
+	monitors.Store([]*MonitorData{})
 }
 
 func updateMonitorList(c *Display) {
-	var monitorList = monitorDataList2Monitors(c.GetMonitorDataList())
-	for _, m := range monitorList {
-		m.Links = respond.Links{{
-			Href:  "/monitor/" + m.Name,
-			Rel:   respond.Self,
-			Title: m.Name,
-		}}
-	}
-	monitors.Store(monitorList)
-	var windowList = windows.Load().([]*Window)
-	var newWindowList = make([]*Window, len(windowList), len(windowList))
-	for i, win := range windowList {
-		var copy = *win
-		BuildLinks(&copy)
-		newWindowList[i] = &copy
-	}
+	var newMonitorList = c.GetMonitorDataList()
+	var newDesktopLayout = BuildDesktopLayout(newMonitorList)
+	monitors.Store(newMonitorList)
+	deskopLayout.Store(newDesktopLayout)
 	watch.DesktopSearchMayHaveChanged()
 }
 

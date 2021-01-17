@@ -53,8 +53,8 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		handler = watch.Handler(r)
 	} else if strings.HasPrefix(r.URL.Path, "/window") {
 		handler = windows.WindowHandler(r)
-	} else if strings.HasPrefix(r.URL.Path, "/monitor") {
-		handler = windows.MonitorHandler(r)
+	} else if r.URL.Path == "/desktoplayout" {
+		handler = windows.DesktopLayoutHandler(r)
 	}
 
 	if handler != nil {

@@ -11,27 +11,8 @@ import (
 	"github.com/surlykke/RefudeServices/lib/searchutils"
 )
 
-func MonitorHandler(r *http.Request) http.Handler {
-	if r.URL.Path == "/monitors" {
-		return monitorLinks()
-	} else if strings.HasPrefix(r.URL.Path, "/monitor/") {
-		var monitorName = r.URL.Path[len("/monitor/"):]
-		for _, m := range monitors.Load().([]*Monitor) {
-			if m.Name == monitorName {
-				return m
-			}
-		}
-	}
-	return nil
-}
-
-func monitorLinks() respond.Links {
-	var mList = monitors.Load().([]*Monitor)
-	var links = make(respond.Links, len(mList), len(mList))
-	for i := 0; i < len(mList); i++ {
-		links[i] = mList[i].Link()
-	}
-	return links
+func DesktopLayoutHandler(r *http.Request) http.Handler {
+	return deskopLayout.Load().(*DesktopLayout)
 }
 
 var windowPath = regexp.MustCompile("^/window/(\\d+)(/screenshot)?$")
@@ -89,16 +70,13 @@ func DesktopSearch(term string, baserank int) respond.Links {
 
 func AllPaths() []string {
 	var windowList = windows.Load().([]*Window)
-	var monitorList = monitors.Load().([]*Monitor)
-	var paths = make([]string, 0, 2*len(windowList)+len(monitorList)+2)
+	var paths = make([]string, 0, 2*len(windowList)+3)
 	for _, window := range windowList {
 		paths = append(paths, fmt.Sprintf("/window/%d", window.Id))
 		paths = append(paths, fmt.Sprintf("/window/%d/screenshot", window.Id))
 	}
-	for _, monitor := range monitorList {
-		paths = append(paths, monitor.Link().Href)
-	}
 	paths = append(paths, "/windows")
 	paths = append(paths, "/monitors")
+	paths = append(paths, "/desktoplayout")
 	return paths
 }

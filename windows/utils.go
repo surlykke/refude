@@ -317,15 +317,15 @@ type MonitorData struct {
 	Name     string
 }
 
-func (c *Display) GetMonitorDataList() []MonitorData {
+func (c *Display) GetMonitorDataList() []*MonitorData {
 	var num C.int
 
 	xrrmonitorsPtr := C.XRRGetMonitors(c.disp, c.rootWindow, 1, &num)
 	xrrmonitorsArr := (*[1 << 30]C.XRRMonitorInfo)(unsafe.Pointer(xrrmonitorsPtr))
-	var monitors = make([]MonitorData, num, num)
+	var monitors = make([]*MonitorData, num, num)
 	var bound int = int(num)
 	for i := 0; i < bound; i++ {
-		monitors[i] = MonitorData{
+		monitors[i] = &MonitorData{
 			X:    int32(xrrmonitorsArr[i].x),
 			Y:    int32(xrrmonitorsArr[i].y),
 			W:    uint32(xrrmonitorsArr[i].width),

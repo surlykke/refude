@@ -57,7 +57,7 @@ func BuildWindow(c *Display, wId uint32) *Window {
 
 // Caller ensures thread safety
 func BuildLinks(win *Window) {
-	var monitorList = monitors.Load().([]*Monitor)
+	var monitorList = monitors.Load().([]*MonitorData)
 	var href = fmt.Sprintf("/window/%d", win.Id)
 	var actionPrefix = href + "?action="
 	win.Links = make(respond.Links, 0, 5+len(monitorList))
@@ -102,7 +102,7 @@ func (win Window) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			respond.Accepted(w)
 		case "move":
 			monitorName := requests.GetSingleQueryParameter(r, "monitor", "")
-			for _, m := range monitors.Load().([]*Monitor) {
+			for _, m := range monitors.Load().([]*MonitorData) {
 				if m.Name == monitorName {
 					var maximized = win.State & (MAXIMIZED_HORZ | MAXIMIZED_VERT)
 					RemoveStates(dataConnection, win.Id, maximized)
