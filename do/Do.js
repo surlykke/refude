@@ -161,7 +161,7 @@ export class Do extends React.Component {
         let className = link => this.state.curLink && this.state.curLink.href == link.href ? "item selected" : "item"
         let iconClassName = link => {
             if (link.profile === "/profile/window") {
-                if (link.hints && link.hints.States && link.hints.States.indexOf("_NET_WM_STATE_HIDDEN") > -1) {
+                if (link.hints && link.hints.states && link.hints.states.indexOf("HIDDEN") > -1) {
                     return "icon window minimized"
                 } else {
                     return "icon window"

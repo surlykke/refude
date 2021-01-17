@@ -18,7 +18,7 @@ export class Indicator extends React.Component {
 
     constructor(props) {
         super(props)
-        this.state = { resource: null }
+        this.state = {}
 
         ipcRenderer.on("screens", (evt, displays) => {
             this.getScreens(displays)
@@ -26,9 +26,21 @@ export class Indicator extends React.Component {
 
         ipcRenderer.on("linkSelected", (evt, link) => {
             if (link && link.profile == "/profile/window") {
-                getUrl(link.href, resp => this.setState({ resource: resp.data }), err => this.setState({resource: undefined}))
+                getUrl(link.href,
+                    resp => {
+                        let screenshotLink = findLink(resp.data, "related", "/profile/window-screenshot")
+                        if (screenshotLink) {
+                            this.setState({
+                                url: screenshotLink.href,
+                                geometry: resp.data.Geometry
+                            })
+                        } else {
+                            this.setState({url: undefined})
+                        }
+                    },
+                    err => this.setState({ url: undefined }))
             } else {
-                this.setState({ resource: undefined })
+                this.setState({ url: undefined })
             }
         })
     }
@@ -64,18 +76,18 @@ export class Indicator extends React.Component {
     };
 
     render = () => {
-        let res = this.state.resource
-        if (res) {
-            let screenshotLink = findLink(res, "related", "/profile/window-screenshot")
-            let screenShotUrl = path2Url(addParam(addParam(screenshotLink.href, "downscale", "3"), nocache, nocache++))
-            let { X, Y, W, H } = res
+        let {url, geometry} = this.state
+        if (url && geometry) {
+    
+            let {X,Y,W,H} = geometry
+            let screenShotUrl = path2Url(addParam(addParam(url, "downscale", "3"), nocache, nocache++))
             let viewBox = `${this.display.x - 3} ${this.display.y - 3} ${this.display.w + 6} ${this.display.h + 6}`;
             let rects = this.screens.map((scr, i) => <rect key={`screenRect_${i}`} x={scr.x} y={scr.y} width={scr.w} height={scr.h} stroke="black" fill="white" />);
             rects.push(<image key="winRect" x={X} y={Y} width={W} height={H} xlinkHref={screenShotUrl} />);
-            rects.push(<rect x={X} y={Y} width={W} height={H} stroke="black" fill="none"/>)
-        
+            rects.push(<rect x={X} y={Y} width={W} height={H} stroke="black" fill="none" />)
+
             return <>
-                <div className="topbar"/>
+                <div className="topbar" />
                 <svg key="windows" xmlns="http://www.w3.org/2000/svg" width="calc(100% - 16px)" style={{ margin: "8px" }} viewBox={viewBox}>
                     {rects}
                 </svg>

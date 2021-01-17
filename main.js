@@ -85,7 +85,7 @@ let createDoWindow = () => {
                 doWindow.isVisible() && 
                 link && 
                 link.profile === "/profile/window" && 
-                !(link.hints && link.hints.States && link.hints.States.indexOf("_NET_WM_STATE_HIDDEN") > -1)) {
+                !(link.hints && link.hints.states && link.hints.states.indexOf("HIDDEN") > -1)) {
 
                 indicatorWindow.showInactive()
                 indicatorWindow.webContents.send("linkSelected", link)
@@ -141,7 +141,7 @@ let createIndicatorWindow = () => {
         manageWindow(indicatorWindow, "indicator")
     }).catch(error => console.error(error))
 
-    // indicatorWindow.webContents.openDevTools()
+    //indicatorWindow.webContents.openDevTools()
 }
 
 let osdWindow
