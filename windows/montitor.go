@@ -1,7 +1,5 @@
 package windows
 
-import "C"
-
 import (
 	"net/http"
 
@@ -10,10 +8,19 @@ import (
 
 type Monitor struct {
 	respond.Links `json:"_links"`
-	X, Y          int32
-	W, H          uint32
-	Wmm, Hmm      uint32
-	Name          string
+	MonitorData
+}
+
+func monitorDataList2Monitors(monitorDataList []MonitorData) []*Monitor {
+	var monitors = make([]*Monitor, len(monitorDataList), len(monitorDataList))
+	for i, md := range monitorDataList {
+		monitors[i] = &Monitor{
+			respond.Links{}, // FIXME
+			md,
+		}
+	}
+
+	return monitors
 }
 
 func (m *Monitor) ServeHTTP(w http.ResponseWriter, r *http.Request) {

@@ -78,12 +78,13 @@ int forgiving_X_error_handler(Display *d, XErrorEvent *e)
 import "C"
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"image"
 	"image/color"
 	"image/png"
-	"log"
+	"sync"
 	"unsafe"
 )
 
@@ -91,18 +92,57 @@ func init() {
 	C.XSetErrorHandler(C.XErrorHandler(C.forgiving_X_error_handler))
 }
 
-const (
-	NET_WM_VISIBLE_NAME         = "_NET_WM_VISIBLE_NAME"
-	NET_WM_NAME                 = "_NET_WM_NAME"
-	WM_NAME                     = "WM_NAME"
-	NET_WM_ICON                 = "_NET_WM_ICON"
-	NET_CLIENT_LIST_STACKING    = "_NET_CLIENT_LIST_STACKING"
-	NET_WM_STATE                = "_NET_WM_STATE"
-	NET_DESKTOP_GEOMETRY        = "_NET_DESKTOP_GEOMETRY"
-	NET_WM_STATE_MAXIMIZED_VERT = "_NET_WM_STATE_MAXIMIZED_VERT"
-	NET_WM_STATE_MAXIMIZED_HORZ = "_NET_WM_STATE_MAXIMIZED_HORZ"
-	NET_WM_STATE_HIDDEN         = "_NET_WM_STATE_HIDDEN"
-)
+// Some atoms, frequently used
+var _NET_ACTIVE_WINDOW,
+	_NET_CLOSE_WINDOW,
+	_NET_WM_VISIBLE_NAME,
+	_NET_WM_NAME,
+	_WM_NAME,
+	_NET_WM_ICON_NAME,
+	_NET_WM_VISIBLE_ICON_NAME,
+	_NET_WM_ICON,
+	_NET_CLIENT_LIST_STACKING,
+	_NET_DESKTOP_GEOMETRY,
+	_NET_WM_STATE,
+	_NET_WM_STATE_MODAL,
+	_NET_WM_STATE_STICKY,
+	_NET_WM_STATE_MAXIMIZED_VERT,
+	_NET_WM_STATE_MAXIMIZED_HORZ,
+	_NET_WM_STATE_SHADED,
+	_NET_WM_STATE_SKIP_TASKBAR,
+	_NET_WM_STATE_SKIP_PAGER,
+	_NET_WM_STATE_HIDDEN,
+	_NET_WM_STATE_FULLSCREEN,
+	_NET_WM_STATE_ABOVE,
+	_NET_WM_STATE_BELOW,
+	_NET_WM_STATE_DEMANDS_ATTENTION C.Atom
+
+func init() {
+	var c = MakeDisplay()
+	_NET_ACTIVE_WINDOW = c.InternAtom("_NET_ACTIVE_WINDOW")
+	_NET_CLOSE_WINDOW = c.InternAtom("_NET_CLOSE_WINDOW")
+	_NET_WM_VISIBLE_NAME = c.InternAtom("_NET_WM_VISIBLE_NAME")
+	_NET_WM_NAME = c.InternAtom("_NET_WM_NAME")
+	_WM_NAME = c.InternAtom("_WM_NAME")
+	_NET_WM_VISIBLE_ICON_NAME = c.InternAtom("_NET_WM_VISIBLE_ICON_NAME")
+	_NET_WM_ICON_NAME = c.InternAtom("_NET_WM_ICON_NAME")
+	_NET_WM_ICON = c.InternAtom("_NET_WM_ICON")
+	_NET_CLIENT_LIST_STACKING = c.InternAtom("_NET_CLIENT_LIST_STACKING")
+	_NET_DESKTOP_GEOMETRY = c.InternAtom("_NET_DESKTOP_GEOMETRY")
+	_NET_WM_STATE = c.InternAtom("_NET_WM_STATE")
+	_NET_WM_STATE_MODAL = c.InternAtom("_NET_WM_STATE_MODAL")
+	_NET_WM_STATE_STICKY = c.InternAtom("_NET_WM_STATE_STICKY")
+	_NET_WM_STATE_MAXIMIZED_VERT = c.InternAtom("_NET_WM_STATE_MAXIMIZED_VERT")
+	_NET_WM_STATE_MAXIMIZED_HORZ = c.InternAtom("_NET_WM_STATE_MAXIMIZED_HORZ")
+	_NET_WM_STATE_SHADED = c.InternAtom("_NET_WM_STATE_SHADED")
+	_NET_WM_STATE_SKIP_TASKBAR = c.InternAtom("_NET_WM_STATE_SKIP_TASKBAR")
+	_NET_WM_STATE_SKIP_PAGER = c.InternAtom("_NET_WM_STATE_SKIP_PAGER")
+	_NET_WM_STATE_HIDDEN = c.InternAtom("_NET_WM_STATE_HIDDEN")
+	_NET_WM_STATE_FULLSCREEN = c.InternAtom("_NET_WM_STATE_FULLSCREEN")
+	_NET_WM_STATE_ABOVE = c.InternAtom("_NET_WM_STATE_ABOVE")
+	_NET_WM_STATE_BELOW = c.InternAtom("_NET_WM_STATE_BELOW")
+	_NET_WM_STATE_DEMANDS_ATTENTION = c.InternAtom("_NET_WM_STATE_DEMANDS_ATTENTION")
+}
 
 // Either 'Property' or X,Y,W,H will be set
 type Event struct {
@@ -111,110 +151,65 @@ type Event struct {
 	X, Y, W, H int
 }
 
-/**
- * Wrapper around connections to X11. Not threadsafe, caller must take lock
- */
-type Connection struct {
-	display    *C.Display
+type Display struct {
+	sync.Mutex
+	disp       *C.Display
 	rootWindow C.Window
-
-	atomCache     map[string]C.Atom
-	atomNameCache map[C.Atom]string
 }
 
-func MakeConnection() *Connection {
-	var conn = Connection{}
-	conn.display = C.XOpenDisplay(nil)
-	var defaultScreen = C.ds(conn.display)
-	conn.rootWindow = C.rw(conn.display, defaultScreen)
-	conn.atomCache = make(map[string]C.Atom)
-	conn.atomNameCache = make(map[C.Atom]string)
-	return &conn
+func (d *Display) SelectInput(window C.Window, mask C.long) {
+	d.Lock()
+	defer d.Unlock()
+	C.XSelectInput(d.disp, window, mask)
 }
 
-func (c *Connection) SubscribeToEvents() {
-	C.XSelectInput(c.display, c.rootWindow, C.PropertyChangeMask)
-	C.XRRSelectInput(c.display, c.rootWindow, C.RRScreenChangeNotifyMask)
+func (d *Display) RRSelectInput(window C.Window, mask C.int) {
+	d.Lock()
+	defer d.Unlock()
+	C.XRRSelectInput(d.disp, window, mask)
 }
 
-// Will hang until an event arrives
-// Returns
-//   0: error
-//   1: monitor/screen change
-//   2: window stack change
-func WaitForEvent(c *Connection) int {
-	var event C.XEvent
-	for {
-		if err := CheckError(C.XNextEvent(c.display, &event)); err != nil {
-			fmt.Println("WARN error getting event from X:", err)
-			return 0
-		} else if C.getType(&event) != C.PropertyNotify {
-			continue
-		} else {
-			var name = c.atomName(C.xproperty(&event).atom)
-			switch name {
-			case NET_DESKTOP_GEOMETRY:
-				return 1
-			case NET_CLIENT_LIST_STACKING:
-				return 2
-			}
-		}
-	}
+func (c *Display) SendEvent(ev *C.XEvent) {
+	c.Lock()
+	defer c.Unlock()
+	var mask C.long = C.SubstructureRedirectMask | C.SubstructureNotifyMask
+	C.XSendEvent(c.disp, c.rootWindow, 0, mask, ev)
+	C.XFlush(c.disp)
 }
 
-// Will hang until either a property change or a configure event happens
-func (c *Connection) NextEvent() (Event, error) {
-	var event C.XEvent
-	for {
-		if err := CheckError(C.XNextEvent(c.display, &event)); err != nil {
-			return Event{}, err // TODO Maybe some max error count and then a panic.. To prevent looping at 100% cpu
-		} else {
-			switch C.getType(&event) {
-			case C.PropertyNotify:
-				var xproperty = C.xproperty(&event)
-				return Event{Window: uint32(xproperty.window), Property: c.atomName(xproperty.atom)}, nil
-			case C.ConfigureNotify:
-				var xconfigure = C.xconfigure(&event)
-				return Event{Window: uint32(xconfigure.window),
-					X: int(xconfigure.x), Y: int(xconfigure.y), W: int(xconfigure.width), H: int(xconfigure.height)}, nil
-			}
-		}
-	}
+func (d *Display) NextEvent(event *C.XEvent) C.int {
+	d.Lock()
+	defer d.Unlock()
+	return C.XNextEvent(d.disp, event)
 }
 
-func (c *Connection) atom(name string) C.Atom {
-	if val, ok := c.atomCache[name]; ok {
-		return val
-	} else {
-		var cName = C.CString(name)
-		defer C.free(unsafe.Pointer(cName))
-		val = C.XInternAtom(c.display, cName, 1)
-		if val == C.None {
-			log.Fatal(fmt.Sprintf("Atom %s does not exist", name))
-		}
-		c.atomCache[name] = val
-		return val
-	}
-
+func (d *Display) InternAtom(name string) C.ulong {
+	d.Lock()
+	defer d.Unlock()
+	var cName = C.CString(name)
+	defer C.free(unsafe.Pointer(cName))
+	return C.XInternAtom(d.disp, cName, 1)
 }
 
-func (c *Connection) atomName(atom C.Atom) string {
-	if name, ok := c.atomNameCache[atom]; ok {
-		return name
-	} else {
-		var tmp = C.XGetAtomName(c.display, atom)
-		defer C.XFree(unsafe.Pointer(tmp))
-		c.atomNameCache[atom] = C.GoString(tmp)
-		return c.atomNameCache[atom]
-	}
+func (d *Display) GetAtomName(atom C.ulong) string {
+	d.Lock()
+	defer d.Unlock()
+	var tmp = C.XGetAtomName(d.disp, atom)
+	defer C.XFree(unsafe.Pointer(tmp))
+	return C.GoString(tmp)
 }
 
-func (c *Connection) GetBytes(window uint32, property string) ([]byte, error) {
+func (c *Display) QueryTree(w C.Window, root_return *C.ulong, parent_return *C.ulong, children_return **C.ulong, nchildren_return *C.uint) C.int {
+	c.Lock()
+	defer c.Unlock()
+	return C.XQueryTree(c.disp, w, root_return, parent_return, children_return, nchildren_return)
+}
+
+func (c *Display) GetBytes(window uint32, prop C.Atom) ([]byte, error) {
 	var ulong_window = C.ulong(window)
 	if ulong_window == 0 {
 		ulong_window = c.rootWindow
 	}
-	var prop = c.atom(property)
 	var long_offset C.long
 	var long_length = C.long(256)
 
@@ -225,8 +220,10 @@ func (c *Connection) GetBytes(window uint32, property string) ([]byte, error) {
 	var bytes_after_return C.ulong
 	var prop_return *C.uchar
 	for {
-		var status = C.XGetWindowProperty(c.display, ulong_window, prop, long_offset, long_length, 0, C.AnyPropertyType,
+		c.Lock()
+		var status = C.XGetWindowProperty(c.disp, ulong_window, prop, long_offset, long_length, 0, C.AnyPropertyType,
 			&actual_type_return, &actual_format_return, &nitems_return, &bytes_after_return, &prop_return)
+		c.Unlock()
 
 		if err := CheckError(status); err != nil {
 			return nil, err
@@ -260,17 +257,11 @@ func (c *Connection) GetBytes(window uint32, property string) ([]byte, error) {
 	}
 }
 
-func (c *Connection) GetPropStr(wId uint32, property string) (string, error) {
-	bytes, err := c.GetBytes(wId, property)
-	return string(bytes), err
-}
-
-func (c *Connection) GetUint32s(window uint32, property string) ([]uint32, error) {
+func (c *Display) GetUint32s(window uint32, prop C.Atom) ([]uint32, error) {
 	var ulong_window = C.ulong(window)
 	if ulong_window == 0 {
 		ulong_window = c.rootWindow
 	}
-	var prop = c.atom(property)
 	var long_offset C.long
 	var long_length = C.long(256)
 
@@ -281,8 +272,10 @@ func (c *Connection) GetUint32s(window uint32, property string) ([]uint32, error
 	var bytes_after_return C.ulong
 	var prop_return *C.uchar
 	for {
-		var error = C.XGetWindowProperty(c.display, ulong_window, prop, long_offset, long_length, 0, C.AnyPropertyType,
+		c.Lock()
+		var error = C.XGetWindowProperty(c.disp, ulong_window, prop, long_offset, long_length, 0, C.AnyPropertyType,
 			&actual_type_return, &actual_format_return, &nitems_return, &bytes_after_return, &prop_return)
+		c.Unlock()
 
 		if err := CheckError(error); err != nil {
 			return nil, err
@@ -317,7 +310,94 @@ func (c *Connection) GetUint32s(window uint32, property string) ([]uint32, error
 	}
 }
 
-func (c *Connection) GetAtoms(wId uint32, property string) ([]string, error) {
+type MonitorData struct {
+	X, Y     int32
+	W, H     uint32
+	Wmm, Hmm uint32
+	Name     string
+}
+
+func (c *Display) GetMonitorDataList() []MonitorData {
+	var num C.int
+
+	xrrmonitorsPtr := C.XRRGetMonitors(c.disp, c.rootWindow, 1, &num)
+	xrrmonitorsArr := (*[1 << 30]C.XRRMonitorInfo)(unsafe.Pointer(xrrmonitorsPtr))
+	var monitors = make([]MonitorData, num, num)
+	var bound int = int(num)
+	for i := 0; i < bound; i++ {
+		monitors[i] = MonitorData{
+			X:    int32(xrrmonitorsArr[i].x),
+			Y:    int32(xrrmonitorsArr[i].y),
+			W:    uint32(xrrmonitorsArr[i].width),
+			H:    uint32(xrrmonitorsArr[i].height),
+			Wmm:  uint32(xrrmonitorsArr[i].mwidth),
+			Hmm:  uint32(xrrmonitorsArr[i].mheight),
+			Name: c.GetAtomName(xrrmonitorsArr[i].name),
+		}
+	}
+	C.XRRFreeMonitors(xrrmonitorsPtr)
+	return monitors
+}
+
+// ----------------------------------------------------------------------------------
+
+// Public
+
+func MakeDisplay() *Display {
+	var disp = C.XOpenDisplay(nil)
+	var defaultScreen = C.ds(disp)
+	var rootWindow = C.rw(disp, defaultScreen)
+	return &Display{disp: disp, rootWindow: rootWindow}
+}
+
+func SubscribeToEvents(c *Display) {
+	c.SelectInput(c.rootWindow, C.PropertyChangeMask)
+	c.RRSelectInput(c.rootWindow, C.RRScreenChangeNotifyMask)
+}
+
+func SubscribeToWindowEvents(c *Display, wId uint32) {
+	c.SelectInput(C.Window(wId), C.PropertyChangeMask)
+}
+
+// Will hang until either a property change or a configure event happens
+type EventType uint8
+
+const (
+	Unknown EventType = iota
+	DesktopGeometry
+	DesktopStacking
+	WindowTitle
+	WindowIconName
+	WindowGeometry
+	WindowSt
+)
+
+func NextEvent(c *Display) (EventType, uint32, error) {
+	var event C.XEvent
+	for {
+		if err := CheckError(c.NextEvent(&event)); err != nil {
+			return Unknown, 0, err
+		} else if C.getType(&event) == C.PropertyNotify {
+			var xproperty = C.xproperty(&event)
+			if xproperty.atom == _NET_CLIENT_LIST_STACKING {
+				return DesktopStacking, 0, nil
+			} else if xproperty.atom == _NET_DESKTOP_GEOMETRY {
+				return DesktopGeometry, 0, nil
+			} else if xproperty.atom == _NET_WM_VISIBLE_NAME || xproperty.atom == _NET_WM_NAME || xproperty.atom == _WM_NAME {
+				return WindowTitle, uint32(xproperty.window), nil
+			} else if xproperty.atom == _NET_WM_VISIBLE_ICON_NAME || xproperty.atom == _NET_WM_ICON_NAME || xproperty.atom == _NET_WM_ICON {
+				return WindowIconName, uint32(xproperty.window), nil
+			} else if xproperty.atom == _NET_WM_STATE {
+				return WindowSt, uint32(xproperty.window), nil
+			}
+		} else if C.getType(&event) == C.ConfigureNotify {
+			var xconfigure = C.xconfigure(&event)
+			return WindowGeometry, uint32(xconfigure.window), nil
+		}
+	}
+}
+
+/*func (c *Display) GetAtoms(wId uint32, property string) ([]string, error) {
 	if atoms, err := c.GetUint32s(wId, property); err != nil {
 		return nil, err
 	} else {
@@ -327,15 +407,15 @@ func (c *Connection) GetAtoms(wId uint32, property string) ([]string, error) {
 		}
 		return states, nil
 	}
-}
+}*/
 
-func (c *Connection) GetParent(wId uint32) (uint32, error) {
+func GetParent(c *Display, wId uint32) (uint32, error) {
 	var root_return C.ulong
 	var parent_return C.ulong
 	var children_return *C.ulong
 	var nchildren_return C.uint
 	for {
-		if C.XQueryTree(c.display, C.ulong(wId), &root_return, &parent_return, &children_return, &nchildren_return) == 0 {
+		if c.QueryTree(C.ulong(wId), &root_return, &parent_return, &children_return, &nchildren_return) == 0 {
 			return 0, errors.New("Error from XQueryTree")
 		} else {
 			if children_return != nil {
@@ -350,7 +430,7 @@ func (c *Connection) GetParent(wId uint32) (uint32, error) {
 	}
 }
 
-func (c *Connection) GetGeometry(wId uint32) (int32, int32, uint32, uint32, error) {
+func (c *Display) GetGeometry(wId uint32) (int32, int32, uint32, uint32, error) {
 	var root C.ulong
 	var x C.int
 	var y C.int
@@ -359,7 +439,10 @@ func (c *Connection) GetGeometry(wId uint32) (int32, int32, uint32, uint32, erro
 	var border_width C.uint
 	var depth C.uint
 
-	var status = C.XGetGeometry(c.display, C.ulong(wId), &root, &x, &y, &width, &height, &border_width, &depth)
+	c.Lock()
+	var status = C.XGetGeometry(c.disp, C.ulong(wId), &root, &x, &y, &width, &height, &border_width, &depth)
+	c.Unlock()
+
 	if status != 0 {
 		return int32(x), int32(y), uint32(width), uint32(height), nil
 	} else {
@@ -367,10 +450,28 @@ func (c *Connection) GetGeometry(wId uint32) (int32, int32, uint32, uint32, erro
 	}
 }
 
+func (c *Display) MoveResizeWindow(win C.Window, x C.int, y C.int, w C.uint, h C.uint) {
+	c.Lock()
+	defer c.Unlock()
+	C.XMoveResizeWindow(c.disp, win, x, y, w, h)
+	C.XFlush(c.disp)
+}
+
+func (c *Display) UpdateSingleState(wId uint32, atom C.Atom, addRemove C.int) {
+	var event = C.createClientMessage32(C.Window(wId), _NET_WM_STATE, 2, C.long(atom), 0, 0, 0)
+	c.SendEvent(&event)
+}
+
+func (c *Display) GetImage(wId C.Window, w C.uint, h C.uint) *C.XImage {
+	c.Lock()
+	defer c.Unlock()
+	return C.XGetImage(c.disp, wId, C.int(0), C.int(0), w, h, C.AllPlanes, C.ZPixmap)
+}
+
 // ---------------------------------------------------------------------------------------------
 
-func GetStack(c *Connection) []uint32 {
-	if tmp, err := c.GetUint32s(0, NET_CLIENT_LIST_STACKING); err != nil {
+func GetStack(c *Display) []uint32 {
+	if tmp, err := c.GetUint32s(0, _NET_CLIENT_LIST_STACKING); err != nil {
 		fmt.Println("Error getting stack:", err)
 		return []uint32{}
 	} else {
@@ -383,102 +484,186 @@ func GetStack(c *Connection) []uint32 {
 
 }
 
-func (c *Connection) GetName(wId uint32) (string, error) {
-	if bytes, err := c.GetBytes(wId, NET_WM_VISIBLE_NAME); err == nil {
+func GetName(c *Display, wId uint32) (string, error) {
+	if bytes, err := c.GetBytes(wId, _NET_WM_VISIBLE_NAME); err == nil {
 		return string(bytes), nil
-	} else if bytes, err = c.GetBytes(wId, NET_WM_NAME); err == nil {
+	} else if bytes, err = c.GetBytes(wId, _NET_WM_NAME); err == nil {
 		return string(bytes), nil
-	} else if bytes, err = c.GetBytes(wId, WM_NAME); err == nil {
+	} else if bytes, err = c.GetBytes(wId, _WM_NAME); err == nil {
 		return string(bytes), nil
 	} else {
 		return "", errors.New("Neither '_NET_WM_VISIBLE_NAME', '_NET_WM_NAME' nor 'WM_NAME' set")
 	}
 }
 
-func (c *Connection) GetIcon(wId uint32) ([]uint32, error) {
-	return c.GetUint32s(wId, NET_WM_ICON)
+func GetIcon(c *Display, wId uint32) ([]uint32, error) {
+	return c.GetUint32s(wId, _NET_WM_ICON)
 }
 
-func (c *Connection) GetState(wId uint32) ([]string, error) {
-	return c.GetAtoms(wId, NET_WM_STATE)
-}
+type WindowStateMask uint16
 
-func (c *Connection) SendEvent(wId uint32, atom string, l0 int32, l1 int32, l2 int32, l3 int32, l4 int32) {
-	var event = C.createClientMessage32(C.Window(wId), c.atom(atom), C.long(l0), C.long(l1), C.long(l2), C.long(l3), C.long(l4))
-	var mask C.long = C.SubstructureRedirectMask | C.SubstructureNotifyMask
-	C.XSendEvent(c.display, c.rootWindow, 0, mask, &event)
-	C.XFlush(c.display)
-}
+const (
+	MODAL WindowStateMask = 1 << iota
+	STICKY
+	MAXIMIZED_VERT
+	MAXIMIZED_HORZ
+	SHADED
+	SKIP_TASKBAR
+	SKIP_PAGER
+	HIDDEN
+	FULLSCREEN
+	ABOVE
+	BELOW
+	DEMANDS_ATTENTION
+)
 
-func (c *Connection) AddWmState(wId uint32, atom string) {
-	var event = C.createClientMessage32(C.Window(wId), c.atom("_NET_WM_STATE"), 2, C.long(c.atom(atom)), 0, 0, 0)
-	var mask C.long = C.SubstructureRedirectMask | C.SubstructureNotifyMask
-	C.XSendEvent(c.display, c.rootWindow, 0, mask, &event)
-	C.XFlush(c.display)
-}
-
-func (c *Connection) RemoveWmState(wId uint32, atom string) {
-	var event = C.createClientMessage32(C.Window(wId), c.atom("_NET_WM_STATE"), 2, C.long(c.atom(atom)), 0, 0, 0)
-	var mask C.long = C.SubstructureRedirectMask | C.SubstructureNotifyMask
-	C.XSendEvent(c.display, c.rootWindow, 0, mask, &event)
-	C.XFlush(c.display)
-}
-
-func (c *Connection) MoveToMonitor(wId uint32, monitorName string) error {
-	monitorList := monitors.Load().([]*Monitor)
-	for _, m := range monitorList {
-		if monitorName == m.Name {
-			newX, newY := m.X+int32(m.W)/10, m.Y+int32(m.H)/10
-			newW, newH := m.W/10*8, m.H/10*8
-			if _, _, winW, winH, err := c.GetGeometry(wId); err == nil {
-				if winW < newW {
-					newW = winW
-				}
-
-				if winH < newH {
-					newH = winH
-				}
-			}
-			C.XMoveResizeWindow(c.display, C.Window(wId), C.int(newX), C.int(newY), C.uint(newW), C.uint(newH))
-			C.XFlush(c.display)
-			return nil
-		}
+func (wsm WindowStateMask) MarshalJSON() ([]byte, error) {
+	var list = make([]string, 0, 14)
+	if wsm&MODAL > 0 {
+		list = append(list, "MODAL")
 	}
-	return fmt.Errorf("No such monitor %s", monitorName)
+	if wsm&STICKY > 0 {
+		list = append(list, "STICKY")
+	}
+	if wsm&MAXIMIZED_VERT > 0 {
+		list = append(list, "MAXIMIZED_VERT")
+	}
+	if wsm&MAXIMIZED_HORZ > 0 {
+		list = append(list, "MAXIMIZED_HORZ")
+	}
+	if wsm&SHADED > 0 {
+		list = append(list, "SHADED")
+	}
+	if wsm&SKIP_TASKBAR > 0 {
+		list = append(list, "SKIP_TASKBAR")
+	}
+	if wsm&SKIP_PAGER > 0 {
+		list = append(list, "SKIP_PAGER")
+	}
+	if wsm&HIDDEN > 0 {
+		list = append(list, "HIDDEN")
+	}
+	if wsm&FULLSCREEN > 0 {
+		list = append(list, "FULLSCREEN")
+	}
+	if wsm&ABOVE > 0 {
+		list = append(list, "ABOVE")
+	}
+	if wsm&BELOW > 0 {
+		list = append(list, "BELOW")
+	}
+	if wsm&DEMANDS_ATTENTION > 0 {
+		list = append(list, "DEMANDS_ATTENTION")
+	}
+	return json.Marshal(list)
 }
 
-func (c *Connection) Move(wId uint32, x int32, y int32, width int32, height int32) {
-	/*	var event = C.createConfigureMessage32(C.Window(wId), C.Window(c.rootWindow), C.int(x), C.int(y), C.int(width), C.int(height))
-		var mask C.long = C.SubstructureRedirectMask | C.SubstructureNotifyMask
-		C.XSendEvent(c.display, c.rootWindow, 0, mask, &event)
-		C.XFlush(c.display)*/
-	fmt.Println("move")
-	C.XFlush(c.display)
+func GetState(c *Display, wId uint32) (WindowStateMask, error) {
+	var state WindowStateMask = 0
+	if atoms, err := c.GetUint32s(wId, _NET_WM_STATE); err != nil {
+		return 0, err
+	} else {
+		for _, atom := range atoms {
+			switch C.ulong(atom) {
+			case _NET_WM_STATE_MODAL:
+				state |= MODAL
+			case _NET_WM_STATE_STICKY:
+				state |= STICKY
+			case _NET_WM_STATE_MAXIMIZED_VERT:
+				state |= MAXIMIZED_VERT
+			case _NET_WM_STATE_MAXIMIZED_HORZ:
+				state |= MAXIMIZED_HORZ
+			case _NET_WM_STATE_SHADED:
+				state |= SHADED
+			case _NET_WM_STATE_SKIP_TASKBAR:
+				state |= SKIP_TASKBAR
+			case _NET_WM_STATE_SKIP_PAGER:
+				state |= SKIP_PAGER
+			case _NET_WM_STATE_HIDDEN:
+				state |= HIDDEN
+			case _NET_WM_STATE_FULLSCREEN:
+				state |= FULLSCREEN
+			case _NET_WM_STATE_ABOVE:
+				state |= ABOVE
+			case _NET_WM_STATE_BELOW:
+				state |= BELOW
+			case _NET_WM_STATE_DEMANDS_ATTENTION:
+				state |= DEMANDS_ATTENTION
+			}
+		}
+		return state, nil
+	}
 }
 
-func (c *Connection) RaiseAndFocusWindow(wId uint32) {
-	var event = C.createClientMessage32(C.Window(wId), c.atom("_NET_ACTIVE_WINDOW"), 2, 0, 0, 0, 0)
-	var mask C.long = C.SubstructureRedirectMask | C.SubstructureNotifyMask
-	C.XSendEvent(c.display, c.rootWindow, 0, mask, &event)
-	C.XFlush(c.display)
+func AddStates(c *Display, wId uint32, states WindowStateMask) {
+	UpdateState(c, wId, states, 1)
 }
 
-func (c *Connection) CloseWindow(wId uint32) {
-	var event = C.createClientMessage32(C.Window(wId), c.atom("_NET_CLOSE_WINDOW"), 2, 0, 0, 0, 0)
-	var mask C.long = C.SubstructureRedirectMask | C.SubstructureNotifyMask
-	log.Println("Sending close event")
-	C.XSendEvent(c.display, c.rootWindow, 0, mask, &event)
-	C.XFlush(c.display)
-	log.Println("Close event sent")
+func RemoveStates(c *Display, wId uint32, states WindowStateMask) {
+	UpdateState(c, wId, states, 0)
 }
 
-func (c *Connection) GetScreenshotAsPng(wId uint32, downscale uint8) ([]byte, error) {
+func UpdateState(c *Display, wId uint32, state WindowStateMask, addRemove C.int) {
+	if state&MODAL > 0 {
+		c.UpdateSingleState(wId, _NET_WM_STATE_MODAL, addRemove)
+	}
+	if state&STICKY > 0 {
+		c.UpdateSingleState(wId, _NET_WM_STATE_STICKY, addRemove)
+	}
+	if state&MAXIMIZED_VERT > 0 {
+		c.UpdateSingleState(wId, _NET_WM_STATE_MAXIMIZED_VERT, addRemove)
+	}
+	if state&MAXIMIZED_HORZ > 0 {
+		c.UpdateSingleState(wId, _NET_WM_STATE_MAXIMIZED_HORZ, addRemove)
+	}
+	if state&SHADED > 0 {
+		c.UpdateSingleState(wId, _NET_WM_STATE_SHADED, addRemove)
+	}
+	if state&SKIP_TASKBAR > 0 {
+		c.UpdateSingleState(wId, _NET_WM_STATE_SKIP_TASKBAR, addRemove)
+	}
+	if state&SKIP_PAGER > 0 {
+		c.UpdateSingleState(wId, _NET_WM_STATE_SKIP_PAGER, addRemove)
+	}
+	if state&HIDDEN > 0 {
+		c.UpdateSingleState(wId, _NET_WM_STATE_HIDDEN, addRemove)
+	}
+	if state&FULLSCREEN > 0 {
+		c.UpdateSingleState(wId, _NET_WM_STATE_FULLSCREEN, addRemove)
+	}
+	if state&ABOVE > 0 {
+		c.UpdateSingleState(wId, _NET_WM_STATE_ABOVE, addRemove)
+	}
+	if state&BELOW > 0 {
+		c.UpdateSingleState(wId, _NET_WM_STATE_BELOW, addRemove)
+	}
+	if state&DEMANDS_ATTENTION > 0 {
+		c.UpdateSingleState(wId, _NET_WM_STATE_DEMANDS_ATTENTION, addRemove)
+	}
+
+}
+
+func SetBounds(c *Display, wId uint32, x int32, y int32, w uint32, h uint32) {
+	c.MoveResizeWindow(C.Window(wId), C.int(x), C.int(y), C.uint(w), C.uint(h))
+}
+
+func RaiseAndFocusWindow(c *Display, wId uint32) {
+	var event = C.createClientMessage32(C.Window(wId), _NET_ACTIVE_WINDOW, 2, 0, 0, 0, 0)
+	c.SendEvent(&event)
+}
+
+func (c *Display) CloseWindow(wId uint32) {
+	var event = C.createClientMessage32(C.Window(wId), _NET_CLOSE_WINDOW, 2, 0, 0, 0, 0)
+	c.SendEvent(&event)
+}
+
+func GetScreenshotAsPng(c *Display, wId uint32, downscale uint8) ([]byte, error) {
 	var _, _, w, h, err = c.GetGeometry(wId)
 	if err != nil {
 		return nil, err
 	}
 
-	var ximage = C.XGetImage(c.display, C.ulong(wId), C.int(0), C.int(0), C.uint(w), C.uint(h), C.AllPlanes, C.ZPixmap)
+	var ximage = c.GetImage(C.ulong(wId), C.uint(w), C.uint(h))
 	if ximage == nil {
 		return nil, fmt.Errorf("Unable to retrieve screendump for %d", wId)
 	}
@@ -503,27 +688,6 @@ func (c *Connection) GetScreenshotAsPng(wId uint32, downscale uint8) ([]byte, er
 }
 
 // ------------------------------------------------------------------------------------------------------------------
-
-func GetMonitors(c *Connection) []*Monitor {
-	var num C.int
-	xrrmonitorsPtr := C.XRRGetMonitors(c.display, c.rootWindow, 1, &num)
-	xrrmonitorsArr := (*[1 << 30]C.XRRMonitorInfo)(unsafe.Pointer(xrrmonitorsPtr))
-	var monitors = make([]*Monitor, num, num)
-	var bound int = int(num)
-	for i := 0; i < bound; i++ {
-		monitors[i] = &Monitor{
-			X:    int32(xrrmonitorsArr[i].x),
-			Y:    int32(xrrmonitorsArr[i].y),
-			W:    uint32(xrrmonitorsArr[i].width),
-			H:    uint32(xrrmonitorsArr[i].height),
-			Wmm:  uint32(xrrmonitorsArr[i].mwidth),
-			Hmm:  uint32(xrrmonitorsArr[i].mheight),
-			Name: c.atomName(xrrmonitorsArr[i].name),
-		}
-	}
-	C.XRRFreeMonitors(xrrmonitorsPtr)
-	return monitors
-}
 
 func CheckError(error C.int) error {
 	switch error {

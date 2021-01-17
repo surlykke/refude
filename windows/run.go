@@ -7,6 +7,7 @@
 package windows
 
 import (
+	"fmt"
 	"log"
 	"sync/atomic"
 
@@ -16,36 +17,43 @@ import (
 
 // Maintains windows  and monitors lists
 func Run() {
-	var c = MakeConnection()
-	c.SubscribeToEvents()
-	storeWindowList(c)
-	storeMonitorList(c)
+	var c = MakeDisplay()
+	SubscribeToEvents(c)
+	updateMonitorList(c)
+	updateWindowList(c)
 
 	for {
-		if event, err := c.NextEvent(); err != nil {
+		if event, wId, err := NextEvent(c); err != nil {
 			log.Println("Error from NextEvent", err)
 		} else {
-			switch event.Property {
-			case NET_CLIENT_LIST_STACKING:
-				storeWindowList(c)
-			case NET_DESKTOP_GEOMETRY:
-				storeMonitorList(c)
+			switch event {
+			case DesktopStacking:
+				updateWindowList(c)
+			case DesktopGeometry:
+				updateMonitorList(c)
+			case WindowTitle:
+				updateWindowTitle(c, wId)
+			case WindowIconName:
+				updateWindowIconName(c, wId)
+			case WindowSt:
+				updateWindowState(c, wId)
+			case WindowGeometry:
+				updateWindowGeometry(c, wId)
 			}
 		}
 	}
 }
 
-
 var windows atomic.Value
 var monitors atomic.Value
 
 func init() {
-	windows.Store([]uint32{})
+	windows.Store([]*Window{})
 	monitors.Store([]*Monitor{})
 }
 
-func storeMonitorList(c *Connection) {
-	var monitorList = GetMonitors(c)
+func updateMonitorList(c *Display) {
+	var monitorList = monitorDataList2Monitors(c.GetMonitorDataList())
 	for _, m := range monitorList {
 		m.Links = respond.Links{{
 			Href:  "/monitor/" + m.Name,
@@ -54,10 +62,112 @@ func storeMonitorList(c *Connection) {
 		}}
 	}
 	monitors.Store(monitorList)
+	var windowList = windows.Load().([]*Window)
+	var newWindowList = make([]*Window, len(windowList), len(windowList))
+	for i, win := range windowList {
+		var copy = *win
+		BuildLinks(&copy)
+		newWindowList[i] = &copy
+	}
 	watch.DesktopSearchMayHaveChanged()
 }
 
-func storeWindowList(c *Connection) {
-	windows.Store(GetStack(c))
-	watch.DesktopSearchMayHaveChanged()
+func updateWindowList(c *Display) {
+	var wIds = GetStack(c)
+	var windowList = windows.Load().([]*Window)
+	var newWindowList = make([]*Window, len(wIds), len(wIds))
+outerloop:
+	for i, wId := range wIds {
+		for _, oldWin := range windowList {
+			if oldWin.Id == wId {
+				newWindowList[i] = oldWin
+				continue outerloop
+			}
+		}
+		newWindowList[i] = BuildWindow(c, wId)
+		SubscribeToWindowEvents(c, wId)
+	}
+	windows.Store(newWindowList)
+
+	// Check that we have the same windows (excluding windows that do not show in desktopsearch) and in same order
+	// Otherwise publish desktopsearch change
+	var i, j = 0, 0
+	for {
+		// skip what's not shown in desktopsearch
+		for i < len(windowList) && (windowList[i].State&(SKIP_TASKBAR|SKIP_PAGER|ABOVE) > 0) {
+			i++
+		}
+		for j < len(windowList) && (windowList[j].State&(SKIP_TASKBAR|SKIP_PAGER|ABOVE) > 0) {
+			j++
+		}
+
+		// Check
+		if i >= len(windowList) && j >= len(newWindowList) {
+			break
+		} else if i >= len(windowList) || j >= len(newWindowList) || windowList[i].Id != newWindowList[j].Id {
+			watch.DesktopSearchMayHaveChanged()
+			break
+		} else {
+			i++
+			j++
+		}
+	}
+}
+
+func findWindow(wId uint32) *Window {
+	for _, win := range windows.Load().([]*Window) {
+		if win.Id == wId {
+			return win
+		}
+	}
+	return nil
+}
+
+func replaceWindow(newWin *Window) {
+	var windowList = windows.Load().([]*Window)
+	var newWindowList = make([]*Window, len(windowList), len(windowList))
+	for i, win := range windowList {
+		if win.Id == newWin.Id {
+			newWindowList[i] = newWin
+		} else {
+			newWindowList[i] = win
+		}
+	}
+	windows.Store(newWindowList)
+}
+
+func updateWindowTitle(c *Display, wId uint32) {
+	if win := findWindow(wId); win != nil {
+		var copy = *win
+		copy.Name, _ = GetName(c, wId)
+		BuildLinks(&copy)
+		replaceWindow(&copy)
+		watch.DesktopSearchMayHaveChanged()
+	}
+}
+
+func updateWindowIconName(c *Display, wId uint32) {
+	if win := findWindow(wId); win != nil {
+		var copy = *win
+		copy.IconName, _ = GetIconName(c, wId)
+		BuildLinks(&copy)
+		replaceWindow(&copy)
+		watch.DesktopSearchMayHaveChanged()
+	}
+}
+
+func updateWindowState(c *Display, wId uint32) {
+	fmt.Println("Update state for", wId)
+	if win := findWindow(wId); win != nil {
+		var copy = *win
+		copy.State, _ = GetState(c, wId)
+		fmt.Println("Set state to", copy.State)
+		BuildLinks(&copy)
+		replaceWindow(&copy)
+		watch.DesktopSearchMayHaveChanged()
+	}
+}
+
+func updateWindowGeometry(c *Display, wId uint32) {
+	// TODO
 }

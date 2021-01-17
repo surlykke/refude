@@ -9,7 +9,6 @@ import (
 
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
-	"github.com/surlykke/RefudeServices/lib/slice"
 )
 
 func MonitorHandler(r *http.Request) http.Handler {
@@ -47,12 +46,12 @@ func WindowHandler(r *http.Request) http.Handler {
 	} else {
 		var id = uint32(val)
 		var screenShot = matches[2] != ""
-		for _, wId := range windows.Load().([]uint32) {
-			if id == wId {
+		for _, win := range windows.Load().([]*Window) {
+			if id == win.Id {
 				if screenShot {
 					return ScreenShot(id)
 				} else {
-					return Window(id)
+					return win
 				}
 			}
 		}
@@ -62,25 +61,24 @@ func WindowHandler(r *http.Request) http.Handler {
 }
 
 func Windows() respond.Links {
-	var idList = windows.Load().([]uint32)
-	var links = make(respond.Links, 0, len(idList))
-	for _, id := range idList {
-		links = append(links, Window(id).ToData().Link())
+	var windowList = windows.Load().([]*Window)
+	var links = make(respond.Links, len(windowList), len(windowList))
+	for i, win := range windowList {
+		links[i] = win.Link()
 	}
 	return links
 }
 
 func DesktopSearch(term string, baserank int) respond.Links {
-	var idList = windows.Load().([]uint32)
-	var links = make(respond.Links, 0, len(idList))
-	for _, id := range idList {
-		var wd = Window(id).ToData()
-		if slice.Contains(wd.States, "_NET_WM_STATE_ABOVE", "_NET_WM_STATE_SKIP_TASKBAR") {
+	var windowList = windows.Load().([]*Window)
+	var links = make(respond.Links, 0, len(windowList))
+	for _, win := range windowList {
+		if win.State&(ABOVE|SKIP_TASKBAR) != 0 {
 			continue
 		}
 
-		if rank, ok := searchutils.Rank(strings.ToLower(wd.Name), term, baserank); ok {
-			var link = wd.Link()
+		if rank, ok := searchutils.Rank(strings.ToLower(win.Name), term, baserank); ok {
+			var link = win.Link()
 			link.Rank = rank
 			links = append(links, link)
 		}
@@ -90,12 +88,12 @@ func DesktopSearch(term string, baserank int) respond.Links {
 }
 
 func AllPaths() []string {
-	var windowList = windows.Load().([]uint32)
+	var windowList = windows.Load().([]*Window)
 	var monitorList = monitors.Load().([]*Monitor)
 	var paths = make([]string, 0, 2*len(windowList)+len(monitorList)+2)
 	for _, window := range windowList {
-		paths = append(paths, fmt.Sprintf("/window/%d", window))
-		paths = append(paths, fmt.Sprintf("/window/%d/screenshot", window))
+		paths = append(paths, fmt.Sprintf("/window/%d", window.Id))
+		paths = append(paths, fmt.Sprintf("/window/%d/screenshot", window.Id))
 	}
 	for _, monitor := range monitorList {
 		paths = append(paths, monitor.Link().Href)
