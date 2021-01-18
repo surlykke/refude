@@ -45,6 +45,7 @@ func Applications() respond.Links {
 func DesktopSearch(term string, baserank int) respond.Links {
 	var applications = collectionStore.Load().(collection).applications
 	var links = make(respond.Links, 0, len(applications))
+	var termRunes = []rune(term)
 	for _, app := range applications {
 		if app.NoDisplay {
 			continue
@@ -54,7 +55,7 @@ func DesktopSearch(term string, baserank int) respond.Links {
 		var name = strings.ToLower(app.Name)
 		if rank, ok = searchutils.Rank(strings.ToLower(name), term, baserank); !ok {
 			if rank, ok = searchutils.Rank(strings.ToLower(app.Comment), term, baserank+100); !ok {
-				rank, ok = searchutils.FluffyRank(name, term, baserank+200)
+				rank, ok = searchutils.FluffyRank([]rune(name), termRunes, baserank+200)
 			}
 		}
 		if ok {

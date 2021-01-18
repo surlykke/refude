@@ -26,10 +26,10 @@ func Run() {
 			log.Println("Error from NextEvent", err)
 		} else {
 			switch event {
-			case DesktopStacking:
-				updateWindowList(c)
 			case DesktopGeometry:
 				updateMonitorList(c)
+			case DesktopStacking:
+				updateWindowList(c)
 			case WindowTitle:
 				updateWindowTitle(c, wId)
 			case WindowIconName:
@@ -54,10 +54,24 @@ func init() {
 }
 
 func updateMonitorList(c *Display) {
+	fmt.Println("updateMonitorList")
 	var newMonitorList = c.GetMonitorDataList()
 	var newDesktopLayout = BuildDesktopLayout(newMonitorList)
 	monitors.Store(newMonitorList)
 	deskopLayout.Store(newDesktopLayout)
+
+	// Update links on all windows
+	var windowList = windows.Load().([]*Window)
+	var newWindowList = make([]*Window, len(windowList), len(windowList))
+	for i, window := range windowList {
+		var copy = *window
+		BuildLinks(&copy)
+		newWindowList[i] = &copy
+	}
+	windows.Store(newWindowList)
+
+	updateWindowList(c)
+	watch.SomethingChanged("/desktoplayout")
 	watch.DesktopSearchMayHaveChanged()
 }
 
@@ -146,11 +160,9 @@ func updateWindowIconName(c *Display, wId uint32) {
 }
 
 func updateWindowState(c *Display, wId uint32) {
-	fmt.Println("Update state for", wId)
 	if win := findWindow(wId); win != nil {
 		var copy = *win
 		copy.State, _ = GetState(c, wId)
-		fmt.Println("Set state to", copy.State)
 		BuildLinks(&copy)
 		replaceWindow(&copy)
 		watch.DesktopSearchMayHaveChanged()
