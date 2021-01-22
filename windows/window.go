@@ -39,7 +39,7 @@ type Window struct {
 }
 
 // Caller ensures thread safety
-func BuildWindow(c *Display, wId uint32) *Window {
+func BuildWindow(c *Connection, wId uint32) *Window {
 	var win = &Window{Id: wId}
 	win.Parent, _ = GetParent(c, wId)
 	win.Name, _ = GetName(c, wId)
@@ -182,7 +182,7 @@ func setIconNameInCache(wId uint32, name string) {
 	iconNameCache[wId] = name
 }
 
-func GetIconName(c *Display, wId uint32) (string, error) {
+func GetIconName(c *Connection, wId uint32) (string, error) {
 	if name, ok := getIconNameFromCache(wId); ok {
 		return name, nil
 	} else {
@@ -225,7 +225,7 @@ func GetIconName(c *Display, wId uint32) (string, error) {
 
 var noBounds = &Bounds{0, 0, 0, 0}
 
-func GetBounds(c *Display, wId uint32) *Bounds {
+func GetBounds(c *Connection, wId uint32) *Bounds {
 	// TODO Perhaps some caching
 	if x, y, w, h, err := dataConnection.GetGeometry(wId); err != nil {
 		return noBounds

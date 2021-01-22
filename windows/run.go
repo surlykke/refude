@@ -53,7 +53,7 @@ func init() {
 	monitors.Store([]*MonitorData{})
 }
 
-func updateMonitorList(c *Display) {
+func updateMonitorList(c *Connection) {
 	fmt.Println("updateMonitorList")
 	var newMonitorList = c.GetMonitorDataList()
 	var newDesktopLayout = BuildDesktopLayout(newMonitorList)
@@ -75,7 +75,7 @@ func updateMonitorList(c *Display) {
 	watch.DesktopSearchMayHaveChanged()
 }
 
-func updateWindowList(c *Display) {
+func updateWindowList(c *Connection) {
 	var wIds = GetStack(c)
 	var windowList = windows.Load().([]*Window)
 	var newWindowList = make([]*Window, len(wIds), len(wIds))
@@ -139,7 +139,7 @@ func replaceWindow(newWin *Window) {
 	windows.Store(newWindowList)
 }
 
-func updateWindowTitle(c *Display, wId uint32) {
+func updateWindowTitle(c *Connection, wId uint32) {
 	if win := findWindow(wId); win != nil {
 		var copy = *win
 		copy.Name, _ = GetName(c, wId)
@@ -149,7 +149,7 @@ func updateWindowTitle(c *Display, wId uint32) {
 	}
 }
 
-func updateWindowIconName(c *Display, wId uint32) {
+func updateWindowIconName(c *Connection, wId uint32) {
 	if win := findWindow(wId); win != nil {
 		var copy = *win
 		copy.IconName, _ = GetIconName(c, wId)
@@ -159,7 +159,7 @@ func updateWindowIconName(c *Display, wId uint32) {
 	}
 }
 
-func updateWindowState(c *Display, wId uint32) {
+func updateWindowState(c *Connection, wId uint32) {
 	if win := findWindow(wId); win != nil {
 		var copy = *win
 		copy.State, _ = GetState(c, wId)
@@ -169,6 +169,6 @@ func updateWindowState(c *Display, wId uint32) {
 	}
 }
 
-func updateWindowGeometry(c *Display, wId uint32) {
+func updateWindowGeometry(c *Connection, wId uint32) {
 	// TODO
 }

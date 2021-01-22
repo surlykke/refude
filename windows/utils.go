@@ -151,25 +151,25 @@ type Event struct {
 	X, Y, W, H int
 }
 
-type Display struct {
+type Connection struct {
 	sync.Mutex
 	disp       *C.Display
 	rootWindow C.Window
 }
 
-func (d *Display) SelectInput(window C.Window, mask C.long) {
+func (d *Connection) SelectInput(window C.Window, mask C.long) {
 	d.Lock()
 	defer d.Unlock()
 	C.XSelectInput(d.disp, window, mask)
 }
 
-func (d *Display) RRSelectInput(window C.Window, mask C.int) {
+func (d *Connection) RRSelectInput(window C.Window, mask C.int) {
 	d.Lock()
 	defer d.Unlock()
 	C.XRRSelectInput(d.disp, window, mask)
 }
 
-func (c *Display) SendEvent(ev *C.XEvent) {
+func (c *Connection) SendEvent(ev *C.XEvent) {
 	c.Lock()
 	defer c.Unlock()
 	var mask C.long = C.SubstructureRedirectMask | C.SubstructureNotifyMask
@@ -177,13 +177,13 @@ func (c *Display) SendEvent(ev *C.XEvent) {
 	C.XFlush(c.disp)
 }
 
-func (d *Display) NextEvent(event *C.XEvent) C.int {
+func (d *Connection) NextEvent(event *C.XEvent) C.int {
 	d.Lock()
 	defer d.Unlock()
 	return C.XNextEvent(d.disp, event)
 }
 
-func (d *Display) InternAtom(name string) C.ulong {
+func (d *Connection) InternAtom(name string) C.ulong {
 	d.Lock()
 	defer d.Unlock()
 	var cName = C.CString(name)
@@ -191,7 +191,7 @@ func (d *Display) InternAtom(name string) C.ulong {
 	return C.XInternAtom(d.disp, cName, 1)
 }
 
-func (d *Display) GetAtomName(atom C.ulong) string {
+func (d *Connection) GetAtomName(atom C.ulong) string {
 	d.Lock()
 	defer d.Unlock()
 	var tmp = C.XGetAtomName(d.disp, atom)
@@ -199,13 +199,13 @@ func (d *Display) GetAtomName(atom C.ulong) string {
 	return C.GoString(tmp)
 }
 
-func (c *Display) QueryTree(w C.Window, root_return *C.ulong, parent_return *C.ulong, children_return **C.ulong, nchildren_return *C.uint) C.int {
+func (c *Connection) QueryTree(w C.Window, root_return *C.ulong, parent_return *C.ulong, children_return **C.ulong, nchildren_return *C.uint) C.int {
 	c.Lock()
 	defer c.Unlock()
 	return C.XQueryTree(c.disp, w, root_return, parent_return, children_return, nchildren_return)
 }
 
-func (c *Display) GetBytes(window uint32, prop C.Atom) ([]byte, error) {
+func (c *Connection) GetBytes(window uint32, prop C.Atom) ([]byte, error) {
 	var ulong_window = C.ulong(window)
 	if ulong_window == 0 {
 		ulong_window = c.rootWindow
@@ -257,7 +257,7 @@ func (c *Display) GetBytes(window uint32, prop C.Atom) ([]byte, error) {
 	}
 }
 
-func (c *Display) GetUint32s(window uint32, prop C.Atom) ([]uint32, error) {
+func (c *Connection) GetUint32s(window uint32, prop C.Atom) ([]uint32, error) {
 	var ulong_window = C.ulong(window)
 	if ulong_window == 0 {
 		ulong_window = c.rootWindow
@@ -317,7 +317,7 @@ type MonitorData struct {
 	Name     string
 }
 
-func (c *Display) GetMonitorDataList() []*MonitorData {
+func (c *Connection) GetMonitorDataList() []*MonitorData {
 	var num C.int
 
 	xrrmonitorsPtr := C.XRRGetMonitors(c.disp, c.rootWindow, 1, &num)
@@ -343,19 +343,19 @@ func (c *Display) GetMonitorDataList() []*MonitorData {
 
 // Public
 
-func MakeDisplay() *Display {
+func MakeDisplay() *Connection {
 	var disp = C.XOpenDisplay(nil)
 	var defaultScreen = C.ds(disp)
 	var rootWindow = C.rw(disp, defaultScreen)
-	return &Display{disp: disp, rootWindow: rootWindow}
+	return &Connection{disp: disp, rootWindow: rootWindow}
 }
 
-func SubscribeToEvents(c *Display) {
+func SubscribeToEvents(c *Connection) {
 	c.SelectInput(c.rootWindow, C.PropertyChangeMask)
 	c.RRSelectInput(c.rootWindow, C.RRScreenChangeNotifyMask)
 }
 
-func SubscribeToWindowEvents(c *Display, wId uint32) {
+func SubscribeToWindowEvents(c *Connection, wId uint32) {
 	c.SelectInput(C.Window(wId), C.PropertyChangeMask)
 }
 
@@ -372,7 +372,7 @@ const (
 	WindowSt
 )
 
-func NextEvent(c *Display) (EventType, uint32, error) {
+func NextEvent(c *Connection) (EventType, uint32, error) {
 	var event C.XEvent
 	for {
 		if err := CheckError(c.NextEvent(&event)); err != nil {
@@ -409,7 +409,7 @@ func NextEvent(c *Display) (EventType, uint32, error) {
 	}
 }*/
 
-func GetParent(c *Display, wId uint32) (uint32, error) {
+func GetParent(c *Connection, wId uint32) (uint32, error) {
 	var root_return C.ulong
 	var parent_return C.ulong
 	var children_return *C.ulong
@@ -430,7 +430,7 @@ func GetParent(c *Display, wId uint32) (uint32, error) {
 	}
 }
 
-func (c *Display) GetGeometry(wId uint32) (int32, int32, uint32, uint32, error) {
+func (c *Connection) GetGeometry(wId uint32) (int32, int32, uint32, uint32, error) {
 	var root C.ulong
 	var x C.int
 	var y C.int
@@ -450,19 +450,19 @@ func (c *Display) GetGeometry(wId uint32) (int32, int32, uint32, uint32, error) 
 	}
 }
 
-func (c *Display) MoveResizeWindow(win C.Window, x C.int, y C.int, w C.uint, h C.uint) {
+func (c *Connection) MoveResizeWindow(win C.Window, x C.int, y C.int, w C.uint, h C.uint) {
 	c.Lock()
 	defer c.Unlock()
 	C.XMoveResizeWindow(c.disp, win, x, y, w, h)
 	C.XFlush(c.disp)
 }
 
-func (c *Display) UpdateSingleState(wId uint32, atom C.Atom, addRemove C.int) {
+func (c *Connection) UpdateSingleState(wId uint32, atom C.Atom, addRemove C.int) {
 	var event = C.createClientMessage32(C.Window(wId), _NET_WM_STATE, 2, C.long(atom), 0, 0, 0)
 	c.SendEvent(&event)
 }
 
-func (c *Display) GetImage(wId C.Window, w C.uint, h C.uint) *C.XImage {
+func (c *Connection) GetImage(wId C.Window, w C.uint, h C.uint) *C.XImage {
 	c.Lock()
 	defer c.Unlock()
 	return C.XGetImage(c.disp, wId, C.int(0), C.int(0), w, h, C.AllPlanes, C.ZPixmap)
@@ -470,7 +470,7 @@ func (c *Display) GetImage(wId C.Window, w C.uint, h C.uint) *C.XImage {
 
 // ---------------------------------------------------------------------------------------------
 
-func GetStack(c *Display) []uint32 {
+func GetStack(c *Connection) []uint32 {
 	if tmp, err := c.GetUint32s(0, _NET_CLIENT_LIST_STACKING); err != nil {
 		fmt.Println("Error getting stack:", err)
 		return []uint32{}
@@ -484,7 +484,7 @@ func GetStack(c *Display) []uint32 {
 
 }
 
-func GetName(c *Display, wId uint32) (string, error) {
+func GetName(c *Connection, wId uint32) (string, error) {
 	if bytes, err := c.GetBytes(wId, _NET_WM_VISIBLE_NAME); err == nil {
 		return string(bytes), nil
 	} else if bytes, err = c.GetBytes(wId, _NET_WM_NAME); err == nil {
@@ -496,7 +496,7 @@ func GetName(c *Display, wId uint32) (string, error) {
 	}
 }
 
-func GetIcon(c *Display, wId uint32) ([]uint32, error) {
+func GetIcon(c *Connection, wId uint32) ([]uint32, error) {
 	return c.GetUint32s(wId, _NET_WM_ICON)
 }
 
@@ -558,7 +558,7 @@ func (wsm WindowStateMask) MarshalJSON() ([]byte, error) {
 	return json.Marshal(list)
 }
 
-func GetState(c *Display, wId uint32) (WindowStateMask, error) {
+func GetState(c *Connection, wId uint32) (WindowStateMask, error) {
 	var state WindowStateMask = 0
 	if atoms, err := c.GetUint32s(wId, _NET_WM_STATE); err != nil {
 		return 0, err
@@ -595,15 +595,15 @@ func GetState(c *Display, wId uint32) (WindowStateMask, error) {
 	}
 }
 
-func AddStates(c *Display, wId uint32, states WindowStateMask) {
+func AddStates(c *Connection, wId uint32, states WindowStateMask) {
 	UpdateState(c, wId, states, 1)
 }
 
-func RemoveStates(c *Display, wId uint32, states WindowStateMask) {
+func RemoveStates(c *Connection, wId uint32, states WindowStateMask) {
 	UpdateState(c, wId, states, 0)
 }
 
-func UpdateState(c *Display, wId uint32, state WindowStateMask, addRemove C.int) {
+func UpdateState(c *Connection, wId uint32, state WindowStateMask, addRemove C.int) {
 	if state&MODAL > 0 {
 		c.UpdateSingleState(wId, _NET_WM_STATE_MODAL, addRemove)
 	}
@@ -643,21 +643,21 @@ func UpdateState(c *Display, wId uint32, state WindowStateMask, addRemove C.int)
 
 }
 
-func SetBounds(c *Display, wId uint32, x int32, y int32, w uint32, h uint32) {
+func SetBounds(c *Connection, wId uint32, x int32, y int32, w uint32, h uint32) {
 	c.MoveResizeWindow(C.Window(wId), C.int(x), C.int(y), C.uint(w), C.uint(h))
 }
 
-func RaiseAndFocusWindow(c *Display, wId uint32) {
+func RaiseAndFocusWindow(c *Connection, wId uint32) {
 	var event = C.createClientMessage32(C.Window(wId), _NET_ACTIVE_WINDOW, 2, 0, 0, 0, 0)
 	c.SendEvent(&event)
 }
 
-func (c *Display) CloseWindow(wId uint32) {
+func (c *Connection) CloseWindow(wId uint32) {
 	var event = C.createClientMessage32(C.Window(wId), _NET_CLOSE_WINDOW, 2, 0, 0, 0, 0)
 	c.SendEvent(&event)
 }
 
-func GetScreenshotAsPng(c *Display, wId uint32, downscale uint8) ([]byte, error) {
+func GetScreenshotAsPng(c *Connection, wId uint32, downscale uint8) ([]byte, error) {
 	var _, _, w, h, err = c.GetGeometry(wId)
 	if err != nil {
 		return nil, err
