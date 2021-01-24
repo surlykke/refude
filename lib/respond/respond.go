@@ -50,6 +50,11 @@ func AsJson(w http.ResponseWriter, data interface{}) {
 	w.Write(json)
 }
 
+func AsPng(w http.ResponseWriter, pngData []byte) {
+	w.Header().Set("Content-Type", "image/png")
+	w.Write(pngData)
+}
+
 func ToJson(res interface{}) []byte {
 	var bytes, err = json.Marshal(res)
 	if err != nil {

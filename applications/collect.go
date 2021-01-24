@@ -419,7 +419,12 @@ func readDesktopFile(path string, id string) (*DesktopApplication, []string, err
 
 func Icon2IconUrl(icon string) string {
 	if strings.HasPrefix(icon, "/") {
-		return icons.IconUrl(icons.AddFileIcon(icon))
+		if name, err := icons.AddFileIcon(icon); err != nil {
+			log.Println("Error adding fileicon", err)
+			return ""
+		} else {
+			return icons.IconUrl(name)
+		}
 	} else {
 		return icons.IconUrl(icon)
 	}

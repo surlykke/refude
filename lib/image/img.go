@@ -8,7 +8,7 @@ package image
 
 import (
 	"bytes"
-	"crypto/sha1"
+	"crypto/sha256"
 	"fmt"
 	"image"
 	"image/color"
@@ -55,16 +55,67 @@ func (a *ARGBImage) AsPng() ([]byte, error) {
 	}
 }
 
+func X11IconHashName(arr []uint32) string {
+	var hasher = sha256.New()
+	var bytes = make([]byte, 4*len(arr), 4*len(arr))
+	for i := 0; i < len(arr); i++ {
+		bytes[4*i], bytes[4*i+1], bytes[4*i+2], bytes[4*i+3] = byte(arr[i]>>24)&0xFF, byte(arr[i]>>16)&0xFF, byte(arr[i]>>8)&0xFF, byte(arr[i]&0xFF)
+	}
+	hasher.Write(bytes)
+	return fmt.Sprintf("%x", hasher.Sum(nil))
+}
+
+type sizedPng struct {
+	Width, Height uint32
+	Data          []byte
+}
+
+func X11IconToPngs(pixelArray []uint32) ([]sizedPng, error) {
+	var pngList = []sizedPng{}
+	for len(pixelArray) >= 2 {
+		width := pixelArray[0]
+		height := pixelArray[1]
+		pixelArray = pixelArray[2:]
+		if len(pixelArray) < int(width*height) {
+			return nil, fmt.Errorf("Unexpected end of data")
+		}
+
+		pngData := image.NewRGBA(image.Rect(0, 0, int(width), int(height)))
+
+		for row := 0; row < int(height); row++ {
+			for col := 0; col < int(width); col++ {
+				pos := row*int(width) + col
+				pngData.Set(col, row, color.RGBA{
+					R: uint8((pixelArray[pos] & 0xFF0000) >> 16),
+					G: uint8((pixelArray[pos] & 0xFF00) >> 8),
+					B: uint8(pixelArray[pos] & 0xFF),
+					A: uint8((pixelArray[pos] & 0xFF000000) >> 24),
+				})
+			}
+		}
+		buf := &bytes.Buffer{}
+		if err := png.Encode(buf, pngData); err != nil {
+			return nil, err
+		} else {
+			pngList = append(pngList, sizedPng{width, height, buf.Bytes()})
+			pixelArray = pixelArray[width*height:]
+		}
+	}
+
+	return pngList, nil
+
+}
+
 type ARGBIcon struct {
 	Images []ARGBImage
 }
 
 func ARGBIconHashName(ai ARGBIcon) string {
-	var hasher = sha1.New()
+	var hasher = sha256.New()
 	for _, image := range ai.Images {
 		hasher.Write(image.Pixels)
 	}
-	return fmt.Sprintf("%X", hasher.Sum(nil))
+	return fmt.Sprintf("%x", hasher.Sum(nil))
 }
 
 type ImageData struct {
@@ -78,7 +129,7 @@ type ImageData struct {
 }
 
 func ImageDataHashName(id ImageData) string {
-	var hasher = sha1.New()
+	var hasher = sha256.New()
 	hasher.Write(id.Data)
 	return fmt.Sprintf("%X", hasher.Sum(nil))
 }

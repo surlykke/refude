@@ -1,7 +1,7 @@
 /**
  *  Colornames for parsing xpm files
  *	These names are taken from the file 'rgb.txt' distributed with neovim, which, in turn, seems to have gotten it from X11.
- *	I'm not sure what the license is.
+ *	I'm not sure what the license is. I assume it can be redistributed freely.
  *	Names have been lowercased, as case seems to be insignificant, at least in XPM3
  */
 package image

@@ -284,7 +284,8 @@ func installFileIcon(hints map[string]dbus.Variant, key string) (string, bool) {
 		fmt.Println("Value not a string")
 		return "", true
 	} else {
-		return icons.AddFileIcon(path), true
+		iconName, err := icons.AddFileIcon(path)
+		return iconName, err == nil
 	}
 }
 

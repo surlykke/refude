@@ -12,7 +12,6 @@ import (
 	"sync"
 
 	"github.com/surlykke/RefudeServices/icons"
-	"github.com/surlykke/RefudeServices/lib/image"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/respond"
 )
@@ -183,43 +182,12 @@ func setIconNameInCache(wId uint32, name string) {
 }
 
 func GetIconName(c *Connection, wId uint32) (string, error) {
-	if name, ok := getIconNameFromCache(wId); ok {
-		return name, nil
+	pixelArray, err := GetIcon(c, wId)
+	if err != nil {
+		fmt.Println("Error converting x11 icon to pngs", err)
+		return "", err
 	} else {
-		pixelArray, err := GetIcon(c, wId)
-		if err != nil {
-			return "", err
-		}
-		/*
-		 * Icons retrieved from the X-server (EWMH) will come as arrays of uint32. There will be first two ints giving
-		 * width and height, then width*height uints each holding a pixel in ARGB format.
-		 * After that it may repeat: again a width and height uint and then pixels and
-		 * so on...
-		 */
-		var images = []image.ARGBImage{}
-		for len(pixelArray) >= 2 {
-			width := pixelArray[0]
-			height := pixelArray[1]
-
-			pixelArray = pixelArray[2:]
-			if len(pixelArray) < int(width*height) {
-				break
-			}
-			pixels := make([]byte, 4*width*height)
-			for pos := uint32(0); pos < width*height; pos++ {
-				pixels[4*pos] = uint8((pixelArray[pos] & 0xFF000000) >> 24)
-				pixels[4*pos+1] = uint8((pixelArray[pos] & 0xFF0000) >> 16)
-				pixels[4*pos+2] = uint8((pixelArray[pos] & 0xFF00) >> 8)
-				pixels[4*pos+3] = uint8(pixelArray[pos] & 0xFF)
-			}
-			images = append(images, image.ARGBImage{Width: width, Height: height, Pixels: pixels})
-			pixelArray = pixelArray[width*height:]
-		}
-
-		var icon = image.ARGBIcon{Images: images}
-		var iconName = icons.AddARGBIcon(icon)
-		setIconNameInCache(wId, iconName)
-		return iconName, nil
+		return icons.AddX11Icon(pixelArray)
 	}
 }
 

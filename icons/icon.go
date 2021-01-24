@@ -13,59 +13,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/respond"
-	"github.com/surlykke/RefudeServices/lib/slice"
 )
-
-type IconResource struct{}
-
-func (ir IconResource) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "GET" {
-		if names := r.URL.Query()["name"]; len(names) == 0 {
-			respond.UnprocessableEntity(w, errors.New("no name given"))
-		} else {
-			names = dashSplit(names)
-			var themeId = requests.GetSingleQueryParameter(r, "theme", defaultIconTheme)
-			var size = uint64(32)
-			var err error
-			if len(r.URL.Query()["size"]) > 0 {
-				size, err = strconv.ParseUint(r.URL.Query()["size"][0], 10, 32)
-				if err != nil {
-					respond.UnprocessableEntity(w, errors.New("Invalid size given:"+r.URL.Query()["size"][0]))
-				}
-			}
-
-			if image, ok := findImage(themeId, uint32(size), names...); !ok {
-				w.WriteHeader(http.StatusNotFound)
-			} else {
-				http.ServeFile(w, r, image.Path)
-			}
-		}
-	} else {
-		respond.NotAllowed(w)
-	}
-}
-
-/**
- * By the icon naming specification, dash ('-') seperates 'levels of specificity'. So given an icon name
- * 'input-mouse-usb', the levels of spcicificy, and the names and order we search will be: 'input-mouse-usb',
- * 'input-mouse' and 'input'
- */
-func dashSplit(names []string) []string {
-	var res = make([]string, 0, len(names)*2)
-	for _, name := range names {
-		for {
-			res = append(res, name)
-			if pos := strings.LastIndex(name, "-"); pos > 0 {
-				name = name[0:pos]
-			} else {
-				break
-			}
-		}
-	}
-	return res
-}
 
 type Icon struct {
 	Name   string
@@ -77,57 +26,28 @@ type IconImage struct {
 	Context string
 	MinSize uint32
 	MaxSize uint32
-	Path    string
+	Data    []byte // Only one of
+	Path    string // these two non-zero
 }
 
-func findImage(themeId string, size uint32, iconNames ...string) (IconImage, bool) {
-	lock.Lock()
-	defer lock.Unlock()
+type IconMap map[string]*Icon // Maps icon name -> Icon
 
-	var idsToVisit = []string{themeId}
-	for i := 0; i < len(idsToVisit); i++ {
-		if theme, ok := themes["/icontheme/"+idsToVisit[i]]; ok {
-			if imageList, ok := findImageListInMap(themeIcons[idsToVisit[i]], iconNames...); ok {
-				return findBestMatch(imageList, size), true
-			} else {
-				for _, parentThemeId := range theme.Inherits {
-					if parentThemeId != "hicolor" {
-						idsToVisit = slice.AppendIfNotThere(idsToVisit, parentThemeId)
-					}
-				}
+func (i *Icon) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
+		var size = uint64(32)
+		var err error
+		if len(r.URL.Query()["size"]) > 0 {
+			size, err = strconv.ParseUint(r.URL.Query()["size"][0], 10, 32)
+			if err != nil {
+				respond.UnprocessableEntity(w, errors.New("Invalid size given:"+r.URL.Query()["size"][0]))
 			}
 		}
+
+		var image = findBestMatch(i.Images, uint32(size))
+		image.ServeHTTP(w, r)
+	} else {
+		respond.NotAllowed(w)
 	}
-
-	if imageList, ok := findImageListInMap(themeIcons["hicolor"], iconNames...); ok {
-		return findBestMatch(imageList, size), true
-	}
-
-	if imageList, ok := findImageListInMap(sessionIcons, iconNames...); ok {
-		return findBestMatch(imageList, size), true
-	}
-
-	image, ok := findImageInMap(otherIcons, iconNames...)
-	return image, ok
-}
-
-func findImageListInMap(m map[string][]IconImage, iconNames ...string) ([]IconImage, bool) {
-	for _, iconName := range iconNames {
-		if list, ok := m[iconName]; ok {
-			return list, true
-		}
-	}
-	return nil, false
-}
-
-func findImageInMap(m map[string]IconImage, iconNames ...string) (IconImage, bool) {
-	for _, iconName := range iconNames {
-		if image, ok := m[iconName]; ok {
-			return image, true
-		}
-	}
-
-	return IconImage{}, false
 }
 
 func findBestMatch(images []IconImage, size uint32) IconImage {
@@ -155,4 +75,32 @@ func findBestMatch(images []IconImage, size uint32) IconImage {
 	}
 
 	return candidate
+}
+
+func (ii IconImage) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if ii.Data != nil {
+		respond.AsPng(w, ii.Data)
+	} else {
+		http.ServeFile(w, r, ii.Path)
+	}
+}
+
+/**
+ * By the icon naming specification, dash ('-') seperates 'levels of specificity'. So given an icon name
+ * 'input-mouse-usb', the levels of spcicificy, and the names and order we search will be: 'input-mouse-usb',
+ * 'input-mouse' and 'input'
+ */
+func dashSplit(names []string) []string {
+	var res = make([]string, 0, len(names)*2)
+	for _, name := range names {
+		for {
+			res = append(res, name)
+			if pos := strings.LastIndex(name, "-"); pos > 0 {
+				name = name[0:pos]
+			} else {
+				break
+			}
+		}
+	}
+	return res
 }

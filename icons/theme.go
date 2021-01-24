@@ -9,7 +9,6 @@ package icons
 import (
 	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -27,14 +26,7 @@ type IconTheme struct {
 	Comment       string
 	Inherits      []string
 	Dirs          map[string]IconDir
-}
-
-func (it *IconTheme) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "GET" {
-		respond.AsJson(w, it)
-	} else {
-		respond.NotAllowed(w)
-	}
+	icons         map[string]*Icon
 }
 
 type IconDir struct {
@@ -42,6 +34,28 @@ type IconDir struct {
 	MinSize uint32
 	MaxSize uint32
 	Context string
+}
+
+type ThemeMap map[string]*IconTheme
+
+func readThemes() ThemeMap {
+	var themeMap = make(ThemeMap)
+
+	for _, basedir := range basedirs {
+		if indexFilePaths, err := filepath.Glob(basedir + "/*/index.theme"); err != nil {
+			log.Println("Could not look for index.theme files:", err)
+		} else {
+			for _, indexFilePath := range indexFilePaths {
+				if theme, ok := readTheme(indexFilePath); !ok {
+					log.Println("Could read", indexFilePath)
+				} else if _, ok := themeMap[theme.Id]; !ok {
+					fmt.Println("Read theme", theme.Name)
+					themeMap[theme.Id] = theme
+				}
+			}
+		}
+	}
+	return themeMap
 }
 
 func readTheme(indexThemeFilePath string) (*IconTheme, bool) {
@@ -115,6 +129,7 @@ func readTheme(indexThemeFilePath string) (*IconTheme, bool) {
 	}
 
 	theme.Links = respond.Links{{Href: "/icontheme/" + theme.Id, Rel: respond.Self, Profile: "/profile/icontheme"}}
+	theme.icons = make(IconMap)
 	return &theme, true
 }
 
