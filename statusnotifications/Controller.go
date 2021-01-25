@@ -170,8 +170,7 @@ func buildItem(sender string, path dbus.ObjectPath) *Item {
 	item.ToolTip = getStringOr(props["ToolTip"])
 
 	if iconThemePath := getStringOr(props["IconThemePath"]); iconThemePath != "" {
-		fmt.Println("statusnotifications, adding basedir:", iconThemePath)
-		//icons.AddBaseDir(iconThemePath)
+		icons.AddBaseDir(iconThemePath)
 	}
 
 	if item.useIconPixmap = getStringOr(props["IconName"]) == ""; item.useIconPixmap {

@@ -27,19 +27,24 @@ var (
 
 func init() {
 	determineBasedirs()
-	fmt.Println("basedirs:", basedirs)
 	themeMap = readThemes()
 	determineDefaultIconTheme()
 	addInheritedThemesToThemeList()
 	for _, theme := range themeList {
-		collectThemeIcons(theme)
+		for _, basedir := range basedirs {
+			collectThemeIcons(theme, basedir, false)
+		}
 	}
 
 	if hicolor = themeMap["hicolor"]; hicolor != nil {
-		collectThemeIcons(hicolor)
+		for _, basedir := range basedirs {
+			collectThemeIcons(hicolor, basedir, false)
+		}
 	}
 
-	collecOtherIcons()
+	for _, basedir := range basedirs {
+		collecOtherIcons(basedir, false)
+	}
 }
 
 func determineBasedirs() {
@@ -84,7 +89,6 @@ func determineDefaultIconTheme() {
 	}
 
 	if defaultThemeName != "" {
-		fmt.Println("defaultThemeName:", defaultThemeName)
 		for _, theme := range themeMap {
 			if theme.Name == defaultThemeName {
 				themeList = []*IconTheme{theme}
@@ -121,57 +125,50 @@ func addInheritedThemesToThemeList() {
 	}
 }
 
-func collectThemeIcons(it *IconTheme) {
-	for _, basedir := range basedirs {
-		if it.Id == "hicolor" {
-			fmt.Println("Collect hicolor under", basedir)
-		}
-		if dirExists(basedir + "/" + it.Id) {
-			for _, dir := range it.Dirs {
-				var filePattern = basedir + "/" + it.Id + "/" + dir.Path + "/*"
-				if matches, err := filepath.Glob(filePattern); err == nil {
-					for _, match := range matches {
-						if strings.Contains(strings.ToLower(match), "chrom") {
-							fmt.Println("looking at", match)
-						}
-						if iconName, data, ok := iconNameAndData(match); ok {
-							icon, ok := it.icons[iconName]
-							if !ok {
-								if strings.Contains(strings.ToLower(match), "chrom") {
-									fmt.Println("adding", match, "as", iconName)
-								}
+func collectThemeIcons(it *IconTheme, basedir string, needsLock bool) {
+	if needsLock {
+		lock.Lock()
+		defer lock.Unlock()
+	}
 
-								icon = &Icon{Name: iconName, Theme: it.Name}
-								it.icons[iconName] = icon
-							}
-							addImageToIcon(icon, IconImage{Context: dir.Context, MinSize: dir.MinSize, MaxSize: dir.MaxSize, Path: match, Data: data})
+	if dirExists(basedir + "/" + it.Id) {
+		for _, dir := range it.Dirs {
+			var filePattern = basedir + "/" + it.Id + "/" + dir.Path + "/*"
+			if matches, err := filepath.Glob(filePattern); err == nil {
+				for _, match := range matches {
+					if iconName, data, ok := iconNameAndData(match); ok {
+						icon, ok := it.icons[iconName]
+						if !ok {
+							icon = &Icon{Name: iconName, Theme: it.Name}
+							it.icons[iconName] = icon
 						}
+						addImageToIcon(icon, IconImage{Context: dir.Context, MinSize: dir.MinSize, MaxSize: dir.MaxSize, Path: match, Data: data})
 					}
-				} else {
-					fmt.Println("Problem with search:", filePattern, err)
 				}
-
+			} else {
+				log.Println("Problem with search:", filePattern, err)
 			}
+
 		}
 	}
 }
 
-func collecOtherIcons() {
-	fmt.Println("Collect other")
-	for _, basedir := range basedirs {
-		fmt.Println("other, looking for", basedir+"/*")
-		if matches, err := filepath.Glob(basedir + "/*"); err != nil {
-			for _, match := range matches {
-				if iconName, data, ok := iconNameAndData(match); ok {
-					if _, ok := other[iconName]; !ok {
-						other[iconName] = IconImage{Path: match, Data: data}
-					}
+func collecOtherIcons(basedir string, needsLock bool) {
+	if needsLock {
+		lock.Lock()
+		defer lock.Unlock()
+	}
+
+	if matches, err := filepath.Glob(basedir + "/*"); err == nil {
+		for _, match := range matches {
+			if iconName, data, ok := iconNameAndData(match); ok {
+				if _, ok := other[iconName]; !ok {
+					other[iconName] = IconImage{Path: match, Data: data}
 				}
 			}
-		} else {
-			log.Println("Could not match", basedir+"/*", err)
 		}
-
+	} else {
+		log.Println("Could not match", basedir+"/*", err)
 	}
 }
 
@@ -180,20 +177,14 @@ func collecOtherIcons() {
 * If the icon is of type xpm, it is converted to png, and the bytes are returned as 2. return val, which is nil otherwise
  */
 func iconNameAndData(path string) (string, []byte, bool) {
-	if strings.Contains(path, "chrome") {
-		fmt.Println("Trying", path)
-	}
 	if fileInfo, err := os.Stat(path); err != nil {
 		log.Println("Could not handle", path, err)
 		return "", nil, false
 	} else if fileInfo.IsDir() {
-		fmt.Println("..dir")
 		return "", nil, false
 	} else if fileInfo.Mode()&(os.ModeDevice|os.ModeNamedPipe|os.ModeSocket|os.ModeCharDevice) != 0 {
-		fmt.Println("..special device")
 		return "", nil, false
 	} else if !(strings.HasSuffix(fileInfo.Name(), ".png") || strings.HasSuffix(fileInfo.Name(), ".svg") || strings.HasSuffix(fileInfo.Name(), ".xpm")) {
-		fmt.Println("..not proper file type")
 		return "", nil, false
 	} else {
 		var iconName = fileInfo.Name()[:len(fileInfo.Name())-4]
@@ -222,9 +213,8 @@ func AddX11Icon(data []uint32) (string, error) {
 	defer lock.Unlock()
 
 	if _, ok := hicolor.icons[iconName]; !ok {
-		fmt.Println("Dont have..")
 		if pngList, err := image.X11IconToPngs(data); err != nil {
-			fmt.Println("Error converting:", err)
+			log.Println("Error converting:", err)
 			return "", err
 		} else {
 			icon := &Icon{Name: iconName, Theme: "Hicolor", Images: make([]IconImage, 0, len(pngList))}
@@ -239,7 +229,6 @@ func AddX11Icon(data []uint32) (string, error) {
 			if len(icon.Images) == 0 {
 				return "", fmt.Errorf("No usable images")
 			} else {
-				fmt.Println(">>>>>>>>> Adding icon under", iconName)
 				hicolor.icons[iconName] = icon
 			}
 		}
@@ -280,7 +269,6 @@ func AddFileIcon(filePath string) (string, error) {
 	if _, ok := other[name]; !ok {
 
 		if fileInfo, err := os.Stat(filePath); err != nil {
-			fmt.Println()
 			return "", err
 		} else if !fileInfo.Mode().IsRegular() {
 			return "", fmt.Errorf("Not a regular file: %s", filePath)
@@ -308,28 +296,19 @@ func AddRawImageIcon(imageData image.ImageData) string {
 	return iconName
 }
 
-type ConcurrentStringSet struct {
-	sync.Mutex
-	added map[string]bool
-}
-
-func (css *ConcurrentStringSet) haveNotAdded(val string) bool {
-	css.Lock()
-	defer css.Unlock()
-	if css.added[val] {
-		return false
-	} else {
-		css.added[val] = true
-		return true
+func AddBaseDir(basedir string) {
+	for _, theme := range themeList {
+		collectThemeIcons(theme, basedir, true)
 	}
+	collectThemeIcons(hicolor, basedir, true)
+	collecOtherIcons(basedir, true)
 }
-
-var reg = &ConcurrentStringSet{added: make(map[string]bool)}
 
 func IconUrl(name string) string {
 	if name == "" {
 		return ""
 	} else {
+		name = strings.Replace(name, " ", "%20", -1) // Micosoft Teams uses spaces in icon names...
 		return fmt.Sprintf("/icon/%s", name)
 	}
 }
