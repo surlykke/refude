@@ -170,7 +170,7 @@ func buildItem(sender string, path dbus.ObjectPath) *Item {
 	item.ToolTip = getStringOr(props["ToolTip"])
 
 	if iconThemePath := getStringOr(props["IconThemePath"]); iconThemePath != "" {
-		icons.AddBaseDir(iconThemePath)
+		icons.AddBasedir(iconThemePath)
 	}
 
 	if item.useIconPixmap = getStringOr(props["IconName"]) == ""; item.useIconPixmap {
@@ -230,7 +230,7 @@ func updateIcon(item *Item) {
 func updateIconThemePath(item *Item) {
 	if v, ok := getProp(item, "IconThemePath"); ok {
 		item.iconThemePath = getStringOr(v)
-		//icons.AddBaseDir(item.iconThemePath)
+		icons.AddBasedir(item.iconThemePath)
 	}
 }
 

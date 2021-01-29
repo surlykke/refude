@@ -18,6 +18,7 @@ import (
 var (
 	lock             sync.Mutex
 	basedirs         = []string{}
+	addedBasedirs    = make(map[string]bool)
 	themeMap         ThemeMap
 	defaultThemeName string
 	themeList        = make([]*IconTheme, 0, 3) // First, defaultTheme, if given, then those directly or indirectly inherited
@@ -32,18 +33,18 @@ func init() {
 	addInheritedThemesToThemeList()
 	for _, theme := range themeList {
 		for _, basedir := range basedirs {
-			collectThemeIcons(theme, basedir, false)
+			collectThemeIcons(theme, basedir)
 		}
 	}
 
 	if hicolor = themeMap["hicolor"]; hicolor != nil {
 		for _, basedir := range basedirs {
-			collectThemeIcons(hicolor, basedir, false)
+			collectThemeIcons(hicolor, basedir)
 		}
 	}
 
 	for _, basedir := range basedirs {
-		collecOtherIcons(basedir, false)
+		collecOtherIcons(basedir)
 	}
 }
 
@@ -125,11 +126,9 @@ func addInheritedThemesToThemeList() {
 	}
 }
 
-func collectThemeIcons(it *IconTheme, basedir string, needsLock bool) {
-	if needsLock {
-		lock.Lock()
-		defer lock.Unlock()
-	}
+func collectThemeIcons(it *IconTheme, basedir string) {
+	lock.Lock()
+	defer lock.Unlock()
 
 	if dirExists(basedir + "/" + it.Id) {
 		for _, dir := range it.Dirs {
@@ -153,11 +152,9 @@ func collectThemeIcons(it *IconTheme, basedir string, needsLock bool) {
 	}
 }
 
-func collecOtherIcons(basedir string, needsLock bool) {
-	if needsLock {
-		lock.Lock()
-		defer lock.Unlock()
-	}
+func collecOtherIcons(basedir string) {
+	lock.Lock()
+	defer lock.Unlock()
 
 	if matches, err := filepath.Glob(basedir + "/*"); err == nil {
 		for _, match := range matches {
@@ -296,12 +293,25 @@ func AddRawImageIcon(imageData image.ImageData) string {
 	return iconName
 }
 
-func AddBaseDir(basedir string) {
-	for _, theme := range themeList {
-		collectThemeIcons(theme, basedir, true)
+func AddBasedir(basedir string) {
+	if noteDirAsAdded(basedir) {
+		return
 	}
-	collectThemeIcons(hicolor, basedir, true)
-	collecOtherIcons(basedir, true)
+
+	for _, theme := range themeList {
+		collectThemeIcons(theme, basedir)
+	}
+	collectThemeIcons(hicolor, basedir)
+	collecOtherIcons(basedir)
+}
+
+// Returns whether basedir was already added
+func noteDirAsAdded(basedir string) bool {
+	lock.Lock()
+	defer lock.Unlock()
+	var hasBeenAdded = addedBasedirs[basedir]
+	addedBasedirs[basedir] = true
+	return hasBeenAdded
 }
 
 func IconUrl(name string) string {
