@@ -1,22 +1,23 @@
 process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = true
 
-const { app, BrowserWindow, ipcMain, screen} = require('electron')
+const { app, BrowserWindow, ipcMain, screen } = require('electron')
 let { rememberBounds, manageWindow } = require('./common/managewindows')
 let url = require('url')
 let path = require('path')
 let http = require('http')
+const { time } = require('console')
 
 
 let setupWatch = () => {
-    let windows = [panelWindow, doWindow, osdWindow, indicatorWindow]
+    let windows = [panelWindow, doWindow, osdWindow]
     ipcMain.on("sseopen", () => {
         windows.forEach(w => w.webContents.send("sseopen"))
     })
-    
+
     ipcMain.on("sseerror", () => {
         windows.forEach(w => w.webContents.send("sseerror"))
     })
-    
+
     ipcMain.on("ssemessage", (event, path) => {
         windows.forEach(w => w.webContents.send(path))
     })
@@ -49,26 +50,25 @@ let createPanel = () => {
 
 let doWindow
 let server
-let indicatorDismissedInThisShowing = false
+
+let devToolsShown
 
 let createDoWindow = () => {
-    doWindow = new BrowserWindow({show: false, frame: false, alwaysOnTop: true, webPreferences: { nodeIntegration: true } })
+    doWindow = new BrowserWindow({ show: false, frame: false, alwaysOnTop: true, webPreferences: { nodeIntegration: true } })
 
     doWindow.loadURL(url.format({
         pathname: path.join(__dirname, '/do/do.html'),
         protocol: 'file:',
         slashes: true
     })).then(() => {
-        
-       server = http.createServer(function (req, res) {
+
+        server = http.createServer(function (req, res) {
             res.end('')
-            
+
             rememberBounds('panel', panelWindow.getBounds())
 
             if (!doWindow.isVisible()) {
                 doWindow.show()
-                indicatorDismissedInThisShowing = false 
-                indicatorWindow.send("screens", screen.getAllDisplays())
             } else {
                 doWindow.send("doMove", req.url === "/up")
                 doWindow.focus()
@@ -76,23 +76,11 @@ let createDoWindow = () => {
 
         }).listen("/run/user/1000/org.refude.panel.do");
 
-        doWindow.on('show', () =>  doWindow.webContents.send("doShow"))
+        doWindow.on('show', () => {
+            doWindow.webContents.send("doShow")
+        })
 
         manageWindow(doWindow, "do")
-        
-        ipcMain.on("doLinkSelected", (evt, link) => {
-            if (!indicatorDismissedInThisShowing && 
-                doWindow.isVisible() && 
-                link && 
-                link.profile === "/profile/window" && 
-                !(link.hints && link.hints.states && link.hints.states.indexOf("HIDDEN") > -1)) {
-
-                indicatorWindow.showInactive()
-                indicatorWindow.webContents.send("linkSelected", link)
-            } else {
-                indicatorWindow.hide()
-            }
-        })
 
         doWindow.on('close', e => {
             e.preventDefault()
@@ -101,7 +89,7 @@ let createDoWindow = () => {
 
         ipcMain.on("dismiss", dismissDo)
     })
-        
+    
     //doWindow.webContents.openDevTools()
 }
 
@@ -110,39 +98,8 @@ let dismissDo = () => {
         rememberBounds('do', doWindow.getBounds())
         doWindow.hide()
     }
-
-    if (indicatorWindow) {
-        rememberBounds('indicator', indicatorWindow.getBounds())
-        indicatorWindow.hide()
-    }
 }
 
-
-let indicatorWindow
-
-let createIndicatorWindow = () => {
-    indicatorWindow = new BrowserWindow({
-        show: false, frame: false, skipTaskbar: true, webPreferences: { nodeIntegration: true }
-    })
-    indicatorWindow.webContents.setZoomFactor(3.0)
-    indicatorWindow.webContents.setZoomLevel(3.0)
-
-    indicatorWindow.on('close', e => {
-        e.preventDefault()
-        indicatorDismissedInThisShowing = true
-        indicatorWindow.hide()
-    })
-
-    indicatorWindow.loadURL(url.format({
-        pathname: path.join(__dirname, '/indicator/indicator.html'),
-        protocol: 'file:',
-        slashes: true
-    })).then(() => {
-        manageWindow(indicatorWindow, "indicator")
-    }).catch(error => console.error(error))
-
-    //indicatorWindow.webContents.openDevTools()
-}
 
 let osdWindow
 
@@ -160,9 +117,9 @@ let createOsdWindow = () => {
         ipcMain.on('osdShow', (evt, rect) => {
             let pb = panelWindow.getBounds()
             let zf = panelWindow.webContents.zoomFactor
-            let [width, height] = [Math.round(zf*rect.width), Math.round(zf*rect.height)]
+            let [width, height] = [Math.round(zf * rect.width), Math.round(zf * rect.height)]
             width = Math.max(width, pb.width)
-            osdWindow.setBounds({ x: pb.x, y: pb.y + pb.height + 12, width: width, height: height})
+            osdWindow.setBounds({ x: pb.x, y: pb.y + pb.height + 12, width: width, height: height })
             osdWindow.webContents.zoomFactor = zf
             osdWindow.showInactive()
 
@@ -175,7 +132,6 @@ let createOsdWindow = () => {
 app.on('ready', () => {
     createPanel()
     createDoWindow()
-    createIndicatorWindow()
     createOsdWindow()
     setupWatch()
 

@@ -25,9 +25,18 @@
    padding-right: 18px;
    vertical-align: top;
    overflow: hidden;
-   height: 30px;
+   height: 20px;
    outline-style: none;
 }
+
+.self {
+   height: 32px;
+   font-size: 18px;
+   padding-bottom: 8px; 
+   border-bottom: solid lightgray 1px; 
+   margin-bottom: 6px;
+}
+
 
 .selected {
    border: solid black 2px;

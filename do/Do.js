@@ -16,8 +16,8 @@ export class Do extends React.Component {
         super(props)
         this.history = []
         this.state = { url: "/search/desktop", links: [], term: "" }
-        ipcRenderer.on("doShow", () => {this.fetch()})
-        ipcRenderer.on("/search/desktop", this.fetch)
+        ipcRenderer.on("doShow", () => {this.shown = true; this.fetch()})
+        ipcRenderer.on("/search/desktop", () => this.shown && this.fetch())
         ipcRenderer.on("doMove", (evt, up) => up ? this.up() : this.down())
     };
 
@@ -110,6 +110,7 @@ export class Do extends React.Component {
 
 
     activate = (keep) => {
+        postUrl("/window/unhighlight") 
         this.state.curLink && postUrl(this.state.curLink.href, keep ? undefined : this.dismiss)
     }
 
@@ -134,7 +135,9 @@ export class Do extends React.Component {
 
 
     dismiss = () => {
-        this.setState({ url: "/search/desktop", term: "", links: [], curLink: undefined, resource: undefined }, () => ipcRenderer.send("dismiss"))
+        postUrl("/window/unhighlight")
+        this.setState({ url: "/search/desktop", term: "", links: [], curLink: undefined, resource: undefined }, 
+            () => {this.shown = undefined; ipcRenderer.send("dismiss")})
     }
 
 
@@ -142,7 +145,15 @@ export class Do extends React.Component {
         if (!link || !this.state.links.find(l => l.href === link.href)) {
             link = this.state.links[0]
         }
-        this.setState({curLink: link}, () => ipcRenderer.send("doLinkSelected", this.state.curLink))
+      
+        if (link && !(this.state.curLink && link.href === this.state.curLink.href)) {
+            if (link.profile === "/profile/window") {
+                postUrl(link.href + "?action=highlight")
+            } else if (!(this.state.self && ("/profile/window" === this.state.self.profile))) {
+                postUrl("/window/unhighlight")
+            }
+        }
+        this.setState({curLink: link})
     }
 
     selectAndActivate = link => {
@@ -185,8 +196,8 @@ export class Do extends React.Component {
                     }
                 </div>
                 {self &&
-                    <div key="resource" id={self.href} className="item">
-                        <img width="24px" height="24px" className={iconClassName(self)} src={path2Url(self.icon)} alt="" />
+                    <div key="resource" id={self.href} className="item self">
+                        <img width="32px" height="32px" className={iconClassName(self)} src={path2Url(self.icon)} alt="" />
                         <div className="name">{self.title}</div>
                     </div>}
 
@@ -196,7 +207,7 @@ export class Do extends React.Component {
                             className={className(l)}
                             onClick={() => this.select(l)}
                             onDoubleClick={() => this.selectAndActivate(l)}>
-                            {l.icon && <img className={iconClassName(l)} src={path2Url(l.icon)} height="24" width="24" />}
+                            {l.icon && <img className={iconClassName(l)} src={path2Url(l.icon)} height="20" width="20" />}
                             <div className="title"> {l.title}</div>
                         </div>
                     }
