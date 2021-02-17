@@ -6,7 +6,6 @@
 //
 import React from 'react'
 import { ipcRenderer } from 'electron'
-import './Panel.css'
 
 let quit = () => {
 	ipcRenderer.send("panelMinimize")
@@ -16,8 +15,8 @@ export class MinimizeButton extends React.Component {
 	render = () =>
 		<div onClick={quit} className="clickable" title="Hide panel for 5 seconds">
 			<svg width="20" height="20" viewBox="0 0 100 100">
-				<path d="M 0 30 C 30 10, 60 0, 55 90" stroke="black" stroke-width="12" fill="none" />
-				<path d="M 20 60 L 55 90 L 90 60" stroke="black" stroke-width="14" fill="none" />
+				<path d="M 0 30 C 30 10, 60 0, 55 90" stroke="black" strokeWidth="12" fill="none" />
+				<path d="M 20 60 L 55 90 L 90 60" stroke="black" strokeWidth="14" fill="none" />
 			</svg>
 		</div>
 }

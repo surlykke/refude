@@ -12,7 +12,6 @@
  * Please refer to the LICENSE file for a copy of the license.
  */
 import React from 'react'
-import './Panel.css'
 
 // TODO i18n
 const monthNames = ["jan", "feb", "mar", "apr", "maj", "jun", "jul", "aug", "sep", "okt", "nov", "dec"];

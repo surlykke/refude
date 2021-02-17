@@ -14,6 +14,7 @@ export let getUrl = (path, handler, errHandler) => {
 }
 
 export let postUrl = (path, handler) => {
+    console.log("posting:", path)
     Axios.post(`http://localhost:7938${path}`).then(resp => {
         handler && handler(resp)
     }).catch(err => console.error(err))
@@ -39,3 +40,19 @@ export let addParam = (path, name, value) => {
 export let path2Url = path => "http://localhost:7938" + path
 
 export let findLink = (res, rel, profile) => res && res._links && res._links.find(l => (l.rel === rel && (!profile || l.profile === profile)))
+
+export let splitLinks = res => {
+    let self, links
+    if (res._links) {
+        links = []
+        res._links.forEach(l => l.rel === "self" ? self = l : links.push(l))
+    }
+    return {self: self, links: links}
+}
+
+
+export let iconClassName = link => {
+    let isWindow = "/profile/window" === link.profile
+    let isMinimized = isWindow && link.hints && link.hints.states && link.hints.states.indexOf("HIDDEN") > -1
+    return `icon${isWindow ? " window" : ""}${isMinimized ? " minimized" : ""}`
+}

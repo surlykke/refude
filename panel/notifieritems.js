@@ -5,141 +5,84 @@
 // Please refer to the GPL2 file for a copy of the license.
 //
 import React from 'react'
-import { getUrl, postUrl, findLink, path2Url } from "../common/monitor";
-import { remote, ipcRenderer } from 'electron'
-const {Menu, MenuItem} = remote
-import './Panel.css'
+import { getUrl, addParam, postUrl, findLink, path2Url } from "../common/monitor";
+import { remote } from 'electron'
+const { Menu, MenuItem } = remote
 
-export class NotifierItem extends React.Component {
-    constructor(props) {
-        super(props);
-        this.state = { };
-        this.getItem()
-    }
+export let NotifierItem = ({ itemLink }) => {
 
-    componentDidMount = () => {
-        ipcRenderer.on("sseopen", this.getItem) 
-        ipcRenderer.on(this.props.link.href, this.getItem)
-        this.getItem()
-    }
-
-    componentWillUnmount = () => {
-        ipcRenderer.removeListener("sseopen", this.getItem) 
-        ipcRenderer.removeListener(this.props.link.href, this.getItem)
-    }
-
-
-    getItem = () => {
-        getUrl(this.props.link.href, resp => this.setState({item: resp.data, self: findLink(resp.data, "self")}))
-    }
-   
-
-    render = () => {
-        let showMenu = (event) => {
-            event.preventDefault()
-            let menuSelf
-            
-            let clickHandler = (id) => {
-                return () => {postUrl(`${this.state.item.Menu}?id=${id}`)}
-            }
-           
-            let buildMenu = entries => {
-                let menu = new Menu()
-                entries.forEach(jsonMenuItem => {
-                    let label = (jsonMenuItem.Label || "").replace(/_([^_])/g, "$1")
-
-                    if (jsonMenuItem.SubEntries) {
-                        menu.append(new MenuItem({label: label, type: "submenu", submenu: buildMenu(jsonMenuItem.SubEntries)}))
-                    } else if (jsonMenuItem.Type === "separator") {
-                        menu.append(new MenuItem({type: "separator"})) 
-                    } else if (jsonMenuItem.ToggleType === "checkmark") {
-                        menu.append(new MenuItem({label: label, type: "checkbox", click: clickHandler(jsonMenuItem.Id)}))
-                    } else if (jsonMenuItem.ToggleType === "radio") {
-                        menu.append(new MenuItem({label: label, type: "radio", click: clickHandler(jsonMenuItem.Id)}))
-                    } else {
-                        menu.append(new MenuItem({label: label, type: "normal", click: clickHandler(jsonMenuItem.Id)}))
-                    }
-                   
-                })
-                
-                return menu
-            }
-
-            if (this.state.item.Menu) {
-                getUrl(this.state.item.Menu, resp => {
-                    let m = buildMenu(resp.data.Entries)
-                    m.popup()
-                })
-            }
+    let showMenu = (menuPath) => {
+        let clickHandler = (id) => {
+            return () => { postUrl(`${menuPath}?id=${id}`) }
         }
 
-        let getXY = (event) => {
-            return {
-                x: Math.round(event.view.devicePixelRatio * event.screenX),
-                y: Math.round(event.view.devicePixelRatio * event.screenY)
-            }
+        let buildMenu = entries => {
+            let menu = new Menu()
+            entries.forEach(jsonMenuItem => {
+                let label = (jsonMenuItem.Label || "").replace(/_([^_])/g, "$1")
+
+                if (jsonMenuItem.SubEntries) {
+                    menu.append(new MenuItem({ label: label, type: "submenu", submenu: buildMenu(jsonMenuItem.SubEntries) }))
+                } else if (jsonMenuItem.Type === "separator") {
+                    menu.append(new MenuItem({ type: "separator" }))
+                } else if (jsonMenuItem.ToggleType === "checkmark") {
+                    menu.append(new MenuItem({ label: label, type: "checkbox", click: clickHandler(jsonMenuItem.Id) }))
+                } else if (jsonMenuItem.ToggleType === "radio") {
+                    menu.append(new MenuItem({ label: label, type: "radio", click: clickHandler(jsonMenuItem.Id) }))
+                } else {
+                    menu.append(new MenuItem({ label: label, type: "normal", click: clickHandler(jsonMenuItem.Id) }))
+                }
+
+            })
+
+            return menu
         }
 
-        let onClick = (event) => {
-            event.persist()
-            event.preventDefault()
+        getUrl(menuPath, resp => {
+            let m = buildMenu(resp.data.Entries)
+            m.popup()
+        })
+       
+    }
 
-            let { x, y } = getXY(event)
-            let self = findLink(this.state.item, "self").href
-            if (event.button === 0) {
-                postUrl(self + '?action=Activate&x=' + x + '&y=' + y);
-            } else if (event.button === 1) {
-                postUrl(self + '?action=middle&x=' + x + '&y=' + y);
-            }
+    let getXY = (event) => {
+        return {
+            x: Math.round(event.view.devicePixelRatio * event.screenX),
+            y: Math.round(event.view.devicePixelRatio * event.screenY)
         }
+    }
 
-        let onRightClick = (event) => {
-            event.persist()
-            event.preventDefault()
-            if (this.state.item.Menu) {
-                showMenu(event)
+    let onClick = (event) => {
+        event.persist()
+        event.preventDefault()
+
+        let { x, y } = getXY(event)
+        if (event.button === 0) {
+            postUrl(`${itemLink.href}?action=Activate&x=${x}&y=${y}`);
+        } else if (event.button === 1) {
+            postUrl(`${itemLink.href}?action=middle&x=${x}&y=${y}`);
+        }
+    }
+
+    let onRightClick = (event) => {
+        event.persist()
+        event.preventDefault()
+        getUrl(itemLink.href, response => {
+            let item = response.data
+            if (item.Menu) {
+                showMenu(item.Menu)
             } else {
                 let { x, y } = getXY(event)
-                postUrl(this.state.item.Self + '?action=ContextMenu&x=' + x + '&y=' + y);
+                postUrl(item.Self + '?action=ContextMenu&x=' + x + '&y=' + y);
             }
-        }
+        })
 
-        return this.state.item ?
-            <div className="clickable">
-                <img src={path2Url(this.state.self.icon)} alt="" height="20px" width="20px"
-                    onClick={onClick} onContextMenu={onRightClick} /> 
-            </div>:
-            null
     }
+
+    return <div className="clickable">
+        <img src={path2Url(itemLink.icon)} alt="" height="20px" width="20px" onClick={onClick} onContextMenu={onRightClick}/>
+    </div>
 }
 
-
-export class NotifierItems extends React.Component {
-    constructor(props) {
-        super(props)
-        this.state = { items: [] };
-        this.style = Object.assign({}, props.style);
-        this.style.margin = "0px";
-    }
-
-    componentDidMount = () => {
-        ipcRenderer.on("/items", this.getItems) 
-        ipcRenderer.on("sseopen", this.getItems)
-        ipcRenderer.on("sseerror", this.error)
-        this.getItems()
-    }
-  
-    componentWillUnmount = () => {
-        ipcRenderer.removeListener("/items", this.getItems) 
-        ipcRenderer.removeListener("sseopen", this.getItems)
-        ipcRenderer.removeListener("sseerror", this.error)
-    }
-   
-    getItems = () => getUrl("/items", resp => this.setState({ links: resp.data}))
-
-    error = () => this.setState({links: undefined})
-
-    render = () => this.state.links ? this.state.links.map(link => (<NotifierItem key={link.href} link={link} />)) : []
-
-}
+//</img> /*onContextMenu={onRightClick} />
 

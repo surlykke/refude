@@ -5,12 +5,6 @@ html, body {
     padding: 0px;
     overflow: hidden;
 }
-.topbar {
-   background-color: lightgrey;
-   -webkit-app-region: drag;
-   border: none;
-   height: 48px;
-}
 
 *:focus {
     outline: none;

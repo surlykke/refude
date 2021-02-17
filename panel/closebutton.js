@@ -6,7 +6,6 @@
 //
 import React from 'react'
 import { ipcRenderer } from 'electron'
-import './Panel.css'
 
 let quit = () => {
 	ipcRenderer.send("panelClose")

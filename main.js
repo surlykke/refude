@@ -1,30 +1,14 @@
 process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = true
 
-const { app, BrowserWindow, ipcMain, screen } = require('electron')
+const { app, BrowserWindow, ipcMain } = require('electron')
 let { rememberBounds, manageWindow } = require('./common/managewindows')
 let url = require('url')
 let path = require('path')
 let http = require('http')
-const { time } = require('console')
 
-
-let setupWatch = () => {
-    let windows = [panelWindow, doWindow, osdWindow]
-    ipcMain.on("sseopen", () => {
-        windows.forEach(w => w.webContents.send("sseopen"))
-    })
-
-    ipcMain.on("sseerror", () => {
-        windows.forEach(w => w.webContents.send("sseerror"))
-    })
-
-    ipcMain.on("ssemessage", (event, path) => {
-        windows.forEach(w => w.webContents.send(path))
-    })
-
-}
 
 let panelWindow
+let server
 
 let createPanel = () => {
     panelWindow = new BrowserWindow({ show: false, frame: false, alwaysOnTop: true, webPreferences: { nodeIntegration: true, enableRemoteModule: true } })
@@ -43,102 +27,29 @@ let createPanel = () => {
             panelWindow.setSize(scaledWidth, scaledHeight)
         })
 
-    })
-    panelWindow.on('closed', app.quit)
-    //panelWindow.webContents.openDevTools()
-}
-
-let doWindow
-let server
-
-let devToolsShown
-
-let createDoWindow = () => {
-    doWindow = new BrowserWindow({ show: false, frame: false, alwaysOnTop: true, webPreferences: { nodeIntegration: true } })
-
-    doWindow.loadURL(url.format({
-        pathname: path.join(__dirname, '/do/do.html'),
-        protocol: 'file:',
-        slashes: true
-    })).then(() => {
+        ipcMain.on('devtools', () => {
+            panelWindow.webContents.openDevTools()
+        })
 
         server = http.createServer(function (req, res) {
             res.end('')
-
             rememberBounds('panel', panelWindow.getBounds())
-
-            if (!doWindow.isVisible()) {
-                doWindow.show()
-            } else {
-                doWindow.send("doMove", req.url === "/up")
-                doWindow.focus()
-            }
-
+            panelWindow.send("show", req.url === "/up")
+            panelWindow.focus()
         }).listen("/run/user/1000/org.refude.panel.do");
 
-        doWindow.on('show', () => {
-            doWindow.webContents.send("doShow")
-        })
-
-        manageWindow(doWindow, "do")
-
-        doWindow.on('close', e => {
-            e.preventDefault()
-            dismissDo()
-        })
-
-        ipcMain.on("dismiss", dismissDo)
-    })
-    
-    //doWindow.webContents.openDevTools()
-}
-
-let dismissDo = () => {
-    if (doWindow) {
-        rememberBounds('do', doWindow.getBounds())
-        doWindow.hide()
-    }
-}
-
-
-let osdWindow
-
-let createOsdWindow = () => {
-    osdWindow = new BrowserWindow({
-        show: false, frame: false, transparent: true, alwaysOnTop: true, webPreferences: { nodeIntegration: true }
     })
 
-    osdWindow.loadURL(url.format({
-        pathname: path.join(__dirname, "/osd/osd.html"),
-        protocol: 'file',
-        slashes: true,
-    })).then(() => {
-        ipcMain.on('osdHide', () => osdWindow.hide())
-        ipcMain.on('osdShow', (evt, rect) => {
-            let pb = panelWindow.getBounds()
-            let zf = panelWindow.webContents.zoomFactor
-            let [width, height] = [Math.round(zf * rect.width), Math.round(zf * rect.height)]
-            width = Math.max(width, pb.width)
-            osdWindow.setBounds({ x: pb.x, y: pb.y + pb.height + 12, width: width, height: height })
-            osdWindow.webContents.zoomFactor = zf
-            osdWindow.showInactive()
 
-        })
-    })
-
-    //osdWindow.webContents.openDevTools()
+    panelWindow.on('closed', app.quit)
 }
+
 
 app.on('ready', () => {
     createPanel()
-    createDoWindow()
-    createOsdWindow()
-    setupWatch()
-
     ipcMain.on('panelClose', () => {
         app.exit(0)
     })
-
     ipcMain.on('panelMinimize', () => {
         panelWindow.hide()
         setTimeout(() => panelWindow.showInactive(), 5000)

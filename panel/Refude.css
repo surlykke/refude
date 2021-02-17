@@ -1,0 +1,160 @@
+.refude {
+    width: fit-content;
+    max-width: 460px;
+    display: flex;
+    flex-direction: column;
+    max-height: 400px;
+}
+
+.panel  {
+    height: 32px; 
+    margin: 0px;
+    padding-left: 6px;
+    padding-right: 6px;
+    white-space: nowrap;
+    /*width: fit-content;*/
+    background-color: whitesmoke;
+    -webkit-app-region: drag;
+}
+
+.clickable {
+    -webkit-app-region: no-drag;
+}
+
+
+.panel div {
+    display: inline-block;
+    height: 100%;
+    margin: 3px 0px 0px 0px;
+    vertical-align: middle;
+    font-size: 20px;
+}
+
+.panel div:not(:first-child) {
+    margin-left: 6px;
+}
+
+.searchbox {
+    display: flex;
+    align-items: center;
+    height: 32px;
+    width: calc(100% - 32px);
+    border: lightblue solid 2px;
+    border-radius: 5px;
+    margin-top: 6px;
+    margin-left: 10px; 
+}
+
+.itemlist {
+   height: 400px;
+   overflow-y: scroll;
+}
+
+.item {
+   position: relative;
+   margin-top: 4px;
+   margin-left: 8px;
+   margin-right: 5px;
+   padding: 4px;
+   padding-right: 18px;
+   vertical-align: top;
+   overflow: hidden;
+   height: 20px;
+   outline-style: none;
+}
+
+.item:focus {
+   border: solid black 2px;
+   border-radius: 5px;
+   box-shadow: 1px 1px 1px #888888;
+}
+
+.icon  {
+   float: left;
+   margin-right: 6px;
+}
+
+.window {
+   -webkit-filter: drop-shadow(5px 5px 3px grey);
+   overflow: visible;
+}
+
+.minimized {
+   margin-left: 10px;
+   margin-top: 10px;
+   width: 14px;
+   height: 14px;
+   opacity: 0.7;
+}
+
+.title {
+   overflow: hidden;
+   white-space: nowrap;
+   margin-right: 6px;
+}
+
+
+
+.name {
+   overflow: hidden;
+   white-space: nowrap;
+   margin-right: 6px;
+}
+
+.comment {
+   font-size: 0.8em;
+   width: calc(100% - 24px);
+}
+
+.action {
+   position: relative;
+   font-size: 12px;
+   padding: 6px 6px 10px 8px;
+}
+
+.group {
+   margin-top: 8px;
+   padding-top: 5px;
+   font-size: 11px;
+   border-top: solid 1px lightgrey;
+   border-left: none;
+   border-right: none;
+   border-bottom: none;
+}
+
+.osd {
+    display: flex;
+    background-color: white;
+    max-width: 30em;
+    max-height: 8em;
+}
+
+.osd-icon {
+    width: 2.2em;
+    height: 2.2em;
+    padding: 0.5em;
+}
+
+.osd-message {
+    overflow: hidden;
+    padding: 0.5em 0.5em 0.5em 0em;
+}
+
+.osd-title {
+    font-size: 1.2em;
+    white-space: nowrap;
+}
+
+.osd-body {
+    max-height: 4em;
+    font-size: 1em;
+    padding-top: 0.2em;
+    padding-bottom: 0.2em;
+    overflow-y: hidden;
+}
+
+.self {
+    height: 32px;
+    padding: 8px;
+    border-bottom: 1px solid lightblue;   
+}
