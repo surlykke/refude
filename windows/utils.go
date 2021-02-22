@@ -66,6 +66,13 @@ XEvent createConfigureMessage32(Window window, Window eventWindow, int x, int y,
 	return event;
 }
 
+void setProp32(Display *d, Window w, Atom prop, Atom type, unsigned int val) {
+	unsigned int arr[1];
+	arr[0] = val;
+	printf("Call XChangeProperty");
+	XChangeProperty(d, w, prop, type, 32, PropModeReplace, (unsigned char*)arr, 1);
+}
+
 
 int forgiving_X_error_handler(Display *d, XErrorEvent *e)
 {
@@ -74,6 +81,8 @@ int forgiving_X_error_handler(Display *d, XErrorEvent *e)
 	printf("Got error: %s\n", errorMsg);
 	return 0;
 }
+
+
 */
 import "C"
 import (
@@ -84,7 +93,9 @@ import (
 	"image"
 	"image/color"
 	"image/png"
+	"log"
 	"sync"
+	"time"
 	"unsafe"
 )
 
@@ -115,7 +126,10 @@ var _NET_ACTIVE_WINDOW,
 	_NET_WM_STATE_FULLSCREEN,
 	_NET_WM_STATE_ABOVE,
 	_NET_WM_STATE_BELOW,
-	_NET_WM_STATE_DEMANDS_ATTENTION C.Atom
+	_NET_WM_STATE_DEMANDS_ATTENTION,
+	_NET_WM_WINDOW_OPACITY,
+	_NET_RESTACK_WINDOW,
+	XA_CARDINAL C.Atom
 
 func init() {
 	var c = MakeDisplay()
@@ -142,13 +156,9 @@ func init() {
 	_NET_WM_STATE_ABOVE = c.InternAtom("_NET_WM_STATE_ABOVE")
 	_NET_WM_STATE_BELOW = c.InternAtom("_NET_WM_STATE_BELOW")
 	_NET_WM_STATE_DEMANDS_ATTENTION = c.InternAtom("_NET_WM_STATE_DEMANDS_ATTENTION")
-}
-
-// Either 'Property' or X,Y,W,H will be set
-type Event struct {
-	Window     uint32
-	Property   string
-	X, Y, W, H int
+	_NET_WM_WINDOW_OPACITY = c.InternAtom("_NET_WM_WINDOW_OPACITY")
+	_NET_RESTACK_WINDOW = c.InternAtom("_NET_RESTACK_WINDOW")
+	XA_CARDINAL = c.InternAtom("XA_CARDINAL")
 }
 
 type Connection struct {
@@ -359,40 +369,28 @@ func SubscribeToWindowEvents(c *Connection, wId uint32) {
 	c.SelectInput(C.Window(wId), C.PropertyChangeMask)
 }
 
-// Will hang until either a property change or a configure event happens
-type EventType uint8
-
-const (
-	Unknown EventType = iota
-	DesktopGeometry
-	DesktopStacking
-	WindowTitle
-	WindowIconName
-	WindowGeometry
-	WindowSt
-)
-
-func NextEvent(c *Connection) (EventType, uint32, error) {
+func fetchX11Events(c *Connection) (Event, uint32) {
 	var event C.XEvent
 	for {
 		if err := CheckError(c.NextEvent(&event)); err != nil {
-			return Unknown, 0, err
+			log.Println("Error retrieving event from X11:", err)
+			time.Sleep(100 * time.Millisecond) // To avoid spamming
 		} else if C.getType(&event) == C.PropertyNotify {
 			var xproperty = C.xproperty(&event)
 			if xproperty.atom == _NET_CLIENT_LIST_STACKING {
-				return DesktopStacking, 0, nil
+				return DesktopStacking, 0
 			} else if xproperty.atom == _NET_DESKTOP_GEOMETRY {
-				return DesktopGeometry, 0, nil
+				return DesktopGeometry, 0
 			} else if xproperty.atom == _NET_WM_VISIBLE_NAME || xproperty.atom == _NET_WM_NAME || xproperty.atom == _WM_NAME {
-				return WindowTitle, uint32(xproperty.window), nil
+				return WindowTitle, uint32(xproperty.window)
 			} else if xproperty.atom == _NET_WM_VISIBLE_ICON_NAME || xproperty.atom == _NET_WM_ICON_NAME || xproperty.atom == _NET_WM_ICON {
-				return WindowIconName, uint32(xproperty.window), nil
+				return WindowIconName, uint32(xproperty.window)
 			} else if xproperty.atom == _NET_WM_STATE {
-				return WindowSt, uint32(xproperty.window), nil
+				return WindowSt, uint32(xproperty.window)
 			}
 		} else if C.getType(&event) == C.ConfigureNotify {
 			var xconfigure = C.xconfigure(&event)
-			return WindowGeometry, uint32(xconfigure.window), nil
+			return WindowGeometry, uint32(xconfigure.window)
 		}
 	}
 }
@@ -457,9 +455,26 @@ func (c *Connection) MoveResizeWindow(win C.Window, x C.int, y C.int, w C.uint, 
 	C.XFlush(c.disp)
 }
 
-func (c *Connection) UpdateSingleState(wId uint32, atom C.Atom, addRemove C.int) {
-	var event = C.createClientMessage32(C.Window(wId), _NET_WM_STATE, 2, C.long(atom), 0, 0, 0)
+func (c *Connection) UpdateSingleState(wId uint32, atom C.Atom, addRemove C.long) {
+	var event = C.createClientMessage32(C.Window(wId), _NET_WM_STATE, addRemove, C.long(atom), 0, 0, 0)
 	c.SendEvent(&event)
+}
+
+func (c *Connection) SetTransparent(wId uint32, opacity uint32) {
+	/*var event = C.createClientMessage32(C.Window(wId), _NET_WM_WINDOW_OPACITY, 1, 0x55555555, 0, 0, 0)
+	c.SendEvent(&event)*/
+	//var val uint32 = 0x33333333
+	//C.XChangeProperty(c.disp, C.Window(wId), _NET_WM_WINDOW_OPACITY, 6, 32, C.PropModeReplace, (*C.uchar)(unsafe.Pointer(&val)), 1)
+	fmt.Println("SetTransparent on", wId, _NET_WM_WINDOW_OPACITY, 6, 0x22222222)
+	//C.setProp32(c.disp, C.Window(wId), _NET_WM_WINDOW_OPACITY, 6, 0x22222222)
+	C.XChangeProperty(c.disp, C.Window(wId), _NET_WM_WINDOW_OPACITY, 6, 32, C.PropModeReplace, (*C.uchar)(unsafe.Pointer(&opacity)), 1)
+
+	C.XFlush(c.disp)
+}
+
+func (c *Connection) SetOpaque(wId uint32) {
+	C.XDeleteProperty(c.disp, C.Window(wId), _NET_WM_WINDOW_OPACITY)
+	C.XFlush(c.disp)
 }
 
 func (c *Connection) GetImage(wId C.Window, w C.uint, h C.uint) *C.XImage {
@@ -603,7 +618,7 @@ func RemoveStates(c *Connection, wId uint32, states WindowStateMask) {
 	UpdateState(c, wId, states, 0)
 }
 
-func UpdateState(c *Connection, wId uint32, state WindowStateMask, addRemove C.int) {
+func UpdateState(c *Connection, wId uint32, state WindowStateMask, addRemove C.long) {
 	if state&MODAL > 0 {
 		c.UpdateSingleState(wId, _NET_WM_STATE_MODAL, addRemove)
 	}
@@ -647,6 +662,11 @@ func SetBounds(c *Connection, wId uint32, x int32, y int32, w uint32, h uint32) 
 	c.MoveResizeWindow(C.Window(wId), C.int(x), C.int(y), C.uint(w), C.uint(h))
 }
 
+func RaiseWindow(c *Connection, wId uint32) {
+	var event = C.createClientMessage32(C.Window(wId), _NET_RESTACK_WINDOW, 2, 0, 0, 0, 0)
+	c.SendEvent(&event)
+}
+
 func RaiseAndFocusWindow(c *Connection, wId uint32) {
 	var event = C.createClientMessage32(C.Window(wId), _NET_ACTIVE_WINDOW, 2, 0, 0, 0, 0)
 	c.SendEvent(&event)
@@ -655,6 +675,17 @@ func RaiseAndFocusWindow(c *Connection, wId uint32) {
 func (c *Connection) CloseWindow(wId uint32) {
 	var event = C.createClientMessage32(C.Window(wId), _NET_CLOSE_WINDOW, 2, 0, 0, 0, 0)
 	c.SendEvent(&event)
+}
+
+func (c *Connection) UnmapWindow(wId uint32) {
+	C.XUnmapWindow(c.disp, C.Window(wId))
+	C.XFlush(c.disp)
+}
+
+func (c *Connection) MapWindow(wId uint32) {
+	C.XMapSubwindows(c.disp, C.Window(wId))
+	C.XMapWindow(c.disp, C.Window(wId))
+	C.XFlush(c.disp)
 }
 
 func GetScreenshotAsPng(c *Connection, wId uint32, downscale uint8) ([]byte, error) {

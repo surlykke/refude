@@ -9,7 +9,6 @@ package windows
 import (
 	"fmt"
 	"net/http"
-	"sync"
 
 	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/requests"
@@ -50,13 +49,10 @@ func BuildWindow(c *Connection, wId uint32) *Window {
 	}
 	win.State, _ = GetState(c, wId)
 
-	BuildLinks(win)
 	return win
 }
 
-// Caller ensures thread safety
-func BuildLinks(win *Window) {
-	var monitorList = monitors.Load().([]*MonitorData)
+func updateLinksSingle(win *Window, monitorList []*MonitorData) {
 	var href = fmt.Sprintf("/window/%d", win.Id)
 	var actionPrefix = href + "?action="
 	win.Links = make(respond.Links, 0, 5+len(monitorList))
@@ -77,55 +73,54 @@ func BuildLinks(win *Window) {
 	}
 }
 
+func updateLinks(windowList []*Window, monitorList []*MonitorData, all bool) {
+	for _, win := range windowList {
+		if all || len(win.Links) == 0 {
+			updateLinksSingle(win, monitorList)
+		}
+	}
+}
+
 func (win Window) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		respond.AsJson(w, win)
 	} else if r.Method == "POST" {
-		var action = requests.Action(r)
-		switch action {
+		switch requests.Action(r) {
 		case "":
 			RaiseAndFocusWindow(dataConnection, win.Id)
 			respond.Accepted(w)
 		case "restore":
-			if win.State&HIDDEN > 0 {
-				RemoveStates(dataConnection, win.Id, HIDDEN)
-			} else {
-				RemoveStates(dataConnection, win.Id, MAXIMIZED_HORZ|MAXIMIZED_VERT)
-			}
+			RemoveStates(dataConnection, win.Id, HIDDEN|MAXIMIZED_HORZ|MAXIMIZED_VERT)
+			respond.Accepted(w)
 		case "maximize":
-			fmt.Println("maximizing")
-			AddStates(dataConnection, win.Id, MAXIMIZED_VERT|MAXIMIZED_HORZ)
+			RemoveStates(dataConnection, win.Id, HIDDEN)
+			AddStates(dataConnection, win.Id, MAXIMIZED_HORZ|MAXIMIZED_VERT)
 			respond.Accepted(w)
 		case "minimize":
 			AddStates(dataConnection, win.Id, HIDDEN)
 			respond.Accepted(w)
 		case "move":
 			monitorName := requests.GetSingleQueryParameter(r, "monitor", "")
-			for _, m := range monitors.Load().([]*MonitorData) {
-				if m.Name == monitorName {
-					var maximized = win.State & (MAXIMIZED_HORZ | MAXIMIZED_VERT)
-					RemoveStates(dataConnection, win.Id, maximized)
-					var bounds = GetBounds(dataConnection, win.Id)
-					var marginW, marginH = m.W / 10, m.H / 10
-					var newX, newY = m.X + int32(marginW), m.Y + int32(marginH)
-					var newW, newH = bounds.W, bounds.H
-					if newW == 0 || newW > m.W {
-						newW = m.W - 2*marginW
-					}
-					if newH == 0 || newH > m.H {
-						newH = m.H - 2*marginH
-					}
-					SetBounds(dataConnection, win.Id, newX, newY, newW, newH)
-					AddStates(dataConnection, win.Id, maximized)
-					RaiseAndFocusWindow(dataConnection, win.Id)
-					respond.Accepted(w)
-					return
-				}
+			repo.Lock()
+			var monitors = repo.desktoplayout.Monitors
+			repo.Unlock()
+			if m := findMonitor(monitors, monitorName); m != nil {
+				var saveStates = win.State & (HIDDEN | MAXIMIZED_HORZ | MAXIMIZED_VERT)
+				RemoveStates(dataConnection, win.Id, HIDDEN|MAXIMIZED_HORZ|MAXIMIZED_VERT)
+				var marginW, marginH = m.W / 10, m.H / 10
+				SetBounds(dataConnection, win.Id, m.X+int32(marginW), m.Y+int32(marginH), m.W-2*marginW, m.H-2*marginH)
+				AddStates(dataConnection, win.Id, saveStates)
 			}
-			respond.UnprocessableEntity(w, fmt.Errorf("No such monitor '%s'", monitorName))
+			respond.Accepted(w)
+		case "highlight":
+			repo.Lock()
+			highlighWindow(win.Id)
+			repo.Unlock()
+			respond.Accepted(w)
 		default:
-			respond.UnprocessableEntity(w, fmt.Errorf("Unknown action %s", action))
+			respond.UnprocessableEntity(w, fmt.Errorf("Unknown action '%s'", requests.Action(r)))
 		}
+
 	} else if r.Method == "DELETE" {
 		dataConnection.CloseWindow(win.Id)
 		respond.Accepted(w)
@@ -161,25 +156,6 @@ func getScreenshot(wId uint32, downscale byte) ([]byte, error) {
 }
 
 var dataConnection = MakeDisplay()
-
-// Pulling icons from X11 (as GetIconName below does) is somewhat costly. For example 'Visual Studio Code' has a
-// window icon of size 1024x1024, so it contains ~ 4 Mb. Hence the caching.
-// TODO: Update cache on icon change event (?). Purge cache on window close
-var iconNameCache = make(map[uint32]string)
-var iconNameCacheLock sync.Mutex
-
-func getIconNameFromCache(wId uint32) (string, bool) {
-	iconNameCacheLock.Lock()
-	defer iconNameCacheLock.Unlock()
-	name, ok := iconNameCache[wId]
-	return name, ok
-}
-
-func setIconNameInCache(wId uint32, name string) {
-	iconNameCacheLock.Lock()
-	defer iconNameCacheLock.Unlock()
-	iconNameCache[wId] = name
-}
 
 func GetIconName(c *Connection, wId uint32) (string, error) {
 	pixelArray, err := GetIcon(c, wId)

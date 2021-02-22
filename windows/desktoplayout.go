@@ -13,7 +13,8 @@ type DesktopLayout struct {
 	Monitors []*MonitorData
 }
 
-func BuildDesktopLayout(monitors []*MonitorData) *DesktopLayout {
+func getDesktopLayout(c *Connection, oldWindowList []*Window) (*DesktopLayout, []*Window) {
+	var monitors = c.GetMonitorDataList()
 	var layout = &DesktopLayout{
 		Links:    respond.Links{respond.Link{Href: "/desktoplayout", Title: "DesktopLayout", Rel: respond.Self, Profile: "/profile/desktoplayout"}},
 		Monitors: monitors,
@@ -41,7 +42,14 @@ func BuildDesktopLayout(monitors []*MonitorData) *DesktopLayout {
 
 	layout.Geometry = Bounds{minX, minY, uint32(maxX - minY), uint32(maxY - minY)}
 
-	return layout
+	var newWindowList = make([]*Window, len(oldWindowList), len(oldWindowList))
+	for i, win := range oldWindowList {
+		var copy = *win
+		updateLinksSingle(&copy, monitors)
+		newWindowList[i] = &copy
+	}
+
+	return layout, newWindowList
 }
 
 func (dl *DesktopLayout) ServeHTTP(w http.ResponseWriter, r *http.Request) {

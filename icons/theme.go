@@ -49,7 +49,6 @@ func readThemes() ThemeMap {
 				if theme, ok := readTheme(indexFilePath); !ok {
 					log.Println("Could read", indexFilePath)
 				} else if _, ok := themeMap[theme.Id]; !ok {
-					fmt.Println("Read theme", theme.Name)
 					themeMap[theme.Id] = theme
 				}
 			}

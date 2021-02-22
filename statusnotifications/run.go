@@ -7,7 +7,6 @@
 package statusnotifications
 
 import (
-	"fmt"
 	"net/http"
 	"regexp"
 	"sort"
@@ -85,25 +84,18 @@ func Run() {
 				var itemCopy = &tmp
 				switch event.eventName {
 				case "org.kde.StatusNotifierItem.NewTitle":
-					fmt.Println("NewTitle")
 					updateTitle(itemCopy)
 				case "org.kde.StatusNotifierItem.NewStatus":
-					fmt.Println("NewStatus")
 					updateStatus(itemCopy)
 				case "org.kde.StatusNotifierItem.NewToolTip":
-					fmt.Println("NewToolTip")
 					updateToolTip(itemCopy)
 				case "org.kde.StatusNotifierItem.NewIcon":
-					fmt.Println("NewIcon")
 					updateIcon(itemCopy)
 				case "org.kde.StatusNotifierItem.NewIconThemePath":
-					fmt.Println("NewIconThemePath")
 					updateIconThemePath(itemCopy)
 				case "org.kde.StatusNotifierItem.NewAttentionIcon":
-					fmt.Println("NewAttentionIcon")
 					updateAttentionIcon(itemCopy)
 				case "org.kde.StatusNotifierItem.NewOverlayIcon":
-					fmt.Println("NewOverlayIcon")
 					updateOverlayIcon(itemCopy)
 				default:
 					continue
