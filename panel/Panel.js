@@ -165,7 +165,10 @@ export default class Panel extends React.Component {
     act = keep => this.execute(postUrl, keep)
     del = keep => this.execute(deleteUrl, keep)
     
-    dismiss = () => this.clearState(this.highlight)
+    dismiss = () => {
+        this.clearState(this.highlight)
+        postUrl("/window/unhighlight")
+    }
     
     navigateTo = () => {
         console.log("navigateto, rel:", this.appState?.focusedLink?.rel)
