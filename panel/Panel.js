@@ -194,7 +194,7 @@ export default class Panel extends React.Component {
             ipcRenderer.send("devtools")
         } else if (key === "ArrowRight" || key === "l" && ctrlKey) {
             this.navigateTo()
-        } else if (key === "ArrowLeft" || key === "f" && ctrlKey) {
+        } else if (key === "ArrowLeft" || key === "h" && ctrlKey) {
             this.navigateBack()
         } else if (key === "ArrowUp" || key === "k" && ctrlKey) {
             move(true)
