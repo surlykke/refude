@@ -231,7 +231,11 @@ export default class Panel extends React.Component {
             </div>
             {!this.state.resource && this.state.osd && <Osd event={this.state.osd} />}
             {this.state.resource && this.state.self && <GenericResource self={this.state.self} />}
-            {this.state.resource && !this.state.self && <div className="searchbox">{this.state.term}</div>}
+            {this.state.resource && this.state.term && !this.state.self && 
+                <div className="searchbox" >
+                    <i className="material-icons" style={{color: "lightGrey"}}>search</i>
+                    {this.state.term}
+                </div>}
             {this.state.links &&
                 <LinkList links={this.state.links}
                     focusedHref={this.appState.focusedLink?.href}
