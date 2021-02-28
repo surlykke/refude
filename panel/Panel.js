@@ -41,7 +41,7 @@ export default class Panel extends React.Component {
                 this.setState({ term: "" })
                 this.appState.resourceUrl = "/search/desktop"
                 this.getResource()
-            } else {
+            } else if (document.hasFocus()){
                 move(up)
             }
         })
