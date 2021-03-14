@@ -122,30 +122,30 @@
    border-bottom: none;
 }
 
-.osd {
+.flash {
     display: flex;
     background-color: white;
     max-width: 30em;
     max-height: 8em;
 }
 
-.osd-icon {
+.flash-icon {
     width: 2.2em;
     height: 2.2em;
     padding: 0.5em;
 }
 
-.osd-message {
+.flash-message {
     overflow: hidden;
     padding: 0.5em 0.5em 0.5em 0em;
 }
 
-.osd-title {
+.flash-title {
     font-size: 1.2em;
     white-space: nowrap;
 }
 
-.osd-body {
+.flash-body {
     max-height: 4em;
     font-size: 1em;
     padding-top: 0.2em;

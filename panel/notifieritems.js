@@ -5,7 +5,7 @@
 // Please refer to the GPL2 file for a copy of the license.
 //
 import React from 'react'
-import { getUrl, addParam, postUrl, findLink, path2Url } from "../common/monitor";
+import { getUrl, postUrl, path2Url } from "../common/monitor";
 import { remote } from 'electron'
 const { Menu, MenuItem } = remote
 

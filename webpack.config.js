@@ -20,7 +20,6 @@ module.exports = {
     },
     entry: {
         Panel: './panel/Panel.js',
-        Osd: './osd/Osd.js',
     },
     target: 'electron-renderer',
     output: {
