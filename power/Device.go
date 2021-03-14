@@ -8,7 +8,6 @@ package power
 
 import (
 	"fmt"
-	"net/http"
 	"strings"
 
 	"github.com/godbus/dbus/v5"
@@ -16,7 +15,7 @@ import (
 )
 
 type Device struct {
-	respond.Links    `json:"_links"`
+	respond.Resource
 	DbusPath         dbus.ObjectPath
 	NativePath       string
 	Vendor           string
@@ -44,7 +43,6 @@ type Device struct {
 	Capacity         float64
 	Technology       string
 	DisplayDevice    bool
-	self             string
 }
 
 func Title(d *Device) string {
@@ -59,14 +57,6 @@ func Title(d *Device) string {
 		return "Battery " + d.Model
 	default:
 		return d.Model
-	}
-}
-
-func (d *Device) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "GET" {
-		respond.AsJson(w, d)
-	} else {
-		respond.NotAllowed(w)
 	}
 }
 

@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
@@ -98,7 +99,7 @@ func Collect() collection {
 			for _, appId := range appIds {
 				if app, ok := c.applications[appId]; ok {
 					mimetype.DefaultApp = appId
-					mimetype.DefaultAppPath = app.Self
+					mimetype.DefaultAppPath = app.path
 					break
 				}
 			}
@@ -134,8 +135,8 @@ func CollectMimeTypes() map[string]*Mimetype {
 		if err != nil {
 			fmt.Println("Problem making mimetype", id)
 		} else {
+			mimetype.Resource = respond.MakeResource(mimetype.path, comment, "", &mimetype, "mimetype")
 			mimetype.Comment = comment
-			mimetype.Links = respond.Links{{Href: mimetype.self, Rel: respond.Self, Title: mimetype.Comment, Profile: "/profile/mimetype"}}
 			res[id] = mimetype
 		}
 	}
@@ -236,7 +237,7 @@ func CollectMimeTypes() map[string]*Mimetype {
 			for locale := range collectedLocales {
 				tags = append(tags, language.Make(locale))
 			}
-			mimeType.Links = respond.Links{{Href: mimeType.self, Rel: respond.Self, Title: mimeType.Comment, Profile: "/profile/mimetype"}}
+			mimeType.Resource = respond.MakeResource(mimeType.path, mimeType.Comment, "", &mimeType, "mimetype")
 
 			res[mimeType.Id] = mimeType
 		}
@@ -285,18 +286,6 @@ func (c *collection) collectApplications(appdir string) {
 
 	if xdg.DirOrFileExists(appdir) {
 		_ = filepath.Walk(appdir, visitor)
-	}
-}
-
-func (c *collection) getOrAdd(mimetypeId string) *Mimetype {
-	if mimetype, ok := c.mimetypes[mimetypeId]; ok {
-		return mimetype
-	} else if mimetype, err := MakeMimetype(mimetypeId); err == nil {
-		c.mimetypes[mimetypeId] = mimetype
-		return mimetype
-	} else {
-		log.Println(mimetypeId, "not legal")
-		return nil
 	}
 }
 
@@ -366,7 +355,7 @@ func readDesktopFile(path string, id string) (*DesktopApplication, []string, err
 		actionNames = slice.Split(group.Entries["Actions"], ";")
 		da.Categories = slice.Split(group.Entries["Categories"], ";")
 		da.Implements = slice.Split(group.Entries["Implements"], ";")
-		// FIXMEda.Keywords[tag] = utils.Split(group[""], ";")
+		da.Keywords = slice.Split(group.Entries["Keywords"], ";")
 		da.StartupNotify = group.Entries["StartupNotify"] == "true"
 		da.StartupWmClass = group.Entries["StartupWMClass"]
 		da.Url = group.Entries["URL"]
@@ -392,29 +381,26 @@ func readDesktopFile(path string, id string) (*DesktopApplication, []string, err
 			}
 		}
 		mimetypes = slice.Split(group.Entries["MimeType"], ";")
-		da.Links = make(respond.Links, 0, 1+len(da.DesktopActions))
 
 		var self = "/application/" + da.Id
-		da.Links = append(da.Links, respond.Link{
-			Href:    self,
-			Rel:     respond.Self,
-			Profile: "/profile/desktopapplication",
-			Title:   da.Name,
-			Icon:    Icon2IconUrl(da.Icon),
-		})
+		da.Resource = respond.MakeResource(self, da.Name, Icon2IconUrl(da.Icon), &da, "desktopapplication")
+
+		da.AddAction(respond.MakeAction("", da.Name, Icon2IconUrl(da.Icon), makeActor(da.Exec, da.Terminal)))
 
 		for _, act := range da.DesktopActions {
-			da.Links = append(da.Links, respond.Link{
-				Href:  self + "?actionid=" + act.id,
-				Title: act.Name,
-				Rel:   respond.Action,
-				Icon:  Icon2IconUrl(act.Icon),
-			})
+			da.AddAction(respond.MakeAction(act.id, act.Name, Icon2IconUrl(act.Icon), makeActor(act.Exec, da.Terminal)))
 		}
 
 		return &da, mimetypes, nil
 	}
 
+}
+
+func makeActor(exec string, runInTerminal bool) func(*http.Request) error {
+	return func(*http.Request) error {
+		run(exec, "", runInTerminal)
+		return nil
+	}
 }
 
 func Icon2IconUrl(icon string) string {

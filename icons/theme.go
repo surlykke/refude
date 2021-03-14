@@ -20,13 +20,13 @@ import (
 )
 
 type IconTheme struct {
-	respond.Links `json:"_links"`
-	Id            string
-	Name          string
-	Comment       string
-	Inherits      []string
-	Dirs          map[string]IconDir
-	icons         map[string]*Icon
+	respond.Resource
+	Id       string
+	Name     string
+	Comment  string
+	Inherits []string
+	Dirs     map[string]IconDir
+	icons    map[string]*Icon
 }
 
 type IconDir struct {
@@ -81,6 +81,7 @@ func readTheme(indexThemeFilePath string) (*IconTheme, bool) {
 	theme := IconTheme{}
 	theme.Id = themeId
 	theme.Name = themeGroup.Entries["Name"]
+	theme.Resource = respond.MakeResource("/icontheme"+theme.Id, theme.Name, "", &theme, "icontheme")
 	theme.Comment = themeGroup.Entries["Comment"]
 	theme.Inherits = slice.Split(themeGroup.Entries["Inherits"], ",")
 	theme.Dirs = make(map[string]IconDir)
@@ -127,7 +128,6 @@ func readTheme(indexThemeFilePath string) (*IconTheme, bool) {
 		theme.Dirs[iniGroup.Name] = IconDir{iniGroup.Name, minSize, maxSize, iniGroup.Entries["Context"]}
 	}
 
-	theme.Links = respond.Links{{Href: "/icontheme/" + theme.Id, Rel: respond.Self, Profile: "/profile/icontheme"}}
 	theme.icons = make(IconMap)
 	return &theme, true
 }

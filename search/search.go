@@ -8,7 +8,6 @@ import (
 	"github.com/surlykke/RefudeServices/file"
 	"github.com/surlykke/RefudeServices/notifications"
 	"github.com/surlykke/RefudeServices/power"
-	"github.com/surlykke/RefudeServices/session"
 	"github.com/surlykke/RefudeServices/windows"
 
 	"github.com/surlykke/RefudeServices/statusnotifications"
@@ -21,6 +20,20 @@ import (
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/slice"
 )
+
+type SearchResult struct {
+	respond.Resource
+	Term string `json:"term"`
+}
+
+func makeSearchResult(term string, links []respond.Link) *SearchResult {
+	var sr = SearchResult{
+		Term: term,
+	}
+	sr.Resource = respond.MakeResource("/desktop/search?term="+term, "Desktop Search", "", &sr, "search")
+	sr.AddLink(links...)
+	return &sr
+}
 
 func Handler(r *http.Request) http.Handler {
 	if r.URL.Path == "/search/paths" {
@@ -41,7 +54,6 @@ func Paths(w http.ResponseWriter, r *http.Request) {
 		paths = append(paths, applications.AllPaths()...)
 		paths = append(paths, icons.AllPaths()...)
 		paths = append(paths, statusnotifications.AllPaths()...)
-		paths = append(paths, session.AllPaths()...)
 		paths = append(paths, notifications.AllPaths()...)
 		paths = append(paths, power.AllPaths()...)
 		paths = append(paths, "/search/paths", "/search/desktop", "/watch")
@@ -66,7 +78,7 @@ func DesktopResources(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		var term = strings.ToLower(requests.Term(r))
 
-		var sfl = make(respond.Links, 0, 1000)
+		var sfl = make([]respond.Link, 0, 1000)
 		sfl = append(sfl, file.Recent(term, 0)...)
 		sfl = append(sfl, notifications.DesktopSearch(term, 100)...)
 		sfl = append(sfl, windows.DesktopSearch(term, 200)...)
@@ -75,14 +87,13 @@ func DesktopResources(w http.ResponseWriter, r *http.Request) {
 
 		if len(term) > 0 {
 			sfl = append(sfl, applications.DesktopSearch(term, 300)...)
-			sfl = append(sfl, session.DesktopSearch(term, 300)...)
 			sfl = append(sfl, file.DesktopSearch(term, 300)...)
 			sfl = append(sfl, power.DesktopSearch(term, 600)...)
 		}
 		if len(sfl) > pos { // We do not want to change order of files, notifikations and windows, so no sorting for them
-			sort.Sort(sfl[pos:])
+			sort.Sort(respond.LinkList(sfl[pos:]))
 		}
-		respond.AsJson(w, map[string]respond.Links{"_links": sfl})
+		respond.AsJson(w, makeSearchResult(term, sfl))
 	} else {
 		respond.NotAllowed(w)
 	}

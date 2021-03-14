@@ -68,12 +68,12 @@ func init() {
 
 // Can't use filepath.Glob as it is case sensitive
 
-func DesktopSearch(term string, baserank int) respond.Links {
+func DesktopSearch(term string, baserank int) []respond.Link {
 	if len(term) < 3 {
-		return respond.Links{}
+		return []respond.Link{}
 	} else {
 		term = strings.ToLower(term)
-		var result = make(respond.Links, 0, 100)
+		var result = make([]respond.Link, 0, 100)
 		for searchDirectory := range searchDirectories {
 			if dir, err := os.Open(searchDirectory); err != nil {
 				fmt.Println("Error opening", searchDirectory, err)
@@ -85,9 +85,7 @@ func DesktopSearch(term string, baserank int) respond.Links {
 						if file, err := makeFile(searchDirectory + "/" + name); err != nil {
 							fmt.Println("Error making file:", err)
 						} else if file != nil {
-							var link = file.Link()
-							link.Rank = rank
-							result = append(result, link)
+							result = append(result, file.GetRelatedLink(rank))
 						}
 
 					}
@@ -98,17 +96,15 @@ func DesktopSearch(term string, baserank int) respond.Links {
 	}
 }
 
-func Recent(term string, baserank int) respond.Links {
+func Recent(term string, baserank int) []respond.Link {
 	var paths = getRecentDownloads(30 * time.Second)
-	var result = make(respond.Links, 0, len(paths))
+	var result = make([]respond.Link, 0, len(paths))
 	for _, path := range paths {
 		if file, err := makeFile(path); err != nil {
 			fmt.Println("Error making file:", err)
 		} else if file != nil {
-			var link = file.Link()
-			var ok bool
-			if link.Rank, ok = searchutils.Rank(file.Path, term, baserank); ok {
-				result = append(result, file.Link())
+			if rank, ok := searchutils.Rank(file.Path, term, baserank); ok {
+				result = append(result, file.GetRelatedLink(rank))
 			}
 		}
 	}

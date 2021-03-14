@@ -57,12 +57,13 @@ func retrieveDevice(path dbus.ObjectPath) *Device {
 	var lastSlash = strings.LastIndex(string(path), "/")
 	var title = strings.Title(strings.Join(strings.Split(string(path)[lastSlash+1:], "_"), " "))
 	updateDevice(&device, dbuscall.GetAllProps(dbusConn, UPowService, path, UPowerDeviceInterface))
+	var self string
 	if strings.HasPrefix(string(device.DbusPath), DevicePrefix) {
-		device.self = fmt.Sprintf("/device%s", device.DbusPath[len(DevicePrefix):])
+		self = fmt.Sprintf("/device%s", device.DbusPath[len(DevicePrefix):])
 	} else {
-		device.self = fmt.Sprintf("/device%s", device.DbusPath)
+		self = fmt.Sprintf("/device%s", device.DbusPath)
 	}
-	device.Links = respond.Links{{Href: device.self, Rel: respond.Self, Title: title, Icon: icons.IconUrl(device.IconName), Profile: "/profile/device"}}
+	device.Resource = respond.MakeResource(self, title, icons.IconUrl(device.IconName), &device, "device")
 	return &device
 }
 

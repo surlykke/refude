@@ -8,19 +8,17 @@ package applications
 
 import (
 	"fmt"
-	"net/http"
 	"os"
 	"regexp"
 	"strings"
 
-	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/respond"
 
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
 type DesktopApplication struct {
-	respond.Links   `json:"_links"`
+	respond.Resource
 	Type            string
 	Version         string `json:",omitempty"`
 	Name            string
@@ -45,29 +43,7 @@ type DesktopApplication struct {
 	DesktopActions  []DesktopAction
 	Id              string
 	Mimetypes       []string
-	Self            string `json:"-"`
-}
-
-func (d *DesktopApplication) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "GET" {
-		respond.AsJson(w, d)
-	} else if r.Method == "POST" {
-
-		var exec = d.Exec
-		var actionId = requests.GetSingleQueryParameter(r, "actionid", "")
-		if actionId != "" {
-			if action, ok := d.action(actionId); ok {
-				exec = action.Exec
-			} else {
-				respond.UnprocessableEntity(w, fmt.Errorf("Invalid actionid: %s", actionId))
-				return
-			}
-		}
-
-		respond.AcceptedAndThen(w, func() { run(exec, "", d.Terminal) })
-	} else {
-		respond.NotAllowed(w)
-	}
+	path            string `json:"-"`
 }
 
 func (d *DesktopApplication) Run(arg string) error {

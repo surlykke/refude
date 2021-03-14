@@ -22,7 +22,7 @@ var itemPathPattern = regexp.MustCompile("^(/item/[^/]+)(/menu)?")
 
 func Handler(r *http.Request) http.Handler {
 	if r.URL.Path == "/items" {
-		return Collect()
+		return respond.MakeRelatedCollection("/items", "Items", Collect())
 	} else if match := itemPathPattern.FindStringSubmatch(r.URL.Path); match != nil {
 		if item := get(match[1]); item == nil {
 			return nil
@@ -40,15 +40,15 @@ func Handler(r *http.Request) http.Handler {
 	}
 }
 
-func Collect() respond.Links {
+func Collect() []respond.Link {
 	lock.Lock()
 	defer lock.Unlock()
-	var links = make(respond.Links, 0, len(items))
+	var res = make([]respond.Link, 0, len(items))
 	for _, item := range items {
-		links = append(links, item.Link())
+		res = append(res, item.GetRelatedLink(0))
 	}
-	sort.Sort(links)
-	return links
+	sort.Sort(respond.LinkList(res))
+	return res
 }
 
 func AllPaths() []string {

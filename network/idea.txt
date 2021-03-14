@@ -1,0 +1,19 @@
+Idea for network resource:
+
+Data for current connection (ip, dns,... Look at desktop network managing apps)
+
+
+Actions:
+	connect Essid1
+	connect Essid2
+	.
+	.
+	disconnect (if connected)
+
+relations:
+	Technologies:
+
+
+Technology resource 
+
+	enable/disable  (wired, wireless, bluetooth, p2p)

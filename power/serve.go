@@ -8,25 +8,21 @@ import (
 )
 
 func Handler(r *http.Request) http.Handler {
-	if r.URL.Path == "/devices" {
-		return Collect()
-	} else if device := getDevice(r.URL.Path); device != nil {
+	if device := getDevice(r.URL.Path); device != nil {
 		return device
 	} else {
 		return nil
 	}
 }
 
-func DesktopSearch(term string, baserank int) respond.Links {
+func DesktopSearch(term string, baserank int) []respond.Link {
 	deviceLock.Lock()
 	defer deviceLock.Unlock()
-	var links = make(respond.Links, 0, len(devices))
+	var links = make([]respond.Link, 0, len(devices))
 	for _, device := range devices {
 		if deviceSelf(device.DbusPath) != "/device/DisplayDevice" && device.Type != "Line Power" {
-			var link = device.Link()
-			var ok bool
-			if link.Rank, ok = searchutils.Rank(link.Title, term, baserank); ok {
-				links = append(links, link)
+			if rank, ok := searchutils.Rank(device.Self.Title, term, baserank); ok {
+				links = append(links, device.GetRelatedLink(rank))
 			}
 		}
 	}

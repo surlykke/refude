@@ -8,7 +8,6 @@ package applications
 
 import (
 	"fmt"
-	"net/http"
 	"os"
 	"regexp"
 	"strings"
@@ -24,7 +23,7 @@ import (
 const freedesktopOrgXml = "/usr/share/mime/packages/freedesktop.org.xml"
 
 type Mimetype struct {
-	respond.Links   `json:"_links"`
+	respond.Resource
 	Id              string
 	Comment         string
 	Acronym         string `json:",omitempty"`
@@ -36,7 +35,7 @@ type Mimetype struct {
 	GenericIcon     string
 	DefaultApp      string `json:",omitempty"`
 	DefaultAppPath  string `json:",omitempty"`
-	self            string
+	path            string
 }
 
 var mimetypePattern = regexp.MustCompile(`^([^/]+)/([^/]+)$`)
@@ -53,30 +52,9 @@ func MakeMimetype(id string) (*Mimetype, error) {
 			SubClassOf:  []string{},
 			IconName:    "unknown",
 			GenericIcon: "unknown",
-			self:        "/mimetype/" + id,
+			path:        "/mimetype/" + id,
 		}
 		return &mt, nil
-	}
-}
-
-func (mt *Mimetype) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "GET" {
-		respond.AsJson(w, mt)
-		/*} else if r.Method == "PATCH" {
-		var decoder = json.NewDecoder(r.Body)
-		var decoded = make(map[string]string)
-		if err := decoder.Decode(&decoded); err != nil {
-			respond.UnprocessableEntity(w, err)
-		} else if defaultApp, ok := decoded["DefaultApp"]; !ok || len(decoded) != 1 {
-			respond.UnprocessableEntity(w, fmt.Errorf("Patch payload should contain exactly one parameter: 'DefaultApp"))
-		} else if err = setDefaultApp(mt.Id, defaultApp); err != nil {
-			respond.ServerError(w, err)
-		} else {
-			respond.Accepted(w)
-		}
-		*/
-	} else {
-		respond.NotAllowed(w)
 	}
 }
 

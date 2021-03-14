@@ -18,15 +18,15 @@ import (
 	"github.com/surlykke/RefudeServices/lib/respond"
 )
 
-func Collect() respond.Links {
+func Collect() []respond.Link {
 	deviceLock.Lock()
 	defer deviceLock.Unlock()
-	var links = make(respond.Links, 0, len(devices))
+	var links = make([]respond.Link, 0, len(devices))
 	for _, device := range devices {
-		links = append(links, device.Link())
+		links = append(links, device.GetRelatedLink(0))
 	}
 
-	sort.Sort(links)
+	sort.Sort(respond.LinkList(links))
 	return links
 }
 
@@ -84,9 +84,9 @@ func getDevice(path string) *Device {
 
 func setDevice(device *Device) {
 	deviceLock.Lock()
-	devices[device.self] = device
+	devices[device.Self.Href] = device
 	deviceLock.Unlock()
-	watch.SomethingChanged(device.self)
+	watch.SomethingChanged(device.Self.Href)
 }
 
 func removeDevice(path dbus.ObjectPath) {

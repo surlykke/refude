@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Reboot
+Comment=Reboot system
+Name[da]=Genstart
+Comment[da]=Genstart maskinen
+Exec=dbus-send --system --print-reply --dest=org.freedesktop.login1 /org/freedesktop/login1 org.freedesktop.login1.Manager.Reboot boolean:false
+Terminal=true
+Type=Application
+Encoding=UTF-8
+Icon=system-reboot
+Categories=System

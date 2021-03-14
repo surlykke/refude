@@ -9,7 +9,9 @@ package notifications
 import (
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
+	"reflect"
 	"strings"
 	"time"
 
@@ -160,7 +162,7 @@ func Notify(app_name string,
 	body string,
 	actions []string,
 	hints map[string]dbus.Variant,
-	expire_timeout int32) (uint32, *dbus.Error) {
+	expire_timeout int32 /*We ignore this, set our own expireries */) (uint32, *dbus.Error) {
 
 	var id uint32
 	if replaces_id != 0 {
@@ -173,6 +175,7 @@ func Notify(app_name string,
 
 	var iconName string
 	var ok bool
+
 	if iconName, ok = installRawImageIcon(hints, "image-data"); !ok {
 		if iconName, ok = installRawImageIcon(hints, "image_data"); !ok {
 			if iconName, ok = installFileIcon(hints, "image-path"); !ok {
@@ -187,49 +190,61 @@ func Notify(app_name string,
 		}
 	}
 
-	var iconUrl = icons.IconUrl(iconName)
-
-	// Get expirery
-	var created = time.Now()
-	var expires time.Time
-
-	if tmp, ok := expireryOverride[app_name]; ok {
-		expire_timeout = tmp
-	}
-
-	if expire_timeout == 0 {
-		expire_timeout = 2000
-	}
-
-	if expire_timeout > 0 {
-		expires = created.Add(time.Millisecond * time.Duration(expire_timeout))
-	} else {
-		expires = created.Add(time.Minute)
-	}
-
+	var href = fmt.Sprintf("/notification/%d", id)
 	notification := Notification{
 		Id:       id,
 		Sender:   app_name,
-		Created:  created,
-		Expires:  expires,
 		Subject:  sanitize(summary, []string{}, []string{}),
 		Body:     sanitize(body, allowedTags, allowedEscapes),
+		Created:  time.Now(),
+		Urgency:  normal,
 		Actions:  map[string]string{},
 		Hints:    map[string]interface{}{},
-		self:     fmt.Sprintf("/notification/%d", id),
 		iconName: iconName,
 	}
-	notification.Links = respond.Links{{Href: notification.self, Title: notification.Subject, Rel: respond.Self, Profile: "/profile/notification", Icon: iconUrl}}
+	notification.Resource = respond.MakeResource(href, notification.Subject, icons.IconUrl(notification.iconName), &notification, "notification")
 
-	// Add actions given in notification (We are aware that one of these may overwrite the dismiss action added above)
+	var deleteAction = respond.MakeAction("", "Dismiss", "", func(*http.Request) error {
+		removals <- removal{id, Dismissed}
+		return nil
+	})
+
+	notification.Self.Options.DELETE = &deleteAction
 	for i := 0; i+1 < len(actions); i = i + 2 {
-		notification.Actions[actions[i]] = actions[i+1]
+		var actionId, actionDesc = actions[i], actions[i+1]
+		if actionId == "default" {
+			notification.AddAction(respond.MakeAction("", actionDesc, "", func(*http.Request) error {
+				return conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".ActionInvoked", id, actionId)
+			}))
+		} else {
+			notification.AddAction(respond.MakeAction(actionId, actionDesc, "", func(*http.Request) error {
+				return conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".ActionInvoked", id, actionId)
+			}))
+		}
+		notification.Actions[actionId] = actionDesc
 	}
 
 	for name, val := range hints {
+		if name == "urgency" {
+			if b, ok := val.Value().(uint8); ok {
+				if b == 0 {
+					notification.Urgency = low
+				} else if b > 1 {
+					notification.Urgency = critical
+				}
+			} else {
+				fmt.Println("urgency hint not of type uint8, rather:", reflect.TypeOf(val.Value()))
+			}
+		}
 		if acceptableHintTypes[val.Signature().String()] {
 			notification.Hints[name] = val.Value()
 		}
+	}
+
+	if notification.Urgency == critical {
+		notification.Expires = time.Now().Add(24 * time.Hour)
+	} else {
+		notification.Expires = time.Now().Add(1 * time.Minute)
 	}
 
 	incomingNotifications <- &notification

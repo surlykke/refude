@@ -1,0 +1,12 @@
+[Desktop Entry]
+Name=Suspend
+Comment=Suspend system
+Name[da]=Slumre
+Comment[da]=Put maskinen i slumretilstand
+Exec=dbus-send --system --print-reply --dest=org.freedesktop.login1 /org/freedesktop/login1 org.freedesktop.login1.Manager.Suspend boolean:false
+Terminal=true
+Type=Application
+Encoding=UTF-8
+Icon=system-suspend
+Categories=System
+

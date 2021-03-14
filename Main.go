@@ -19,7 +19,6 @@ import (
 	"github.com/surlykke/RefudeServices/notifications"
 	"github.com/surlykke/RefudeServices/power"
 	"github.com/surlykke/RefudeServices/search"
-	"github.com/surlykke/RefudeServices/session"
 	"github.com/surlykke/RefudeServices/statusnotifications"
 	"github.com/surlykke/RefudeServices/watch"
 	"github.com/surlykke/RefudeServices/windows"
@@ -45,8 +44,6 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		handler = power.Handler(r)
 	} else if strings.HasPrefix(r.URL.Path, "/search") {
 		handler = search.Handler(r)
-	} else if strings.HasPrefix(r.URL.Path, "/session") {
-		handler = session.Handler(r)
 	} else if strings.HasPrefix(r.URL.Path, "/item") {
 		handler = statusnotifications.Handler(r)
 	} else if strings.HasPrefix(r.URL.Path, "/watch") {
@@ -62,7 +59,6 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	} else {
 		respond.NotFound(w)
 	}
-
 }
 
 func main() {

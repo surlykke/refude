@@ -25,7 +25,7 @@ import (
 )
 
 type Item struct {
-	respond.Links           `json:"_links"`
+	respond.Resource
 	sender                  string
 	itemPath                dbus.ObjectPath
 	Id                      string
@@ -46,40 +46,25 @@ type Item struct {
 	self                    string
 }
 
-func (item *Item) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "GET" {
-		respond.AsJson(w, item)
-	} else if r.Method == "POST" {
-		dbusObj := conn.Object(item.sender, item.itemPath)
-		action := requests.GetSingleQueryParameter(r, "action", "Activate")
-		x, _ := strconv.Atoi(requests.GetSingleQueryParameter(r, "x", "0"))
-		y, _ := strconv.Atoi(requests.GetSingleQueryParameter(r, "y", "0"))
-
-		if !slice.Among(action, "Activate", "SecondaryActivate", "ContextMenu") {
-			respond.UnprocessableEntity(w, fmt.Errorf("action must be 'Activate', 'SecondaryActivate' or 'ContextMenu'"))
-		} else {
-			var call = dbusObj.Call("org.kde.StatusNotifierItem."+action, dbus.Flags(0), x, y)
-			if call.Err != nil {
-				respond.ServerError(w, call.Err)
-			} else {
-				respond.Accepted(w)
-			}
-		}
-	} else {
-		respond.NotAllowed(w)
-	}
-}
-
 func (item *Item) buildMenu() *Menu {
 	if item.menuPath == "" {
 		return nil
 	} else {
 		var menu = Menu{sender: item.sender, menuPath: item.menuPath}
+		menu.Resource = respond.MakeResource(itemSelf(item.sender, item.itemPath)+"/menu", "", "", &menu, "itemmenu")
 		var err error
 		if menu.Entries, err = menuEntries(item.sender, item.menuPath); err != nil {
 			return nil
 		}
-		menu.Links = respond.Links{item.menuLink(respond.Self), item.itemLink(respond.Related)}
+
+		menu.AddAction(respond.MakeAction("", "Activate", "", func(r *http.Request) error {
+			id := requests.GetSingleQueryParameter(r, "id", "")
+			idAsInt, _ := strconv.Atoi(id)
+			data := dbus.MakeVariant("")
+			time := uint32(time.Now().Unix())
+			dbusObj := conn.Object(item.sender, item.menuPath)
+			return dbusObj.Call("com.canonical.dbusmenu.Event", dbus.Flags(0), idAsInt, "clicked", data, time).Err
+		}))
 
 		return &menu
 	}
@@ -89,22 +74,18 @@ func itemSelf(sender string, path dbus.ObjectPath) string {
 	return fmt.Sprintf("/item/%s", strings.Replace(sender+string(path), "/", "-", -1))
 }
 
-func (item *Item) itemLink(rel respond.Relation) respond.Link {
+func (item *Item) itemLink() respond.Link {
 	return respond.Link{
-		Href:    itemSelf(item.sender, item.itemPath),
-		Rel:     respond.Self,
-		Profile: "/profile/statusnotificationitem",
-		Title:   item.Title,
-		Icon:    icons.IconUrl(item.IconName),
+		Href:  itemSelf(item.sender, item.itemPath),
+		Title: item.Title,
+		Icon:  icons.IconUrl(item.IconName),
 	}
 }
 
-func (item *Item) menuLink(rel respond.Relation) respond.Link {
+func (item *Item) menuLink() respond.Link {
 	return respond.Link{
-		Href:    itemSelf(item.sender, item.itemPath) + "/menu",
-		Rel:     rel,
-		Profile: "/profile/statusnotificationmenu",
-		Title:   item.Title + " menu",
+		Href:  itemSelf(item.sender, item.itemPath) + "/menu",
+		Title: item.Title + " menu",
 	}
 }
 
@@ -124,31 +105,10 @@ type MenuEntry struct {
 }
 
 type Menu struct {
-	respond.Links `json:"_links"`
-	Entries       []MenuEntry
-	sender        string
-	menuPath      dbus.ObjectPath
-}
-
-func (m *Menu) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "GET" {
-		respond.AsJson(w, m)
-	} else if r.Method == "POST" {
-		id := requests.GetSingleQueryParameter(r, "id", "")
-		idAsInt, _ := strconv.Atoi(id)
-		data := dbus.MakeVariant("")
-		time := uint32(time.Now().Unix())
-		dbusObj := conn.Object(m.sender, m.menuPath)
-		fmt.Println("Kalder", m.sender, m.menuPath, "com.canonical.dbusmenu.Event", dbus.Flags(0), idAsInt, "clicked", data, time)
-		call := dbusObj.Call("com.canonical.dbusmenu.Event", dbus.Flags(0), idAsInt, "clicked", data, time)
-		if call.Err != nil {
-			respond.ServerError(w, call.Err)
-		} else {
-			respond.Accepted(w)
-		}
-	} else {
-		respond.NotAllowed(w)
-	}
+	respond.Resource
+	Entries  []MenuEntry
+	sender   string
+	menuPath dbus.ObjectPath
 }
 
 func menuEntries(sender string, menuPath dbus.ObjectPath) ([]MenuEntry, error) {

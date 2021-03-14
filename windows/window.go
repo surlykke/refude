@@ -9,10 +9,12 @@ package windows
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 
 	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/respond"
+	"github.com/surlykke/RefudeServices/windows/x11"
 )
 
 type Bounds struct {
@@ -23,110 +25,67 @@ type Bounds struct {
 type Geometry uint32
 
 func (g Geometry) MarshalJSON() ([]byte, error) {
-	return respond.ToJson(GetBounds(dataConnection, uint32(g))), nil
+	return respond.ToJson(GetBounds(uint32(g))), nil
 }
 
 type Window struct {
-	respond.Links `json:"_links"`
-	Id            uint32
-	Parent        uint32
-	Name          string
-	IconName      string `json:",omitempty"`
-	Geometry      Geometry
-	State         WindowStateMask
+	respond.Resource
+	Id       uint32
+	Parent   uint32
+	Name     string
+	IconName string `json:",omitempty"`
+	Geometry Geometry
+	State    x11.WindowStateMask
+	Stacking int // 0 means: on top, then 1, then 2 etc. -1 means we don't know (yet)
 }
 
 // Caller ensures thread safety
-func BuildWindow(c *Connection, wId uint32) *Window {
+func BuildWindow(p x11.Proxy, wId uint32) *Window {
 	var win = &Window{Id: wId}
-	win.Parent, _ = GetParent(c, wId)
-	win.Name, _ = GetName(c, wId)
-	win.IconName, _ = GetIconName(c, wId)
+	win.Parent, _ = x11.GetParent(p, wId)
+	win.Name, _ = x11.GetName(p, wId)
+	win.IconName, _ = GetIconName(p, wId)
 	if win.Parent > 0 {
 		win.Geometry = Geometry(win.Parent)
 	} else {
 		win.Geometry = Geometry(win.Id)
 	}
-	win.State, _ = GetState(c, wId)
-
+	win.State = x11.GetStates(p, wId)
+	win.Stacking = -1
+	var href = fmt.Sprintf("/window/%d", win.Id)
+	win.Resource = respond.MakeResource(href, win.Name, icons.IconUrl(win.IconName), win, "window")
 	return win
 }
 
-func updateLinksSingle(win *Window, monitorList []*MonitorData) {
-	var href = fmt.Sprintf("/window/%d", win.Id)
-	var actionPrefix = href + "?action="
-	win.Links = make(respond.Links, 0, 5+len(monitorList))
-	win.Links = win.Links.Add(href, win.Name, icons.IconUrl(win.IconName), respond.Self, "/profile/window", respond.Hints{"states": win.State})
+func updateLinks(win *Window, desktopLayout *DesktopLayout) {
+	win.ClearActions()
+	//win.Links = win.Links.Add(href+"/screenshot", "Screenshot of "+win.Name, "", respond.Related, "/profile/window-screenshot", nil)
+	win.AddAction(respond.MakeAction("", "Raise and focus", "", MakeRaiser(win.Id)))
 
-	win.Links = win.Links.Add(href+"/screenshot", "Screenshot of "+win.Name, "", respond.Related, "/profile/window-screenshot", nil)
-	//wd.Links = wd.Links.Add(actionPrefix+"raise", "Raise and focus", "", respond.Action, "", nil)
-
-	if win.State&(HIDDEN|MAXIMIZED_HORZ|MAXIMIZED_VERT) != 0 {
-		win.Links = win.Links.Add(actionPrefix+"restore", "Restore", "", respond.Action, "", nil)
+	if win.State.Is(x11.HIDDEN) || win.State.Is(x11.MAXIMIZED_HORZ|x11.MAXIMIZED_VERT) {
+		win.AddAction(respond.MakeAction("restore", "Restore window", "", MakeRestorer(win.Id)))
 	} else {
-		win.Links = win.Links.Add(actionPrefix+"minimize", "Minimize", "", respond.Action, "", nil)
-		win.Links = win.Links.Add(actionPrefix+"maximize", "Maximize", "", respond.Action, "", nil)
+		win.AddAction(respond.MakeAction("minimize", "Minimize window", "", MakeMinimizer(win.Id)))
+		win.AddAction(respond.MakeAction("maximize", "Maximize window", "", MakeMaximizer(win.Id)))
 	}
 
-	for _, m := range monitorList {
-		win.Links = win.Links.Add(actionPrefix+"move&monitor="+m.Name, "Move to monitor "+m.Name, "", respond.Action, "", nil)
+	for _, m := range desktopLayout.Monitors {
+		var actionId = url.QueryEscape("move::" + m.Name)
+		win.AddAction(respond.MakeAction(actionId, "Move to monitor "+m.Name, "", MakeMover(win.Id, m.Name)))
 	}
+
+	win.AddAction(respond.MakeAction("highlight", "Highlight window", "", MakeHighlighter(win.Id)))
 }
 
-func updateLinks(windowList []*Window, monitorList []*MonitorData, all bool) {
-	for _, win := range windowList {
-		if all || len(win.Links) == 0 {
-			updateLinksSingle(win, monitorList)
-		}
-	}
+func (win *Window) copy() *Window {
+	var result = &Window{}
+	*result = *win
+	result.Owner = result
+	return result
 }
 
-func (win Window) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "GET" {
-		respond.AsJson(w, win)
-	} else if r.Method == "POST" {
-		switch requests.Action(r) {
-		case "":
-			RaiseAndFocusWindow(dataConnection, win.Id)
-			respond.Accepted(w)
-		case "restore":
-			RemoveStates(dataConnection, win.Id, HIDDEN|MAXIMIZED_HORZ|MAXIMIZED_VERT)
-			respond.Accepted(w)
-		case "maximize":
-			RemoveStates(dataConnection, win.Id, HIDDEN)
-			AddStates(dataConnection, win.Id, MAXIMIZED_HORZ|MAXIMIZED_VERT)
-			respond.Accepted(w)
-		case "minimize":
-			AddStates(dataConnection, win.Id, HIDDEN)
-			respond.Accepted(w)
-		case "move":
-			monitorName := requests.GetSingleQueryParameter(r, "monitor", "")
-			repo.Lock()
-			var monitors = repo.desktoplayout.Monitors
-			repo.Unlock()
-			if m := findMonitor(monitors, monitorName); m != nil {
-				var saveStates = win.State & (HIDDEN | MAXIMIZED_HORZ | MAXIMIZED_VERT)
-				RemoveStates(dataConnection, win.Id, HIDDEN|MAXIMIZED_HORZ|MAXIMIZED_VERT)
-				var marginW, marginH = m.W / 10, m.H / 10
-				SetBounds(dataConnection, win.Id, m.X+int32(marginW), m.Y+int32(marginH), m.W-2*marginW, m.H-2*marginH)
-				AddStates(dataConnection, win.Id, saveStates)
-			}
-			respond.Accepted(w)
-		case "highlight":
-			repo.Lock()
-			highlighWindow(win.Id)
-			repo.Unlock()
-			respond.Accepted(w)
-		default:
-			respond.UnprocessableEntity(w, fmt.Errorf("Unknown action '%s'", requests.Action(r)))
-		}
-
-	} else if r.Method == "DELETE" {
-		dataConnection.CloseWindow(win.Id)
-		respond.Accepted(w)
-	} else {
-		respond.NotAllowed(w)
-	}
+func relevantForDesktopSearch(w *Window) bool {
+	return w.State&(x11.SKIP_TASKBAR|x11.SKIP_PAGER|x11.ABOVE) == 0
 }
 
 type ScreenShot uint32
@@ -152,13 +111,13 @@ func (ss ScreenShot) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func getScreenshot(wId uint32, downscale byte) ([]byte, error) {
-	return GetScreenshotAsPng(dataConnection, wId, downscale)
+	requestProxyMutex.Lock()
+	defer requestProxyMutex.Unlock()
+	return x11.GetScreenshotAsPng(requestProxy, wId, downscale)
 }
 
-var dataConnection = MakeDisplay()
-
-func GetIconName(c *Connection, wId uint32) (string, error) {
-	pixelArray, err := GetIcon(c, wId)
+func GetIconName(p x11.Proxy, wId uint32) (string, error) {
+	pixelArray, err := x11.GetIcon(p, wId)
 	if err != nil {
 		fmt.Println("Error converting x11 icon to pngs", err)
 		return "", err
@@ -169,11 +128,28 @@ func GetIconName(c *Connection, wId uint32) (string, error) {
 
 var noBounds = &Bounds{0, 0, 0, 0}
 
-func GetBounds(c *Connection, wId uint32) *Bounds {
+func GetBounds(wId uint32) *Bounds {
+	requestProxyMutex.Lock()
+	defer requestProxyMutex.Unlock()
 	// TODO Perhaps some caching
-	if x, y, w, h, err := dataConnection.GetGeometry(wId); err != nil {
+	if x, y, w, h, err := x11.GetGeometry(requestProxy, wId); err != nil {
 		return noBounds
 	} else {
 		return &Bounds{x, y, w, h}
 	}
+}
+
+type WindowStack []*Window
+
+// Implement sort.Interface
+func (ws WindowStack) Len() int {
+	return len(ws)
+}
+
+func (ws WindowStack) Less(i, j int) bool {
+	return ws[i].Stacking < ws[j].Stacking
+}
+
+func (ws WindowStack) Swap(i, j int) {
+	ws[i], ws[j] = ws[j], ws[i]
 }
