@@ -38,22 +38,21 @@ type Item struct {
 	AttentionAccessibleDesc string
 	Title                   string
 	ToolTip                 string
-	menuPath                dbus.ObjectPath
-	iconThemePath           string
-	useIconPixmap           bool
-	useAttentionIconPixmap  bool
-	useOverlayIconPixmap    bool
-	self                    string
+	MenuPath                dbus.ObjectPath
+	IconThemePath           string
+	UseIconPixmap           bool
+	UseAttentionIconPixmap  bool
+	UseOverlayIconPixmap    bool
 }
 
 func (item *Item) buildMenu() *Menu {
-	if item.menuPath == "" {
+	if item.MenuPath == "" {
 		return nil
 	} else {
-		var menu = Menu{sender: item.sender, menuPath: item.menuPath}
+		var menu = Menu{sender: item.sender, menuPath: item.MenuPath}
 		menu.Resource = respond.MakeResource(itemSelf(item.sender, item.itemPath)+"/menu", "", "", &menu, "itemmenu")
 		var err error
-		if menu.Entries, err = menuEntries(item.sender, item.menuPath); err != nil {
+		if menu.Entries, err = menuEntries(item.sender, item.MenuPath); err != nil {
 			return nil
 		}
 
@@ -62,7 +61,7 @@ func (item *Item) buildMenu() *Menu {
 			idAsInt, _ := strconv.Atoi(id)
 			data := dbus.MakeVariant("")
 			time := uint32(time.Now().Unix())
-			dbusObj := conn.Object(item.sender, item.menuPath)
+			dbusObj := conn.Object(item.sender, item.MenuPath)
 			return dbusObj.Call("com.canonical.dbusmenu.Event", dbus.Flags(0), idAsInt, "clicked", data, time).Err
 		}))
 

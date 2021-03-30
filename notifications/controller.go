@@ -162,7 +162,7 @@ func Notify(app_name string,
 	body string,
 	actions []string,
 	hints map[string]dbus.Variant,
-	expire_timeout int32 /*We ignore this, set our own expireries */) (uint32, *dbus.Error) {
+	expire_timeout int32 /*We may correct this */) (uint32, *dbus.Error) {
 
 	var id uint32
 	if replaces_id != 0 {
@@ -242,9 +242,13 @@ func Notify(app_name string,
 	}
 
 	if notification.Urgency == critical {
+		// Critical notifications do not time out, but must be dismissed
 		notification.Expires = time.Now().Add(24 * time.Hour)
 	} else {
-		notification.Expires = time.Now().Add(1 * time.Minute)
+		if expire_timeout <= 0 || expire_timeout > 60000 {
+			expire_timeout = 60000
+		}
+		notification.Expires = time.Now().Add(time.Duration(expire_timeout) * time.Millisecond)
 	}
 
 	incomingNotifications <- &notification

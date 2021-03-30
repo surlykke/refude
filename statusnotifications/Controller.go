@@ -158,38 +158,39 @@ func updateWatcherProperties() {
 }
 
 func buildItem(sender string, path dbus.ObjectPath) *Item {
-	var item = Item{self: itemSelf(sender, path), sender: sender, itemPath: path}
+	var self = itemSelf(sender, path)
+	var item = Item{sender: sender, itemPath: path}
 	var props = dbuscall.GetAllProps(conn, item.sender, item.itemPath, ITEM_INTERFACE)
 	item.Id = getStringOr(props["Id"])
 	item.Category = getStringOr(props["Category"])
-	if item.menuPath = getDbusPath(props["Menu"]); item.menuPath != "" {
-		item.Menu = item.self + "/menu"
+	if item.MenuPath = getDbusPath(props["Menu"]); item.MenuPath != "" {
+		item.Menu = self + "/menu"
 	}
 	item.Title = getStringOr(props["Title"])
 	item.Status = getStringOr(props["Status"])
 	item.ToolTip = getStringOr(props["ToolTip"])
 
-	if iconThemePath := getStringOr(props["IconThemePath"]); iconThemePath != "" {
-		icons.AddBasedir(iconThemePath)
+	if item.IconThemePath = getStringOr(props["IconThemePath"]); item.IconThemePath != "" {
+		icons.AddBasedir(item.IconThemePath)
 	}
 
-	if item.useIconPixmap = getStringOr(props["IconName"]) == ""; item.useIconPixmap {
+	if item.UseIconPixmap = getStringOr(props["IconName"]) == ""; item.UseIconPixmap {
 		item.IconName = collectPixMap(props["IconPixmap"])
 	} else {
 		item.IconName = getStringOr(props["IconName"])
 	}
 
-	if item.useAttentionIconPixmap = getStringOr(props["AttentionIconName"]) == ""; item.useAttentionIconPixmap {
+	if item.UseAttentionIconPixmap = getStringOr(props["AttentionIconName"]) == ""; item.UseAttentionIconPixmap {
 		item.AttentionIconName = collectPixMap(props["AttentionIconPixmap"])
 	} else {
 		item.AttentionIconName = getStringOr(props["AttentionIconName"])
 	}
 
-	item.useOverlayIconPixmap = getStringOr(props["OverlayIconName"]) == "" // TODO
+	item.UseOverlayIconPixmap = getStringOr(props["OverlayIconName"]) == "" // TODO
 
-	item.Resource = respond.MakeResource(itemSelf(item.sender, item.itemPath), item.Title, icons.IconUrl(item.IconName), &item, "statusnotificationitem")
+	item.Resource = respond.MakeResource(self, item.Title, icons.IconUrl(item.IconName), &item, "statusnotificationitem")
 
-	if item.menuPath != "" {
+	if item.MenuPath != "" {
 		item.AddLink(respond.MakeLink(itemSelf(item.sender, item.itemPath)+"/menu", item.Title+" menu", ""))
 	}
 	return &item
@@ -214,7 +215,7 @@ func updateStatus(item *Item) {
 }
 
 func updateIcon(item *Item) {
-	if item.useIconPixmap {
+	if item.UseIconPixmap {
 		if v, ok := getProp(item, "IconPixmap"); ok {
 			item.IconName = collectPixMap(v)
 		}
@@ -228,13 +229,13 @@ func updateIcon(item *Item) {
 
 func updateIconThemePath(item *Item) {
 	if v, ok := getProp(item, "IconThemePath"); ok {
-		item.iconThemePath = getStringOr(v)
-		icons.AddBasedir(item.iconThemePath)
+		item.IconThemePath = getStringOr(v)
+		icons.AddBasedir(item.IconThemePath)
 	}
 }
 
 func updateAttentionIcon(item *Item) {
-	if item.useAttentionIconPixmap {
+	if item.UseAttentionIconPixmap {
 		if v, ok := getProp(item, "AttentionIconPixmap"); ok {
 			item.AttentionIconName = collectPixMap(v)
 		}

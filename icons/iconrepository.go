@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net/url"
 	"os"
 	"path"
 	"path/filepath"
@@ -315,13 +316,25 @@ func noteDirAsAdded(basedir string) bool {
 }
 
 func IconUrl(name string) string {
-	if name == "" {
-		return ""
+	if strings.Index(name, "/") > -1 {
+		// So its a path..
+		if strings.HasPrefix(name, "file:///") {
+			name = name[7:]
+		} else if strings.HasPrefix(name, "file://") {
+			name = xdg.Home + "/" + name[7:]
+		} else if !strings.HasPrefix(name, "/") {
+			name = xdg.Home + "/" + name
+		}
+
+		// Maybe: Check that path points to iconfile..
+	}
+	if name != "" {
+		return "/icon?name=" + url.QueryEscape(name)
 	} else {
-		name = strings.Replace(name, " ", "%20", -1) // Micosoft Teams uses spaces in icon names...
-		return fmt.Sprintf("/icon/%s", name)
+		return ""
 	}
 }
+
 
 func dirExists(path string) bool {
 	var info, err = os.Stat(path)

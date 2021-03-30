@@ -7,8 +7,8 @@
 package parser
 
 import (
-	"testing"
 	"fmt"
+	"testing"
 )
 
 func TestReadTokens(t *testing.T) {

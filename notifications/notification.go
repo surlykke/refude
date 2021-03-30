@@ -12,7 +12,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/watch"
 )
@@ -67,48 +66,12 @@ func (snl SortableNotificationList) Swap(i int, j int) {
 
 const flashPath = "/notification/flash"
 
-type Flash struct {
-	respond.Resource
-	NotificationId uint32
-	Sender         string
-	Subject        string
-	Body           []string
-	Created        time.Time
-	Expires        time.Time
-}
-
-func MakeFlash(n *Notification) *Flash {
-	var f = &Flash{
-		NotificationId: n.Id,
-		Sender:         n.Sender,
-		Subject:        n.Subject,
-		Body:           []string{n.Body},
-		Created:        n.Created,
-		Expires:        n.Created.Add(time.Second * 6),
-	}
-	var icon = n.Self.Icon
-	if icon == "" {
-		icon = icons.IconUrl("dialog-info")
-	}
-	f.Resource = respond.MakeResource(flashPath, n.Subject, icon, f)
-	f.AddLink(n.GetRelatedLink(0))
-	return f
-}
-
-func (f *Flash) differentFrom(other *Flash) bool {
-	if f == nil {
-		return other != nil
-	} else {
-		return other == nil || f.NotificationId != other.NotificationId
-	}
-}
-
 // Notifiation collection
 
 var (
 	lock          sync.Mutex
 	notifications = make(map[uint32]*Notification)
-	flash         *Flash
+	flash         *Notification
 )
 
 func getCriticalNotifications() []*Notification {
@@ -135,17 +98,12 @@ func setNotification(n *Notification) {
 	fmt.Println("Setting notification:", string(respond.ToJson(n)))
 	if n.Urgency != critical {
 		// Only flash for nonCriticalNotifications, clients should look at /notifications/critical to see critical notifications
-		var newFlash = MakeFlash(n)
-		for _, n := range extractNotifications(1) {
-			if n.Sender == newFlash.Sender && n.Subject == newFlash.Subject {
-				newFlash.Body = append(newFlash.Body, n.Body)
-			}
-		}
-		_doJustAfter(n.Expires, removeExpired)
+
 		if flash == nil {
-			_doJustAfter(newFlash.Expires, removeFlash)
+			_doJustAfter(_flashExpires(n), removeFlash)
 		}
-		flash = newFlash
+		flash = n
+		_doJustAfter(n.Expires, removeExpired)
 	}
 	notifications[n.Id] = n
 
@@ -156,8 +114,7 @@ func setNotification(n *Notification) {
 func removeNotification(id uint32, reason uint32) {
 	lock.Lock()
 	defer lock.Unlock()
-	var ok = false
-	if _, ok = notifications[id]; ok {
+	if _, ok := notifications[id]; ok {
 		delete(notifications, id)
 		conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", id, reason)
 		watch.DesktopSearchMayHaveChanged()
@@ -185,18 +142,41 @@ func removeExpired() {
 func removeFlash() {
 	lock.Lock()
 	defer lock.Unlock()
-	if flash.Expires.Before(time.Now()) {
+	fmt.Println("Remove flash")
+	if flash == nil {
+		return
+	} else if _flashExpires(flash).Before(time.Now()) {
 		flash = nil
 		watch.SomethingChanged(flashPath)
 	} else {
-		_doJustAfter(flash.Expires, removeFlash)
+		_doJustAfter(_flashExpires(flash), removeFlash)
 	}
 }
 
-func getFlash() *Flash {
+func getCurrentNotification() *Notification {
+	lock.Lock()
+	defer lock.Unlock()
+	var notifications = extractNotifications(1)
+	if len(notifications) > 0 && notifications[0].Created.Add(6*time.Second).After(time.Now()) {
+		return notifications[0]
+	} else {
+		return nil
+	}
+}
+
+func getFlash() *Notification {
 	lock.Lock()
 	defer lock.Unlock()
 	return flash
+}
+
+func _flashExpires(n *Notification) time.Time {
+	var after6seconds = n.Created.Add(6 * time.Second)
+	if n.Expires.Before(after6seconds) {
+		return n.Expires
+	} else {
+		return after6seconds
+	}
 }
 
 func _doJustAfter(t time.Time, f func()) {

@@ -54,6 +54,11 @@ func BuildWindow(p x11.Proxy, wId uint32) *Window {
 	win.Stacking = -1
 	var href = fmt.Sprintf("/window/%d", win.Id)
 	win.Resource = respond.MakeResource(href, win.Name, icons.IconUrl(win.IconName), win, "window")
+	var closeAction = respond.MakeAction("", "Close window", "window-close", func(*http.Request) error {
+		x11.CloseWindow(requestProxy, win.Id)
+		return nil
+	})
+	win.Self.Options.DELETE = &closeAction
 	return win
 }
 

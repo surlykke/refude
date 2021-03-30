@@ -7,14 +7,14 @@
 package image
 
 import (
-	"image"
 	"bytes"
+	"errors"
+	"image"
+	"image/color"
 	"image/png"
 	"regexp"
 	"strconv"
 	"strings"
-	"image/color"
-	"errors"
 )
 
 var stringPattern = regexp.MustCompile("^[^\"]*(\".*\")[^\"]*$")
@@ -94,7 +94,7 @@ func Xpm2png(data []byte) ([]byte, error) {
 		return nil, err
 	} else if len(xpm) < 1+colors+heigth {
 		return nil, errors.New("Too short")
-	} else if colorMap, err := getColors(xpm[1:1 + colors], charsPrColor); err != nil {
+	} else if colorMap, err := getColors(xpm[1:1+colors], charsPrColor); err != nil {
 		return nil, err
 	} else {
 		var img = image.NewRGBA(image.Rect(0, 0, width, heigth))

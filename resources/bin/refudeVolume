@@ -30,5 +30,4 @@ else
 	pct="0"
 fi
 
-echo "notify-send Volume $pct -c x-org.refude.gauge.volume -i $icon_name"
-notify-send Volume $pct -c x-org.refude.gauge.volume -i $icon_name
+notify-send Volume $pct -t 2000 -c x-org.refude.gauge -i $icon_name

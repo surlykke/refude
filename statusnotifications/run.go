@@ -27,7 +27,7 @@ func Handler(r *http.Request) http.Handler {
 		if item := get(match[1]); item == nil {
 			return nil
 		} else if match[2] == "/menu" {
-			if item.menuPath == "" {
+			if item.MenuPath == "" {
 				return nil
 			} else {
 				return item.buildMenu()
