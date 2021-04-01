@@ -8,12 +8,12 @@ package icons
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 
+	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/slice"
 	"github.com/surlykke/RefudeServices/lib/xdg"
@@ -43,11 +43,11 @@ func readThemes() ThemeMap {
 
 	for _, basedir := range basedirs {
 		if indexFilePaths, err := filepath.Glob(basedir + "/*/index.theme"); err != nil {
-			log.Println("Could not look for index.theme files:", err)
+			log.Info("Could not look for index.theme files:", err)
 		} else {
 			for _, indexFilePath := range indexFilePaths {
 				if theme, ok := readTheme(indexFilePath); !ok {
-					log.Println("Could read", indexFilePath)
+					log.Warn("Could not read", indexFilePath)
 				} else if _, ok := themeMap[theme.Id]; !ok {
 					themeMap[theme.Id] = theme
 				}
@@ -62,17 +62,17 @@ func readTheme(indexThemeFilePath string) (*IconTheme, bool) {
 	var themeId = filepath.Base(filepath.Dir(indexThemeFilePath))
 
 	if themeId == "." || themeId == ".." || themeId == "/" {
-		log.Println("Could not figure theme id from path:", indexThemeFilePath)
+		log.Warn("Could not figure theme id from path:", indexThemeFilePath)
 	}
 
 	iniFile, err := xdg.ReadIniFile(indexThemeFilePath)
 	if err != nil {
-		log.Println("Error reading theme:", err)
+		log.Warn("Error reading theme:", err)
 		return nil, false
 	}
 
 	if len(iniFile) < 1 || iniFile[0].Name != "Icon Theme" {
-		log.Printf("Error reading %s , expected 'Icon Theme' at start", indexThemeFilePath)
+		log.Warn("Error reading %s , expected 'Icon Theme' at start", indexThemeFilePath)
 		return nil, false
 	}
 
@@ -87,7 +87,7 @@ func readTheme(indexThemeFilePath string) (*IconTheme, bool) {
 	theme.Dirs = make(map[string]IconDir)
 	directories := slice.Split(themeGroup.Entries["Directories"], ",")
 	if len(directories) == 0 {
-		log.Printf("Ignoring theme %s - no directories", theme.Id)
+		log.Warn("Ignoring theme %s - no directories", theme.Id)
 		return nil, false
 	}
 	for _, iniGroup := range iniFile[1:] {

@@ -145,10 +145,8 @@ func (res *Resource) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	} else if r.Method == "POST" && res.Self.Options.POST != nil {
 		var actionId = url.QueryEscape(requests.GetSingleQueryParameter(r, "actionId", ""))
-		fmt.Println("actionId:", actionId)
 		for _, actionLink := range res.Self.Options.POST {
 			if actionId == actionLink.ActionId {
-				fmt.Println("found")
 				runActor(w, r, actionLink.actor)
 				return
 			}

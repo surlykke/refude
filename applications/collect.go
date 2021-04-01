@@ -9,9 +9,7 @@ package applications
 import (
 	"encoding/xml"
 	"errors"
-	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -19,6 +17,7 @@ import (
 	"strings"
 
 	"github.com/surlykke/RefudeServices/icons"
+	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/slice"
 	"github.com/surlykke/RefudeServices/lib/xdg"
@@ -133,7 +132,7 @@ func CollectMimeTypes() map[string]*Mimetype {
 	for id, comment := range schemeHandlers {
 		var mimetype, err = MakeMimetype(id)
 		if err != nil {
-			fmt.Println("Problem making mimetype", id)
+			log.Warn("Problem making mimetype", id)
 		} else {
 			mimetype.Resource = respond.MakeResource(mimetype.path, comment, "", &mimetype, "mimetype")
 			mimetype.Comment = comment
@@ -177,16 +176,16 @@ func CollectMimeTypes() map[string]*Mimetype {
 
 	xmlInput, err := ioutil.ReadFile(freedesktopOrgXml)
 	if err != nil {
-		fmt.Println("Unable to open ", freedesktopOrgXml, ": ", err)
+		log.Warn("Unable to open ", freedesktopOrgXml, ": ", err)
 	}
 	parseErr := xml.Unmarshal(xmlInput, &xmlCollector)
 	if parseErr != nil {
-		fmt.Println("Error parsing: ", parseErr)
+		log.Warn("Error parsing: ", parseErr)
 	}
 
 	for _, tmp := range xmlCollector.MimeTypes {
 		if mimeType, err := MakeMimetype(tmp.Type); err != nil {
-			fmt.Println(err)
+			log.Warn(err)
 		} else {
 			var collectedLocales = make(map[string]bool)
 
@@ -266,7 +265,7 @@ func (c *collection) collectApplications(appdir string) {
 		var id = strings.Replace(path[len(appdir)+1:], "/", "-", -1)
 		app, mimetypes, err := readDesktopFile(path, id)
 		if err != nil {
-			log.Println("Error processing ", path, ":\n\t", err)
+			log.Warn("Error processing ", path, ":\n\t", err)
 			return nil
 		}
 
@@ -363,9 +362,9 @@ func readDesktopFile(path string, id string) (*DesktopApplication, []string, err
 
 		for _, actionGroup := range iniFile[1:] {
 			if !strings.HasPrefix(actionGroup.Name, "Desktop Action ") {
-				log.Print(path, ", ", "Unknown group type: ", actionGroup.Name, " - ignoring\n")
+				log.Warn(path, ", ", "Unknown group type: ", actionGroup.Name, " - ignoring\n")
 			} else if currentAction := actionGroup.Name[15:]; !slice.Contains(actionNames, currentAction) {
-				log.Print(path, ", undeclared action: ", currentAction, " - ignoring\n")
+				log.Warn(path, ", undeclared action: ", currentAction, " - ignoring\n")
 			} else {
 				var name = actionGroup.Entries["Name"]
 				if name == "" {
@@ -406,7 +405,7 @@ func makeActor(exec string, runInTerminal bool) func(*http.Request) error {
 func Icon2IconUrl(icon string) string {
 	if strings.HasPrefix(icon, "/") {
 		if name, err := icons.AddFileIcon(icon); err != nil {
-			log.Println("Error adding fileicon", err)
+			log.Warn("Error adding fileicon", err)
 			return ""
 		} else {
 			return icons.IconUrl(name)

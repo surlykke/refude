@@ -3,7 +3,6 @@ package icons
 import (
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/url"
 	"os"
 	"path"
@@ -13,6 +12,7 @@ import (
 	"sync"
 
 	"github.com/surlykke/RefudeServices/lib/image"
+	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
@@ -118,7 +118,7 @@ func addInheritedThemesToThemeList() {
 		for _, inheritedId := range themeList[i].Inherits {
 			if !themeIsAddedOrIsHicolor(inheritedId) {
 				if theme, ok := themeMap[inheritedId]; !ok {
-					log.Println("Don't have theme", inheritedId)
+					log.Info("Don't have theme", inheritedId)
 				} else {
 					themeList = append(themeList, theme)
 				}
@@ -146,7 +146,7 @@ func collectThemeIcons(it *IconTheme, basedir string) {
 					}
 				}
 			} else {
-				log.Println("Problem with search:", filePattern, err)
+				log.Warn("Problem with search:", filePattern, err)
 			}
 
 		}
@@ -166,7 +166,7 @@ func collecOtherIcons(basedir string) {
 			}
 		}
 	} else {
-		log.Println("Could not match", basedir+"/*", err)
+		log.Warn("Could not match", basedir+"/*", err)
 	}
 }
 
@@ -176,7 +176,7 @@ func collecOtherIcons(basedir string) {
  */
 func iconNameAndData(path string) (string, []byte, bool) {
 	if fileInfo, err := os.Stat(path); err != nil {
-		log.Println("Could not handle", path, err)
+		log.Warn("Could not handle", path, err)
 		return "", nil, false
 	} else if fileInfo.IsDir() {
 		return "", nil, false
@@ -212,13 +212,13 @@ func AddX11Icon(data []uint32) (string, error) {
 
 	if _, ok := hicolor.icons[iconName]; !ok {
 		if pngList, err := image.X11IconToPngs(data); err != nil {
-			log.Println("Error converting:", err)
+			log.Warn("Error converting:", err)
 			return "", err
 		} else {
 			icon := &Icon{Name: iconName, Theme: "Hicolor", Images: make([]IconImage, 0, len(pngList))}
 			for _, sizedPng := range pngList {
 				if sizedPng.Width != sizedPng.Height {
-					log.Println("Ignore image", sizedPng.Width, "x", sizedPng.Height, ", not square")
+					log.Warn("Ignore image", sizedPng.Width, "x", sizedPng.Height, ", not square")
 				} else {
 					icon.Images = append(icon.Images, IconImage{MinSize: sizedPng.Width, MaxSize: sizedPng.Width, Data: sizedPng.Data})
 				}
@@ -244,7 +244,7 @@ func AddARGBIcon(argbIcon image.ARGBIcon) string {
 		for _, pixMap := range argbIcon.Images {
 			if pixMap.Width == pixMap.Height { // else ignore
 				if png, err := pixMap.AsPng(); err != nil {
-					log.Println("Unable to convert image", err)
+					log.Warn("Unable to convert image", err)
 				} else {
 					icon.Images = append(icon.Images, IconImage{MinSize: pixMap.Width, MaxSize: pixMap.Width, Data: png})
 				}
@@ -285,7 +285,7 @@ func AddRawImageIcon(imageData image.ImageData) string {
 	defer lock.Unlock()
 	if _, ok := other[iconName]; !ok {
 		if png, err := imageData.AsPng(); err != nil {
-			fmt.Println("Error converting image", err)
+			log.Warn("Error converting image", err)
 			return ""
 		} else {
 			other[iconName] = IconImage{Data: png}
@@ -334,7 +334,6 @@ func IconUrl(name string) string {
 		return ""
 	}
 }
-
 
 func dirExists(path string) bool {
 	var info, err = os.Stat(path)

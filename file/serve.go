@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
@@ -76,14 +77,14 @@ func DesktopSearch(term string, baserank int) []respond.Link {
 		var result = make([]respond.Link, 0, 100)
 		for searchDirectory := range searchDirectories {
 			if dir, err := os.Open(searchDirectory); err != nil {
-				fmt.Println("Error opening", searchDirectory, err)
+				log.Warn("Error opening", searchDirectory, err)
 			} else if names, err := dir.Readdirnames(-1); err != nil {
-				fmt.Println("Error reading", searchDirectory, err)
+				log.Warn("Error reading", searchDirectory, err)
 			} else {
 				for _, name := range names {
 					if rank, ok := searchutils.Rank(name, term, baserank); ok {
 						if file, err := makeFile(searchDirectory + "/" + name); err != nil {
-							fmt.Println("Error making file:", err)
+							log.Warn("Error making file:", err)
 						} else if file != nil {
 							result = append(result, file.GetRelatedLink(rank))
 						}
@@ -101,7 +102,7 @@ func Recent(term string, baserank int) []respond.Link {
 	var result = make([]respond.Link, 0, len(paths))
 	for _, path := range paths {
 		if file, err := makeFile(path); err != nil {
-			fmt.Println("Error making file:", err)
+			log.Warn("Error making file:", err)
 		} else if file != nil {
 			if rank, ok := searchutils.Rank(file.Path, term, baserank); ok {
 				result = append(result, file.GetRelatedLink(rank))

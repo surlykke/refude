@@ -19,6 +19,7 @@ import (
 	"github.com/godbus/dbus/v5/introspect"
 	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/image"
+	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
@@ -233,7 +234,7 @@ func Notify(app_name string,
 					notification.Urgency = critical
 				}
 			} else {
-				fmt.Println("urgency hint not of type uint8, rather:", reflect.TypeOf(val.Value()))
+				log.Info("urgency hint not of type uint8, rather:", reflect.TypeOf(val.Value()))
 			}
 		}
 		if acceptableHintTypes[val.Signature().String()] {
@@ -259,7 +260,7 @@ func installRawImageIcon(hints map[string]dbus.Variant, key string) (string, boo
 	if v, ok := hints[key]; !ok {
 		return "", false
 	} else if imageData, err := getRawImage(v); err != nil {
-		fmt.Println("Error converting variant to image data:", err)
+		log.Warn("Error converting variant to image data:", err)
 		return "", true
 	} else {
 		return icons.AddRawImageIcon(imageData), true
@@ -300,7 +301,7 @@ func installFileIcon(hints map[string]dbus.Variant, key string) (string, bool) {
 	if v, ok := hints[key]; !ok {
 		return "", false
 	} else if path, ok := v.Value().(string); !ok {
-		fmt.Println("Value not a string")
+		log.Warn("Value not a string")
 		return "", true
 	} else {
 		iconName, err := icons.AddFileIcon(path)

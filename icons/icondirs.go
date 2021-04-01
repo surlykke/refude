@@ -8,11 +8,11 @@ package icons
 
 import (
 	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
 
 	"github.com/surlykke/RefudeServices/lib/image"
+	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
@@ -66,12 +66,12 @@ type convertibleToPng interface {
 
 func saveAsPng(dir string, name string, image convertibleToPng) {
 	if png, err := image.AsPng(); err != nil {
-		log.Println("Error converting image to png:", err)
+		log.Warn("Error converting image to png:", err)
 	} else {
 		if err = os.MkdirAll(dir, os.ModePerm); err != nil {
-			log.Println("Unable to create", dir, err)
+			log.Warn("Unable to create", dir, err)
 		} else if err = ioutil.WriteFile(dir+"/"+name+".png", png, 0700); err != nil {
-			log.Println("Unable to write file", err)
+			log.Warn("Unable to write file", err)
 		}
 	}
 

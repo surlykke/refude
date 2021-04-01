@@ -7,11 +7,11 @@
 package applications
 
 import (
-	"fmt"
 	"strings"
 	"sync/atomic"
 
 	"github.com/fsnotify/fsnotify"
+	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/slice"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
@@ -38,7 +38,7 @@ func Run() {
 				collectionStore.Store(Collect())
 			}
 		case err := <-watcher.Errors:
-			fmt.Println(err)
+			log.Warn(err)
 		}
 	}
 }
@@ -48,7 +48,7 @@ var watcher *fsnotify.Watcher
 func watchDir(dir string) {
 	if xdg.DirOrFileExists(dir) {
 		if err := watcher.Add(dir); err != nil {
-			fmt.Println("Could not watch:", dir, ":", err)
+			log.Warn("Could not watch:", dir, ":", err)
 		}
 	}
 }

@@ -8,7 +8,6 @@ package statusnotifications
 
 import (
 	"errors"
-	"fmt"
 	"regexp"
 	"strings"
 
@@ -18,6 +17,7 @@ import (
 	"github.com/godbus/dbus/v5/introspect"
 	"github.com/godbus/dbus/v5/prop"
 	dbuscall "github.com/surlykke/RefudeServices/lib/dbusutils"
+	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/respond"
 )
 
@@ -65,7 +65,7 @@ func monitorSignals() {
 		} else if strings.HasPrefix(signal.Name, "org.kde.StatusNotifierItem.New") {
 			events <- Event{signal.Name, signal.Sender, signal.Path}
 		} else {
-			fmt.Println("Ignoring signal", signal.Name, "from", signal.Sender, signal.Path)
+			log.Info("Ignoring signal", signal.Name, "from", signal.Sender, signal.Path)
 		}
 	}
 }
@@ -104,7 +104,7 @@ func getOnTheBus() {
 		map[string]interface{}{
 			"RegisterStatusNotifierItem": addItem,
 			"UnregisterStatusNotifierItem": func(s string, sender dbus.Sender) {
-				fmt.Println("Got UnregisterStatusNotifierItem:", s, ",", sender)
+				log.Info("Got UnregisterStatusNotifierItem:", s, ",", sender)
 			}, // We dont care, see monitorItem
 		},
 		WATCHER_PATH,

@@ -93,9 +93,10 @@ import (
 	"image"
 	"image/color"
 	"image/png"
-	"log"
 	"time"
 	"unsafe"
+
+	"github.com/surlykke/RefudeServices/lib/log"
 )
 
 type MonitorData struct {
@@ -229,7 +230,7 @@ func NextEvent(p Proxy) (Event, uint32) {
 	var event C.XEvent
 	for {
 		if err := CheckError(C.XNextEvent(p.disp, &event)); err != nil {
-			log.Println("Error retrieving event from X11:", err)
+			log.Warn("Error retrieving event from X11:", err)
 			time.Sleep(100 * time.Millisecond) // To avoid spamming
 		} else if C.getType(&event) == C.PropertyNotify {
 			var xproperty = C.xproperty(&event)
@@ -309,7 +310,7 @@ func SetOpaque(p Proxy, wId uint32) {
 
 func GetStack(p Proxy) []uint32 {
 	if tmp, err := getUint32s(p.disp, p.rootWindow, _NET_CLIENT_LIST_STACKING); err != nil {
-		fmt.Println("Error getting stack:", err)
+		log.Warn("Unable to get stack:", err)
 		return []uint32{}
 	} else {
 		for i := 0; i < len(tmp)/2; i++ {

@@ -7,7 +7,6 @@
 package notifications
 
 import (
-	"fmt"
 	"sort"
 	"sync"
 	"time"
@@ -95,7 +94,6 @@ func getNotification(id uint32) *Notification {
 func setNotification(n *Notification) {
 	lock.Lock()
 	defer lock.Unlock()
-	fmt.Println("Setting notification:", string(respond.ToJson(n)))
 	if n.Urgency != critical {
 		// Only flash for nonCriticalNotifications, clients should look at /notifications/critical to see critical notifications
 
@@ -142,7 +140,6 @@ func removeExpired() {
 func removeFlash() {
 	lock.Lock()
 	defer lock.Unlock()
-	fmt.Println("Remove flash")
 	if flash == nil {
 		return
 	} else if _flashExpires(flash).Before(time.Now()) {

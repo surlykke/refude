@@ -7,14 +7,13 @@
 package power
 
 import (
-	"fmt"
-	"log"
 	"sort"
 	"sync"
 
 	"github.com/godbus/dbus/v5"
 	"github.com/surlykke/RefudeServices/watch"
 
+	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/respond"
 )
 
@@ -36,7 +35,6 @@ func Run() {
 
 	setDevice(retrieveDevice(DisplayDevicePath))
 	for _, dbusPath := range retrieveDevicePaths() {
-		fmt.Println("Adding device", dbusPath)
 		setDevice(retrieveDevice(dbusPath))
 		knownPaths[dbusPath] = true
 	}
@@ -48,16 +46,14 @@ func Run() {
 			}
 		} else if signal.Name == "org.freedesktop.UPower.DeviceAdded" {
 			if path, ok := getAddedRemovedPath(signal); ok {
-				fmt.Println("Adding device", path)
 				setDevice(retrieveDevice(path))
 			}
 		} else if signal.Name == "org.freedesktop.UPower.DeviceRemoved" {
 			if path, ok := signal.Body[0].(dbus.ObjectPath); ok {
-				fmt.Println("Removing device", path)
 				removeDevice(path)
 			}
 		} else {
-			log.Println("Warn: Update on unknown device: ", signal.Path)
+			log.Warn("Update on unknown device: ", signal.Path)
 		}
 	}
 

@@ -9,7 +9,6 @@ package statusnotifications
 import (
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"reflect"
 	"strconv"
@@ -19,6 +18,7 @@ import (
 	"github.com/godbus/dbus/v5"
 	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/image"
+	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/slice"
@@ -179,7 +179,7 @@ func parseMenu(value []interface{}) (MenuEntry, error) {
 			}
 		}
 	} else if childrenDisplay != "" {
-		log.Println("warning: ignoring unknown children-display type:", childrenDisplay)
+		log.Warn("Ignoring unknown children-display type:", childrenDisplay)
 	}
 
 	return menuItem, nil

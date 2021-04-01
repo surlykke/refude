@@ -8,12 +8,12 @@ package lib
 
 import (
 	"context"
-	"fmt"
-	"log"
 	"net"
 	"net/http"
+	"os"
 	"syscall"
 
+	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
@@ -39,7 +39,8 @@ func makeListener(socketName string) (*net.UnixListener, bool) {
 	socketPath := xdg.RuntimeDir + "/" + socketName
 
 	if seemsToBeRunning(socketPath) {
-		log.Fatal("Application seems to be running. Let's leave it at that")
+		log.Info("Application seems to be running. Let's leave it at that")
+		os.Exit(0)
 	}
 
 	_ = syscall.Unlink(socketPath)
@@ -49,7 +50,7 @@ func makeListener(socketName string) (*net.UnixListener, bool) {
 		Net:  "unix",
 	})
 	if err != nil {
-		fmt.Println(err)
+		log.Warn(err)
 		return nil, false
 	} else {
 		return listener, true
@@ -58,10 +59,10 @@ func makeListener(socketName string) (*net.UnixListener, bool) {
 
 func Serve(socketName string, handler http.Handler) {
 	if seemsToBeRunning(socketName) {
-		fmt.Println("Something is already running on", socketName)
+		log.Info("Something is already running on", socketName)
 	} else if listener, ok := makeListener(socketName); ok {
 		http.Serve(listener, handler)
 	} else {
-		fmt.Println("Unable to listen on", socketName)
+		log.Warn("Unable to listen on", socketName)
 	}
 }

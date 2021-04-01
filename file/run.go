@@ -1,7 +1,6 @@
 package file
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -9,6 +8,7 @@ import (
 	"github.com/fsnotify/fsnotify"
 	"github.com/godbus/dbus/v5"
 	"github.com/rakyll/magicmime"
+	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 	"github.com/surlykke/RefudeServices/notifications"
 )
@@ -21,7 +21,7 @@ func init() {
 
 func Run() {
 	if watcher, err := fsnotify.NewWatcher(); err != nil {
-		fmt.Println(err)
+		log.Warn(err)
 	} else {
 		watcher.Add(xdg.DownloadDir)
 		for ev := range watcher.Events {
@@ -58,7 +58,7 @@ func worthyOfAttention(path string) bool {
 
 		return false
 	} else if fileInfo, err := os.Stat(path); err != nil {
-		fmt.Println("Error stat'ing", path, err)
+		log.Warn("Error stat'ing", path, err)
 		return false
 	} else if fileInfo.Size() == 0 {
 		return false

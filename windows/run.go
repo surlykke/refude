@@ -163,7 +163,6 @@ func updateWindowList(p x11.Proxy) bool {
 		if window, ok = repo.windows[wId]; ok {
 			window = window.copy()
 		} else {
-			fmt.Println("New window")
 			window = BuildWindow(p, wId)
 			updateLinks(window, repo.desktopLayout)
 			x11.SubscribeToWindowEvents(p, wId)
@@ -378,7 +377,6 @@ func highlighWindow(wId uint32) {
 	defer requestProxyMutex.Unlock()
 	defer repo.Unlock()
 
-	fmt.Println("Attempt to highligt", wId)
 	if repo.highlightedWindowId == 0 {
 		repo.highlightDeadline = time.Now().Add(highlightTimeout)
 		scheduleUnhighlight(repo.highlightDeadline)
@@ -395,7 +393,6 @@ func highlighWindow(wId uint32) {
 	x11.SetOpaque(requestProxy, wId)
 	x11.RaiseWindow(requestProxy, wId)
 	repo.highlightedWindowId = wId
-	fmt.Println("Highlighting done")
 }
 
 func unHighligt() {

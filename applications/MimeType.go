@@ -7,7 +7,6 @@
 package applications
 
 import (
-	"fmt"
 	"os"
 	"regexp"
 	"strings"
@@ -65,7 +64,6 @@ func SetDefaultApp(mimetypeId string, appId string) error {
 		}
 	}
 	path := xdg.ConfigHome + "/mimeapps.list"
-	fmt.Println("reading", path)
 	if iniFile, err := xdg.ReadIniFile(path); err != nil && !os.IsNotExist(err) {
 		return err
 	} else {
@@ -79,7 +77,6 @@ func SetDefaultApp(mimetypeId string, appId string) error {
 		defaultApps = slice.PushFront(appId, slice.Remove(defaultApps, appId))
 		defaultAppsS = strings.Join(defaultApps, ";")
 		defaultGroup.Entries[mimetypeId] = defaultAppsS
-		fmt.Println("Write", path)
 		if err = xdg.WriteIniFile(path, iniFile); err != nil {
 			return err
 		}

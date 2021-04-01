@@ -12,6 +12,7 @@ import (
 	"net/url"
 
 	"github.com/surlykke/RefudeServices/icons"
+	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/windows/x11"
@@ -124,7 +125,7 @@ func getScreenshot(wId uint32, downscale byte) ([]byte, error) {
 func GetIconName(p x11.Proxy, wId uint32) (string, error) {
 	pixelArray, err := x11.GetIcon(p, wId)
 	if err != nil {
-		fmt.Println("Error converting x11 icon to pngs", err)
+		log.Warn("Error converting x11 icon to pngs", err)
 		return "", err
 	} else {
 		return icons.AddX11Icon(pixelArray)

@@ -7,7 +7,6 @@
 package main
 
 import (
-	"log"
 	"net/http"
 	"strings"
 
@@ -15,6 +14,7 @@ import (
 	"github.com/surlykke/RefudeServices/doc"
 	"github.com/surlykke/RefudeServices/file"
 	"github.com/surlykke/RefudeServices/icons"
+	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/notifications"
 	"github.com/surlykke/RefudeServices/power"
@@ -72,7 +72,7 @@ func main() {
 	go file.Run()
 
 	go func() {
-		log.Println(http.ListenAndServe("localhost:7939", nil))
+		log.Info(http.ListenAndServe("localhost:7939", nil))
 	}()
 
 	go lib.Serve("org.refude.desktop-service", http.HandlerFunc(ServeHTTP))
