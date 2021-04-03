@@ -11,7 +11,16 @@ let panelWindow
 let server
 
 let createPanel = () => {
-    panelWindow = new BrowserWindow({ show: false, frame: false, alwaysOnTop: true, webPreferences: { nodeIntegration: true, enableRemoteModule: true } })
+    panelWindow = new BrowserWindow({ 
+		show: false, 
+		frame: false, 
+		alwaysOnTop: true, 
+		webPreferences: { 
+			nodeIntegration: true, 
+			contextIsolation: false,
+			enableRemoteModule: true 
+		} 
+	})
 
     panelWindow.loadURL(url.format({
         pathname: path.join(__dirname, '/panel/panel.html'),
