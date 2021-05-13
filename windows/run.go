@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"math"
 	"net/http"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -236,7 +235,7 @@ func updateDesktopLayout(p x11.Proxy) {
 // this
 var requestProxy = x11.MakeProxy()
 
-// - and is synchronized through this
+// - and uses this for synchronization
 var requestProxyMutex sync.Mutex
 
 func DesktopLayoutHandler(r *http.Request) http.Handler {
@@ -245,22 +244,12 @@ func DesktopLayoutHandler(r *http.Request) http.Handler {
 	return repo.desktopLayout
 }
 
-var windowPath = regexp.MustCompile("^/window/(\\d+)(/screenshot)?$")
-
 func WindowHandler(r *http.Request) http.Handler {
 	if r.URL.Path == "/window/unhighlight" {
 		return Unhighligher{}
-	} else if matches := windowPath.FindStringSubmatch(r.URL.Path); matches == nil {
-		return nil
-	} else if val, err := strconv.ParseUint(matches[1], 10, 32); err != nil {
-		return nil
-	} else {
-		var id = uint32(val)
-		var screenShot = matches[2] != ""
-		if win, ok := repo.getWindow(id); ok {
-			if screenShot {
-				return ScreenShot(id)
-			} else {
+	} else if strings.HasPrefix(r.URL.Path, "/window/") {
+		if val, err := strconv.ParseUint(r.URL.Path[8:], 10, 32); err == nil {
+			if win, ok := repo.getWindow(uint32(val)); ok {
 				return win
 			}
 		}
@@ -296,10 +285,9 @@ func DesktopSearch(term string, baserank int) []respond.Link {
 
 func AllPaths() []string {
 	var windowList = repo.getWindows()
-	var paths = make([]string, 0, 2*len(windowList)+3)
+	var paths = make([]string, 0, len(windowList)+3)
 	for _, window := range windowList {
 		paths = append(paths, fmt.Sprintf("/window/%d", window.Id))
-		paths = append(paths, fmt.Sprintf("/window/%d/screenshot", window.Id))
 	}
 	paths = append(paths, "/windows")
 	paths = append(paths, "/monitors")
