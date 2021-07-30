@@ -19,10 +19,9 @@ import { Battery } from './battery'
 import { NotifierItem } from './notifieritems'
 import { CloseButton } from "./closebutton";
 import { MinimizeButton } from "./minimizebutton";
-import { Flash} from "../flash/Flash"
-import { Resource, move } from "../resource/Resource"
-import { getUrl, addParam } from '../common/monitor'
-import { makeResourceController } from '../resource/ResourceController'
+import { Flash} from "./Flash"
+import { Resource, Term, Links} from "./Resource"
+import { getUrl, addParam, postUrl, deleteUrl } from '../common/monitor'
 import './Refude.css'
 import '../common/common.css'
 
@@ -39,7 +38,7 @@ export default class Panel extends React.Component {
                 this.resourceUrl = "/search/desktop"
                 this.getResource()
             } else if (document.hasFocus()) {
-                move(up)
+                this.move(up)
             }
         })
         this.watchSse()
@@ -92,14 +91,16 @@ export default class Panel extends React.Component {
             }
         }).observe(this.content.current)
 
-        document.addEventListener("keydown", this.resourceController.onKeyDown)
-    };
+        document.addEventListener("keydown", this.onKeyDown)
+     };
 
     getResource = () => {
+        console.log("resource:", this.resourceUrl)
         let resourceUrl = this.resourceUrl
         if (resourceUrl) {
+            console.log("Getting ", resourceUrl)
             getUrl(addParam(resourceUrl, "term", this.state.term), ({ data }) => {
-                if (resourceUrl === this.resourceUrl) {  // may have change while request in flight
+                if (resourceUrl === this.resourceUrl) {  // may have changed while request in flight
                     this.setState({ resource: data })
                 }
             })
@@ -115,7 +116,7 @@ export default class Panel extends React.Component {
 
     getItemLinks = () => {
         getUrl("/items",
-            ({data}) => this.setState({itemLinks: data._related}),
+            ({data}) => this.setState({itemLinks: data._links.filter(l => l.rel == "related")}),
             () => this.setState({ itemLinks: [] })
         )
     }
@@ -129,32 +130,103 @@ export default class Panel extends React.Component {
     }
 
 
+    select = link => {
+        this.currentLink = link
+    }
+    
+    activate = (link, dismiss) => {
+        let dismissIf = () => dismiss && this.dismiss()
+        if (link.rel === "org.refude.defaultaction" || link.rel === "org.refude.action") {
+            postUrl(link.href, dismissIf)
+        } else if (link.rel === "org.refude.delete") {
+            deleteUrl(link.href, dismissIf)
+        } else if (link.rel === "related") {
+            getUrl(link.href, ({data}) => {
+                if (data && data._links) {
+                    let dfAct = data._links.find(l => l.rel === "org.refude.defaultaction") 
+                    if (dfAct) {
+                        postUrl(dfAct.href, dismissIf)
+                    }
+                }
+            })
+        }
+        console.log(link)
+    }
+
+    delete = (link, dismiss) => {
+        console.log("delete, link:", link)
+        let doAfter = () => dismiss && this.dismiss()
+        if (link.rel === "related") {
+            getUrl(link.href, ({data}) => {
+                if (data && data._links) {
+                    console.log("Got resource", data)
+                    let deleteLink = data._links.find(l => l.rel === "org.refude.delete") 
+                    console.log("deleteLink:", deleteLink)
+                    if (deleteLink) {
+                        deleteUrl(deleteLink.href, doAfter)
+                    }
+                }
+            })
+        }
+    }
+
     dismiss = () => {
+        console.log("dismissing...")
         this.resourceUrl = undefined
         this.setState({ resource: undefined, term: "" })
     }
 
-    navigateTo = link => {
+    navigateTo = href => {
         this.history.unshift([this.resourceUrl, this.state.term])
-        this.resourceUrl = link.href
+        this.resourceUrl = href
         this.setState({ term: "" }, this.getResource)
     }
 
     navigateBack = () => {
         let term
         [this.resourceUrl, term] = this.history.shift() || []
+        console.log("back to:", this.resourceUrl)
         this.setState({ term: term }, () => this.resourceUrl ? this.getResource() : this.dismiss())
     }
 
-    handleKey = key => {
-        if (key === "Backspace") {
+    onKeyDown = (event) => {
+        let { key, keyCode, ctrlKey, altKey, shiftKey, metaKey } = event;
+        /*if (key === "i" && ctrlKey && shiftKey) {
+            ipcRenderer.send("devtools")
+        } else*/ if (key === "ArrowRight" || key === "l" && ctrlKey) {
+            console.log("currentLink:", this.currentLink)
+            this.currentLink.rel === "related" && this.navigateTo(this.currentLink.href)
+        } else if(key === "ArrowLeft" || key === "h" && ctrlKey) { 
+            this.navigateBack()
+        } else if (key === "ArrowUp" || key === "k" && ctrlKey) {
+            this.move(true)
+        } else if (key === "ArrowDown" || key === "j" && ctrlKey) {
+            this.move()
+        } else if (key === "Enter") {
+            this.activate(this.currentLink, !ctrlKey)
+        } else if (key === "Delete") {
+            this.delete(this.currentLink, !ctrlKey)
+        } else if (key === "Escape") {
+            this.dismiss()
+        } else if (keyCode === 8) {
             this.setState({ term: this.state.term.slice(0, -1) }, this.getResource)
-        } else if (key.length === 1) {
+        } else if (key.length === 1 && !ctrlKey && !altKey && !metaKey) {
             this.setState({ term: this.state.term + key }, this.getResource)
+        } else {
+            return
         }
+        event.preventDefault();
     }
 
-    resourceController = makeResourceController(this.navigateTo, this.navigateBack, this.dismiss, this.handleKey)
+    move = up => {
+        let items = document.getElementsByClassName("item")
+        let idx = Array.from(items).indexOf(document.activeElement)
+        if (idx > -1) {
+            up ? 
+                items[(idx + items.length - 1) % items.length].focus() :
+                items[(idx + 1) % items.length].focus()
+        }
+    } 
 
     render = () => {
         let { itemLinks, displayDevice, flash, resource, term } = this.state
@@ -167,8 +239,13 @@ export default class Panel extends React.Component {
                 <MinimizeButton />
                 <CloseButton />
             </div>
-            <Flash flash={!resource && flash}/> 
-            <Resource resource={resource} controller={this.resourceController} term={term} />
+            { !resource && flash && <Flash flash={flash}/> }
+            { resource && <>
+                <Resource resource={resource}/>
+                <Term term={term}/>
+                <Links links={resource._links.filter(l => "self" !== l.rel)} activate={this.activate} select={this.select}/>
+              </>
+            }
         </div>
     }
 }

@@ -46,6 +46,8 @@ let createPanel = () => {
             panelWindow.send("show", req.url === "/up")
             panelWindow.focus()
         }).listen("/run/user/1000/org.refude.panel.do");
+            
+        //panelWindow.webContents.openDevTools()
 
     })
 
