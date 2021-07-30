@@ -45,14 +45,14 @@ func Run() {
 		case x11.WindowTitle:
 			if w, ok := repo.getWindowCopy(wId); ok {
 				w.Name, _ = x11.GetName(proxy, wId)
-				w.Self.Title = w.Name
+				w.UpdateTitle(w.Name)
 				repo.setWindow(w)
 				change = relevantForDesktopSearch(w)
 			}
 		case x11.WindowIconName:
 			if w, ok := repo.getWindowCopy(wId); ok {
 				w.IconName, _ = GetIconName(proxy, wId)
-				w.Self.Icon = icons.IconUrl(w.IconName)
+				w.UpdateIcon(icons.IconUrl(w.IconName))
 				repo.setWindow(w)
 				change = relevantForDesktopSearch(w)
 			}
@@ -62,9 +62,9 @@ func Run() {
 				w.State = x11.GetStates(proxy, wId)
 				updateLinks(w, desktopLayout)
 				if w.State&x11.HIDDEN > 0 {
-					w.Self.Traits = []string{"window", "minimized"}
+					w.UpdateTraits("window", "minimized")
 				} else {
-					w.Self.Traits = []string{"window"}
+					w.UpdateTraits("window")
 				}
 				repo.setWindow(w)
 				change = relevantForDesktopSearch(w)
@@ -193,7 +193,7 @@ func updateDesktopLayout(p x11.Proxy) {
 	var layout = &DesktopLayout{
 		Monitors: monitors,
 	}
-	layout.Resource = respond.MakeResource("/desktoplayout", "DesktopLayout", "", &layout, "desktoplayout")
+	layout.Resource = respond.MakeResource("/desktoplayout", "DesktopLayout", "", "desktoplayout")
 
 	var minX, minY = int32(math.MaxInt32), int32(math.MaxInt32)
 	var maxX, maxY = int32(math.MinInt32), int32(math.MinInt32)
@@ -238,15 +238,12 @@ var requestProxy = x11.MakeProxy()
 // - and uses this for synchronization
 var requestProxyMutex sync.Mutex
 
-func DesktopLayoutHandler(r *http.Request) http.Handler {
-	repo.Lock()
-	defer repo.Unlock()
-	return repo.desktopLayout
-}
-
-func WindowHandler(r *http.Request) http.Handler {
-	if r.URL.Path == "/window/unhighlight" {
-		return Unhighligher{}
+func GetJsonResource(r *http.Request) respond.JsonResource {
+	if r.URL.Path == "/desktoplayout" {
+		repo.Lock()
+		var dl = repo.desktopLayout
+		repo.Unlock()
+		return dl
 	} else if strings.HasPrefix(r.URL.Path, "/window/") {
 		if val, err := strconv.ParseUint(r.URL.Path[8:], 10, 32); err == nil {
 			if win, ok := repo.getWindow(uint32(val)); ok {
@@ -268,31 +265,13 @@ func (u Unhighligher) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func DesktopSearch(term string, baserank int) []respond.Link {
+func Crawl(term string, forDisplay bool, crawler searchutils.Crawler) {
 	var windowList = repo.getWindows()
-	sort.Sort(WindowStack(windowList))
-	var links = make([]respond.Link, 0, len(windowList))
 	for _, win := range windowList {
-		if relevantForDesktopSearch(win) {
-			if rank, ok := searchutils.Rank(strings.ToLower(win.Name), term, baserank); ok {
-				links = append(links, win.GetRelatedLink(rank))
-			}
+		if !forDisplay || relevantForDesktopSearch(win) {
+			crawler(&win.Resource, nil)
 		}
 	}
-
-	return links
-}
-
-func AllPaths() []string {
-	var windowList = repo.getWindows()
-	var paths = make([]string, 0, len(windowList)+3)
-	for _, window := range windowList {
-		paths = append(paths, fmt.Sprintf("/window/%d", window.Id))
-	}
-	paths = append(paths, "/windows")
-	paths = append(paths, "/monitors")
-	paths = append(paths, "/desktoplayout")
-	return paths
 }
 
 func MakeRaiser(wId uint32) func(*http.Request) error {

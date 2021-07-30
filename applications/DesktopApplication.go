@@ -8,10 +8,12 @@ package applications
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"regexp"
 	"strings"
 
+	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/respond"
 
 	"github.com/surlykke/RefudeServices/lib/xdg"
@@ -61,14 +63,28 @@ func (da *DesktopAction) Run(arg string) error {
 	return run(da.Exec, arg, false)
 }
 
-func (d *DesktopApplication) action(id string) (DesktopAction, bool) {
-	for _, a := range d.DesktopActions {
-		if a.id == id {
-			return a, true
+func (d *DesktopApplication) DoPost(w http.ResponseWriter, r *http.Request) {
+	var exec string
+	var terminal bool
+	var action = requests.GetSingleQueryParameter(r, "action", "")
+	if action == "" {
+		exec, terminal = d.Exec, d.Terminal
+	} else {
+		for _, da := range d.DesktopActions {
+			if action == da.id {
+				exec = da.Exec
+			}
 		}
 	}
-
-	return DesktopAction{}, false
+	if exec != "" {
+		if err := run(exec, "", terminal); err != nil {
+			respond.ServerError(w, err)
+		} else {
+			respond.Accepted(w)
+		}
+	} else {
+		respond.NotFound(w)
+	}
 }
 
 func OpenFile(path string, mimetypeId string) error {
@@ -105,7 +121,7 @@ func run(exec string, arg string, inTerminal bool) error {
 	if inTerminal {
 		var terminal, ok = os.LookupEnv("TERMINAL")
 		if !ok {
-			return fmt.Errorf("Trying to run %s in terminal, but env variable TERMINAL not set", exec)
+			return fmt.Errorf("trying to run %s in terminal, but env variable TERMINAL not set", exec)
 		}
 		argv = append([]string{terminal, "-e"}, argv...)
 	}

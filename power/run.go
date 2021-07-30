@@ -7,7 +7,6 @@
 package power
 
 import (
-	"sort"
 	"sync"
 
 	"github.com/godbus/dbus/v5"
@@ -22,10 +21,10 @@ func Collect() []respond.Link {
 	defer deviceLock.Unlock()
 	var links = make([]respond.Link, 0, len(devices))
 	for _, device := range devices {
-		links = append(links, device.GetRelatedLink(0))
+		links = append(links, device.GetRelatedLink())
 	}
 
-	sort.Sort(respond.LinkList(links))
+	//sort.Sort(respond.LinkList(links))
 	return links
 }
 
@@ -80,9 +79,9 @@ func getDevice(path string) *Device {
 
 func setDevice(device *Device) {
 	deviceLock.Lock()
-	devices[device.Self.Href] = device
+	devices[device.Self().Href] = device
 	deviceLock.Unlock()
-	watch.SomethingChanged(device.Self.Href)
+	watch.SomethingChanged(device.Self().Href)
 }
 
 func removeDevice(path dbus.ObjectPath) {

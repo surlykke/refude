@@ -7,7 +7,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/searchutils"
 )
 
-func Handler(r *http.Request) http.Handler {
+func GetJsonResource(r *http.Request) respond.JsonResource {
 	if device := getDevice(r.URL.Path); device != nil {
 		return device
 	} else {
@@ -15,28 +15,10 @@ func Handler(r *http.Request) http.Handler {
 	}
 }
 
-func DesktopSearch(term string, baserank int) []respond.Link {
+func Crawl(term string, forDisplay bool, crawler searchutils.Crawler) {
 	deviceLock.Lock()
 	defer deviceLock.Unlock()
-	var links = make([]respond.Link, 0, len(devices))
 	for _, device := range devices {
-		if deviceSelf(device.DbusPath) != "/device/DisplayDevice" && device.Type != "Line Power" {
-			if rank, ok := searchutils.Rank(device.Self.Title, term, baserank); ok {
-				links = append(links, device.GetRelatedLink(rank))
-			}
-		}
+		crawler(&device.Resource, nil)
 	}
-
-	return links
-}
-
-func AllPaths() []string {
-	deviceLock.Lock()
-	defer deviceLock.Unlock()
-	var paths = make([]string, 0, len(devices)+1)
-	for path := range devices {
-		paths = append(paths, path)
-	}
-	paths = append(paths, "/devices")
-	return paths
 }

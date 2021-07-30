@@ -62,14 +62,6 @@ func write(conn net.Conn, msg string) bool {
 	return err == nil
 }
 
-func Handler(r *http.Request) http.Handler {
-	if r.URL.Path == "/watch" {
-		return http.HandlerFunc(ServeHTTP)
-	} else {
-		return nil
-	}
-}
-
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
 		respond.NotAllowed(w)

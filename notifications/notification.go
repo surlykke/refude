@@ -7,10 +7,12 @@
 package notifications
 
 import (
+	"net/http"
 	"sort"
 	"sync"
 	"time"
 
+	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/watch"
 )
@@ -43,10 +45,31 @@ func (n *Notification) haveDefaultAction() bool {
 }
 
 func (n *Notification) copy() *Notification {
-	var res = &Notification{}
-	*res = *n
-	res.Owner = res
-	return res
+	var result = &Notification{}
+	*result = *n
+	return result
+}
+
+func (n *Notification) DoPost(w http.ResponseWriter, r *http.Request) {
+	var action = requests.GetSingleQueryParameter(r, "action", "default")
+	if _, ok := n.Actions[action]; ok {
+		if err := conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".ActionInvoked", n.Id, action); err != nil {
+			respond.ServerError(w, err)
+		} else {
+			respond.Accepted(w)
+		}
+	} else {
+		respond.NotFound(w)
+	}
+}
+
+func (n *Notification) DoDelete(w http.ResponseWriter, r *http.Request) {
+	removals <- removal{n.Id, Dismissed}
+	respond.Accepted(w)
+}
+
+func (n *Notification) forDisplay() bool {
+	return len(n.Actions) > 0
 }
 
 type SortableNotificationList []*Notification

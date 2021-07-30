@@ -11,7 +11,6 @@ import (
 	"math"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/surlykke/RefudeServices/lib/respond"
 )
@@ -83,24 +82,4 @@ func (ii IconImage) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	} else {
 		http.ServeFile(w, r, ii.Path)
 	}
-}
-
-/**
- * By the icon naming specification, dash ('-') seperates 'levels of specificity'. So given an icon name
- * 'input-mouse-usb', the levels of spcicificy, and the names and order we search will be: 'input-mouse-usb',
- * 'input-mouse' and 'input'
- */
-func dashSplit(names []string) []string {
-	var res = make([]string, 0, len(names)*2)
-	for _, name := range names {
-		for {
-			res = append(res, name)
-			if pos := strings.LastIndex(name, "-"); pos > 0 {
-				name = name[0:pos]
-			} else {
-				break
-			}
-		}
-	}
-	return res
 }

@@ -1,30 +1,18 @@
 package searchutils
 
-import (
-	"strings"
-)
+import "github.com/surlykke/RefudeServices/lib/respond"
 
-// case sensitive
-func Rank(text, term string, baserank int) (int, bool) {
-	text = strings.ToLower(text)
-	if i := strings.Index(text, term); i > -1 {
-		return baserank + i, true
-	} else {
-		return 0, false
-	}
-}
-
-// Kindof 'has Substring with skips'. So eg. 'nvim' matches 'neovim' or 'pwr' matches 'poweroff'
-// case sensitive
-func FluffyRank(text, term []rune, baserank int) (int, bool) {
+// Kindof 'index with skips'. So eg. 'nvim' wille be found in 'neovim' or 'pwr' in 'poweroff'
+// case sensitive, -1 means not found
+func FluffyIndex(haystack, needle []rune) int {
 	var j = -1
 	var first = -1
-	for _, termRune := range term {
+	for _, needleRune := range needle {
 		for {
 			j++
-			if j >= len(text) {
-				return 0, false
-			} else if text[j] == termRune {
+			if j >= len(haystack) {
+				return -1
+			} else if haystack[j] == needleRune {
 				if first == -1 {
 					first = j
 				}
@@ -32,5 +20,9 @@ func FluffyRank(text, term []rune, baserank int) (int, bool) {
 			}
 		}
 	}
-	return baserank + first + 5*((j+1-first)-len(term)), true // A rank that expresses the 'spread' of the match
+	return first + 5*((j+1-first)-len(needle)) // kindof start of match + spread of match
 }
+
+type Crawler func(res *respond.Resource, keywords []string)
+
+type Crawl func(term string, forDisplay bool, crawler Crawler)

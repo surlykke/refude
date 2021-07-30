@@ -10,9 +10,11 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/log"
+	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/windows/x11"
 )
@@ -31,46 +33,83 @@ type Window struct {
 	Stacking int // 0 means: on top, then 1, then 2 etc. -1 means we don't know (yet)
 }
 
-// Caller ensures thread safety
+// Caller ensures thread safety (calls to x11)
 func BuildWindow(p x11.Proxy, wId uint32) *Window {
 	var win = &Window{Id: wId}
 	win.Name, _ = x11.GetName(p, wId)
 	win.IconName, _ = GetIconName(p, wId)
 	win.State = x11.GetStates(p, wId)
 	win.Stacking = -1
-	var href = fmt.Sprintf("/window/%d", win.Id)
-	win.Resource = respond.MakeResource(href, win.Name, icons.IconUrl(win.IconName), win, "window")
-	var closeAction = respond.MakeAction("", "Close window", "window-close", func(*http.Request) error {
-		x11.CloseWindow(requestProxy, win.Id)
-		return nil
-	})
-	win.Self.Options.DELETE = &closeAction
+	win.Resource = respond.MakeResource(fmt.Sprintf("/window/%d", wId), win.Name, icons.IconUrl(win.IconName), "window")
 	return win
 }
 
-func updateLinks(win *Window, desktopLayout *DesktopLayout) {
-	win.ClearActions()
-	win.AddAction(respond.MakeAction("", "Raise and focus", "", MakeRaiser(win.Id)))
+func (win *Window) DoDelete(w http.ResponseWriter, r *http.Request) {
+	requestProxyMutex.Lock()
+	x11.CloseWindow(requestProxy, win.Id)
+	defer requestProxyMutex.Unlock()
+	respond.Accepted(w)
+}
 
-	if win.State.Is(x11.HIDDEN) || win.State.Is(x11.MAXIMIZED_HORZ|x11.MAXIMIZED_VERT) {
-		win.AddAction(respond.MakeAction("restore", "Restore window", "", MakeRestorer(win.Id)))
+func (win *Window) DoPost(w http.ResponseWriter, r *http.Request) {
+	var action = requests.GetSingleQueryParameter(r, "action", "")
+	if performAction(win.Id, action) {
+		respond.Accepted(w)
 	} else {
-		win.AddAction(respond.MakeAction("minimize", "Minimize window", "", MakeMinimizer(win.Id)))
-		win.AddAction(respond.MakeAction("maximize", "Maximize window", "", MakeMaximizer(win.Id)))
+		respond.NotFound(w)
+	}
+}
+
+func performAction(wId uint32, action string) bool {
+	requestProxyMutex.Lock()
+	defer requestProxyMutex.Unlock()
+	if action == "" {
+		x11.RaiseAndFocusWindow(requestProxy, wId)
+	} else if action == "restore" {
+		x11.RemoveStates(requestProxy, wId, x11.HIDDEN|x11.MAXIMIZED_HORZ|x11.MAXIMIZED_VERT)
+	} else if action == "minimize" {
+		x11.AddStates(requestProxy, wId, x11.HIDDEN)
+	} else if action == "maximize" {
+		x11.AddStates(requestProxy, wId, x11.MAXIMIZED_HORZ|x11.MAXIMIZED_VERT)
+	} else if strings.HasPrefix(action, "move::") {
+		var monitorName = action[6:]
+		for _, m := range repo.getDesktopLayout().Monitors {
+			if monitorName == m.Name {
+				var marginW, marginH = m.W / 10, m.H / 10
+				requestProxyMutex.Lock()
+				defer requestProxyMutex.Unlock()
+				var saveStates = x11.GetStates(requestProxy, wId) & (x11.HIDDEN | x11.MAXIMIZED_HORZ | x11.MAXIMIZED_VERT)
+				x11.RemoveStates(requestProxy, wId, x11.HIDDEN|x11.MAXIMIZED_HORZ|x11.MAXIMIZED_VERT)
+				x11.SetBounds(requestProxy, wId, m.X+int32(marginW), m.Y+int32(marginH), m.W-2*marginW, m.H-2*marginH)
+				x11.AddStates(requestProxy, wId, saveStates)
+				return true
+			}
+		}
+		return false
+	}
+	return true
+}
+
+func updateLinks(win *Window, desktopLayout *DesktopLayout) {
+	win.ClearNonSelfLinks()
+	win.AddDefaultActionLink("Raise and focus", "")
+	win.AddDeleteLink("Close", "")
+	if win.State.Is(x11.HIDDEN) || win.State.Is(x11.MAXIMIZED_HORZ|x11.MAXIMIZED_VERT) {
+		win.AddActionLink("Restore window", "", "restore")
+	} else {
+		win.AddActionLink("Minimize window", "", "minimize")
+		win.AddActionLink("Maximize window", "", "maximize")
 	}
 
 	for _, m := range desktopLayout.Monitors {
 		var actionId = url.QueryEscape("move::" + m.Name)
-		win.AddAction(respond.MakeAction(actionId, "Move to monitor "+m.Name, "", MakeMover(win.Id, m.Name)))
+		win.AddActionLink("Move to monitor "+m.Name, "", actionId)
 	}
-
-	win.AddAction(respond.MakeAction("highlight", "Highlight window", "", MakeHighlighter(win.Id)))
 }
 
 func (win *Window) copy() *Window {
 	var result = &Window{}
 	*result = *win
-	result.Owner = result
 	return result
 }
 

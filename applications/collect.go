@@ -10,7 +10,6 @@ import (
 	"encoding/xml"
 	"errors"
 	"io/ioutil"
-	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
@@ -21,7 +20,6 @@ import (
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/slice"
 	"github.com/surlykke/RefudeServices/lib/xdg"
-	"golang.org/x/text/language"
 )
 
 type collection struct {
@@ -120,12 +118,6 @@ func aliasTypes(mt *Mimetype) []*Mimetype {
 	return result
 }
 
-func (c *collection) removeAssociations(app *DesktopApplication) {
-	for mimetypeId, appIds := range c.associations {
-		c.associations[mimetypeId] = slice.Remove(appIds, app.Id)
-	}
-}
-
 func CollectMimeTypes() map[string]*Mimetype {
 	res := make(map[string]*Mimetype)
 
@@ -134,7 +126,7 @@ func CollectMimeTypes() map[string]*Mimetype {
 		if err != nil {
 			log.Warn("Problem making mimetype", id)
 		} else {
-			mimetype.Resource = respond.MakeResource(mimetype.path, comment, "", &mimetype, "mimetype")
+			mimetype.Resource = respond.MakeResource(mimetype.path, comment, "", "mimetype")
 			mimetype.Comment = comment
 			res[id] = mimetype
 		}
@@ -187,8 +179,6 @@ func CollectMimeTypes() map[string]*Mimetype {
 		if mimeType, err := MakeMimetype(tmp.Type); err != nil {
 			log.Warn(err)
 		} else {
-			var collectedLocales = make(map[string]bool)
-
 			for _, tmpComment := range tmp.Comment {
 				if xdg.LocaleMatch(tmpComment.Lang) || (tmpComment.Lang == "" && mimeType.Comment == "") {
 					mimeType.Comment = tmpComment.Text
@@ -232,11 +222,7 @@ func CollectMimeTypes() map[string]*Mimetype {
 				mimeType.GenericIcon = mimeType.Id[:slashPos] + "-x-generic"
 			}
 
-			var tags = make([]language.Tag, len(collectedLocales))
-			for locale := range collectedLocales {
-				tags = append(tags, language.Make(locale))
-			}
-			mimeType.Resource = respond.MakeResource(mimeType.path, mimeType.Comment, "", &mimeType, "mimetype")
+			mimeType.Resource = respond.MakeResource(mimeType.path, mimeType.Comment, "", "mimetype")
 
 			res[mimeType.Id] = mimeType
 		}
@@ -258,6 +244,9 @@ func CollectMimeTypes() map[string]*Mimetype {
 
 func (c *collection) collectApplications(appdir string) {
 	var visitor = func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
 		if info.IsDir() || !strings.HasSuffix(path, ".desktop") {
 			return nil
 		}
@@ -322,7 +311,7 @@ func readDesktopFile(path string, id string) (*DesktopApplication, []string, err
 	if iniFile, err := xdg.ReadIniFile(path); err != nil {
 		return nil, nil, err
 	} else if len(iniFile) == 0 || iniFile[0].Name != "Desktop Entry" {
-		return nil, nil, errors.New("File must start with '[Desktop Entry]'")
+		return nil, nil, errors.New("file must start with '[Desktop Entry]'")
 	} else {
 		var da = DesktopApplication{Id: id}
 		var mimetypes = []string{}
@@ -331,11 +320,11 @@ func readDesktopFile(path string, id string) (*DesktopApplication, []string, err
 		group := iniFile[0]
 
 		if da.Type = group.Entries["Type"]; da.Type == "" {
-			return nil, nil, errors.New("Desktop file invalid, no 'Type' given")
+			return nil, nil, errors.New("desktop file invalid, no 'Type' given")
 		}
 		da.Version = group.Entries["Version"]
 		if da.Name = group.Entries["Name"]; da.Name == "" {
-			return nil, nil, errors.New("Desktop file invalid, no 'Name' given")
+			return nil, nil, errors.New("desktop file invalid, no 'Name' given")
 		}
 
 		da.GenericName = group.Entries["GenericName"]
@@ -382,24 +371,17 @@ func readDesktopFile(path string, id string) (*DesktopApplication, []string, err
 		mimetypes = slice.Split(group.Entries["MimeType"], ";")
 
 		var self = "/application/" + da.Id
-		da.Resource = respond.MakeResource(self, da.Name, Icon2IconUrl(da.Icon), &da, "desktopapplication")
+		da.Resource = respond.MakeResource(self, da.Name, Icon2IconUrl(da.Icon), "desktopapplication")
 
-		da.AddAction(respond.MakeAction("", da.Name, Icon2IconUrl(da.Icon), makeActor(da.Exec, da.Terminal)))
+		da.AddDefaultActionLink(da.Name, Icon2IconUrl(da.Icon))
 
 		for _, act := range da.DesktopActions {
-			da.AddAction(respond.MakeAction(act.id, act.Name, Icon2IconUrl(act.Icon), makeActor(act.Exec, da.Terminal)))
+			da.AddActionLink(act.Name, Icon2IconUrl(act.Icon), act.id)
 		}
 
 		return &da, mimetypes, nil
 	}
 
-}
-
-func makeActor(exec string, runInTerminal bool) func(*http.Request) error {
-	return func(*http.Request) error {
-		run(exec, "", runInTerminal)
-		return nil
-	}
 }
 
 func Icon2IconUrl(icon string) string {

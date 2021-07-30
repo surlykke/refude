@@ -5,20 +5,16 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/surlykke/RefudeServices/file"
-	"github.com/surlykke/RefudeServices/notifications"
-	"github.com/surlykke/RefudeServices/power"
-	"github.com/surlykke/RefudeServices/windows"
-
-	"github.com/surlykke/RefudeServices/statusnotifications"
-
-	"github.com/surlykke/RefudeServices/icons"
-
 	"github.com/surlykke/RefudeServices/applications"
-
+	"github.com/surlykke/RefudeServices/file"
+	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/respond"
-	"github.com/surlykke/RefudeServices/lib/slice"
+	"github.com/surlykke/RefudeServices/lib/searchutils"
+	"github.com/surlykke/RefudeServices/notifications"
+	"github.com/surlykke/RefudeServices/power"
+	"github.com/surlykke/RefudeServices/statusnotifications"
+	"github.com/surlykke/RefudeServices/windows"
 )
 
 type SearchResult struct {
@@ -26,75 +22,123 @@ type SearchResult struct {
 	Term string `json:"term"`
 }
 
-func makeSearchResult(term string, links []respond.Link) *SearchResult {
-	var sr = SearchResult{
-		Term: term,
-	}
-	sr.Resource = respond.MakeResource("/desktop/search?term="+term, "Desktop Search", "", &sr, "search")
-	sr.AddLink(links...)
-	return &sr
+func makeSearchResult(term string) SearchResult {
+	var sr = SearchResult{}
+	sr.Links = make([]respond.Link, 0, 1000)
+	sr.AddSelfLink("/desktop/search?term="+term, "Desktop Search", "")
+	sr.Traits = []string{"search"}
+	sr.Term = term
+	return sr
 }
 
-func Handler(r *http.Request) http.Handler {
-	if r.URL.Path == "/search/paths" {
-		return http.HandlerFunc(Paths)
-	} else if r.URL.Path == "/search/desktop" {
-		return http.HandlerFunc(DesktopResources)
+type rankedLink struct {
+	respond.Link
+	rank int
+}
+
+type rankedLinks []rankedLink
+
+// -------- sort.Interface ----------------------
+
+func (se rankedLinks) Len() int { return len(se) }
+
+func (se rankedLinks) Less(i int, j int) bool {
+	if se[i].rank == se[j].rank {
+		return se[i].Href < se[j].Href // Not that Href is particularly relevant, sortingwise. Just to have a reproducible order
 	} else {
-		return nil
+		return se[i].rank < se[j].rank
 	}
 }
 
-func Paths(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "GET" {
-		var prefix = requests.GetSingleQueryParameter(r, "prefix", "")
-		var paths = make([]string, 0, 2000)
+func (se rankedLinks) Swap(i int, j int) { se[i], se[j] = se[j], se[i] }
 
-		paths = append(paths, windows.AllPaths()...)
-		paths = append(paths, applications.AllPaths()...)
-		paths = append(paths, icons.AllPaths()...)
-		paths = append(paths, statusnotifications.AllPaths()...)
-		paths = append(paths, notifications.AllPaths()...)
-		paths = append(paths, power.AllPaths()...)
-		paths = append(paths, "/search/paths", "/search/desktop", "/watch")
+// ----------- sort.Interface end ---------------
 
-		var found = 0
-		for i := 0; i < len(paths); i++ {
-			if strings.HasPrefix(paths[i], prefix) {
-				paths[found] = paths[i]
-				found++
+func addRankedLinks(sr *SearchResult, links []rankedLink) {
+	for _, rl := range links {
+		sr.Links = append(sr.Links, rl.Link)
+	}
+}
+
+func collectSearchResult(term string) SearchResult {
+	var termRunes = []rune(term)
+	var sr = makeSearchResult(term)
+
+	var temp = make(rankedLinks, 0, 1000)
+	var crawler = func(res *respond.Resource, keywords []string) {
+		var link = res.GetRelatedLink()
+		var titleRunes = []rune(strings.ToLower(link.Title))
+		if rnk := searchutils.FluffyIndex(titleRunes, termRunes); rnk > -1 {
+			temp = append(temp, rankedLink{link, rnk})
+		} else if len(termRunes) >= 3 {
+			for _, kw := range keywords {
+				if strings.Index(kw, term) > -1 {
+					temp = append(temp, rankedLink{link, 1000})
+					break
+				}
 			}
 		}
-		paths = paths[:found]
-
-		sort.Sort(slice.SortableStringSlice(paths))
-		respond.AsJson(w, paths)
-	} else {
-		respond.NotAllowed(w)
 	}
+
+	var doCrawl = func(crawl searchutils.Crawl, doSort bool) {
+		crawl(term, true, crawler)
+		if doSort {
+			sort.Sort(temp)
+		}
+		addRankedLinks(&sr, temp)
+		temp = temp[:0]
+	}
+
+	doCrawl(notifications.Crawl, false)
+	doCrawl(windows.Crawl, false)
+
+	if len(term) > 0 {
+		doCrawl(applications.Crawl, true)
+		if len(term) > 3 {
+			doCrawl(file.Crawl, true)
+			doCrawl(power.Crawl, true)
+		}
+	}
+
+	return sr
 }
 
-func DesktopResources(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "GET" {
-		var term = strings.ToLower(requests.Term(r))
-
-		var sfl = make([]respond.Link, 0, 1000)
-		sfl = append(sfl, file.Recent(term, 0)...)
-		sfl = append(sfl, notifications.DesktopSearch(term, 100)...)
-		sfl = append(sfl, windows.DesktopSearch(term, 200)...)
-
-		var pos = len(sfl)
-
-		if len(term) > 0 {
-			sfl = append(sfl, applications.DesktopSearch(term, 300)...)
-			sfl = append(sfl, file.DesktopSearch(term, 300)...)
-			sfl = append(sfl, power.DesktopSearch(term, 600)...)
+func collectPaths(prefix string) []string {
+	var paths []string = make([]string, 0, 1000)
+	var crawler = func(res *respond.Resource, keywords []string) {
+		if strings.HasPrefix(res.Self().Href, prefix) {
+			paths = append(paths, res.Self().Href)
 		}
-		if len(sfl) > pos { // We do not want to change order of files, notifikations and windows, so no sorting for them
-			sort.Sort(respond.LinkList(sfl[pos:]))
+	}
+	windows.Crawl("", false, crawler)
+	applications.Crawl("", false, crawler)
+	icons.Crawl("", false, crawler)
+	statusnotifications.Crawl("", false, crawler)
+	notifications.Crawl("", false, crawler)
+	power.Crawl("", false, crawler)
+
+	for _, path := range []string{"/icon", "/search/desktop", "/search/paths", "/watch", "/doc"} {
+		if strings.HasPrefix(path, prefix) {
+			paths = append(paths, path)
 		}
-		respond.AsJson(w, makeSearchResult(term, sfl))
+	}
+	return paths
+}
+
+func ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path == "/search/desktop" {
+		if r.Method == "GET" {
+			respond.AsJson(w, collectSearchResult(requests.Term(r)))
+		} else {
+			respond.NotAllowed(w)
+		}
+	} else if r.URL.Path == "/search/paths" {
+		if r.Method == "GET" {
+			respond.AsJson(w, collectPaths(requests.GetSingleQueryParameter(r, "prefix", "")))
+		} else {
+			respond.NotAllowed(w)
+		}
 	} else {
-		respond.NotAllowed(w)
+		respond.NotFound(w)
 	}
 }

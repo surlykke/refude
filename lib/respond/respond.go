@@ -1,6 +1,7 @@
 package respond
 
 import (
+	"bytes"
 	"crypto/sha1"
 	"encoding/json"
 	"fmt"
@@ -55,12 +56,15 @@ func AsPng(w http.ResponseWriter, pngData []byte) {
 	w.Write(pngData)
 }
 
+// We don't care about embedding in html, so no escaping
 func ToJson(res interface{}) []byte {
-	var bytes, err = json.Marshal(res)
-	if err != nil {
+	var buf = bytes.NewBuffer([]byte{})
+	var encoder = json.NewEncoder(buf)
+	encoder.SetEscapeHTML(false)
+	if err := encoder.Encode(res); err != nil {
 		panic(fmt.Sprintln(err))
 	}
-	return bytes
+	return buf.Bytes()
 }
 
 func ToJsonAndEtag(res interface{}) ([]byte, string) {

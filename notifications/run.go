@@ -37,15 +37,21 @@ func Run() {
 
 var notificationPathPattern = regexp.MustCompile("^/notification/(\\d+)$")
 
-func Handler(r *http.Request) http.Handler {
+func GetJsonResource(r *http.Request) respond.JsonResource {
 	if r.URL.Path == "/notifications/critical" {
-		return respond.MakeRelatedCollection("/notifications", "Notifications", collectLinks(getCriticalNotifications()))
-	} else if r.URL.Path == "/notifications" {
-		return respond.MakeRelatedCollection("/notifications", "Notifications", collectLinks(getNotifications()))
+		return nil // FIXME
 	} else if r.URL.Path == flashPath {
-		if n := getFlash(); n != nil {
-			return n
+		if f := getFlash(); f != nil {
+			return f
 		}
+	} else if r.URL.Path == "/notifications" {
+		var res = respond.MakeResource("/notifications", "notifications", "", "collection")
+		lock.Lock()
+		for _, notification := range notifications {
+			res.Links = append(res.Links, notification.GetRelatedLink())
+		}
+		lock.Unlock()
+		return &res
 	} else if strings.HasPrefix(r.URL.Path, "/notification/") {
 		if id, err := strconv.Atoi(r.URL.Path[len("/notification/"):]); err == nil {
 			if notification := getNotification(uint32(id)); notification != nil {
@@ -53,43 +59,14 @@ func Handler(r *http.Request) http.Handler {
 			}
 		}
 	}
-
 	return nil
 }
 
-func collectLinks(list []*Notification) []respond.Link {
-	var links = make([]respond.Link, 0, len(list))
-	for _, n := range list {
-		links = append(links, n.GetRelatedLink(0))
-	}
-	return links
-}
-
-func DesktopSearch(term string, baserank int) []respond.Link {
+func Crawl(term string, forDisplay bool, crawler searchutils.Crawler) {
 	var notifications = getNotifications()
-	var links = make([]respond.Link, 0, len(notifications))
 	for _, notification := range notifications {
-		if len(notification.Self.Options.POST) > 0 {
-			var rank int
-			var ok bool
-			if rank, ok = searchutils.Rank(notification.Subject, term, baserank); !ok {
-				rank, ok = searchutils.Rank(notification.Body, term, baserank+100)
-			}
-			if ok {
-				links = append(links, notification.GetRelatedLink(rank))
-			}
+		if !forDisplay || !notification.forDisplay() {
+			crawler(&notification.Resource, nil)
 		}
 	}
-	return links
-}
-
-func AllPaths() []string {
-	var notifications = getNotifications()
-	var paths = make([]string, 0, len(notifications)+2)
-	for _, n := range notifications {
-		paths = append(paths, n.Self.Href)
-	}
-	paths = append(paths, "/notifications")
-	paths = append(paths, "/notification/osd")
-	return paths
 }

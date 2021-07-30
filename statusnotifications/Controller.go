@@ -188,10 +188,10 @@ func buildItem(sender string, path dbus.ObjectPath) *Item {
 
 	item.UseOverlayIconPixmap = getStringOr(props["OverlayIconName"]) == "" // TODO
 
-	item.Resource = respond.MakeResource(self, item.Title, icons.IconUrl(item.IconName), &item, "statusnotificationitem")
+	item.Resource = respond.MakeResource(self, item.Title, icons.IconUrl(item.IconName), "statusnotificationitem")
 
 	if item.MenuPath != "" {
-		item.AddLink(respond.MakeLink(itemSelf(item.sender, item.itemPath)+"/menu", item.Title+" menu", ""))
+		item.AddMenuLink(item.Title + " menu")
 	}
 	return &item
 }
@@ -199,6 +199,12 @@ func buildItem(sender string, path dbus.ObjectPath) *Item {
 func updateTitle(item *Item) {
 	if v, ok := getProp(item, "Title"); ok {
 		item.Title = getStringOr(v)
+		for _, l := range item.Links {
+			if l.Relation == respond.Self {
+				l.Title = item.Title
+				break
+			}
+		}
 	}
 }
 
@@ -224,7 +230,12 @@ func updateIcon(item *Item) {
 			item.IconName = getStringOr(v)
 		}
 	}
-	item.SetSelf(itemSelf(item.sender, item.itemPath), item.Title, icons.IconUrl(item.IconName))
+	for _, l := range item.Links {
+		if l.Relation == respond.Self {
+			l.Icon = icons.IconUrl(item.IconName)
+			break
+		}
+	}
 }
 
 func updateIconThemePath(item *Item) {

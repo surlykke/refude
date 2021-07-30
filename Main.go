@@ -28,36 +28,45 @@ import (
 	_ "net/http/pprof"
 )
 
-func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	var handler http.Handler = nil
-	if strings.HasPrefix(r.URL.Path, "/application") || strings.HasPrefix(r.URL.Path, "/mimetype") {
-		handler = applications.Handler(r)
-	} else if strings.HasPrefix(r.URL.Path, "/doc") {
-		handler = doc.Handler(r)
-	} else if strings.HasPrefix(r.URL.Path, "/file") {
-		handler = file.Handler(r)
-	} else if strings.HasPrefix(r.URL.Path, "/icon") {
-		handler = icons.Handler(r)
-	} else if strings.HasPrefix(r.URL.Path, "/notification") {
-		handler = notifications.Handler(r)
-	} else if strings.HasPrefix(r.URL.Path, "/device") {
-		handler = power.Handler(r)
-	} else if strings.HasPrefix(r.URL.Path, "/search") {
-		handler = search.Handler(r)
-	} else if strings.HasPrefix(r.URL.Path, "/item") {
-		handler = statusnotifications.Handler(r)
-	} else if strings.HasPrefix(r.URL.Path, "/watch") {
-		handler = watch.Handler(r)
-	} else if strings.HasPrefix(r.URL.Path, "/window") {
-		handler = windows.WindowHandler(r)
-	} else if r.URL.Path == "/desktoplayout" {
-		handler = windows.DesktopLayoutHandler(r)
-	}
+var resourcefinders = []func(*http.Request) respond.JsonResource{
+	applications.GetJsonResource,
+	windows.GetJsonResource,
+	file.GetJsonResource,
+	notifications.GetJsonResource,
+	statusnotifications.GetJsonResource,
+	power.GetJsonResource,
+}
 
-	if handler != nil {
-		handler.ServeHTTP(w, r)
+func ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	var path = r.URL.Path
+	if path == "/icon" {
+		icons.ServeHTTP(w, r)
+	} else if strings.HasPrefix(path, "/search/") {
+		search.ServeHTTP(w, r)
+	} else if strings.HasPrefix(r.URL.Path, "/watch") {
+		watch.ServeHTTP(w, r)
+	} else if strings.HasPrefix(path, "/doc") {
+		doc.ServeHTTP(w, r)
 	} else {
+		for _, resourcefinder := range resourcefinders {
+			if res := resourcefinder(r); res != nil {
+				ServeJsonResource(res, w, r)
+				return
+			}
+		}
 		respond.NotFound(w)
+	}
+}
+
+func ServeJsonResource(jr respond.JsonResource, w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
+		jr.DoGet(jr, w, r)
+	} else if r.Method == "POST" {
+		jr.DoPost(w, r)
+	} else if r.Method == "DELETE" {
+		jr.DoDelete(w, r)
+	} else {
+		respond.NotAllowed(w)
 	}
 }
 
@@ -69,7 +78,6 @@ func main() {
 	go statusnotifications.Run()
 	go icons.Run()
 	go watch.Run()
-	go file.Run()
 
 	go func() {
 		log.Info(http.ListenAndServe("localhost:7939", nil))

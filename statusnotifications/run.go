@@ -9,60 +9,47 @@ package statusnotifications
 import (
 	"net/http"
 	"regexp"
-	"sort"
 	"sync"
 
 	"github.com/surlykke/RefudeServices/watch"
 
 	"github.com/godbus/dbus/v5"
 	"github.com/surlykke/RefudeServices/lib/respond"
+	"github.com/surlykke/RefudeServices/lib/searchutils"
 )
 
 var itemPathPattern = regexp.MustCompile("^(/item/[^/]+)(/menu)?")
 
-func Handler(r *http.Request) http.Handler {
+func GetJsonResource(r *http.Request) respond.JsonResource {
 	if r.URL.Path == "/items" {
-		return respond.MakeRelatedCollection("/items", "Items", Collect())
+		var res = respond.MakeResource("/items", "items", "", "items")
+		lock.Lock()
+		for _, item := range items {
+			res.Links = append(res.Links, item.GetRelatedLink())
+		}
+		lock.Unlock()
+		return &res
 	} else if match := itemPathPattern.FindStringSubmatch(r.URL.Path); match != nil {
-		if item := get(match[1]); item == nil {
-			return nil
-		} else if match[2] == "/menu" {
-			if item.MenuPath == "" {
-				return nil
+		if item := get(match[1]); item != nil {
+			if match[2] == "/menu" {
+				if item.MenuPath != "" {
+					return item.buildMenu()
+				}
 			} else {
-				return item.buildMenu()
+				return item
 			}
-		} else {
-			return item
 		}
-	} else {
-		return nil
 	}
+	return nil
+
 }
 
-func Collect() []respond.Link {
+func Crawl(term string, forDisplay bool, crawler searchutils.Crawler) {
 	lock.Lock()
 	defer lock.Unlock()
-	var res = make([]respond.Link, 0, len(items))
 	for _, item := range items {
-		res = append(res, item.GetRelatedLink(0))
+		crawler(&item.Resource, nil)
 	}
-	sort.Sort(respond.LinkList(res))
-	return res
-}
-
-func AllPaths() []string {
-	lock.Lock()
-	defer lock.Unlock()
-	var paths = make([]string, 0, 2*len(items)+1)
-	for path, item := range items {
-		paths = append(paths, path)
-		if item.Menu != "" {
-			paths = append(paths, item.Menu)
-		}
-	}
-	paths = append(paths, "/items")
-	return paths
 }
 
 func Run() {

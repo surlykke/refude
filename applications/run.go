@@ -81,10 +81,6 @@ func GetApp(appId string) *DesktopApplication {
 	return collectionStore.Load().(collection).applications[appId]
 }
 
-func GetMimetype(mimetypeId string) *Mimetype {
-	return collectionStore.Load().(collection).mimetypes[mimetypeId]
-}
-
 func GetAppsForMimetype(mimetypeId string) (recommended, other []*DesktopApplication) {
 	var c = collectionStore.Load().(collection)
 

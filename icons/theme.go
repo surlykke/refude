@@ -81,7 +81,7 @@ func readTheme(indexThemeFilePath string) (*IconTheme, bool) {
 	theme := IconTheme{}
 	theme.Id = themeId
 	theme.Name = themeGroup.Entries["Name"]
-	theme.Resource = respond.MakeResource("/icontheme"+theme.Id, theme.Name, "", &theme, "icontheme")
+	theme.Resource = respond.MakeResource("/icontheme"+theme.Id, theme.Name, "", "icontheme")
 	theme.Comment = themeGroup.Entries["Comment"]
 	theme.Inherits = slice.Split(themeGroup.Entries["Inherits"], ",")
 	theme.Dirs = make(map[string]IconDir)

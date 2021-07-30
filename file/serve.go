@@ -6,9 +6,8 @@ import (
 	"os"
 	"regexp"
 	"strings"
-	"sync"
-	"time"
 
+	"github.com/rakyll/magicmime"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/respond"
@@ -18,19 +17,9 @@ import (
 
 var filePathPattern = regexp.MustCompile(`^/file$|^/file(/actions)$|^/file/action/([^/]+)$`)
 
-func Handler(r *http.Request) http.Handler {
-	if r.URL.Path == "/file" {
-		if file := getFile(r); file != nil {
-			return file
-		}
-	}
-
-	return nil
-}
-
 var noPathError = fmt.Errorf("No path given")
 
-func getFile(r *http.Request) *File {
+func GetJsonResource(r *http.Request) respond.JsonResource {
 	if path := getAdjustedPath(r); path == "" {
 		return nil
 	} else if file, err := makeFile(path); err != nil {
@@ -67,92 +56,30 @@ func init() {
 	searchDirectories[xdg.VideosDir] = true
 }
 
-// Can't use filepath.Glob as it is case sensitive
+func Crawl(term string, forDisplay bool, crawler searchutils.Crawler) {
+	var termRunes = []rune(term)
+	for searchDirectory := range searchDirectories {
+		var dir *os.File
+		var err error
+		if dir, err = os.Open(searchDirectory); err != nil {
+			log.Warn("Error opening", searchDirectory, err)
+			continue
+		}
 
-func DesktopSearch(term string, baserank int) []respond.Link {
-	if len(term) < 3 {
-		return []respond.Link{}
-	} else {
-		term = strings.ToLower(term)
-		var result = make([]respond.Link, 0, 100)
-		for searchDirectory := range searchDirectories {
-			if dir, err := os.Open(searchDirectory); err != nil {
-				log.Warn("Error opening", searchDirectory, err)
-			} else if names, err := dir.Readdirnames(-1); err != nil {
-				log.Warn("Error reading", searchDirectory, err)
-			} else {
-				for _, name := range names {
-					if rank, ok := searchutils.Rank(name, term, baserank); ok {
-						if file, err := makeFile(searchDirectory + "/" + name); err != nil {
-							log.Warn("Error making file:", err)
-						} else if file != nil {
-							result = append(result, file.GetRelatedLink(rank))
-						}
-
-					}
+		if names, err := dir.Readdirnames(-1); err != nil {
+			log.Warn("Error reading", searchDirectory, err)
+		} else {
+			// Can't use filepath.Glob as it is case sensitive
+			for _, name := range names {
+				if searchutils.FluffyIndex([]rune(strings.ToLower(name)), termRunes) > -1 {
+					var path = searchDirectory + "/" + name
+					var mimetype, _ = magicmime.TypeByFile(path)
+					var resource = makeResource(path, mimetype)
+					crawler(&resource, nil)
 				}
+
 			}
 		}
-		return result
+		dir.Close()
 	}
-}
-
-func Recent(term string, baserank int) []respond.Link {
-	var paths = getRecentDownloads(30 * time.Second)
-	var result = make([]respond.Link, 0, len(paths))
-	for _, path := range paths {
-		if file, err := makeFile(path); err != nil {
-			log.Warn("Error making file:", err)
-		} else if file != nil {
-			if rank, ok := searchutils.Rank(file.Path, term, baserank); ok {
-				result = append(result, file.GetRelatedLink(rank))
-			}
-		}
-	}
-	return result
-}
-
-type recentDownload struct {
-	path       string
-	downloaded time.Time
-}
-
-var recentDownloads = make([]recentDownload, 10)
-var recentDownloadsLock sync.Mutex
-
-func getRecentDownloads(noOlderThan time.Duration) []string {
-	recentDownloadsLock.Lock()
-	defer recentDownloadsLock.Unlock()
-
-	var paths = make([]string, 0, len(recentDownloads))
-	for _, recentDownload := range recentDownloads {
-		if recentDownload.downloaded.After(time.Now().Add(-30 * time.Second)) {
-			paths = append(paths, recentDownload.path)
-		}
-	}
-
-	return paths
-}
-
-func addRecentDownload(path string) {
-	recentDownloadsLock.Lock()
-	defer recentDownloadsLock.Unlock()
-
-	var newDownloads = make([]recentDownload, 0, len(recentDownloads)+1)
-	var alreadyThere = false
-
-	for _, rd := range recentDownloads {
-		if rd.path == path {
-			newDownloads = append(newDownloads, recentDownload{rd.path, time.Now()})
-			alreadyThere = true
-		} else if rd.downloaded.After(time.Now().Add(-time.Second * 30)) {
-			newDownloads = append(newDownloads, rd)
-		}
-	}
-
-	if !alreadyThere {
-		newDownloads = append(newDownloads, recentDownload{path, time.Now()})
-	}
-
-	recentDownloads = newDownloads
 }

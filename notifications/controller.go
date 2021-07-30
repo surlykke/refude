@@ -9,7 +9,6 @@ package notifications
 import (
 	"errors"
 	"fmt"
-	"net/http"
 	"os"
 	"reflect"
 	"strings"
@@ -203,24 +202,15 @@ func Notify(app_name string,
 		Hints:    map[string]interface{}{},
 		iconName: iconName,
 	}
-	notification.Resource = respond.MakeResource(href, notification.Subject, icons.IconUrl(notification.iconName), &notification, "notification")
+	notification.Resource = respond.MakeResource(href, notification.Subject, icons.IconUrl(notification.iconName), "notification")
+	notification.AddDeleteLink("Dismiss", "")
 
-	var deleteAction = respond.MakeAction("", "Dismiss", "", func(*http.Request) error {
-		removals <- removal{id, Dismissed}
-		return nil
-	})
-
-	notification.Self.Options.DELETE = &deleteAction
 	for i := 0; i+1 < len(actions); i = i + 2 {
 		var actionId, actionDesc = actions[i], actions[i+1]
 		if actionId == "default" {
-			notification.AddAction(respond.MakeAction("", actionDesc, "", func(*http.Request) error {
-				return conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".ActionInvoked", id, actionId)
-			}))
+			notification.AddDefaultActionLink(actionDesc, "")
 		} else {
-			notification.AddAction(respond.MakeAction(actionId, actionDesc, "", func(*http.Request) error {
-				return conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".ActionInvoked", id, actionId)
-			}))
+			notification.AddActionLink(actionDesc, "", actionId)
 		}
 		notification.Actions[actionId] = actionDesc
 	}

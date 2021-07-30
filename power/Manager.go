@@ -63,7 +63,7 @@ func retrieveDevice(path dbus.ObjectPath) *Device {
 	} else {
 		self = fmt.Sprintf("/device%s", device.DbusPath)
 	}
-	device.Resource = respond.MakeResource(self, title, icons.IconUrl(device.IconName), &device, "device")
+	device.Resource = respond.MakeResource(self, title, icons.IconUrl(device.IconName), "device")
 	return &device
 }
 

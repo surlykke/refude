@@ -50,22 +50,13 @@ func (item *Item) buildMenu() *Menu {
 		return nil
 	} else {
 		var menu = Menu{sender: item.sender, menuPath: item.MenuPath}
-		menu.Resource = respond.MakeResource(itemSelf(item.sender, item.itemPath)+"/menu", "", "", &menu, "itemmenu")
+		menu.Resource = respond.MakeResource(itemSelf(item.sender, item.itemPath)+"/menu", "", "", "itemmenu")
 		var err error
 		if menu.Entries, err = menuEntries(item.sender, item.MenuPath); err != nil {
 			return nil
 		}
-
-		menu.AddAction(respond.MakeAction("", "Activate", "", func(r *http.Request) error {
-			id := requests.GetSingleQueryParameter(r, "id", "")
-			idAsInt, _ := strconv.Atoi(id)
-			data := dbus.MakeVariant("")
-			time := uint32(time.Now().Unix())
-			dbusObj := conn.Object(item.sender, item.MenuPath)
-			return dbusObj.Call("com.canonical.dbusmenu.Event", dbus.Flags(0), idAsInt, "clicked", data, time).Err
-		}))
-
 		return &menu
+
 	}
 }
 
@@ -201,4 +192,23 @@ func collectPixMap(variant dbus.Variant) string {
 		return icons.AddARGBIcon(argbIcon)
 	}
 	return ""
+}
+
+func (m *Menu) DoPost(w http.ResponseWriter, r *http.Request) {
+	var menuId = requests.GetSingleQueryParameter(r, "id", "")
+	for _, entry := range m.Entries {
+		if menuId == entry.Id {
+			idAsInt, _ := strconv.Atoi(menuId)
+			data := dbus.MakeVariant("")
+			time := uint32(time.Now().Unix())
+			dbusObj := conn.Object(m.sender, m.menuPath)
+			if err := dbusObj.Call("com.canonical.dbusmenu.Event", dbus.Flags(0), idAsInt, "clicked", data, time).Err; err != nil {
+				respond.ServerError(w, err)
+			} else {
+				respond.Accepted(w)
+			}
+			return
+		}
+	}
+	respond.NotFound(w)
 }
