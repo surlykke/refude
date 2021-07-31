@@ -34,14 +34,37 @@ type Window struct {
 }
 
 // Caller ensures thread safety (calls to x11)
-func BuildWindow(p x11.Proxy, wId uint32) *Window {
+func makeWindow(p x11.Proxy, wId uint32) *Window {
 	var win = &Window{Id: wId}
 	win.Name, _ = x11.GetName(p, wId)
 	win.IconName, _ = GetIconName(p, wId)
 	win.State = x11.GetStates(p, wId)
 	win.Stacking = -1
-	win.Resource = respond.MakeResource(fmt.Sprintf("/window/%d", wId), win.Name, icons.IconUrl(win.IconName), "window")
 	return win
+}
+
+func (win *Window) updateResource(monitors []*x11.MonitorData) {
+	win.Resource = respond.MakeResource(fmt.Sprintf("/window/%d", win.Id), win.Name, icons.IconUrl(win.IconName), "window")
+	win.AddDefaultActionLink("Raise and focus", "")
+	win.AddDeleteLink("Close", "")
+	if win.State.Is(x11.HIDDEN) || win.State.Is(x11.MAXIMIZED_HORZ|x11.MAXIMIZED_VERT) {
+		win.AddActionLink("Restore window", "", "restore")
+	} else {
+		win.AddActionLink("Minimize window", "", "minimize")
+		win.AddActionLink("Maximize window", "", "maximize")
+	}
+
+	for _, m := range monitors {
+		var actionId = url.QueryEscape("move::" + m.Name)
+		win.AddActionLink("Move to monitor "+m.Name, "", actionId)
+	}
+
+	if win.State&x11.HIDDEN > 0 {
+		win.Traits = []string{"window", "minimized"}
+	} else {
+		win.Traits = []string{"window"}
+	}
+
 }
 
 func (win *Window) DoDelete(w http.ResponseWriter, r *http.Request) {
@@ -63,6 +86,8 @@ func (win *Window) DoPost(w http.ResponseWriter, r *http.Request) {
 func performAction(wId uint32, action string) bool {
 	requestProxyMutex.Lock()
 	defer requestProxyMutex.Unlock()
+
+	var found = true
 	if action == "" {
 		x11.RaiseAndFocusWindow(requestProxy, wId)
 	} else if action == "restore" {
@@ -72,43 +97,31 @@ func performAction(wId uint32, action string) bool {
 	} else if action == "maximize" {
 		x11.AddStates(requestProxy, wId, x11.MAXIMIZED_HORZ|x11.MAXIMIZED_VERT)
 	} else if strings.HasPrefix(action, "move::") {
+		found = false
 		var monitorName = action[6:]
-		for _, m := range repo.getDesktopLayout().Monitors {
+		for _, m := range getDesktopLayout().Monitors {
 			if monitorName == m.Name {
 				var marginW, marginH = m.W / 10, m.H / 10
 				var saveStates = x11.GetStates(requestProxy, wId) & (x11.HIDDEN | x11.MAXIMIZED_HORZ | x11.MAXIMIZED_VERT)
 				x11.RemoveStates(requestProxy, wId, x11.HIDDEN|x11.MAXIMIZED_HORZ|x11.MAXIMIZED_VERT)
 				x11.SetBounds(requestProxy, wId, m.X+int32(marginW), m.Y+int32(marginH), m.W-2*marginW, m.H-2*marginH)
 				x11.AddStates(requestProxy, wId, saveStates)
-				return true
+				found = true
+				break
 			}
 		}
-		return false
 	}
-	return true
+	return found
 }
 
-func updateLinks(win *Window, desktopLayout *DesktopLayout) {
-	win.ClearNonSelfLinks()
-	win.AddDefaultActionLink("Raise and focus", "")
-	win.AddDeleteLink("Close", "")
-	if win.State.Is(x11.HIDDEN) || win.State.Is(x11.MAXIMIZED_HORZ|x11.MAXIMIZED_VERT) {
-		win.AddActionLink("Restore window", "", "restore")
-	} else {
-		win.AddActionLink("Minimize window", "", "minimize")
-		win.AddActionLink("Maximize window", "", "maximize")
+func (win *Window) shallowCopy() *Window {
+	return &Window{
+		Id:       win.Id,
+		Name:     win.Name,
+		IconName: win.IconName,
+		State:    win.State,
+		Stacking: win.Stacking,
 	}
-
-	for _, m := range desktopLayout.Monitors {
-		var actionId = url.QueryEscape("move::" + m.Name)
-		win.AddActionLink("Move to monitor "+m.Name, "", actionId)
-	}
-}
-
-func (win *Window) copy() *Window {
-	var result = &Window{}
-	*result = *win
-	return result
 }
 
 func relevantForDesktopSearch(w *Window) bool {
@@ -126,17 +139,6 @@ func GetIconName(p x11.Proxy, wId uint32) (string, error) {
 }
 
 var noBounds = &Bounds{0, 0, 0, 0}
-
-func GetBounds(wId uint32) *Bounds {
-	requestProxyMutex.Lock()
-	defer requestProxyMutex.Unlock()
-	// TODO Perhaps some caching
-	if x, y, w, h, err := x11.GetGeometry(requestProxy, wId); err != nil {
-		return noBounds
-	} else {
-		return &Bounds{x, y, w, h}
-	}
-}
 
 type WindowStack []*Window
 

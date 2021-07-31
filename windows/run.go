@@ -7,16 +7,12 @@
 package windows
 
 import (
-	"fmt"
 	"math"
 	"net/http"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 
-	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
 	"github.com/surlykke/RefudeServices/watch"
@@ -32,159 +28,130 @@ func Run() {
 	updateWindowList(proxy)
 
 	for {
-		event, wId := x11.NextEvent(proxy)
 		var change = false
-		switch event {
-		case x11.DesktopGeometry:
+
+		if event, wId := x11.NextEvent(proxy); event == x11.DesktopGeometry {
 			updateDesktopLayout(proxy)
 			change = true
-		case x11.DesktopStacking:
-			if repo.getHighlighedWindowId() == 0 {
-				change = updateWindowList(proxy)
-			}
-		case x11.WindowTitle:
-			if w, ok := repo.getWindowCopy(wId); ok {
-				w.Name, _ = x11.GetName(proxy, wId)
-				w.UpdateTitle(w.Name)
-				repo.setWindow(w)
-				change = relevantForDesktopSearch(w)
-			}
-		case x11.WindowIconName:
-			if w, ok := repo.getWindowCopy(wId); ok {
-				w.IconName, _ = GetIconName(proxy, wId)
-				w.UpdateIcon(icons.IconUrl(w.IconName))
-				repo.setWindow(w)
-				change = relevantForDesktopSearch(w)
-			}
-		case x11.WindowSt:
-			if w, ok := repo.getWindowCopy(wId); ok {
-				var desktopLayout = repo.getDesktopLayout()
-				w.State = x11.GetStates(proxy, wId)
-				updateLinks(w, desktopLayout)
-				if w.State&x11.HIDDEN > 0 {
-					w.UpdateTraits("window", "minimized")
-				} else {
-					w.UpdateTraits("window")
+		} else if event == x11.DesktopStacking {
+			change = updateWindowList(proxy)
+		} else {
+			// So it's a 'single'-window event
+			if win := getWindow(wId); win != nil {
+				var updatedWindow = Window{
+					Id:       win.Id,
+					Name:     win.Name,
+					IconName: win.IconName,
+					State:    win.State,
+					Stacking: win.Stacking,
 				}
-				repo.setWindow(w)
-				change = relevantForDesktopSearch(w)
+				switch event {
+				case x11.WindowTitle:
+					updatedWindow.Name, _ = x11.GetName(proxy, wId)
+
+				case x11.WindowIconName:
+					updatedWindow.IconName, _ = GetIconName(proxy, wId)
+				case x11.WindowSt:
+					updatedWindow.State = x11.GetStates(proxy, wId)
+				// TODO case x11.WindowGeometry:
+				default:
+					continue
+				}
+				updatedWindow.updateResource(getDesktopLayout().Monitors)
+				updateWindow(&updatedWindow)
+				change = change || relevantForDesktopSearch(&updatedWindow)
 			}
-		case x11.WindowGeometry:
-			// TODO updateWindowGeometry(proxy, wId)
 		}
 
-		if change && repo.getHighlighedWindowId() == 0 {
+		if change {
 			watch.DesktopSearchMayHaveChanged()
 		}
 	}
 }
 
-type Repo struct {
-	sync.Mutex
-	windows             map[uint32]*Window
-	desktopLayout       *DesktopLayout
-	highlightedWindowId uint32
-	highlightDeadline   time.Time
+var (
+	repo          sync.Mutex
+	windows       []*Window
+	desktopLayout *DesktopLayout
+)
+
+func getWindow(wId uint32) *Window {
+	repo.Lock()
+	defer repo.Unlock()
+	for _, w := range windows {
+		if w.Id == wId {
+			return w
+		}
+	}
+	return nil
 }
 
-func (r *Repo) getWindow(wId uint32) (*Window, bool) {
-	r.Lock()
-	defer r.Unlock()
-	w, ok := r.windows[wId]
-	return w, ok
-}
-
-func (r *Repo) getWindowCopy(wId uint32) (*Window, bool) {
-	if w, ok := r.getWindow(wId); !ok {
-		return nil, false
-	} else {
-		return w.copy(), true
+func updateWindow(w *Window) {
+	repo.Lock()
+	defer repo.Unlock()
+	for i, win := range windows {
+		if win.Id == w.Id {
+			windows[i] = w
+			break
+		}
 	}
 }
 
-func (r *Repo) setWindow(w *Window) {
-	r.Lock()
-	defer r.Unlock()
-	r.windows[w.Id] = w
-}
-
-func (r *Repo) getWindows() []*Window {
+func getWindows() []*Window {
 	repo.Lock()
 	defer repo.Unlock()
-	return extractList(repo.windows)
+	var res = make([]*Window, len(windows))
+	copy(res, windows)
+	return res
 }
 
-func (r *Repo) getDesktopLayout() *DesktopLayout {
+func getDesktopLayout() *DesktopLayout {
 	repo.Lock()
 	defer repo.Unlock()
 
-	return repo.desktopLayout
+	return desktopLayout
 }
 
-func (r *Repo) setDesktopLayout(desktopLayout *DesktopLayout) {
+func setDesktopLayout(newDesktopLayout *DesktopLayout) {
 	repo.Lock()
 	defer repo.Unlock()
-	repo.desktopLayout = desktopLayout
-}
-
-func (r *Repo) getHighlighedWindowId() uint32 {
-	repo.Lock()
-	defer repo.Unlock()
-	return repo.highlightedWindowId
-}
-
-func (r *Repo) setHighlighedWindowId(wId uint32) {
-	repo.Lock()
-	defer repo.Unlock()
-	repo.highlightedWindowId = wId
-}
-
-func (r *Repo) getHighlightDeadline() time.Time {
-	repo.Lock()
-	defer repo.Unlock()
-	return repo.highlightDeadline
-}
-
-var repo = &Repo{
-	windows:       make(map[uint32]*Window),
-	desktopLayout: &DesktopLayout{},
+	desktopLayout = newDesktopLayout
 }
 
 func updateWindowList(p x11.Proxy) bool {
 	var wIds = x11.GetStack(p)
-	var newWindowMap = make(map[uint32]*Window, len(wIds))
+	var newWindows = make([]*Window, 0, len(wIds))
 	var somethingChanged bool
 	repo.Lock()
 	defer repo.Unlock()
+
 	for i, wId := range wIds {
-		var window *Window
-		var ok bool
-		if window, ok = repo.windows[wId]; ok {
-			window = window.copy()
-		} else {
-			window = BuildWindow(p, wId)
-			updateLinks(window, repo.desktopLayout)
+		var newWindow *Window
+		for _, win := range windows {
+			if wId == win.Id {
+				newWindow = win.shallowCopy()
+				break
+			}
+		}
+		if newWindow == nil {
+			newWindow = makeWindow(p, wId)
 			x11.SubscribeToWindowEvents(p, wId)
 		}
 
-		if window.Stacking != i && relevantForDesktopSearch(window) {
+		newWindow.updateResource(desktopLayout.Monitors)
+
+		if newWindow.Stacking != i && relevantForDesktopSearch(newWindow) {
 			somethingChanged = true
 		}
 
-		window.Stacking = i
-		newWindowMap[wId] = window
+		newWindow.Stacking = i
+		newWindows = append(newWindows, newWindow)
+	}
+	if len(newWindows) < len(windows) {
+		somethingChanged = true
 	}
 
-	for _, window := range repo.windows {
-		if relevantForDesktopSearch(window) {
-			if _, ok := newWindowMap[window.Id]; !ok {
-				somethingChanged = true
-			}
-		}
-	}
-
-	repo.windows = newWindowMap
-
+	windows = newWindows
 	return somethingChanged
 }
 
@@ -219,14 +186,14 @@ func updateDesktopLayout(p x11.Proxy) {
 
 	repo.Lock()
 	defer repo.Unlock()
-	var newMap = make(map[uint32]*Window, len(repo.windows))
-	for id, win := range repo.windows {
-		var newWin = win.copy()
-		updateLinks(newWin, layout)
-		newMap[id] = newWin
+	var newWindows = make([]*Window, 0, len(windows))
+	for _, win := range windows {
+		var newWin = win.shallowCopy()
+		newWin.updateResource(layout.Monitors)
+		newWindows = append(newWindows, newWin)
 	}
-	repo.desktopLayout = layout
-	repo.windows = newMap
+	desktopLayout = layout
+	windows = newWindows
 }
 
 // --------------------------- Serving http requests -------------------------------
@@ -240,13 +207,10 @@ var requestProxyMutex sync.Mutex
 
 func GetJsonResource(r *http.Request) respond.JsonResource {
 	if r.URL.Path == "/desktoplayout" {
-		repo.Lock()
-		var dl = repo.desktopLayout
-		repo.Unlock()
-		return dl
+		return getDesktopLayout()
 	} else if strings.HasPrefix(r.URL.Path, "/window/") {
 		if val, err := strconv.ParseUint(r.URL.Path[8:], 10, 32); err == nil {
-			if win, ok := repo.getWindow(uint32(val)); ok {
+			if win := getWindow(uint32(val)); win != nil {
 				return win
 			}
 		}
@@ -254,144 +218,12 @@ func GetJsonResource(r *http.Request) respond.JsonResource {
 	return nil
 }
 
-type Unhighligher struct{}
-
-func (u Unhighligher) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "POST" {
-		unHighligt()
-		respond.Accepted(w)
-	} else {
-		respond.NotAllowed(w)
-	}
-}
-
 func Crawl(term string, forDisplay bool, crawler searchutils.Crawler) {
-	var windowList = repo.getWindows()
-	for _, win := range windowList {
+	for _, win := range getWindows() {
 		if !forDisplay || relevantForDesktopSearch(win) {
 			crawler(&win.Resource, nil)
 		}
 	}
-}
-
-func MakeRaiser(wId uint32) func(*http.Request) error {
-	return func(*http.Request) error {
-		requestProxyMutex.Lock()
-		defer requestProxyMutex.Unlock()
-		x11.RaiseAndFocusWindow(requestProxy, wId)
-		return nil
-	}
-}
-
-func MakeRestorer(wId uint32) func(*http.Request) error {
-	return func(*http.Request) error {
-		requestProxyMutex.Lock()
-		defer requestProxyMutex.Unlock()
-		x11.RemoveStates(requestProxy, wId, x11.HIDDEN|x11.MAXIMIZED_HORZ|x11.MAXIMIZED_VERT)
-		return nil
-	}
-}
-
-func MakeMinimizer(wId uint32) func(*http.Request) error {
-	return func(*http.Request) error {
-		requestProxyMutex.Lock()
-		defer requestProxyMutex.Unlock()
-		x11.AddStates(requestProxy, wId, x11.HIDDEN)
-		return nil
-	}
-}
-
-func MakeMaximizer(wId uint32) func(*http.Request) error {
-	return func(*http.Request) error {
-		requestProxyMutex.Lock()
-		defer requestProxyMutex.Unlock()
-		x11.AddStates(requestProxy, wId, x11.MAXIMIZED_HORZ|x11.MAXIMIZED_VERT)
-		return nil
-	}
-}
-
-func MakeMover(wId uint32, monitorName string) func(r *http.Request) error {
-	return func(*http.Request) error {
-		for _, m := range repo.getDesktopLayout().Monitors {
-			if monitorName == m.Name {
-				var marginW, marginH = m.W / 10, m.H / 10
-				requestProxyMutex.Lock()
-				defer requestProxyMutex.Unlock()
-				var saveStates = x11.GetStates(requestProxy, wId) & (x11.HIDDEN | x11.MAXIMIZED_HORZ | x11.MAXIMIZED_VERT)
-				x11.RemoveStates(requestProxy, wId, x11.HIDDEN|x11.MAXIMIZED_HORZ|x11.MAXIMIZED_VERT)
-				x11.SetBounds(requestProxy, wId, m.X+int32(marginW), m.Y+int32(marginH), m.W-2*marginW, m.H-2*marginH)
-				x11.AddStates(requestProxy, wId, saveStates)
-				return nil
-			}
-		}
-		return fmt.Errorf("Monitor '%s' not found", monitorName)
-	}
-}
-
-func MakeHighlighter(wId uint32) func(r *http.Request) error {
-	return func(*http.Request) error {
-		highlighWindow(wId)
-		return nil
-	}
-}
-
-const highlightTimeout = 3 * time.Second
-const OPACITY uint32 = 0x11111111
-
-func highlighWindow(wId uint32) {
-	repo.Lock()
-	requestProxyMutex.Lock()
-	defer requestProxyMutex.Unlock()
-	defer repo.Unlock()
-
-	if repo.highlightedWindowId == 0 {
-		repo.highlightDeadline = time.Now().Add(highlightTimeout)
-		scheduleUnhighlight(repo.highlightDeadline)
-		for _, win := range repo.windows {
-			if win.Id != wId && win.State&(x11.HIDDEN|x11.ABOVE) == 0 {
-				x11.SetTransparent(requestProxy, win.Id, OPACITY)
-			}
-		}
-
-	} else {
-		repo.highlightDeadline = time.Now().Add(highlightTimeout)
-		x11.SetTransparent(requestProxy, repo.highlightedWindowId, OPACITY)
-	}
-	x11.SetOpaque(requestProxy, wId)
-	x11.RaiseWindow(requestProxy, wId)
-	repo.highlightedWindowId = wId
-}
-
-func unHighligt() {
-	repo.Lock()
-	requestProxyMutex.Lock()
-	defer requestProxyMutex.Unlock()
-	defer repo.Unlock()
-
-	if repo.highlightedWindowId != 0 {
-		var list = extractList(repo.windows)
-		sort.Sort(WindowStack(list))
-
-		for i := len(list) - 1; i >= 0; i-- {
-			x11.SetOpaque(requestProxy, list[i].Id)
-			x11.RaiseWindow(requestProxy, list[i].Id)
-		}
-		repo.highlightedWindowId = 0
-	}
-}
-
-func scheduleUnhighlight(at time.Time) {
-	time.AfterFunc(at.Sub(time.Now())+100*time.Millisecond, func() {
-		if repo.getHighlightDeadline().After(time.Now()) {
-			scheduleUnhighlight(repo.highlightDeadline)
-		} else {
-			unHighligt()
-		}
-	})
-}
-
-func updateWindowGeometry(p x11.Proxy, wId uint32) {
-	// TODO
 }
 
 func extractList(wm map[uint32]*Window) []*Window {

@@ -1,7 +1,6 @@
 package respond
 
 import (
-	"fmt"
 	"net/http"
 	"strings"
 )
@@ -9,7 +8,7 @@ import (
 type Relation uint8
 
 const (
-	Self Relation = 1 << iota
+	Self Relation = iota
 	DefaultAction
 	Action
 	Delete
@@ -17,23 +16,17 @@ const (
 	Menu
 )
 
+var relationSerializations = map[Relation][]byte{
+	Self:          []byte(`"self"`),
+	DefaultAction: []byte(`"org.refude.defaultaction"`),
+	Action:        []byte(`"org.refude.action"`),
+	Delete:        []byte(`"org.refude.delete"`),
+	Related:       []byte(`"related"`),
+	Menu:          []byte(`"org.refude.menu"`),
+}
+
 func (r Relation) MarshalJSON() ([]byte, error) {
-	switch r {
-	case Self:
-		return []byte(`"self"`), nil
-	case DefaultAction:
-		return []byte(`"org.refude.defaultaction"`), nil
-	case Action:
-		return []byte(`"org.refude.action"`), nil
-	case Delete:
-		return []byte(`"org.refude.delete"`), nil
-	case Related:
-		return []byte(`"related"`), nil
-	case Menu:
-		return []byte(`"org.refude.menu"`), nil
-	default:
-		panic(fmt.Sprintf("Unknown relation: %d", r))
-	}
+	return relationSerializations[r], nil
 }
 
 type Traits []string
@@ -108,32 +101,6 @@ func (res *Resource) addLink(href string, title string, icon string, relation Re
 			Relation: relation,
 		},
 	)
-}
-
-func (res *Resource) ClearNonSelfLinks() {
-	res.Links = []Link{res.Self()}
-}
-
-func (res *Resource) UpdateTitle(title string) {
-	for _, l := range res.Links {
-		if l.Relation == Self {
-			l.Title = title
-			break
-		}
-	}
-}
-
-func (res *Resource) UpdateIcon(icon string) {
-	for _, l := range res.Links {
-		if l.Relation == Self {
-			l.Icon = icon
-			break
-		}
-	}
-}
-
-func (res *Resource) UpdateTraits(traits ...string) {
-	res.Traits = traits
 }
 
 func (res *Resource) DoGet(this interface{}, w http.ResponseWriter, r *http.Request) {
