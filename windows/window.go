@@ -59,12 +59,6 @@ func (win *Window) updateResource(monitors []*x11.MonitorData) {
 		win.AddActionLink("Move to monitor "+m.Name, "", actionId)
 	}
 
-	if win.State&x11.HIDDEN > 0 {
-		win.Traits = []string{"window", "minimized"}
-	} else {
-		win.Traits = []string{"window"}
-	}
-
 }
 
 func (win *Window) DoDelete(w http.ResponseWriter, r *http.Request) {

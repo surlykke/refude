@@ -32,20 +32,23 @@ func (r Relation) MarshalJSON() ([]byte, error) {
 type Traits []string
 
 type Link struct {
-	Href     string   `json:"href"`
-	Title    string   `json:"title"`
-	Icon     string   `json:"icon,omitempty"`
-	Relation Relation `json:"rel"`
-	Traits   Traits   `json:"traits,omitempty"`
+	Href       string   `json:"href"`
+	Title      string   `json:"title"`
+	Icon       string   `json:"icon,omitempty"`
+	Relation   Relation `json:"rel"`
+	RefudeType string   `json:"refudeType,omitempty"`
 }
 
 type Resource struct {
-	Links  []Link `json:"_links"`
-	Traits Traits `json:"traits,omitempty"`
+	Links      []Link `json:"_links"`
+	RefudeType string `json:"refudeType"`
 }
 
-func MakeResource(href, title, icon string, traits ...string) Resource {
-	var res = Resource{Traits: traits}
+func MakeResource(href, title, icon string, refudeType string) Resource {
+	var res = Resource{
+		Links:      make([]Link, 0, 5),
+		RefudeType: refudeType,
+	}
 	res.AddSelfLink(href, title, icon)
 	return res
 }
@@ -63,7 +66,7 @@ func (res *Resource) Self() Link {
 func (res *Resource) GetRelatedLink() Link {
 	var l = res.Self()
 	l.Relation = Related
-	l.Traits = res.Traits
+	l.RefudeType = res.RefudeType
 	return l
 }
 

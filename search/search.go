@@ -24,9 +24,7 @@ type SearchResult struct {
 
 func makeSearchResult(term string) SearchResult {
 	var sr = SearchResult{}
-	sr.Links = make([]respond.Link, 0, 1000)
-	sr.AddSelfLink("/desktop/search?term="+term, "Desktop Search", "")
-	sr.Traits = []string{"search"}
+	sr.Resource = respond.MakeResource("/desktop/search?term="+term, "Desktop Search", "", "search")
 	sr.Term = term
 	return sr
 }
