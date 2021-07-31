@@ -2,7 +2,7 @@ import React, { useEffect } from "react"
 import { path2Url, iconClassName} from "../common/monitor"
 
 export let Resource = ({resource}) => {
-    if (resource.traits && resource.traits.includes("search")) {
+    if ("search" === resource.refudeType) {
         return null
     } else {
         let self = resource._links.find(l => "self" === l.rel)

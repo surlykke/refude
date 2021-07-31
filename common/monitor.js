@@ -40,8 +40,4 @@ export let addParam = (path, name, value) => {
 
 export let path2Url = path => "http://localhost:7938" + path
 
-export let iconClassName = link => {
-    let isWindow = link.traits && link.traits.includes("window")
-    let isMinimized = isWindow && link.traits.includes("minimized")
-    return `icon${isWindow ? " window" : ""}${isMinimized ? " minimized" : ""}`
-}
+export let iconClassName = link => "icon" + ("window" === link.refudeType ? " window" : "")
