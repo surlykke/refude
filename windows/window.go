@@ -76,8 +76,6 @@ func performAction(wId uint32, action string) bool {
 		for _, m := range repo.getDesktopLayout().Monitors {
 			if monitorName == m.Name {
 				var marginW, marginH = m.W / 10, m.H / 10
-				requestProxyMutex.Lock()
-				defer requestProxyMutex.Unlock()
 				var saveStates = x11.GetStates(requestProxy, wId) & (x11.HIDDEN | x11.MAXIMIZED_HORZ | x11.MAXIMIZED_VERT)
 				x11.RemoveStates(requestProxy, wId, x11.HIDDEN|x11.MAXIMIZED_HORZ|x11.MAXIMIZED_VERT)
 				x11.SetBounds(requestProxy, wId, m.X+int32(marginW), m.Y+int32(marginH), m.W-2*marginW, m.H-2*marginH)
