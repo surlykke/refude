@@ -8,6 +8,7 @@ import (
 
 	"github.com/rakyll/magicmime"
 	"github.com/surlykke/RefudeServices/applications"
+	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/xdg"
@@ -31,7 +32,7 @@ func makeFile(path string) (*File, error) {
 		path = xdg.Home + "/" + path
 	}
 
-	if _, err := os.Stat(path); os.IsNotExist(err) {
+	if fileInfo, err := os.Stat(path); os.IsNotExist(err) {
 		return nil, nil
 	} else if err != nil {
 		return nil, err
@@ -51,6 +52,25 @@ func makeFile(path string) (*File, error) {
 			} else {
 				f.AddActionLink("Open with "+app.Name, applications.Icon2IconUrl(app.Icon), app.Id)
 			}
+		}
+
+		if fileInfo.IsDir() {
+			if dir, err := os.Open(path); err != nil {
+				log.Warn("Error opening", path, err)
+			} else if names, err := dir.Readdirnames(-1); err != nil {
+				log.Warn("Error reading", path, err)
+				dir.Close()
+			} else {
+				// Can't use filepath.Glob as it is case sensitive
+				for _, name := range names {
+					var path = path + "/" + name
+					var mimetype, _ = magicmime.TypeByFile(path)
+					var resource = makeResource(path, mimetype)
+					f.Links = append(f.Links, resource.GetRelatedLink())
+				}
+				dir.Close()
+			}
+
 		}
 
 		return &f, nil
