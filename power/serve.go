@@ -19,6 +19,6 @@ func Crawl(term string, forDisplay bool, crawler searchutils.Crawler) {
 	deviceLock.Lock()
 	defer deviceLock.Unlock()
 	for _, device := range devices {
-		crawler(&device.Resource, nil)
+		crawler(device.GetRelatedLink(), nil)
 	}
 }

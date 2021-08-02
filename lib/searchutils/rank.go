@@ -23,6 +23,6 @@ func FluffyIndex(haystack, needle []rune) int {
 	return first + 5*((j+1-first)-len(needle)) // kindof start of match + spread of match
 }
 
-type Crawler func(res *respond.Resource, keywords []string)
+type Crawler func(related respond.Link, keywords []string)
 
 type Crawl func(term string, forDisplay bool, crawler Crawler)

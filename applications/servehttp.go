@@ -28,13 +28,13 @@ func Crawl(term string, forDisplay bool, crawler searchutils.Crawler) {
 
 	if !forDisplay {
 		for _, mt := range collectionStore.Load().(collection).mimetypes {
-			crawler(&mt.Resource, nil)
+			crawler(mt.GetRelatedLink(), nil)
 		}
 	}
 
 	for _, app := range collectionStore.Load().(collection).applications {
 		if !(forDisplay && app.NoDisplay) {
-			crawler(&app.Resource, app.Keywords)
+			crawler(app.GetRelatedLink(), app.Keywords)
 		}
 	}
 }

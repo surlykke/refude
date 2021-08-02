@@ -66,7 +66,7 @@ func Crawl(term string, forDisplay bool, crawler searchutils.Crawler) {
 	var notifications = getNotifications()
 	for _, notification := range notifications {
 		if !forDisplay || !notification.forDisplay() {
-			crawler(&notification.Resource, nil)
+			crawler(notification.GetRelatedLink(), nil)
 		}
 	}
 }

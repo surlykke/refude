@@ -48,7 +48,7 @@ func Crawl(term string, forDisplay bool, crawler searchutils.Crawler) {
 	lock.Lock()
 	defer lock.Unlock()
 	for _, item := range items {
-		crawler(&item.Resource, nil)
+		crawler(item.GetRelatedLink(), nil)
 	}
 }
 

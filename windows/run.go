@@ -221,7 +221,7 @@ func GetJsonResource(r *http.Request) respond.JsonResource {
 func Crawl(term string, forDisplay bool, crawler searchutils.Crawler) {
 	for _, win := range getWindows() {
 		if !forDisplay || relevantForDesktopSearch(win) {
-			crawler(&win.Resource, nil)
+			crawler(win.GetRelatedLink(), nil)
 		}
 	}
 }

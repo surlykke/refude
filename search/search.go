@@ -63,8 +63,7 @@ func collectSearchResult(term string) SearchResult {
 	var sr = makeSearchResult(term)
 
 	var temp = make(rankedLinks, 0, 1000)
-	var crawler = func(res *respond.Resource, keywords []string) {
-		var link = res.GetRelatedLink()
+	var crawler = func(link respond.Link, keywords []string) {
 		var titleRunes = []rune(strings.ToLower(link.Title))
 		if rnk := searchutils.FluffyIndex(titleRunes, termRunes); rnk > -1 {
 			temp = append(temp, rankedLink{link, rnk})
@@ -103,9 +102,9 @@ func collectSearchResult(term string) SearchResult {
 
 func collectPaths(prefix string) []string {
 	var paths []string = make([]string, 0, 1000)
-	var crawler = func(res *respond.Resource, keywords []string) {
-		if strings.HasPrefix(res.Self().Href, prefix) {
-			paths = append(paths, res.Self().Href)
+	var crawler = func(link respond.Link, keywords []string) {
+		if strings.HasPrefix(link.Href, prefix) {
+			paths = append(paths, link.Href)
 		}
 	}
 	windows.Crawl("", false, crawler)

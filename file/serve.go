@@ -75,7 +75,7 @@ func Crawl(term string, forDisplay bool, crawler searchutils.Crawler) {
 					var path = searchDirectory + "/" + name
 					var mimetype, _ = magicmime.TypeByFile(path)
 					var resource = makeResource(path, mimetype)
-					crawler(&resource, nil)
+					crawler(resource.GetRelatedLink(), nil)
 				}
 
 			}
