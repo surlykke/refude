@@ -19,7 +19,6 @@ import (
 	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/image"
 	"github.com/surlykke/RefudeServices/lib/log"
-	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
@@ -190,10 +189,10 @@ func Notify(app_name string,
 		}
 	}
 
-	var href = fmt.Sprintf("/notification/%d", id)
 	notification := Notification{
 		Id:       id,
 		Sender:   app_name,
+		self:     fmt.Sprintf("/notification/%d", id),
 		Subject:  sanitize(summary, []string{}, []string{}),
 		Body:     sanitize(body, allowedTags, allowedEscapes),
 		Created:  time.Now(),
@@ -202,17 +201,9 @@ func Notify(app_name string,
 		Hints:    map[string]interface{}{},
 		iconName: iconName,
 	}
-	notification.Resource = respond.MakeResource(href, notification.Subject, icons.IconUrl(notification.iconName), "notification")
-	notification.AddDeleteLink("Dismiss", "")
 
 	for i := 0; i+1 < len(actions); i = i + 2 {
-		var actionId, actionDesc = actions[i], actions[i+1]
-		if actionId == "default" {
-			notification.AddDefaultActionLink(actionDesc, "")
-		} else {
-			notification.AddActionLink(actionDesc, "", actionId)
-		}
-		notification.Actions[actionId] = actionDesc
+		notification.Actions[actions[i]] = actions[i+1]
 	}
 
 	for name, val := range hints {

@@ -14,19 +14,24 @@ import (
 	"strings"
 
 	"github.com/surlykke/RefudeServices/lib/log"
-	"github.com/surlykke/RefudeServices/lib/respond"
+	"github.com/surlykke/RefudeServices/lib/relation"
+	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/slice"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
 type IconTheme struct {
-	respond.Resource
 	Id       string
+	self     string
 	Name     string
 	Comment  string
 	Inherits []string
 	Dirs     map[string]IconDir
 	icons    map[string]*Icon
+}
+
+func (it *IconTheme) Links() []resource.Link {
+	return []resource.Link{resource.MakeLink(it.self, it.Name, "", relation.Self)}
 }
 
 type IconDir struct {
@@ -80,8 +85,8 @@ func readTheme(indexThemeFilePath string) (*IconTheme, bool) {
 
 	theme := IconTheme{}
 	theme.Id = themeId
+	theme.self = "/icontheme/" + themeId
 	theme.Name = themeGroup.Entries["Name"]
-	theme.Resource = respond.MakeResource("/icontheme"+theme.Id, theme.Name, "", "icontheme")
 	theme.Comment = themeGroup.Entries["Comment"]
 	theme.Inherits = slice.Split(themeGroup.Entries["Inherits"], ",")
 	theme.Dirs = make(map[string]IconDir)

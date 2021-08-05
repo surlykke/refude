@@ -15,6 +15,7 @@ import (
 	"github.com/surlykke/RefudeServices/file"
 	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/log"
+	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/notifications"
 	"github.com/surlykke/RefudeServices/power"
@@ -28,44 +29,75 @@ import (
 	_ "net/http/pprof"
 )
 
-var resourcefinders = []func(*http.Request) respond.JsonResource{
-	applications.GetJsonResource,
-	windows.GetJsonResource,
-	file.GetJsonResource,
-	notifications.GetJsonResource,
-	statusnotifications.GetJsonResource,
-	power.GetJsonResource,
-}
-
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var path = r.URL.Path
-	if path == "/icon" {
-		icons.ServeHTTP(w, r)
-	} else if strings.HasPrefix(path, "/search/") {
-		search.ServeHTTP(w, r)
-	} else if strings.HasPrefix(r.URL.Path, "/watch") {
-		watch.ServeHTTP(w, r)
-	} else if strings.HasPrefix(path, "/doc") {
-		doc.ServeHTTP(w, r)
-	} else {
-		for _, resourcefinder := range resourcefinders {
-			if res := resourcefinder(r); res != nil {
-				ServeJsonResource(res, w, r)
-				return
-			}
-		}
+	if pathElements, ok := extractPathElements(path); !ok {
 		respond.NotFound(w)
+	} else {
+		switch pathElements[0] {
+		case "icon":
+			icons.ServeHTTP(w, r)
+		case "watch":
+			watch.ServeHTTP(w, r)
+		case "search":
+			search.ServeHTTP(w, r)
+		case "doc":
+			doc.ServeHTTP(w, r)
+		case "window":
+			serveResource(w, r, windows.GetResource(pathElements[1:]))
+		case "application":
+			serveResource(w, r, applications.GetAppResource(pathElements[1:]))
+		case "mimetype":
+			serveResource(w, r, applications.GetMimeResource(pathElements[1:]))
+		case "notification":
+			serveResource(w, r, notifications.GetResource(pathElements[1:]))
+		case "item":
+			serveResource(w, r, statusnotifications.GetResource(pathElements[1:]))
+		case "device":
+			serveResource(w, r, power.GetResource(pathElements[1:]))
+		case "file":
+			serveResource(w, r, file.GetResource(pathElements[1:]))
+		default:
+			respond.NotFound(w)
+		}
 	}
 }
 
-func ServeJsonResource(jr respond.JsonResource, w http.ResponseWriter, r *http.Request) {
-	if r.Method == "GET" {
-		jr.DoGet(jr, w, r)
-	} else if r.Method == "POST" {
-		jr.DoPost(w, r)
-	} else if r.Method == "DELETE" {
-		jr.DoDelete(w, r)
+// Checks that path is of form /foo/baa/moo (i.e starts with slash and doesn't end with slash)
+// and extracts that to []string{"foo", "baa", "moo"}
+func extractPathElements(path string) ([]string, bool) {
+	if strings.HasPrefix(path, "/") && !strings.HasSuffix(path[1:], "/") {
+		return strings.Split(path[1:], "/"), true
 	} else {
+		return []string{}, false
+	}
+}
+
+type envelope struct {
+	Links      []resource.Link `json:"_links"`
+	RefudeType string          `json:"refudeType"`
+	Data       interface{}     `json:"data"`
+}
+
+func serveResource(w http.ResponseWriter, r *http.Request, res resource.Resource) {
+	if res == nil {
+		respond.NotFound(w)
+	} else {
+		switch r.Method {
+		case "GET":
+			respond.ResourceAsJson(w, res, res.Links())
+			return
+		case "POST":
+			if postable, ok := res.(resource.Postable); ok {
+				postable.DoPost(w, r)
+				return
+			}
+		case "DELETE":
+			if deleteable, ok := res.(resource.Deleteable); ok {
+				deleteable.DoDelete(w, r)
+				return
+			}
+		}
 		respond.NotAllowed(w)
 	}
 }

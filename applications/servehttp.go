@@ -1,20 +1,22 @@
 package applications
 
 import (
-	"net/http"
-	"strings"
-
-	"github.com/surlykke/RefudeServices/lib/respond"
+	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
 )
 
-func GetJsonResource(r *http.Request) respond.JsonResource {
-	if strings.HasPrefix(r.URL.Path, "/application/") {
-		if app, ok := collectionStore.Load().(collection).applications[r.URL.Path[13:]]; ok {
+func GetAppResource(pathComponents []string) resource.Resource {
+	if len(pathComponents) == 1 {
+		if app, ok := collectionStore.Load().(collection).applications[pathComponents[0]]; ok {
 			return app
 		}
-	} else if strings.HasPrefix(r.URL.Path, "/mimetype/") {
-		if mt, ok := collectionStore.Load().(collection).mimetypes[r.URL.Path[10:]]; ok {
+	}
+	return nil
+}
+
+func GetMimeResource(relPath []string) resource.Resource {
+	if len(relPath) == 1 {
+		if mt, ok := collectionStore.Load().(collection).mimetypes[relPath[0]]; ok {
 			return mt
 		}
 	}
@@ -28,13 +30,13 @@ func Crawl(term string, forDisplay bool, crawler searchutils.Crawler) {
 
 	if !forDisplay {
 		for _, mt := range collectionStore.Load().(collection).mimetypes {
-			crawler(mt.GetRelatedLink(), nil)
+			crawler(mt.self, mt.Comment, "")
 		}
 	}
 
 	for _, app := range collectionStore.Load().(collection).applications {
 		if !(forDisplay && app.NoDisplay) {
-			crawler(app.GetRelatedLink(), app.Keywords)
+			crawler(app.self, app.Name, app.Icon, app.Keywords...)
 		}
 	}
 }

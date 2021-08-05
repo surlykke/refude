@@ -13,14 +13,16 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/requests"
+	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
 
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
 type DesktopApplication struct {
-	respond.Resource
+	self            string
 	Type            string
 	Version         string `json:",omitempty"`
 	Name            string
@@ -50,6 +52,22 @@ type DesktopApplication struct {
 
 func (d *DesktopApplication) Run(arg string) error {
 	return run(d.Exec, arg, d.Terminal)
+}
+
+func (d *DesktopApplication) Links() []resource.Link {
+	var links = []resource.Link{
+		resource.MakeLink(d.self, d.Name, d.Icon, relation.Self),
+		resource.MakeLink(d.self, "Launch", "", relation.DefaultAction),
+	}
+	for _, da := range d.DesktopActions {
+		links = append(links, resource.MakeLink(d.self+"?action="+da.id, da.Name, da.Icon, relation.Action))
+	}
+	return links
+
+}
+
+func (d *DesktopApplication) RefudeType() string {
+	return "application"
 }
 
 type DesktopAction struct {

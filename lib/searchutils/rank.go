@@ -1,7 +1,5 @@
 package searchutils
 
-import "github.com/surlykke/RefudeServices/lib/respond"
-
 // Kindof 'index with skips'. So eg. 'nvim' wille be found in 'neovim' or 'pwr' in 'poweroff'
 // case sensitive, -1 means not found
 func FluffyIndex(haystack, needle []rune) int {
@@ -23,6 +21,6 @@ func FluffyIndex(haystack, needle []rune) int {
 	return first + 5*((j+1-first)-len(needle)) // kindof start of match + spread of match
 }
 
-type Crawler func(related respond.Link, keywords []string)
+type Crawler func(href, title, iconName string, keywords ...string)
 
 type Crawl func(term string, forDisplay bool, crawler Crawler)

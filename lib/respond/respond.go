@@ -2,10 +2,12 @@ package respond
 
 import (
 	"bytes"
-	"crypto/sha1"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+
+	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
 func Ok(w http.ResponseWriter) {
@@ -43,12 +45,38 @@ func AcceptedAndThen(w http.ResponseWriter, f func()) {
 	f()
 }
 
-// -----
-
 func AsJson(w http.ResponseWriter, data interface{}) {
 	var json = ToJson(data)
 	w.Header().Set("Content-Type", "application/vnd.refude+json")
 	w.Write(json)
+}
+
+func writeOrPanic(w io.Writer, byteArrArr ...[]byte) {
+	for _, byteArr := range byteArrArr {
+		for len(byteArr) > 0 {
+			if i, err := w.Write(byteArr); err != nil {
+				panic(err)
+			} else {
+				byteArr = byteArr[i:]
+			}
+		}
+	}
+}
+
+// TODO doc
+func ResourceAsJson(w http.ResponseWriter, res resource.Resource, links []resource.Link) {
+	w.Header().Set("Content-Type", "application/vnd.refude+json")
+	var linksJson = bytes.TrimSpace(ToJson(links))
+	var resJson = bytes.TrimSpace(ToJson(res))
+	if resJson[0] != '{' || len(resJson) < 2 {
+		fmt.Println("resJson was:", string(resJson))
+		panic("res must serialize to a Json object")
+	}
+	writeOrPanic(w, []byte(`{"_links":`), linksJson, []byte(`,"refudeType":"`), []byte(res.RefudeType()), []byte{'"'})
+	if len(resJson) > 2 {
+		writeOrPanic(w, []byte{','})
+	}
+	writeOrPanic(w, resJson[1:len(resJson)-1], []byte{'}'})
 }
 
 func AsPng(w http.ResponseWriter, pngData []byte) {
@@ -57,6 +85,7 @@ func AsPng(w http.ResponseWriter, pngData []byte) {
 }
 
 // We don't care about embedding in html, so no escaping
+// (The standard encoder escapes '&' which was a nuisance)
 func ToJson(res interface{}) []byte {
 	var buf = bytes.NewBuffer([]byte{})
 	var encoder = json.NewEncoder(buf)
@@ -65,9 +94,4 @@ func ToJson(res interface{}) []byte {
 		panic(fmt.Sprintln(err))
 	}
 	return buf.Bytes()
-}
-
-func ToJsonAndEtag(res interface{}) ([]byte, string) {
-	var bytes = ToJson(res)
-	return bytes, fmt.Sprintf("\"%x\"", sha1.Sum(bytes))
 }

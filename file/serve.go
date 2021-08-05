@@ -2,15 +2,14 @@ package file
 
 import (
 	"fmt"
-	"net/http"
+	"net/url"
 	"os"
 	"regexp"
 	"strings"
 
 	"github.com/rakyll/magicmime"
 	"github.com/surlykke/RefudeServices/lib/log"
-	"github.com/surlykke/RefudeServices/lib/requests"
-	"github.com/surlykke/RefudeServices/lib/respond"
+	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
@@ -19,27 +18,17 @@ var filePathPattern = regexp.MustCompile(`^/file$|^/file(/actions)$|^/file/actio
 
 var noPathError = fmt.Errorf("No path given")
 
-func GetJsonResource(r *http.Request) respond.JsonResource {
-	if path := getAdjustedPath(r); path == "" {
-		return nil
-	} else if file, err := makeFile(path); err != nil {
-		return nil
-	} else if file == nil {
-		return nil
-	} else {
-		return file
+func GetResource(pathElements []string) resource.Resource {
+	if len(pathElements) == 1 {
+		if filePath, err := url.PathUnescape(pathElements[0]); err != nil {
+			log.Info("Could not extract path from", pathElements[0], err)
+		} else if file, err := makeFile(filePath); err != nil {
+			log.Info("Could not make file from", filePath, err)
+		} else {
+			return file
+		}
 	}
-}
-
-func getAdjustedPath(r *http.Request) string {
-	if path := requests.GetSingleQueryParameter(r, "path", ""); path == "" {
-		return ""
-	} else if path[0] != '/' {
-		return xdg.Home + "/" + path
-	} else {
-		return path
-	}
-
+	return nil
 }
 
 var searchDirectories = make(map[string]bool, 9)
@@ -74,10 +63,9 @@ func Crawl(term string, forDisplay bool, crawler searchutils.Crawler) {
 				if searchutils.FluffyIndex([]rune(strings.ToLower(name)), termRunes) > -1 {
 					var path = searchDirectory + "/" + name
 					var mimetype, _ = magicmime.TypeByFile(path)
-					var resource = makeResource(path, mimetype)
-					crawler(resource.GetRelatedLink(), nil)
+					var icon = strings.ReplaceAll(mimetype, "/", "-")
+					crawler("/file/"+url.PathEscape(path), path, icon)
 				}
-
 			}
 		}
 		dir.Close()

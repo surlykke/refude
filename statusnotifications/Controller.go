@@ -8,6 +8,7 @@ package statusnotifications
 
 import (
 	"errors"
+	"fmt"
 	"regexp"
 	"strings"
 
@@ -18,7 +19,6 @@ import (
 	"github.com/godbus/dbus/v5/prop"
 	dbuscall "github.com/surlykke/RefudeServices/lib/dbusutils"
 	"github.com/surlykke/RefudeServices/lib/log"
-	"github.com/surlykke/RefudeServices/lib/respond"
 )
 
 const WATCHER_SERVICE = "org.kde.StatusNotifierWatcher"
@@ -158,13 +158,12 @@ func updateWatcherProperties() {
 }
 
 func buildItem(sender string, path dbus.ObjectPath) *Item {
-	var self = itemSelf(sender, path)
-	var item = Item{sender: sender, itemPath: path}
+	var item = Item{sender: sender, itemPath: path, self: fmt.Sprintf("/item/%s", strings.ReplaceAll(sender+string(path), "/", "-"))}
 	var props = dbuscall.GetAllProps(conn, item.sender, item.itemPath, ITEM_INTERFACE)
 	item.Id = getStringOr(props["Id"])
 	item.Category = getStringOr(props["Category"])
 	if item.MenuPath = getDbusPath(props["Menu"]); item.MenuPath != "" {
-		item.Menu = self + "/menu"
+		item.Menu = item.self + "/menu"
 	}
 	item.Title = getStringOr(props["Title"])
 	item.Status = getStringOr(props["Status"])
@@ -188,81 +187,11 @@ func buildItem(sender string, path dbus.ObjectPath) *Item {
 
 	item.UseOverlayIconPixmap = getStringOr(props["OverlayIconName"]) == "" // TODO
 
-	item.Resource = respond.MakeResource(self, item.Title, icons.IconUrl(item.IconName), "statusnotificationitem")
-
-	if item.MenuPath != "" {
-		item.AddMenuLink(item.Title + " menu")
-	}
 	return &item
 }
 
-func updateTitle(item *Item) {
-	if v, ok := getProp(item, "Title"); ok {
-		item.Title = getStringOr(v)
-		for _, l := range item.Links {
-			if l.Relation == respond.Self {
-				l.Title = item.Title
-				break
-			}
-		}
-	}
-}
-
-func updateToolTip(item *Item) {
-	if v, ok := getProp(item, "ToolTip"); ok {
-		item.ToolTip = getStringOr(v)
-	}
-}
-
-func updateStatus(item *Item) {
-	if v, ok := getProp(item, "Status"); ok {
-		item.Status = getStringOr(v)
-	}
-}
-
-func updateIcon(item *Item) {
-	if item.UseIconPixmap {
-		if v, ok := getProp(item, "IconPixmap"); ok {
-			item.IconName = collectPixMap(v)
-		}
-	} else {
-		if v, ok := getProp(item, "IconName"); ok {
-			item.IconName = getStringOr(v)
-		}
-	}
-	for _, l := range item.Links {
-		if l.Relation == respond.Self {
-			l.Icon = icons.IconUrl(item.IconName)
-			break
-		}
-	}
-}
-
-func updateIconThemePath(item *Item) {
-	if v, ok := getProp(item, "IconThemePath"); ok {
-		item.IconThemePath = getStringOr(v)
-		icons.AddBasedir(item.IconThemePath)
-	}
-}
-
-func updateAttentionIcon(item *Item) {
-	if item.UseAttentionIconPixmap {
-		if v, ok := getProp(item, "AttentionIconPixmap"); ok {
-			item.AttentionIconName = collectPixMap(v)
-		}
-	} else {
-		if v, ok := getProp(item, "AttentionIconName"); ok {
-			item.AttentionIconName = getStringOr(v)
-		}
-	}
-}
-
-func updateOverlayIcon(item *Item) {
-	// TODO
-}
-
-func getProp(item *Item, propname string) (dbus.Variant, bool) {
-	return dbuscall.GetSingleProp(conn, item.sender, item.itemPath, ITEM_INTERFACE, propname)
+func getProp(sender string, path dbus.ObjectPath, propname string) (dbus.Variant, bool) {
+	return dbuscall.GetSingleProp(conn, sender, path, ITEM_INTERFACE, propname)
 }
 
 func getStringOr(v dbus.Variant) string {

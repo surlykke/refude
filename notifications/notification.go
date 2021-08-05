@@ -12,7 +12,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/requests"
+	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/watch"
 )
@@ -26,9 +28,9 @@ const (
 )
 
 type Notification struct {
-	respond.Resource
 	Id       uint32
 	Sender   string
+	self     string
 	Subject  string
 	Body     string
 	Created  time.Time
@@ -37,6 +39,25 @@ type Notification struct {
 	Actions  map[string]string
 	Hints    map[string]interface{}
 	iconName string
+}
+
+func (n *Notification) Links() []resource.Link {
+	var links = []resource.Link{resource.MakeLink(n.self, n.Subject, n.iconName, relation.Self)}
+	links = append(links, resource.MakeLink(n.self, "Dismiss", "", relation.Delete))
+
+	for actionId, actionDesc := range n.Actions {
+		if actionId == "default" {
+			links = append(links, resource.MakeLink(n.self, actionDesc, "", relation.DefaultAction))
+		} else {
+			links = append(links, resource.MakeLink(n.self, actionDesc, "", relation.DefaultAction))
+		}
+	}
+
+	return links
+}
+
+func (n *Notification) RefudeType() string {
+	return "notification"
 }
 
 func (n *Notification) haveDefaultAction() bool {

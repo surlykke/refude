@@ -13,20 +13,7 @@ import (
 	"github.com/surlykke/RefudeServices/watch"
 
 	"github.com/surlykke/RefudeServices/lib/log"
-	"github.com/surlykke/RefudeServices/lib/respond"
 )
-
-func Collect() []respond.Link {
-	deviceLock.Lock()
-	defer deviceLock.Unlock()
-	var links = make([]respond.Link, 0, len(devices))
-	for _, device := range devices {
-		links = append(links, device.GetRelatedLink())
-	}
-
-	//sort.Sort(respond.LinkList(links))
-	return links
-}
 
 func Run() {
 	var knownPaths = map[dbus.ObjectPath]bool{DisplayDevicePath: true}
@@ -79,9 +66,9 @@ func getDevice(path string) *Device {
 
 func setDevice(device *Device) {
 	deviceLock.Lock()
-	devices[device.Self().Href] = device
+	devices[device.self] = device
 	deviceLock.Unlock()
-	watch.SomethingChanged(device.Self().Href)
+	watch.SomethingChanged(device.self)
 }
 
 func removeDevice(path dbus.ObjectPath) {

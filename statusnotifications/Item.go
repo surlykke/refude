@@ -19,15 +19,17 @@ import (
 	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/image"
 	"github.com/surlykke/RefudeServices/lib/log"
+	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/requests"
+	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/slice"
 )
 
 type Item struct {
-	respond.Resource
 	sender                  string
 	itemPath                dbus.ObjectPath
+	self                    string
 	Id                      string
 	Menu                    string `json:",omitempty"`
 	Category                string
@@ -45,38 +47,38 @@ type Item struct {
 	UseOverlayIconPixmap    bool
 }
 
+func (item *Item) Links() []resource.Link {
+	var links []resource.Link = []resource.Link{resource.MakeLink(item.self, item.Title, item.IconName, relation.Self)}
+	if item.MenuPath != "" {
+		links = append(links, resource.MakeLink(item.self+"/menu", item.Title, "", relation.Menu))
+	}
+	return links
+}
+
+func (item *Item) RefudeType() string {
+	return "item"
+}
+
 func (item *Item) buildMenu() *Menu {
 	if item.MenuPath == "" {
 		return nil
 	} else {
-		var menu = Menu{sender: item.sender, menuPath: item.MenuPath}
-		menu.Resource = respond.MakeResource(itemSelf(item.sender, item.itemPath)+"/menu", "", "", "itemmenu")
-		var err error
-		if menu.Entries, err = menuEntries(item.sender, item.MenuPath); err != nil {
+		if entries, err := menuEntries(item.sender, item.MenuPath); err != nil {
 			return nil
+		} else {
+			return &Menu{
+				Entries:  entries,
+				sender:   item.sender,
+				menuPath: item.MenuPath,
+				self:     item.self + "/menu",
+			}
 		}
-		return &menu
 
 	}
 }
 
 func itemSelf(sender string, path dbus.ObjectPath) string {
-	return fmt.Sprintf("/item/%s", strings.Replace(sender+string(path), "/", "-", -1))
-}
-
-func (item *Item) itemLink() respond.Link {
-	return respond.Link{
-		Href:  itemSelf(item.sender, item.itemPath),
-		Title: item.Title,
-		Icon:  icons.IconUrl(item.IconName),
-	}
-}
-
-func (item *Item) menuLink() respond.Link {
-	return respond.Link{
-		Href:  itemSelf(item.sender, item.itemPath) + "/menu",
-		Title: item.Title + " menu",
-	}
+	return fmt.Sprintf("/item/%s", strings.ReplaceAll(sender+string(path), "/", "-"))
 }
 
 type ItemMap map[string]*Item
@@ -95,10 +97,18 @@ type MenuEntry struct {
 }
 
 type Menu struct {
-	respond.Resource
 	Entries  []MenuEntry
 	sender   string
 	menuPath dbus.ObjectPath
+	self     string
+}
+
+func (menu *Menu) Links() []resource.Link {
+	return []resource.Link{resource.MakeLink(menu.self, "", "", relation.Self)}
+}
+
+func (menu *Menu) RefudeType() string {
+	return "menu"
 }
 
 func menuEntries(sender string, menuPath dbus.ObjectPath) ([]MenuEntry, error) {

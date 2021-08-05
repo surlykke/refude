@@ -8,7 +8,9 @@ import (
 	"github.com/surlykke/RefudeServices/applications"
 	"github.com/surlykke/RefudeServices/file"
 	"github.com/surlykke/RefudeServices/icons"
+	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/requests"
+	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
 	"github.com/surlykke/RefudeServices/notifications"
@@ -18,20 +20,37 @@ import (
 )
 
 type SearchResult struct {
-	respond.Resource
-	Term string `json:"term"`
+	Links      []resource.Link `json:"_links"`
+	RefudeType string          `json:"refudeType"`
+	Term       string          `json:"term"`
 }
 
 func makeSearchResult(term string) SearchResult {
-	var sr = SearchResult{}
-	sr.Resource = respond.MakeResource("/desktop/search?term="+term, "Desktop Search", "", "search")
-	sr.Term = term
+	var sr = SearchResult{
+		Links:      make([]resource.Link, 0, 1000),
+		RefudeType: "search",
+		Term:       term,
+	}
+	sr.Links = append(sr.Links, resource.MakeLink("/desktop/search?term="+term, "Desktop Search", "", relation.Self))
 	return sr
 }
 
 type rankedLink struct {
-	respond.Link
+	resource.Link
 	rank int
+}
+
+func makeRankedLink(href, title, iconName, refudeType string, rank int) rankedLink {
+	return rankedLink{
+		Link: resource.Link{
+			Href:       href,
+			Title:      title,
+			Icon:       resource.IconUrl(iconName),
+			Relation:   relation.Related,
+			RefudeType: refudeType,
+		},
+		rank: rank,
+	}
 }
 
 type rankedLinks []rankedLink
@@ -63,21 +82,22 @@ func collectSearchResult(term string) SearchResult {
 	var sr = makeSearchResult(term)
 
 	var temp = make(rankedLinks, 0, 1000)
-	var crawler = func(link respond.Link, keywords []string) {
-		var titleRunes = []rune(strings.ToLower(link.Title))
-		if rnk := searchutils.FluffyIndex(titleRunes, termRunes); rnk > -1 {
-			temp = append(temp, rankedLink{link, rnk})
-		} else if len(termRunes) >= 3 {
-			for _, kw := range keywords {
-				if strings.Index(kw, term) > -1 {
-					temp = append(temp, rankedLink{link, 1000})
-					break
+
+	var doCrawl = func(crawl searchutils.Crawl, refudeType string, doSort bool) {
+		var crawler = func(href, title, iconName string, keywords ...string) {
+			var titleRunes = []rune(strings.ToLower(title))
+			if rnk := searchutils.FluffyIndex(titleRunes, termRunes); rnk > -1 {
+				temp = append(temp, makeRankedLink(href, title, iconName, refudeType, rnk))
+			} else if len(termRunes) >= 3 {
+				for _, kw := range keywords {
+					if strings.Index(kw, term) > -1 {
+						temp = append(temp, makeRankedLink(href, title, iconName, refudeType, 1000))
+						break
+					}
 				}
 			}
 		}
-	}
 
-	var doCrawl = func(crawl searchutils.Crawl, doSort bool) {
 		crawl(term, true, crawler)
 		if doSort {
 			sort.Sort(temp)
@@ -86,14 +106,14 @@ func collectSearchResult(term string) SearchResult {
 		temp = temp[:0]
 	}
 
-	doCrawl(notifications.Crawl, false)
-	doCrawl(windows.Crawl, false)
+	doCrawl(notifications.Crawl, "notification", false)
+	doCrawl(windows.Crawl, "window", false)
 
 	if len(term) > 0 {
-		doCrawl(applications.Crawl, true)
+		doCrawl(applications.Crawl, "application", true)
 		if len(term) > 3 {
-			doCrawl(file.Crawl, true)
-			doCrawl(power.Crawl, true)
+			doCrawl(file.Crawl, "file", true)
+			doCrawl(power.Crawl, "device", true)
 		}
 	}
 
@@ -102,9 +122,9 @@ func collectSearchResult(term string) SearchResult {
 
 func collectPaths(prefix string) []string {
 	var paths []string = make([]string, 0, 1000)
-	var crawler = func(link respond.Link, keywords []string) {
-		if strings.HasPrefix(link.Href, prefix) {
-			paths = append(paths, link.Href)
+	var crawler = func(href, title, iconName string, keywords ...string) {
+		if strings.HasPrefix(href, prefix) {
+			paths = append(paths, href)
 		}
 	}
 	windows.Crawl("", false, crawler)

@@ -7,12 +7,10 @@
 package notifications
 
 import (
-	"net/http"
-	"regexp"
 	"strconv"
-	"strings"
 
-	"github.com/surlykke/RefudeServices/lib/respond"
+	"github.com/surlykke/RefudeServices/lib/relation"
+	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
 )
 
@@ -35,27 +33,21 @@ func Run() {
 	}
 }
 
-var notificationPathPattern = regexp.MustCompile("^/notification/(\\d+)$")
-
-func GetJsonResource(r *http.Request) respond.JsonResource {
-	if r.URL.Path == "/notifications/critical" {
-		return nil // FIXME
-	} else if r.URL.Path == flashPath {
-		if f := getFlash(); f != nil {
-			return f
-		}
-	} else if r.URL.Path == "/notifications" {
-		var res = respond.MakeResource("/notifications", "notifications", "", "collection")
-		lock.Lock()
-		for _, notification := range notifications {
-			res.Links = append(res.Links, notification.GetRelatedLink())
-		}
-		lock.Unlock()
-		return &res
-	} else if strings.HasPrefix(r.URL.Path, "/notification/") {
-		if id, err := strconv.Atoi(r.URL.Path[len("/notification/"):]); err == nil {
-			if notification := getNotification(uint32(id)); notification != nil {
-				return notification
+func GetResource(relPath []string) resource.Resource {
+	if len(relPath) == 1 {
+		if relPath[0] == "list" {
+			var collection = resource.Collection{resource.MakeLink("/notification/list", "Notifications", "", relation.Self)}
+			for _, n := range getNotifications() {
+				collection = append(collection, resource.MakeLink(n.self, n.Subject, n.iconName, relation.Related))
+			}
+			return collection
+		} else if relPath[0] == "flash" {
+			if f := getFlash(); f != nil {
+				return f
+			}
+		} else if id, err := strconv.Atoi(relPath[0]); err == nil {
+			if n := getNotification(uint32(id)); n != nil {
+				return n
 			}
 		}
 	}
@@ -66,7 +58,7 @@ func Crawl(term string, forDisplay bool, crawler searchutils.Crawler) {
 	var notifications = getNotifications()
 	for _, notification := range notifications {
 		if !forDisplay || !notification.forDisplay() {
-			crawler(notification.GetRelatedLink(), nil)
+			crawler(notification.self, notification.Subject, notification.iconName)
 		}
 	}
 }

@@ -7,48 +7,45 @@
 package statusnotifications
 
 import (
-	"net/http"
-	"regexp"
 	"sync"
 
+	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/watch"
 
 	"github.com/godbus/dbus/v5"
-	"github.com/surlykke/RefudeServices/lib/respond"
+	"github.com/surlykke/RefudeServices/lib/relation"
+	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
 )
 
-var itemPathPattern = regexp.MustCompile("^(/item/[^/]+)(/menu)?")
+func GetResource(pathElements []string) resource.Resource {
+	if len(pathElements) == 1 {
+		if pathElements[0] == "list" {
+			var collection = resource.Collection{resource.MakeLink("/item/list", "Items", "", relation.Self)}
 
-func GetJsonResource(r *http.Request) respond.JsonResource {
-	if r.URL.Path == "/items" {
-		var res = respond.MakeResource("/items", "items", "", "items")
-		lock.Lock()
-		for _, item := range items {
-			res.Links = append(res.Links, item.GetRelatedLink())
+			for _, item := range items {
+				collection = append(collection, resource.MakeLink(item.self, item.Title, item.IconName, relation.Related))
+			}
+
+			return collection
+		} else if item := get("/item/" + pathElements[0]); item != nil {
+			return item
 		}
-		lock.Unlock()
-		return &res
-	} else if match := itemPathPattern.FindStringSubmatch(r.URL.Path); match != nil {
-		if item := get(match[1]); item != nil {
-			if match[2] == "/menu" {
-				if item.MenuPath != "" {
-					return item.buildMenu()
-				}
-			} else {
-				return item
+	} else if len(pathElements) == 2 && pathElements[1] == "menu" {
+		if item := get("/item/" + pathElements[0]); item != nil {
+			if menu := item.buildMenu(); menu != nil {
+				return menu
 			}
 		}
 	}
 	return nil
-
 }
 
 func Crawl(term string, forDisplay bool, crawler searchutils.Crawler) {
 	lock.Lock()
 	defer lock.Unlock()
 	for _, item := range items {
-		crawler(item.GetRelatedLink(), nil)
+		crawler(item.self, item.Title, item.IconName)
 	}
 }
 
@@ -67,27 +64,51 @@ func Run() {
 		default:
 			var path = itemSelf(event.sender, event.path)
 			if item := get(path); item != nil {
-				var tmp = *item
-				var itemCopy = &tmp
+				var itemCopy = *item
 				switch event.eventName {
 				case "org.kde.StatusNotifierItem.NewTitle":
-					updateTitle(itemCopy)
+					if v, ok := getProp(itemCopy.sender, itemCopy.itemPath, "Title"); ok {
+						itemCopy.Title = getStringOr(v)
+					}
 				case "org.kde.StatusNotifierItem.NewStatus":
-					updateStatus(itemCopy)
+					if v, ok := getProp(itemCopy.sender, itemCopy.itemPath, "Status"); ok {
+						itemCopy.Status = getStringOr(v)
+					}
 				case "org.kde.StatusNotifierItem.NewToolTip":
-					updateToolTip(itemCopy)
+					if v, ok := getProp(itemCopy.sender, itemCopy.itemPath, "ToolTip"); ok {
+						itemCopy.ToolTip = getStringOr(v)
+					}
 				case "org.kde.StatusNotifierItem.NewIcon":
-					updateIcon(itemCopy)
+					if itemCopy.UseIconPixmap {
+						if v, ok := getProp(itemCopy.sender, itemCopy.itemPath, "IconPixmap"); ok {
+							itemCopy.IconName = collectPixMap(v)
+						}
+					} else {
+						if v, ok := getProp(itemCopy.sender, itemCopy.itemPath, "IconName"); ok {
+							itemCopy.IconName = getStringOr(v)
+						}
+					}
 				case "org.kde.StatusNotifierItem.NewIconThemePath":
-					updateIconThemePath(itemCopy)
+					if v, ok := getProp(itemCopy.sender, itemCopy.itemPath, "IconThemePath"); ok {
+						itemCopy.IconThemePath = getStringOr(v)
+						icons.AddBasedir(itemCopy.IconThemePath)
+					}
 				case "org.kde.StatusNotifierItem.NewAttentionIcon":
-					updateAttentionIcon(itemCopy)
+					if itemCopy.UseAttentionIconPixmap {
+						if v, ok := getProp(itemCopy.sender, itemCopy.itemPath, "AttentionIconPixmap"); ok {
+							itemCopy.AttentionIconName = collectPixMap(v)
+						}
+					} else {
+						if v, ok := getProp(itemCopy.sender, itemCopy.itemPath, "AttentionIconName"); ok {
+							itemCopy.AttentionIconName = getStringOr(v)
+						}
+					}
 				case "org.kde.StatusNotifierItem.NewOverlayIcon":
-					updateOverlayIcon(itemCopy)
+					// TODO
 				default:
 					continue
 				}
-				set(itemCopy)
+				set(&itemCopy)
 			} else {
 				continue
 			}
@@ -99,12 +120,11 @@ var items = make(ItemMap)
 var lock sync.Mutex
 
 func set(item *Item) {
-	var self = itemSelf(item.sender, item.itemPath)
 	lock.Lock()
-	items[self] = item
+	items[item.self] = item
 	lock.Unlock()
-	sendEvent(self)
-	sendEvent("/items")
+	sendEvent(item.self)
+	sendEvent("/item/list")
 }
 
 func get(path string) *Item {
@@ -119,7 +139,7 @@ func remove(sender string, itemPath dbus.ObjectPath) {
 	delete(items, self)
 	lock.Unlock()
 	sendEvent(self)
-	sendEvent("/items")
+	sendEvent("/item/list")
 }
 
 func sendEvent(path string) {

@@ -14,7 +14,9 @@ import (
 
 	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/log"
+	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/requests"
+	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/windows/x11"
 )
@@ -25,8 +27,8 @@ type Bounds struct {
 }
 
 type Window struct {
-	respond.Resource
 	Id       uint32
+	self     string
 	Name     string
 	IconName string `json:",omitempty"`
 	State    x11.WindowStateMask
@@ -36,6 +38,7 @@ type Window struct {
 // Caller ensures thread safety (calls to x11)
 func makeWindow(p x11.Proxy, wId uint32) *Window {
 	var win = &Window{Id: wId}
+	win.self = fmt.Sprintf("/window/%d", wId)
 	win.Name, _ = x11.GetName(p, wId)
 	win.IconName, _ = GetIconName(p, wId)
 	win.State = x11.GetStates(p, wId)
@@ -43,28 +46,34 @@ func makeWindow(p x11.Proxy, wId uint32) *Window {
 	return win
 }
 
-func (win *Window) updateResource(monitors []*x11.MonitorData) {
-	win.Resource = respond.MakeResource(fmt.Sprintf("/window/%d", win.Id), win.Name, icons.IconUrl(win.IconName), "window")
-	win.AddDefaultActionLink("Raise and focus", "")
-	win.AddDeleteLink("Close", "")
+func (win *Window) Links() []resource.Link {
+	var links = make([]resource.Link, 0, 8)
+	links = append(links, resource.MakeLink(win.self, win.Name, win.IconName, relation.Self))
+	links = append(links, resource.MakeLink(win.self, "Raise and focus", "", relation.DefaultAction))
+	links = append(links, resource.MakeLink(win.self+"?action=close", "Close", "", relation.Delete))
 	if win.State.Is(x11.HIDDEN) || win.State.Is(x11.MAXIMIZED_HORZ|x11.MAXIMIZED_VERT) {
-		win.AddActionLink("Restore window", "", "restore")
+		links = append(links, resource.MakeLink(win.self+"?action=restore", "Restore window", "", relation.Action))
 	} else {
-		win.AddActionLink("Minimize window", "", "minimize")
-		win.AddActionLink("Maximize window", "", "maximize")
+		links = append(links, resource.MakeLink(win.self+"?action=minimize", "Minimize window", "", relation.Action))
+		links = append(links, resource.MakeLink(win.self+"?action=maximize", "Maximize window", "", relation.Action))
 	}
 
-	for _, m := range monitors {
+	for _, m := range getDesktopLayout().Monitors {
 		var actionId = url.QueryEscape("move::" + m.Name)
-		win.AddActionLink("Move to monitor "+m.Name, "", actionId)
+		links = append(links, resource.MakeLink(win.self+"?action="+actionId, "Move to monitor "+m.Name, "", relation.Action))
 	}
 
+	return links
+}
+
+func (win *Window) RefudeType() string {
+	return "window"
 }
 
 func (win *Window) DoDelete(w http.ResponseWriter, r *http.Request) {
 	requestProxyMutex.Lock()
-	x11.CloseWindow(requestProxy, win.Id)
 	defer requestProxyMutex.Unlock()
+	x11.CloseWindow(requestProxy, win.Id)
 	respond.Accepted(w)
 }
 
@@ -111,6 +120,7 @@ func performAction(wId uint32, action string) bool {
 func (win *Window) shallowCopy() *Window {
 	return &Window{
 		Id:       win.Id,
+		self:     win.self,
 		Name:     win.Name,
 		IconName: win.IconName,
 		State:    win.State,

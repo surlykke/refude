@@ -62,6 +62,6 @@ func Crawl(term string, forDisplay bool, crawler searchutils.Crawler) {
 	lock.Lock()
 	defer lock.Unlock()
 	for _, theme := range themeMap {
-		crawler(theme.GetRelatedLink(), nil)
+		crawler(theme.self, theme.Name, "")
 	}
 }

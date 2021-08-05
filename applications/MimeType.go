@@ -11,8 +11,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/surlykke/RefudeServices/icons"
-	"github.com/surlykke/RefudeServices/lib/respond"
+	"github.com/surlykke/RefudeServices/lib/relation"
+	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/slice"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 
@@ -22,7 +22,7 @@ import (
 const freedesktopOrgXml = "/usr/share/mime/packages/freedesktop.org.xml"
 
 type Mimetype struct {
-	respond.Resource
+	self            string
 	Id              string
 	Comment         string
 	Acronym         string `json:",omitempty"`
@@ -55,6 +55,14 @@ func MakeMimetype(id string) (*Mimetype, error) {
 		}
 		return &mt, nil
 	}
+}
+
+func (m *Mimetype) Links() []resource.Link {
+	return []resource.Link{resource.MakeLink(m.self, m.Comment, m.IconName, relation.Self)}
+}
+
+func (m *Mimetype) RefudeType() string {
+	return "mimetype"
 }
 
 func SetDefaultApp(mimetypeId string, appId string) error {
@@ -95,8 +103,4 @@ func GetDefaultApp(mimetypeId string) string {
 	}
 
 	return ""
-}
-
-func IconForMimetype(mimetypeId string) string {
-	return icons.IconUrl(strings.ReplaceAll(mimetypeId, "/", "-"))
 }

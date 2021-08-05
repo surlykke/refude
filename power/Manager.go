@@ -7,13 +7,8 @@
 package power
 
 import (
-	"fmt"
-	"strings"
-
 	"github.com/godbus/dbus/v5"
-	"github.com/surlykke/RefudeServices/icons"
 	dbuscall "github.com/surlykke/RefudeServices/lib/dbusutils"
-	"github.com/surlykke/RefudeServices/lib/respond"
 )
 
 const UPowService = "org.freedesktop.UPower"
@@ -51,19 +46,69 @@ func retrieveDevicePaths() []dbus.ObjectPath {
 }
 
 func retrieveDevice(path dbus.ObjectPath) *Device {
-	var device = Device{}
-	device.DisplayDevice = path == DisplayDevicePath
-	device.DbusPath = path
-	var lastSlash = strings.LastIndex(string(path), "/")
-	var title = strings.Title(strings.Join(strings.Split(string(path)[lastSlash+1:], "_"), " "))
-	updateDevice(&device, dbuscall.GetAllProps(dbusConn, UPowService, path, UPowerDeviceInterface))
-	var self string
-	if strings.HasPrefix(string(device.DbusPath), DevicePrefix) {
-		self = fmt.Sprintf("/device%s", device.DbusPath[len(DevicePrefix):])
-	} else {
-		self = fmt.Sprintf("/device%s", device.DbusPath)
+	var device = Device{
+		DbusPath:      path,
+		self:          deviceSelf(path),
+		DisplayDevice: path == DisplayDevicePath,
 	}
-	device.Resource = respond.MakeResource(self, title, icons.IconUrl(device.IconName), "device")
+
+	var props = dbuscall.GetAllProps(dbusConn, UPowService, path, UPowerDeviceInterface)
+
+	for key, variant := range props {
+		switch key {
+		case "NativePath":
+			device.NativePath = variant.Value().(string)
+		case "Vendor":
+			device.Vendor = variant.Value().(string)
+		case "Model":
+			device.Model = variant.Value().(string)
+		case "Serial":
+			device.Serial = variant.Value().(string)
+		case "UpdateTime":
+			device.UpdateTime = variant.Value().(uint64)
+		case "Type":
+			device.Type = deviceType(variant.Value().(uint32))
+		case "PowerSupply":
+			device.PowerSupply = variant.Value().(bool)
+		case "HasHistory":
+			device.HasHistory = variant.Value().(bool)
+		case "HasStatistics":
+			device.HasStatistics = variant.Value().(bool)
+		case "Online":
+			device.Online = variant.Value().(bool)
+		case "Energy":
+			device.Energy = variant.Value().(float64)
+		case "EnergyEmpty":
+			device.EnergyEmpty = variant.Value().(float64)
+		case "EnergyFull":
+			device.EnergyFull = variant.Value().(float64)
+		case "EnergyFullDesign":
+			device.EnergyFullDesign = variant.Value().(float64)
+		case "EnergyRate":
+			device.EnergyRate = variant.Value().(float64)
+		case "Voltage":
+			device.Voltage = variant.Value().(float64)
+		case "TimeToEmpty":
+			device.TimeToEmpty = variant.Value().(int64)
+		case "TimeToFull":
+			device.TimeToFull = variant.Value().(int64)
+		case "Percentage":
+			device.Percentage = int8(variant.Value().(float64))
+		case "IsPresent":
+			device.IsPresent = variant.Value().(bool)
+		case "State":
+			device.State = deviceState(variant.Value().(uint32))
+		case "IconName":
+			device.IconName = variant.Value().(string)
+		case "IsRechargeable":
+			device.IsRechargeable = variant.Value().(bool)
+		case "Capacity":
+			device.Capacity = variant.Value().(float64)
+		case "Technology":
+			device.Technology = deviceTecnology(variant.Value().(uint32))
+		}
+	}
+	device.title = deviceTitle(device.Type, device.Model)
 	return &device
 }
 
@@ -76,58 +121,5 @@ var dbusConn = func() *dbus.Conn {
 }()
 
 func updateDevice(d *Device, m map[string]dbus.Variant) {
-	for key, variant := range m {
-		switch key {
-		case "NativePath":
-			d.NativePath = variant.Value().(string)
-		case "Vendor":
-			d.Vendor = variant.Value().(string)
-		case "Model":
-			d.Model = variant.Value().(string)
-		case "Serial":
-			d.Serial = variant.Value().(string)
-		case "UpdateTime":
-			d.UpdateTime = variant.Value().(uint64)
-		case "Type":
-			d.Type = deviceType(variant.Value().(uint32))
-		case "PowerSupply":
-			d.PowerSupply = variant.Value().(bool)
-		case "HasHistory":
-			d.HasHistory = variant.Value().(bool)
-		case "HasStatistics":
-			d.HasStatistics = variant.Value().(bool)
-		case "Online":
-			d.Online = variant.Value().(bool)
-		case "Energy":
-			d.Energy = variant.Value().(float64)
-		case "EnergyEmpty":
-			d.EnergyEmpty = variant.Value().(float64)
-		case "EnergyFull":
-			d.EnergyFull = variant.Value().(float64)
-		case "EnergyFullDesign":
-			d.EnergyFullDesign = variant.Value().(float64)
-		case "EnergyRate":
-			d.EnergyRate = variant.Value().(float64)
-		case "Voltage":
-			d.Voltage = variant.Value().(float64)
-		case "TimeToEmpty":
-			d.TimeToEmpty = variant.Value().(int64)
-		case "TimeToFull":
-			d.TimeToFull = variant.Value().(int64)
-		case "Percentage":
-			d.Percentage = int8(variant.Value().(float64))
-		case "IsPresent":
-			d.IsPresent = variant.Value().(bool)
-		case "State":
-			d.State = deviceState(variant.Value().(uint32))
-		case "IconName":
-			d.IconName = variant.Value().(string)
-		case "IsRechargeable":
-			d.IsRechargeable = variant.Value().(bool)
-		case "Capacity":
-			d.Capacity = variant.Value().(float64)
-		case "Technology":
-			d.Technology = deviceTecnology(variant.Value().(uint32))
-		}
-	}
+
 }

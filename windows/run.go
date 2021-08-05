@@ -7,13 +7,12 @@
 package windows
 
 import (
+	"fmt"
 	"math"
-	"net/http"
 	"strconv"
-	"strings"
 	"sync"
 
-	"github.com/surlykke/RefudeServices/lib/respond"
+	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
 	"github.com/surlykke/RefudeServices/watch"
 	"github.com/surlykke/RefudeServices/windows/x11"
@@ -40,6 +39,7 @@ func Run() {
 			if win := getWindow(wId); win != nil {
 				var updatedWindow = Window{
 					Id:       win.Id,
+					self:     win.self,
 					Name:     win.Name,
 					IconName: win.IconName,
 					State:    win.State,
@@ -57,7 +57,6 @@ func Run() {
 				default:
 					continue
 				}
-				updatedWindow.updateResource(getDesktopLayout().Monitors)
 				updateWindow(&updatedWindow)
 				change = change || relevantForDesktopSearch(&updatedWindow)
 			}
@@ -138,8 +137,6 @@ func updateWindowList(p x11.Proxy) bool {
 			x11.SubscribeToWindowEvents(p, wId)
 		}
 
-		newWindow.updateResource(desktopLayout.Monitors)
-
 		if newWindow.Stacking != i && relevantForDesktopSearch(newWindow) {
 			somethingChanged = true
 		}
@@ -160,7 +157,6 @@ func updateDesktopLayout(p x11.Proxy) {
 	var layout = &DesktopLayout{
 		Monitors: monitors,
 	}
-	layout.Resource = respond.MakeResource("/desktoplayout", "DesktopLayout", "", "desktoplayout")
 
 	var minX, minY = int32(math.MaxInt32), int32(math.MaxInt32)
 	var maxX, maxY = int32(math.MinInt32), int32(math.MinInt32)
@@ -184,16 +180,7 @@ func updateDesktopLayout(p x11.Proxy) {
 
 	layout.Geometry = Bounds{minX, minY, uint32(maxX - minY), uint32(maxY - minY)}
 
-	repo.Lock()
-	defer repo.Unlock()
-	var newWindows = make([]*Window, 0, len(windows))
-	for _, win := range windows {
-		var newWin = win.shallowCopy()
-		newWin.updateResource(layout.Monitors)
-		newWindows = append(newWindows, newWin)
-	}
 	desktopLayout = layout
-	windows = newWindows
 }
 
 // --------------------------- Serving http requests -------------------------------
@@ -205,14 +192,18 @@ var requestProxy = x11.MakeProxy()
 // - and uses this for synchronization
 var requestProxyMutex sync.Mutex
 
-func GetJsonResource(r *http.Request) respond.JsonResource {
-	if r.URL.Path == "/desktoplayout" {
-		return getDesktopLayout()
-	} else if strings.HasPrefix(r.URL.Path, "/window/") {
-		if val, err := strconv.ParseUint(r.URL.Path[8:], 10, 32); err == nil {
-			if win := getWindow(uint32(val)); win != nil {
+func GetResource(relPath []string) resource.Resource {
+	fmt.Println("windows.GetResource, relPath:", relPath, "(", len(relPath), ")")
+	if len(relPath) == 1 {
+		if relPath[0] == "desktoplayout" {
+			return getDesktopLayout()
+		} else if id, err := strconv.ParseUint(relPath[0], 10, 32); err == nil {
+			fmt.Println("Got id:", id)
+			if win := getWindow(uint32(id)); win != nil {
 				return win
 			}
+		} else {
+			fmt.Println("err:", err)
 		}
 	}
 	return nil
@@ -221,15 +212,7 @@ func GetJsonResource(r *http.Request) respond.JsonResource {
 func Crawl(term string, forDisplay bool, crawler searchutils.Crawler) {
 	for _, win := range getWindows() {
 		if !forDisplay || relevantForDesktopSearch(win) {
-			crawler(win.GetRelatedLink(), nil)
+			crawler(win.self, win.Name, win.IconName)
 		}
 	}
-}
-
-func extractList(wm map[uint32]*Window) []*Window {
-	var list = make([]*Window, 0, len(wm))
-	for _, w := range wm {
-		list = append(list, w)
-	}
-	return list
 }

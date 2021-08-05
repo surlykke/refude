@@ -8,15 +8,16 @@ package power
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/godbus/dbus/v5"
-	"github.com/surlykke/RefudeServices/lib/respond"
+	"github.com/surlykke/RefudeServices/lib/relation"
+	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
 type Device struct {
-	respond.Resource
 	DbusPath         dbus.ObjectPath
+	self             string
+	title            string
 	NativePath       string
 	Vendor           string
 	Model            string
@@ -45,18 +46,25 @@ type Device struct {
 	DisplayDevice    bool
 }
 
-func Title(d *Device) string {
+func (d *Device) Links() []resource.Link {
+	return []resource.Link{resource.MakeLink(d.self, d.title, d.IconName, relation.Self)}
+}
 
+func (d *Device) RefudeType() string {
+	return "device"
+}
+
+func deviceTitle(devType, model string) string {
 	// Try to, with the info we have from UPower, make a meaningful Title and Comment
-	switch d.Type {
+	switch devType {
 	case "Unknown":
 		return "Unknown power device"
 	case "Line Power":
 		return "Line Power"
 	case "Battery":
-		return "Battery " + d.Model
+		return "Battery " + model
 	default:
-		return d.Model
+		return model
 	}
 }
 
@@ -85,8 +93,9 @@ func deviceTecnology(index uint32) string {
 }
 
 func deviceSelf(path dbus.ObjectPath) string {
-	if strings.HasPrefix(string(path), DevicePrefix) {
-		path = path[len(DevicePrefix):]
+	if path == DisplayDevicePath {
+		return "/device/DisplayDevice"
+	} else {
+		return fmt.Sprintf("/device%s", path)
 	}
-	return fmt.Sprintf("/device%s", path)
 }

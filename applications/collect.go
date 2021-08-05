@@ -15,9 +15,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/log"
-	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/slice"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
@@ -126,7 +124,6 @@ func CollectMimeTypes() map[string]*Mimetype {
 		if err != nil {
 			log.Warn("Problem making mimetype", id)
 		} else {
-			mimetype.Resource = respond.MakeResource(mimetype.path, comment, "", "mimetype")
 			mimetype.Comment = comment
 			res[id] = mimetype
 		}
@@ -222,8 +219,6 @@ func CollectMimeTypes() map[string]*Mimetype {
 				mimeType.GenericIcon = mimeType.Id[:slashPos] + "-x-generic"
 			}
 
-			mimeType.Resource = respond.MakeResource(mimeType.path, mimeType.Comment, "", "mimetype")
-
 			res[mimeType.Id] = mimeType
 		}
 	}
@@ -314,6 +309,7 @@ func readDesktopFile(path string, id string) (*DesktopApplication, []string, err
 		return nil, nil, errors.New("file must start with '[Desktop Entry]'")
 	} else {
 		var da = DesktopApplication{Id: id}
+		da.self = "/application/" + da.Id
 		var mimetypes = []string{}
 		da.DesktopActions = []DesktopAction{}
 		var actionNames = []string{}
@@ -370,29 +366,7 @@ func readDesktopFile(path string, id string) (*DesktopApplication, []string, err
 		}
 		mimetypes = slice.Split(group.Entries["MimeType"], ";")
 
-		var self = "/application/" + da.Id
-		da.Resource = respond.MakeResource(self, da.Name, Icon2IconUrl(da.Icon), "desktopapplication")
-
-		da.AddDefaultActionLink(da.Name, Icon2IconUrl(da.Icon))
-
-		for _, act := range da.DesktopActions {
-			da.AddActionLink(act.Name, Icon2IconUrl(act.Icon), act.id)
-		}
-
 		return &da, mimetypes, nil
 	}
 
-}
-
-func Icon2IconUrl(icon string) string {
-	if strings.HasPrefix(icon, "/") {
-		if name, err := icons.AddFileIcon(icon); err != nil {
-			log.Warn("Error adding fileicon", err)
-			return ""
-		} else {
-			return icons.IconUrl(name)
-		}
-	} else {
-		return icons.IconUrl(icon)
-	}
 }
