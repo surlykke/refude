@@ -66,7 +66,7 @@ export default class Panel extends React.Component {
                 this.getResource()
             } else if ("/device/DisplayDevice" === event.data) {
                 this.getDisplayDevice()
-            } else if ("/items" === event.data) {
+            } else if ("/item/list" === event.data) {
                 this.getItemLinks()
             } else if ("/notification/flash" === event.data) {
                 this.getFlash()
@@ -115,7 +115,7 @@ export default class Panel extends React.Component {
     }
 
     getItemLinks = () => {
-        getUrl("/items",
+        getUrl("/item/list",
             ({data}) => this.setState({itemLinks: data._links.filter(l => l.rel == "related")}),
             () => this.setState({ itemLinks: [] })
         )
