@@ -7,6 +7,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -15,6 +16,7 @@ import (
 	"github.com/surlykke/RefudeServices/file"
 	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/log"
+	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/notifications"
@@ -30,10 +32,13 @@ import (
 )
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	var path = r.URL.Path
-	if pathElements, ok := extractPathElements(path); !ok {
+	var path = r.URL.EscapedPath()
+	// We only serve paths in the form '/foo/baa/moo', ie. starts with a slash,
+	// then a number of pathelements (eg. foo,baa,moo) separated by slash, and no ending slash
+	if !strings.HasPrefix(path, "/") || strings.HasSuffix(path, "/") {
 		respond.NotFound(w)
 	} else {
+		var pathElements = strings.Split(path[1:], "/")
 		switch pathElements[0] {
 		case "icon":
 			icons.ServeHTTP(w, r)
@@ -56,27 +61,12 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		case "device":
 			serveResource(w, r, power.GetResource(pathElements[1:]))
 		case "file":
+			fmt.Println("Looking for file")
 			serveResource(w, r, file.GetResource(pathElements[1:]))
 		default:
 			respond.NotFound(w)
 		}
 	}
-}
-
-// Checks that path is of form /foo/baa/moo (i.e starts with slash and doesn't end with slash)
-// and extracts that to []string{"foo", "baa", "moo"}
-func extractPathElements(path string) ([]string, bool) {
-	if strings.HasPrefix(path, "/") && !strings.HasSuffix(path[1:], "/") {
-		return strings.Split(path[1:], "/"), true
-	} else {
-		return []string{}, false
-	}
-}
-
-type envelope struct {
-	Links      []resource.Link `json:"_links"`
-	RefudeType string          `json:"refudeType"`
-	Data       interface{}     `json:"data"`
 }
 
 func serveResource(w http.ResponseWriter, r *http.Request, res resource.Resource) {
@@ -85,12 +75,16 @@ func serveResource(w http.ResponseWriter, r *http.Request, res resource.Resource
 	} else {
 		switch r.Method {
 		case "GET":
-			respond.ResourceAsJson(w, res, res.Links())
+			var links = search.Filter(res.Links(), requests.Term(r))
+			respond.ResourceAsJson(w, links, res.RefudeType(), res)
 			return
 		case "POST":
 			if postable, ok := res.(resource.Postable); ok {
+				fmt.Println("postable...")
 				postable.DoPost(w, r)
 				return
+			} else {
+				fmt.Println("not postable...")
 			}
 		case "DELETE":
 			if deleteable, ok := res.(resource.Deleteable); ok {

@@ -160,7 +160,7 @@ func parseMenu(value []interface{}) (MenuEntry, error) {
 	menuItem.Enabled = getBoolOr(m["enabled"], true)
 	menuItem.Visible = getBoolOr(m["visible"], true)
 	if menuItem.IconName = getStringOr(m["icon-name"]); menuItem.IconName == "" {
-		// FIXME: Look for pixmap
+		// TODO: Look for pixmap
 	}
 	if menuItem.ToggleType = getStringOr(m["toggle-type"]); !slice.Among(menuItem.ToggleType, "checkmark", "radio", "") {
 		return MenuEntry{}, errors.New("Illegal toggle-type: " + menuItem.ToggleType)

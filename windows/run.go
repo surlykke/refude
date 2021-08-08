@@ -7,7 +7,6 @@
 package windows
 
 import (
-	"fmt"
 	"math"
 	"strconv"
 	"sync"
@@ -193,26 +192,36 @@ var requestProxy = x11.MakeProxy()
 var requestProxyMutex sync.Mutex
 
 func GetResource(relPath []string) resource.Resource {
-	fmt.Println("windows.GetResource, relPath:", relPath, "(", len(relPath), ")")
 	if len(relPath) == 1 {
 		if relPath[0] == "desktoplayout" {
 			return getDesktopLayout()
 		} else if id, err := strconv.ParseUint(relPath[0], 10, 32); err == nil {
-			fmt.Println("Got id:", id)
 			if win := getWindow(uint32(id)); win != nil {
 				return win
 			}
-		} else {
-			fmt.Println("err:", err)
 		}
 	}
 	return nil
 }
 
-func Crawl(term string, forDisplay bool, crawler searchutils.Crawler) {
+func Collect(term string, sink chan resource.Link) {
 	for _, win := range getWindows() {
-		if !forDisplay || relevantForDesktopSearch(win) {
-			crawler(win.self, win.Name, win.IconName)
+		if relevantForDesktopSearch(win) {
+			var rnk = -1
+			if term == "" {
+				rnk = win.Stacking
+			} else {
+				rnk = searchutils.Match(term, win.Name)
+			}
+			if rnk > -1 {
+				sink <- resource.MakeRankedLink(win.self, win.Name, win.IconName, "window", rnk)
+			}
 		}
+	}
+}
+
+func CollectPaths(method string, sink chan string) {
+	for _, win := range getWindows() {
+		sink <- win.self
 	}
 }

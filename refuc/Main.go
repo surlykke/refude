@@ -8,20 +8,16 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"net"
 	"net/http"
 	"net/textproto"
 	"os"
 	"regexp"
 	"strings"
-
-	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
 const operators = "GET POST PATCH DELETE"
@@ -68,14 +64,8 @@ func usage() {
  *  - error, if any, in which case other return values are nil/zero
  */
 func perform(method string, headerMap map[string]string, path string) (string, map[string][]string, []byte, error) {
-	var client = http.Client{
-		Transport: &http.Transport{
-			DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
-				return net.Dial("unix", xdg.RuntimeDir+"/org.refude.desktop-service")
-			},
-		},
-	}
-	var url = "http://localhost" + path
+	var client = &http.Client{}
+	var url = "http://localhost:7938" + path
 
 	var request, err = http.NewRequest(method, url, nil)
 	if err != nil {
@@ -137,7 +127,7 @@ func completions(argStr string, filter bool) []string {
 	case "-X":
 		return []string{"GET", "POST", "PATCH", "DELETE"}
 	case "-H":
-		return []string{} // FIXME offer common http request headers
+		return []string{} // TODO offer common http request headers
 	default:
 		var comp = make([]string, 0, 2000)
 		if strings.HasPrefix("-H", curArg) {

@@ -7,7 +7,6 @@ import (
 
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/respond"
-	"github.com/surlykke/RefudeServices/lib/searchutils"
 )
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -58,10 +57,10 @@ func dashSplit(name string) []string {
 	return res
 }
 
-func Crawl(term string, forDisplay bool, crawler searchutils.Crawler) {
+func CollectPaths(method string, sink chan string) {
 	lock.Lock()
 	defer lock.Unlock()
 	for _, theme := range themeMap {
-		crawler(theme.self, theme.Name, "")
+		sink <- theme.self
 	}
 }

@@ -15,7 +15,6 @@ import (
 	"github.com/godbus/dbus/v5"
 	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/resource"
-	"github.com/surlykke/RefudeServices/lib/searchutils"
 )
 
 func GetResource(pathElements []string) resource.Resource {
@@ -41,11 +40,12 @@ func GetResource(pathElements []string) resource.Resource {
 	return nil
 }
 
-func Crawl(term string, forDisplay bool, crawler searchutils.Crawler) {
+func CollectPaths(method string, sink chan string) {
 	lock.Lock()
 	defer lock.Unlock()
+	sink <- "/item/list"
 	for _, item := range items {
-		crawler(item.self, item.Title, item.IconName)
+		sink <- item.self
 	}
 }
 

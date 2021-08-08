@@ -19,124 +19,86 @@ import (
 	"github.com/surlykke/RefudeServices/windows"
 )
 
-type SearchResult struct {
-	Links      []resource.Link `json:"_links"`
-	RefudeType string          `json:"refudeType"`
-	Term       string          `json:"term"`
-}
+func Filter(links []resource.Link, term string) []resource.Link {
 
-func makeSearchResult(term string) SearchResult {
-	var sr = SearchResult{
-		Links:      make([]resource.Link, 0, 1000),
-		RefudeType: "search",
-		Term:       term,
-	}
-	sr.Links = append(sr.Links, resource.MakeLink("/desktop/search?term="+term, "Desktop Search", "", relation.Self))
-	return sr
-}
-
-type rankedLink struct {
-	resource.Link
-	rank int
-}
-
-func makeRankedLink(href, title, iconName, refudeType string, rank int) rankedLink {
-	return rankedLink{
-		Link: resource.Link{
-			Href:       href,
-			Title:      title,
-			Icon:       resource.IconUrl(iconName),
-			Relation:   relation.Related,
-			RefudeType: refudeType,
-		},
-		rank: rank,
-	}
-}
-
-type rankedLinks []rankedLink
-
-// -------- sort.Interface ----------------------
-
-func (se rankedLinks) Len() int { return len(se) }
-
-func (se rankedLinks) Less(i int, j int) bool {
-	if se[i].rank == se[j].rank {
-		return se[i].Href < se[j].Href // Not that Href is particularly relevant, sortingwise. Just to have a reproducible order
-	} else {
-		return se[i].rank < se[j].rank
-	}
-}
-
-func (se rankedLinks) Swap(i int, j int) { se[i], se[j] = se[j], se[i] }
-
-// ----------- sort.Interface end ---------------
-
-func addRankedLinks(sr *SearchResult, links []rankedLink) {
-	for _, rl := range links {
-		sr.Links = append(sr.Links, rl.Link)
-	}
-}
-
-func collectSearchResult(term string) SearchResult {
-	var termRunes = []rune(term)
-	var sr = makeSearchResult(term)
-
-	var temp = make(rankedLinks, 0, 1000)
-
-	var doCrawl = func(crawl searchutils.Crawl, refudeType string, doSort bool) {
-		var crawler = func(href, title, iconName string, keywords ...string) {
-			var titleRunes = []rune(strings.ToLower(title))
-			if rnk := searchutils.FluffyIndex(titleRunes, termRunes); rnk > -1 {
-				temp = append(temp, makeRankedLink(href, title, iconName, refudeType, rnk))
-			} else if len(termRunes) >= 3 {
-				for _, kw := range keywords {
-					if strings.Index(kw, term) > -1 {
-						temp = append(temp, makeRankedLink(href, title, iconName, refudeType, 1000))
-						break
-					}
-				}
+	var result = make([]resource.Link, 1, len(links))
+	result[0] = links[0]
+	result[0].Rank = 0
+	for _, l := range links[1:] {
+		// Links here should be newly minted, so writing them is ok.
+		if l.Rank = searchutils.Match(term, l.Title); l.Rank > -1 {
+			if l.Relation == relation.Related {
+				l.Rank += 10
 			}
+			result = append(result, l)
 		}
-
-		crawl(term, true, crawler)
-		if doSort {
-			sort.Sort(temp)
-		}
-		addRankedLinks(&sr, temp)
-		temp = temp[:0]
 	}
+	sort.Sort(resource.LinkList(result[1:]))
+	return result
+}
 
-	doCrawl(notifications.Crawl, "notification", false)
-	doCrawl(windows.Crawl, "window", false)
+func doDesktopSearch(term string) []resource.Link {
+	var sink = make(chan resource.Link)
+	var done = make(chan struct{})
+	var collectors []func(string, chan resource.Link)
 
+	collectors = append(collectors, notifications.Collect, windows.Collect)
 	if len(term) > 0 {
-		doCrawl(applications.Crawl, "application", true)
+		collectors = append(collectors, applications.CollectLinks)
 		if len(term) > 3 {
-			doCrawl(file.Crawl, "file", true)
-			doCrawl(power.Crawl, "device", true)
+			collectors = append(collectors, file.Collect, power.Collect)
 		}
 	}
 
-	return sr
+	for _, collector := range collectors {
+		var c = collector
+		go func() {
+			c(term, sink)
+			done <- struct{}{}
+		}()
+	}
+
+	var links = make([]resource.Link, 1, 1000)
+	links[0] = resource.MakeLink("/desktop/search?term="+term, "Desktop Search", "", relation.Self)
+
+	for n := len(collectors); n > 0; {
+		select {
+		case link := <-sink:
+			links = append(links, link)
+		case _ = <-done:
+			n--
+		}
+	}
+	sort.Sort(resource.LinkList(links[1:]))
+	return links
 }
 
 func collectPaths(prefix string) []string {
-	var paths []string = make([]string, 0, 1000)
-	var crawler = func(href, title, iconName string, keywords ...string) {
-		if strings.HasPrefix(href, prefix) {
-			paths = append(paths, href)
-		}
-	}
-	windows.Crawl("", false, crawler)
-	applications.Crawl("", false, crawler)
-	icons.Crawl("", false, crawler)
-	statusnotifications.Crawl("", false, crawler)
-	notifications.Crawl("", false, crawler)
-	power.Crawl("", false, crawler)
+	var paths = make([]string, 0, 1000)
+	paths = append(paths, "/icon", "/search/desktop", "/search/paths", "/watch", "/doc")
 
-	for _, path := range []string{"/icon", "/search/desktop", "/search/paths", "/watch", "/doc"} {
-		if strings.HasPrefix(path, prefix) {
-			paths = append(paths, path)
+	var sink, done = make(chan string), make(chan struct{})
+
+	var collectors = []func(string, chan string){
+		windows.CollectPaths, applications.CollectPaths, icons.CollectPaths, statusnotifications.CollectPaths, notifications.CollectPaths, power.CollectPaths,
+	}
+
+	for _, collector := range collectors {
+		var c = collector
+		go func() {
+			c("", sink)
+			done <- struct{}{}
+		}()
+	}
+
+	for count := len(collectors); count > 0; {
+		select {
+		case path := <-sink:
+			if strings.HasPrefix(path, prefix) {
+				paths = append(paths, path)
+			}
+		case _ = <-done:
+			count--
 		}
 	}
 	return paths
@@ -145,7 +107,8 @@ func collectPaths(prefix string) []string {
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == "/search/desktop" {
 		if r.Method == "GET" {
-			respond.AsJson(w, collectSearchResult(requests.Term(r)))
+			var term = requests.Term(r)
+			respond.ResourceAsJson(w, doDesktopSearch(term), "search", struct{ Term string }{term})
 		} else {
 			respond.NotAllowed(w)
 		}

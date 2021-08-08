@@ -64,15 +64,14 @@ func writeOrPanic(w io.Writer, byteArrArr ...[]byte) {
 }
 
 // TODO doc
-func ResourceAsJson(w http.ResponseWriter, res resource.Resource, links []resource.Link) {
+func ResourceAsJson(w http.ResponseWriter, links []resource.Link, refudeType string, res interface{}) {
 	w.Header().Set("Content-Type", "application/vnd.refude+json")
 	var linksJson = bytes.TrimSpace(ToJson(links))
 	var resJson = bytes.TrimSpace(ToJson(res))
 	if resJson[0] != '{' || len(resJson) < 2 {
-		fmt.Println("resJson was:", string(resJson))
 		panic("res must serialize to a Json object")
 	}
-	writeOrPanic(w, []byte(`{"_links":`), linksJson, []byte(`,"refudeType":"`), []byte(res.RefudeType()), []byte{'"'})
+	writeOrPanic(w, []byte(`{"_links":`), linksJson, []byte(`,"refudeType":"`), []byte(refudeType), []byte{'"'})
 	if len(resJson) > 2 {
 		writeOrPanic(w, []byte{','})
 	}

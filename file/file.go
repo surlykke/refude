@@ -100,9 +100,9 @@ func (f *File) RefudeType() string {
 func (f *File) DoPost(w http.ResponseWriter, r *http.Request) {
 	var appId = requests.GetSingleQueryParameter(r, "action", "")
 	if appId == "" {
-		appId = f.DefaultApp
-	}
-	if app := applications.GetApp(appId); app != nil {
+		applications.OpenFile(f.Path, f.Mimetype)
+		respond.Accepted(w)
+	} else if app := applications.GetApp(appId); app != nil {
 		if err := app.Run(f.Path); err != nil {
 			respond.ServerError(w, err)
 		} else {

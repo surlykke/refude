@@ -14,12 +14,22 @@ func GetResource(pathElements []string) resource.Resource {
 	return nil
 }
 
-func Crawl(term string, forDisplay bool, crawler searchutils.Crawler) {
+func Collect(term string, sink chan resource.Link) {
 	deviceLock.Lock()
 	defer deviceLock.Unlock()
 	for _, d := range devices {
 		if !d.DisplayDevice {
-			crawler(d.self, d.title, d.IconName)
+			if rnk := searchutils.Match(term, d.title); rnk > -1 {
+				sink <- resource.MakeRankedLink(d.self, d.title, d.IconName, "device", rnk)
+			}
 		}
+	}
+}
+
+func CollectPaths(method string, sink chan string) {
+	deviceLock.Lock()
+	defer deviceLock.Unlock()
+	for _, d := range devices {
+		sink <- d.self
 	}
 }

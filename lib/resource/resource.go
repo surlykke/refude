@@ -15,6 +15,7 @@ type Link struct {
 	Icon       string            `json:"icon,omitempty"`
 	Relation   relation.Relation `json:"rel"`
 	RefudeType string            `json:"refudeType,omitempty"`
+	Rank       int               `json:"-"` // Used when searching
 }
 
 func MakeLink(href, title, iconName string, rel relation.Relation) Link {
@@ -25,6 +26,34 @@ func MakeLink(href, title, iconName string, rel relation.Relation) Link {
 		Relation: rel,
 	}
 }
+
+func MakeRankedLink(href, title, iconName string, refudeType string, rank int) Link {
+	return Link{
+		Href:       href,
+		Title:      title,
+		Icon:       IconUrl(iconName),
+		Relation:   relation.Related,
+		RefudeType: refudeType,
+		Rank:       rank,
+	}
+}
+
+// ---------- Allow for sorting of links by Rank ---------------------
+type LinkList []Link
+
+func (ll LinkList) Len() int { return len(ll) }
+
+func (ll LinkList) Less(i int, j int) bool {
+	if ll[i].Rank == ll[j].Rank {
+		return ll[i].Href < ll[j].Href // Not that Href is particularly relevant, sortingwise. Just to have a reproducible order
+	} else {
+		return ll[i].Rank < ll[j].Rank
+	}
+}
+
+func (ll LinkList) Swap(i int, j int) { ll[i], ll[j] = ll[j], ll[i] }
+
+// ----------------------------------------------.........-------------
 
 func IconUrl(name string) string {
 	if strings.Index(name, "/") > -1 {

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"path"
 	"regexp"
 	"strings"
 
@@ -45,29 +46,40 @@ func init() {
 	searchDirectories[xdg.VideosDir] = true
 }
 
-func Crawl(term string, forDisplay bool, crawler searchutils.Crawler) {
-	var termRunes = []rune(term)
-	for searchDirectory := range searchDirectories {
-		var dir *os.File
-		var err error
-		if dir, err = os.Open(searchDirectory); err != nil {
-			log.Warn("Error opening", searchDirectory, err)
-			continue
-		}
+func Collect(term string, sink chan resource.Link) {
+	collectFrom(xdg.Home, term, sink)
+	collectFrom(xdg.DownloadDir, term, sink)
+	// Maybe more..
+}
 
-		if names, err := dir.Readdirnames(-1); err != nil {
-			log.Warn("Error reading", searchDirectory, err)
-		} else {
-			// Can't use filepath.Glob as it is case sensitive
-			for _, name := range names {
-				if searchutils.FluffyIndex([]rune(strings.ToLower(name)), termRunes) > -1 {
-					var path = searchDirectory + "/" + name
-					var mimetype, _ = magicmime.TypeByFile(path)
-					var icon = strings.ReplaceAll(mimetype, "/", "-")
-					crawler("/file/"+url.PathEscape(path), path, icon)
-				}
+func collectFrom(searchDirectory, term string, sink chan resource.Link) {
+	var prefix string
+	if searchDirectory == xdg.Home {
+		prefix = "~/"
+	} else {
+		prefix = path.Base(searchDirectory) + "/"
+	}
+
+	var dir *os.File
+	var err error
+	if dir, err = os.Open(searchDirectory); err != nil {
+		log.Warn("Error opening", searchDirectory, err)
+		return
+	}
+
+	if names, err := dir.Readdirnames(-1); err != nil {
+		log.Warn("Error reading", searchDirectory, err)
+	} else {
+		// Can't use filepath.Glob as it is case sensitive
+		for _, name := range names {
+			if rnk := searchutils.Match(term, name); rnk > -1 {
+				var path = searchDirectory + "/" + name
+				var mimetype, _ = magicmime.TypeByFile(path)
+				var icon = strings.ReplaceAll(mimetype, "/", "-")
+				sink <- resource.MakeRankedLink("/file/"+url.PathEscape(path), prefix+name, icon, "file", rnk)
 			}
 		}
-		dir.Close()
 	}
+
+	dir.Close()
 }

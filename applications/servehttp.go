@@ -23,20 +23,21 @@ func GetMimeResource(relPath []string) resource.Resource {
 	return nil
 }
 
-func Crawl(term string, forDisplay bool, crawler searchutils.Crawler) {
-	if term == "" {
-		return
-	}
-
-	if !forDisplay {
-		for _, mt := range collectionStore.Load().(collection).mimetypes {
-			crawler(mt.self, mt.Comment, "")
-		}
-	}
-
+func CollectLinks(term string, sink chan resource.Link) {
 	for _, app := range collectionStore.Load().(collection).applications {
-		if !(forDisplay && app.NoDisplay) {
-			crawler(app.self, app.Name, app.Icon, app.Keywords...)
+		if !app.NoDisplay {
+			if rnk := searchutils.Match(term, app.Name, app.Keywords...); rnk > -1 {
+				sink <- resource.MakeRankedLink(app.self, app.Name, app.Icon, "application", rnk)
+			}
 		}
+	}
+}
+
+func CollectPaths(method string, sink chan string) {
+	for _, app := range collectionStore.Load().(collection).applications {
+		sink <- app.self
+	}
+	for _, mt := range collectionStore.Load().(collection).mimetypes {
+		sink <- mt.self
 	}
 }

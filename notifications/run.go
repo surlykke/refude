@@ -54,11 +54,21 @@ func GetResource(relPath []string) resource.Resource {
 	return nil
 }
 
-func Crawl(term string, forDisplay bool, crawler searchutils.Crawler) {
-	var notifications = getNotifications()
-	for _, notification := range notifications {
-		if !forDisplay || !notification.forDisplay() {
-			crawler(notification.self, notification.Subject, notification.iconName)
+func Collect(term string, sink chan resource.Link) {
+	for _, n := range notifications {
+		if n.forDisplay() {
+			if rnk := searchutils.Match(term, n.Subject); rnk > -1 {
+				sink <- resource.MakeRankedLink(n.self, n.Subject, n.iconName, "notification", rnk)
+			}
 		}
+	}
+}
+
+func CollectPaths(method string, sink chan string) {
+	sink <- "/notification/list"
+	sink <- "/notification/flash"
+
+	for _, notification := range getNotifications() {
+		sink <- notification.self
 	}
 }
