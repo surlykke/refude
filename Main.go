@@ -26,8 +26,6 @@ import (
 	"github.com/surlykke/RefudeServices/watch"
 	"github.com/surlykke/RefudeServices/windows"
 
-	"github.com/surlykke/RefudeServices/lib"
-
 	_ "net/http/pprof"
 )
 
@@ -105,10 +103,7 @@ func main() {
 	go icons.Run()
 	go watch.Run()
 
-	go func() {
-		log.Info(http.ListenAndServe("localhost:7939", nil))
-	}()
-
-	go lib.Serve("org.refude.desktop-service", http.HandlerFunc(ServeHTTP))
-	_ = http.ListenAndServe(":7938", http.HandlerFunc(ServeHTTP))
+	if err := http.ListenAndServe(":7938", http.HandlerFunc(ServeHTTP)); err != nil {
+		log.Warn("http.ListenAndServe failed:", err)
+	}
 }
