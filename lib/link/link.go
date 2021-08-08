@@ -1,6 +1,7 @@
 package link
 
 import (
+	"bytes"
 	"net/url"
 	"strings"
 
@@ -8,10 +9,41 @@ import (
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
+type Href string
+
+var httpLocalHost7838 = []byte("http://localhost:7938")
+var controlEscape = [][]byte{
+	[]byte(`\u0000`), []byte(`\u0001`), []byte(`\u0002`), []byte(`\u0003`), []byte(`\u0004`), []byte(`\u0005`), []byte(`\u0006`), []byte(`\u0007`),
+	[]byte(`\u0008`), []byte(`\u0009`), []byte(`\u000A`), []byte(`\u000B`), []byte(`\u000C`), []byte(`\u000D`), []byte(`\u000E`), []byte(`\u000F`),
+	[]byte(`\u0010`), []byte(`\u0011`), []byte(`\u0012`), []byte(`\u0013`), []byte(`\u0014`), []byte(`\u0015`), []byte(`\u0016`), []byte(`\u0017`),
+	[]byte(`\u0018`), []byte(`\u0019`), []byte(`\u001A`), []byte(`\u001B`), []byte(`\u001C`), []byte(`\u001D`), []byte(`\u001E`), []byte(`\u001F`),
+}
+var quoteEscape = []byte(`\"`)
+var backslashEscape = []byte(`\\`)
+
+func (href Href) MarshalJSON() ([]byte, error) {
+	var buf = &bytes.Buffer{}
+	buf.WriteByte('"')
+	buf.Write(httpLocalHost7838)
+	for _, b := range []byte(href) {
+		if b <= 0x1F {
+			buf.Write(controlEscape[b])
+		} else if b == '\\' {
+			buf.Write(backslashEscape)
+		} else if b == '"' {
+			buf.Write(quoteEscape)
+		} else {
+			buf.WriteByte(b)
+		}
+	}
+	buf.WriteByte('"')
+	return buf.Bytes(), nil
+}
+
 type Link struct {
-	Href       string            `json:"href"`
+	Href       Href              `json:"href"`
 	Title      string            `json:"title"`
-	Icon       string            `json:"icon,omitempty"`
+	Icon       Href              `json:"icon,omitempty"`
 	Relation   relation.Relation `json:"rel"`
 	RefudeType string            `json:"refudeType,omitempty"`
 	Rank       int               `json:"-"` // Used when searching
@@ -19,7 +51,7 @@ type Link struct {
 
 func Make(href, title, iconName string, rel relation.Relation) Link {
 	return Link{
-		Href:     href,
+		Href:     Href(href),
 		Title:    title,
 		Icon:     IconUrl(iconName),
 		Relation: rel,
@@ -28,7 +60,7 @@ func Make(href, title, iconName string, rel relation.Relation) Link {
 
 func MakeRanked(href, title, iconName string, refudeType string, rank int) Link {
 	return Link{
-		Href:       href,
+		Href:       Href(href),
 		Title:      title,
 		Icon:       IconUrl(iconName),
 		Relation:   relation.Related,
@@ -41,7 +73,7 @@ type List []Link
 
 func MakeList(href, title, iconName string) List {
 	return List{{
-		Href:     href,
+		Href:     Href(href),
 		Title:    title,
 		Icon:     IconUrl(iconName),
 		Relation: relation.Self,
@@ -50,7 +82,7 @@ func MakeList(href, title, iconName string) List {
 
 func (ll List) Add(href, title, iconName string, rel relation.Relation) List {
 	return append(ll, Link{
-		Href:     href,
+		Href:     Href(href),
 		Title:    title,
 		Icon:     IconUrl(iconName),
 		Relation: rel,
@@ -59,7 +91,7 @@ func (ll List) Add(href, title, iconName string, rel relation.Relation) List {
 
 func (ll List) Add2(href, title, iconName string, refudeType string, rank int) List {
 	return append(ll, Link{
-		Href:       href,
+		Href:       Href(href),
 		Title:      title,
 		Icon:       IconUrl(iconName),
 		Relation:   relation.Related,
@@ -99,7 +131,7 @@ func (c Collection) MarshalJSON() ([]byte, error) {
 
 // --------------------------------------------------------------------
 
-func IconUrl(name string) string {
+func IconUrl(name string) Href {
 	if strings.Index(name, "/") > -1 {
 		// So its a path..
 		if strings.HasPrefix(name, "file:///") {
@@ -113,7 +145,7 @@ func IconUrl(name string) string {
 		// Maybe: Check that path points to iconfile..
 	}
 	if name != "" {
-		return "/icon?name=" + url.QueryEscape(name)
+		return Href("/icon?name=" + url.QueryEscape(name))
 	} else {
 		return ""
 	}
