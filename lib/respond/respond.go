@@ -7,7 +7,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib/link"
 )
 
 func Ok(w http.ResponseWriter) {
@@ -64,7 +64,7 @@ func writeOrPanic(w io.Writer, byteArrArr ...[]byte) {
 }
 
 // TODO doc
-func ResourceAsJson(w http.ResponseWriter, links []resource.Link, refudeType string, res interface{}) {
+func ResourceAsJson(w http.ResponseWriter, links link.List, refudeType string, res interface{}) {
 	w.Header().Set("Content-Type", "application/vnd.refude+json")
 	var linksJson = bytes.TrimSpace(ToJson(links))
 	var resJson = bytes.TrimSpace(ToJson(res))

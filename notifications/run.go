@@ -9,6 +9,7 @@ package notifications
 import (
 	"strconv"
 
+	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
@@ -36,11 +37,11 @@ func Run() {
 func GetResource(relPath []string) resource.Resource {
 	if len(relPath) == 1 {
 		if relPath[0] == "list" {
-			var collection = resource.Collection{resource.MakeLink("/notification/list", "Notifications", "", relation.Self)}
+			var ll = link.MakeList("/notification/list", "Notifications", "")
 			for _, n := range getNotifications() {
-				collection = append(collection, resource.MakeLink(n.self, n.Subject, n.iconName, relation.Related))
+				ll = ll.Add(n.self, n.Subject, n.iconName, relation.Related)
 			}
-			return collection
+			return link.Collection(ll)
 		} else if relPath[0] == "flash" {
 			if f := getFlash(); f != nil {
 				return f
@@ -54,11 +55,11 @@ func GetResource(relPath []string) resource.Resource {
 	return nil
 }
 
-func Collect(term string, sink chan resource.Link) {
+func Collect(term string, sink chan link.Link) {
 	for _, n := range notifications {
 		if n.forDisplay() {
 			if rnk := searchutils.Match(term, n.Subject); rnk > -1 {
-				sink <- resource.MakeRankedLink(n.self, n.Subject, n.iconName, "notification", rnk)
+				sink <- link.MakeRanked(n.self, n.Subject, n.iconName, "notification", rnk)
 			}
 		}
 	}

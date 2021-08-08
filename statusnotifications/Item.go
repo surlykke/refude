@@ -18,10 +18,10 @@ import (
 	"github.com/godbus/dbus/v5"
 	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/image"
+	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/requests"
-	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/slice"
 )
@@ -47,12 +47,12 @@ type Item struct {
 	UseOverlayIconPixmap    bool
 }
 
-func (item *Item) Links() []resource.Link {
-	var links []resource.Link = []resource.Link{resource.MakeLink(item.self, item.Title, item.IconName, relation.Self)}
+func (item *Item) Links() link.List {
+	var ll = link.MakeList(item.self, item.Title, item.IconName)
 	if item.MenuPath != "" {
-		links = append(links, resource.MakeLink(item.self+"/menu", item.Title, "", relation.Menu))
+		ll = ll.Add(item.self+"/menu", item.Title, "", relation.Menu)
 	}
-	return links
+	return ll
 }
 
 func (item *Item) RefudeType() string {
@@ -103,8 +103,8 @@ type Menu struct {
 	self     string
 }
 
-func (menu *Menu) Links() []resource.Link {
-	return []resource.Link{resource.MakeLink(menu.self, "", "", relation.Self)}
+func (menu *Menu) Links() link.List {
+	return link.MakeList(menu.self, "", "")
 }
 
 func (menu *Menu) RefudeType() string {

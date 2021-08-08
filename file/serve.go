@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/rakyll/magicmime"
+	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
@@ -46,13 +47,13 @@ func init() {
 	searchDirectories[xdg.VideosDir] = true
 }
 
-func Collect(term string, sink chan resource.Link) {
+func Collect(term string, sink chan link.Link) {
 	collectFrom(xdg.Home, term, sink)
 	collectFrom(xdg.DownloadDir, term, sink)
 	// Maybe more..
 }
 
-func collectFrom(searchDirectory, term string, sink chan resource.Link) {
+func collectFrom(searchDirectory, term string, sink chan link.Link) {
 	var prefix string
 	if searchDirectory == xdg.Home {
 		prefix = "~/"
@@ -76,7 +77,7 @@ func collectFrom(searchDirectory, term string, sink chan resource.Link) {
 				var path = searchDirectory + "/" + name
 				var mimetype, _ = magicmime.TypeByFile(path)
 				var icon = strings.ReplaceAll(mimetype, "/", "-")
-				sink <- resource.MakeRankedLink("/file/"+url.PathEscape(path), prefix+name, icon, "file", rnk)
+				sink <- link.MakeRanked("/file/"+url.PathEscape(path), prefix+name, icon, "file", rnk)
 			}
 		}
 	}

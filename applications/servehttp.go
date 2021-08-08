@@ -1,6 +1,7 @@
 package applications
 
 import (
+	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
 )
@@ -23,11 +24,11 @@ func GetMimeResource(relPath []string) resource.Resource {
 	return nil
 }
 
-func CollectLinks(term string, sink chan resource.Link) {
+func CollectLinks(term string, sink chan link.Link) {
 	for _, app := range collectionStore.Load().(collection).applications {
 		if !app.NoDisplay {
 			if rnk := searchutils.Match(term, app.Name, app.Keywords...); rnk > -1 {
-				sink <- resource.MakeRankedLink(app.self, app.Name, app.Icon, "application", rnk)
+				sink <- link.MakeRanked(app.self, app.Name, app.Icon, "application", rnk)
 			}
 		}
 	}

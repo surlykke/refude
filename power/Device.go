@@ -10,8 +10,7 @@ import (
 	"fmt"
 
 	"github.com/godbus/dbus/v5"
-	"github.com/surlykke/RefudeServices/lib/relation"
-	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib/link"
 )
 
 type Device struct {
@@ -46,8 +45,8 @@ type Device struct {
 	DisplayDevice    bool
 }
 
-func (d *Device) Links() []resource.Link {
-	return []resource.Link{resource.MakeLink(d.self, d.title, d.IconName, relation.Self)}
+func (d *Device) Links() link.List {
+	return link.MakeList(d.self, d.title, d.IconName)
 }
 
 func (d *Device) RefudeType() string {

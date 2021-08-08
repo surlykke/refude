@@ -13,9 +13,9 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/requests"
-	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
 
 	"github.com/surlykke/RefudeServices/lib/xdg"
@@ -54,15 +54,14 @@ func (d *DesktopApplication) Run(arg string) error {
 	return run(d.Exec, arg, d.Terminal)
 }
 
-func (d *DesktopApplication) Links() []resource.Link {
-	var links = []resource.Link{
-		resource.MakeLink(d.self, d.Name, d.Icon, relation.Self),
-		resource.MakeLink(d.self, "Launch", "", relation.DefaultAction),
-	}
+func (d *DesktopApplication) Links() link.List {
+	var ll = link.MakeList(d.self, d.Name, d.Icon)
+	ll = ll.Add(d.self, "Launch", "", relation.DefaultAction)
+
 	for _, da := range d.DesktopActions {
-		links = append(links, resource.MakeLink(d.self+"?action="+da.id, da.Name, da.Icon, relation.Action))
+		ll = ll.Add(d.self+"?action="+da.id, da.Name, da.Icon, relation.Action)
 	}
-	return links
+	return ll
 
 }
 

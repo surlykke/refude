@@ -2,86 +2,16 @@ package resource
 
 import (
 	"net/http"
-	"net/url"
-	"strings"
 
-	"github.com/surlykke/RefudeServices/lib/relation"
-	"github.com/surlykke/RefudeServices/lib/xdg"
+	"github.com/surlykke/RefudeServices/lib/link"
 )
-
-type Link struct {
-	Href       string            `json:"href"`
-	Title      string            `json:"title"`
-	Icon       string            `json:"icon,omitempty"`
-	Relation   relation.Relation `json:"rel"`
-	RefudeType string            `json:"refudeType,omitempty"`
-	Rank       int               `json:"-"` // Used when searching
-}
-
-func MakeLink(href, title, iconName string, rel relation.Relation) Link {
-	return Link{
-		Href:     href,
-		Title:    title,
-		Icon:     IconUrl(iconName),
-		Relation: rel,
-	}
-}
-
-func MakeRankedLink(href, title, iconName string, refudeType string, rank int) Link {
-	return Link{
-		Href:       href,
-		Title:      title,
-		Icon:       IconUrl(iconName),
-		Relation:   relation.Related,
-		RefudeType: refudeType,
-		Rank:       rank,
-	}
-}
-
-// ---------- Allow for sorting of links by Rank ---------------------
-type LinkList []Link
-
-func (ll LinkList) Len() int { return len(ll) }
-
-func (ll LinkList) Less(i int, j int) bool {
-	if ll[i].Rank == ll[j].Rank {
-		return ll[i].Href < ll[j].Href // Not that Href is particularly relevant, sortingwise. Just to have a reproducible order
-	} else {
-		return ll[i].Rank < ll[j].Rank
-	}
-}
-
-func (ll LinkList) Swap(i int, j int) { ll[i], ll[j] = ll[j], ll[i] }
-
-// ----------------------------------------------.........-------------
-
-func IconUrl(name string) string {
-	if strings.Index(name, "/") > -1 {
-		// So its a path..
-		if strings.HasPrefix(name, "file:///") {
-			name = name[7:]
-		} else if strings.HasPrefix(name, "file://") {
-			name = xdg.Home + "/" + name[7:]
-		} else if !strings.HasPrefix(name, "/") {
-			name = xdg.Home + "/" + name
-		}
-
-		// Maybe: Check that path points to iconfile..
-	}
-
-	if name != "" {
-		return "/icon?name=" + url.QueryEscape(name)
-	} else {
-		return ""
-	}
-}
 
 /**
  * A resource is something that is 'linkable' and has a type.
  */
 type Resource interface {
 	// The resources links. Should be not empty and the first link should be the self-link
-	Links() []Link
+	Links() link.List
 	RefudeType() string
 }
 
@@ -91,18 +21,4 @@ type Postable interface {
 
 type Deleteable interface {
 	DoDelete(w http.ResponseWriter, r *http.Request)
-}
-
-type Collection []Link
-
-func (c Collection) Links() []Link {
-	return []Link(c)
-}
-
-func (c Collection) RefudeType() string {
-	return "collection"
-}
-
-func (c Collection) MarshalJSON() ([]byte, error) {
-	return []byte(`{}`), nil
 }

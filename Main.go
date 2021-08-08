@@ -78,11 +78,8 @@ func serveResource(w http.ResponseWriter, r *http.Request, res resource.Resource
 			return
 		case "POST":
 			if postable, ok := res.(resource.Postable); ok {
-				fmt.Println("postable...")
 				postable.DoPost(w, r)
 				return
-			} else {
-				fmt.Println("not postable...")
 			}
 		case "DELETE":
 			if deleteable, ok := res.(resource.Deleteable); ok {

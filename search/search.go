@@ -8,9 +8,9 @@ import (
 	"github.com/surlykke/RefudeServices/applications"
 	"github.com/surlykke/RefudeServices/file"
 	"github.com/surlykke/RefudeServices/icons"
+	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/requests"
-	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
 	"github.com/surlykke/RefudeServices/notifications"
@@ -19,12 +19,11 @@ import (
 	"github.com/surlykke/RefudeServices/windows"
 )
 
-func Filter(links []resource.Link, term string) []resource.Link {
-
-	var result = make([]resource.Link, 1, len(links))
-	result[0] = links[0]
+func Filter(ll link.List, term string) link.List {
+	var result = make(link.List, 1, len(ll))
+	result[0] = ll[0]
 	result[0].Rank = 0
-	for _, l := range links[1:] {
+	for _, l := range ll[1:] {
 		// Links here should be newly minted, so writing them is ok.
 		if l.Rank = searchutils.Match(term, l.Title); l.Rank > -1 {
 			if l.Relation == relation.Related {
@@ -33,14 +32,14 @@ func Filter(links []resource.Link, term string) []resource.Link {
 			result = append(result, l)
 		}
 	}
-	sort.Sort(resource.LinkList(result[1:]))
+	sort.Sort(result[1:])
 	return result
 }
 
-func doDesktopSearch(term string) []resource.Link {
-	var sink = make(chan resource.Link)
+func doDesktopSearch(term string) link.List {
+	var sink = make(chan link.Link)
 	var done = make(chan struct{})
-	var collectors []func(string, chan resource.Link)
+	var collectors []func(string, chan link.Link)
 
 	collectors = append(collectors, notifications.Collect, windows.Collect)
 	if len(term) > 0 {
@@ -58,8 +57,8 @@ func doDesktopSearch(term string) []resource.Link {
 		}()
 	}
 
-	var links = make([]resource.Link, 1, 1000)
-	links[0] = resource.MakeLink("/desktop/search?term="+term, "Desktop Search", "", relation.Self)
+	var links = make(link.List, 1, 1000)
+	links[0] = link.Make("/desktop/search?term="+term, "Desktop Search", "", relation.Self)
 
 	for n := len(collectors); n > 0; {
 		select {
@@ -69,7 +68,7 @@ func doDesktopSearch(term string) []resource.Link {
 			n--
 		}
 	}
-	sort.Sort(resource.LinkList(links[1:]))
+	sort.Sort(links[1:])
 	return links
 }
 

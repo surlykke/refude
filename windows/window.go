@@ -13,10 +13,10 @@ import (
 	"strings"
 
 	"github.com/surlykke/RefudeServices/icons"
+	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/requests"
-	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/windows/x11"
 )
@@ -46,24 +46,23 @@ func makeWindow(p x11.Proxy, wId uint32) *Window {
 	return win
 }
 
-func (win *Window) Links() []resource.Link {
-	var links = make([]resource.Link, 0, 8)
-	links = append(links, resource.MakeLink(win.self, win.Name, win.IconName, relation.Self))
-	links = append(links, resource.MakeLink(win.self, "Raise and focus", "", relation.DefaultAction))
-	links = append(links, resource.MakeLink(win.self+"?action=close", "Close", "", relation.Delete))
+func (win *Window) Links() link.List {
+	var ll = link.MakeList(win.self, win.Name, win.IconName)
+	ll = ll.Add(win.self, "Raise and focus", "", relation.DefaultAction)
+	ll = ll.Add(win.self+"?action=close", "Close", "", relation.Delete)
 	if win.State.Is(x11.HIDDEN) || win.State.Is(x11.MAXIMIZED_HORZ|x11.MAXIMIZED_VERT) {
-		links = append(links, resource.MakeLink(win.self+"?action=restore", "Restore window", "", relation.Action))
+		ll = ll.Add(win.self+"?action=restore", "Restore window", "", relation.Action)
 	} else {
-		links = append(links, resource.MakeLink(win.self+"?action=minimize", "Minimize window", "", relation.Action))
-		links = append(links, resource.MakeLink(win.self+"?action=maximize", "Maximize window", "", relation.Action))
+		ll = ll.Add(win.self+"?action=minimize", "Minimize window", "", relation.Action)
+		ll = ll.Add(win.self+"?action=maximize", "Maximize window", "", relation.Action)
 	}
 
 	for _, m := range getDesktopLayout().Monitors {
 		var actionId = url.QueryEscape("move::" + m.Name)
-		links = append(links, resource.MakeLink(win.self+"?action="+actionId, "Move to monitor "+m.Name, "", relation.Action))
+		ll = ll.Add(win.self+"?action="+actionId, "Move to monitor "+m.Name, "", relation.Action)
 	}
 
-	return links
+	return ll
 }
 
 func (win *Window) RefudeType() string {

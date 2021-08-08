@@ -11,8 +11,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/surlykke/RefudeServices/lib/relation"
-	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/slice"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 
@@ -57,8 +56,8 @@ func MakeMimetype(id string) (*Mimetype, error) {
 	}
 }
 
-func (m *Mimetype) Links() []resource.Link {
-	return []resource.Link{resource.MakeLink(m.self, m.Comment, m.IconName, relation.Self)}
+func (m *Mimetype) Links() link.List {
+	return link.MakeList(m.self, m.Comment, "")
 }
 
 func (m *Mimetype) RefudeType() string {

@@ -13,6 +13,7 @@ import (
 	"github.com/surlykke/RefudeServices/watch"
 
 	"github.com/godbus/dbus/v5"
+	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/resource"
 )
@@ -20,13 +21,13 @@ import (
 func GetResource(pathElements []string) resource.Resource {
 	if len(pathElements) == 1 {
 		if pathElements[0] == "list" {
-			var collection = resource.Collection{resource.MakeLink("/item/list", "Items", "", relation.Self)}
+			var ll = link.MakeList("/item/list", "Items", "")
 
 			for _, item := range items {
-				collection = append(collection, resource.MakeLink(item.self, item.Title, item.IconName, relation.Related))
+				ll = ll.Add(item.self, item.Title, item.IconName, relation.Related)
 			}
 
-			return collection
+			return link.Collection(ll)
 		} else if item := get("/item/" + pathElements[0]); item != nil {
 			return item
 		}

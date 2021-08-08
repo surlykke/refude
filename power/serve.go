@@ -1,6 +1,7 @@
 package power
 
 import (
+	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
 )
@@ -14,13 +15,13 @@ func GetResource(pathElements []string) resource.Resource {
 	return nil
 }
 
-func Collect(term string, sink chan resource.Link) {
+func Collect(term string, sink chan link.Link) {
 	deviceLock.Lock()
 	defer deviceLock.Unlock()
 	for _, d := range devices {
 		if !d.DisplayDevice {
 			if rnk := searchutils.Match(term, d.title); rnk > -1 {
-				sink <- resource.MakeRankedLink(d.self, d.title, d.IconName, "device", rnk)
+				sink <- link.MakeRanked(d.self, d.title, d.IconName, "device", rnk)
 			}
 		}
 	}

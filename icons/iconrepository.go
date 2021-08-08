@@ -3,7 +3,6 @@ package icons
 import (
 	"fmt"
 	"io/ioutil"
-	"net/url"
 	"os"
 	"path"
 	"path/filepath"
@@ -313,26 +312,6 @@ func noteDirAsAdded(basedir string) bool {
 	var hasBeenAdded = addedBasedirs[basedir]
 	addedBasedirs[basedir] = true
 	return hasBeenAdded
-}
-
-func IconUrl(name string) string {
-	if strings.Index(name, "/") > -1 {
-		// So its a path..
-		if strings.HasPrefix(name, "file:///") {
-			name = name[7:]
-		} else if strings.HasPrefix(name, "file://") {
-			name = xdg.Home + "/" + name[7:]
-		} else if !strings.HasPrefix(name, "/") {
-			name = xdg.Home + "/" + name
-		}
-
-		// Maybe: Check that path points to iconfile..
-	}
-	if name != "" {
-		return "/icon?name=" + url.QueryEscape(name)
-	} else {
-		return ""
-	}
 }
 
 func dirExists(path string) bool {

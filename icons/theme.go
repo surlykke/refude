@@ -13,9 +13,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/log"
-	"github.com/surlykke/RefudeServices/lib/relation"
-	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/slice"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
@@ -30,8 +29,8 @@ type IconTheme struct {
 	icons    map[string]*Icon
 }
 
-func (it *IconTheme) Links() []resource.Link {
-	return []resource.Link{resource.MakeLink(it.self, it.Name, "", relation.Self)}
+func (it *IconTheme) Links() link.List {
+	return link.MakeList(it.self, it.Name, "")
 }
 
 type IconDir struct {

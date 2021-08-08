@@ -12,9 +12,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/requests"
-	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/watch"
 )
@@ -41,19 +41,19 @@ type Notification struct {
 	iconName string
 }
 
-func (n *Notification) Links() []resource.Link {
-	var links = []resource.Link{resource.MakeLink(n.self, n.Subject, n.iconName, relation.Self)}
-	links = append(links, resource.MakeLink(n.self, "Dismiss", "", relation.Delete))
+func (n *Notification) Links() link.List {
+	var ll = link.MakeList(n.self, n.Subject, n.iconName)
+	ll = ll.Add(n.self, "Dismiss", "", relation.Delete)
 
 	for actionId, actionDesc := range n.Actions {
 		if actionId == "default" {
-			links = append(links, resource.MakeLink(n.self, actionDesc, "", relation.DefaultAction))
+			ll = ll.Add(n.self, actionDesc, "", relation.DefaultAction)
 		} else {
-			links = append(links, resource.MakeLink(n.self, actionDesc, "", relation.DefaultAction))
+			ll = ll.Add(n.self, actionDesc, "", relation.DefaultAction)
 		}
 	}
 
-	return links
+	return ll
 }
 
 func (n *Notification) RefudeType() string {

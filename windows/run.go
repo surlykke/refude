@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"sync"
 
+	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
 	"github.com/surlykke/RefudeServices/watch"
@@ -204,7 +205,7 @@ func GetResource(relPath []string) resource.Resource {
 	return nil
 }
 
-func Collect(term string, sink chan resource.Link) {
+func Collect(term string, sink chan link.Link) {
 	for _, win := range getWindows() {
 		if relevantForDesktopSearch(win) {
 			var rnk = -1
@@ -214,7 +215,7 @@ func Collect(term string, sink chan resource.Link) {
 				rnk = searchutils.Match(term, win.Name)
 			}
 			if rnk > -1 {
-				sink <- resource.MakeRankedLink(win.self, win.Name, win.IconName, "window", rnk)
+				sink <- link.MakeRanked(win.self, win.Name, win.IconName, "window", rnk)
 			}
 		}
 	}

@@ -9,10 +9,10 @@ import (
 
 	"github.com/rakyll/magicmime"
 	"github.com/surlykke/RefudeServices/applications"
+	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/requests"
-	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
@@ -59,15 +59,15 @@ func makeFile(path string) (*File, error) {
 	}
 }
 
-func (f *File) Links() []resource.Link {
-	var links = []resource.Link{resource.MakeLink(f.self, f.Name, f.Icon, relation.Self)}
+func (f *File) Links() link.List {
+	var ll = link.MakeList(f.self, f.Name, f.Icon)
 
 	var recommendedApps, _ = applications.GetAppsForMimetype(f.Mimetype)
 	for i, app := range recommendedApps {
 		if i == 0 {
-			links = append(links, resource.MakeLink(f.self, "Open with "+app.Name, app.Icon, relation.DefaultAction))
+			ll = ll.Add(f.self, "Open with "+app.Name, app.Icon, relation.DefaultAction)
 		} else {
-			links = append(links, resource.MakeLink(f.self+"?action="+app.Id, "Open with "+app.Name, app.Icon, relation.Action))
+			ll = ll.Add(f.self+"?action="+app.Id, "Open with "+app.Name, app.Icon, relation.Action)
 		}
 	}
 
@@ -83,14 +83,14 @@ func (f *File) Links() []resource.Link {
 				var path = f.Path + "/" + name
 				var mimetype, _ = magicmime.TypeByFile(path)
 				var icon = strings.ReplaceAll(mimetype, "/", "-")
-				links = append(links, resource.MakeLink("/file/"+url.PathEscape(path), name, icon, relation.Related))
+				ll = ll.Add("/file/"+url.PathEscape(path), name, icon, relation.Related)
 			}
 			dir.Close()
 		}
 
 	}
 
-	return links
+	return ll
 }
 
 func (f *File) RefudeType() string {
