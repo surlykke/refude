@@ -62,7 +62,7 @@ export default class Panel extends React.Component {
 
         evtSource.onmessage = event => {
             console.log("sse:", event)
-            if (this.resourceUrl === event.data) {
+            if (this.resourceUrl === "http://localhost:7938" + event.data) {
                 this.getResource()
             } else if ("/device/DisplayDevice" === event.data) {
                 this.getDisplayDevice()
