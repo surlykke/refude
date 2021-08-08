@@ -69,8 +69,9 @@ export let NotifierItem = ({ itemLink }) => {
         event.preventDefault()
         getUrl(itemLink.href, response => {
             let item = response.data
-            if (item.Menu) {
-                showMenu(item.Menu)
+            let menuLink = item._links.find(l => l.rel === 'org.refude.menu')
+            if (menuLink) {
+                showMenu(menuLink.href)
             } else {
                 let { x, y } = getXY(event)
                 postUrl(item.Self + '?action=ContextMenu&x=' + x + '&y=' + y);
