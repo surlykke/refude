@@ -35,7 +35,7 @@ export default class Panel extends React.Component {
         ipcRenderer.on("show", (evt, up) => {
             if (!this.resourceUrl) {
                 this.setState({ term: "" })
-                this.resourceUrl = "/search/desktop"
+                this.resourceUrl = "http://localhost:7938/search/desktop"
                 this.getResource()
             } else if (document.hasFocus()) {
                 this.move(up)
@@ -109,13 +109,13 @@ export default class Panel extends React.Component {
 
     getDisplayDevice = () => {
         console.log("getDisplayDevice")
-        getUrl("/device/DisplayDevice",
+        getUrl("http://localhost:7938/device/DisplayDevice",
             resp => this.setState({ displayDevice: resp.data }),
             () => this.setState({ displayDevice: undefined }))
     }
 
     getItemLinks = () => {
-        getUrl("/item/list",
+        getUrl("http://localhost:7938/item/list",
             ({data}) => this.setState({itemLinks: data._links.filter(l => l.rel == "related")}),
             () => this.setState({ itemLinks: [] })
         )

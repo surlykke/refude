@@ -1,5 +1,5 @@
 import React, { useEffect } from "react"
-import { path2Url, iconClassName} from "../common/monitor"
+import {iconClassName} from "../common/monitor"
 
 export let Resource = ({resource}) => {
     if ("search" === resource.refudeType) {
@@ -7,7 +7,7 @@ export let Resource = ({resource}) => {
     } else {
         let self = resource._links.find(l => "self" === l.rel)
         return <div key="resource" id={self.href} className="self">
-            <img width="32px" height="32px" className={iconClassName(self)} src={path2Url(self.icon)} alt="" />
+            <img width="32px" height="32px" className={iconClassName(self)} src={self.icon} alt="" />
             <div className="name">{self.title}</div>
         </div> 
     }
@@ -42,7 +42,7 @@ export let Links = ({links, activate, select}) => {
                 onDoubleClick={() => activate(l, true)}
                 onFocus={() => select(l)} 
                 tabIndex={i + 1} >
-                {l.icon && <img className={iconClassName(l)} src={path2Url(l.icon)} height="20" width="20" />}
+                {l.icon && <img className={iconClassName(l)} src={l.icon} height="20" width="20" />}
                 <div className="title"> {l.title}</div>
             </div>)
         }

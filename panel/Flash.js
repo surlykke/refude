@@ -5,14 +5,13 @@
 // Please refer to the GPL2 file for a copy of the license.
 //
 import React from 'react'
-import { path2Url } from '../common/monitor';
 
 export let Flash = ({ flash }) => {
     let self = flash._links.find(l => l.rel == "self")
     return flash ? 
         <div id="flashDiv" className="flash">
             <div id="iconDiv" className="flash-icon">
-                <img width="100%" height="100%" src={path2Url(self.icon)} alt="" />
+                <img width="100%" height="100%" src={self.icon} alt="" />
             </div>
             <div id="messageDiv" className="flash-message">
                 <>

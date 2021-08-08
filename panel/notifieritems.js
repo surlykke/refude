@@ -5,7 +5,7 @@
 // Please refer to the GPL2 file for a copy of the license.
 //
 import React from 'react'
-import { getUrl, postUrl, path2Url } from "../common/monitor";
+import { getUrl, postUrl} from "../common/monitor";
 import { remote } from 'electron'
 const { Menu, MenuItem } = remote
 
@@ -80,7 +80,7 @@ export let NotifierItem = ({ itemLink }) => {
     }
 
     return <div className="clickable">
-        <img src={path2Url(itemLink.icon)} alt="" height="20px" width="20px" onClick={onClick} onContextMenu={onRightClick}/>
+        <img src={itemLink.icon} alt="" height="20px" width="20px" onClick={onClick} onContextMenu={onRightClick}/>
     </div>
 }
 

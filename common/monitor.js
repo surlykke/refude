@@ -8,27 +8,27 @@
 import Axios from "axios";
 
 export let getUrl = (path, handler, errHandler) => {
-    Axios.get(`http://localhost:7938${path}`)
+    Axios.get(path)
         .then(resp => handler(resp))
         .catch(err => errHandler && errHandler(err))
 }
 
 export let postUrl = (path, handler) => {
-    console.log("Axios.post", `http://localhost:7938${path}`)
-    Axios.post(`http://localhost:7938${path}`).then(resp => {
+    console.log("Axios.post", path)
+    Axios.post(path).then(resp => {
         console.log("resp...")
         handler && handler(resp)
     }).catch(err => console.error(err))
 }
 
 export let patchUrl = (path, body, handler) => {
-    Axios.patch(`http://localhost:7938${path}`, body).then(resp => {
+    Axios.patch(path, body).then(resp => {
         handler && handler(resp)
     }).catch(err => console.error(err))
 }
 
 export let deleteUrl = (path, handler) => {
-    Axios.delete(`http://localhost:7938${path}`).then(resp => {
+    Axios.delete(path).then(resp => {
         handler && handler(resp)
     }).catch(err => console.error(err))
 }
@@ -37,7 +37,5 @@ export let addParam = (path, name, value) => {
     let separator = path.indexOf('?') > -1 ? '&' : '?'
     return path + separator + name + '=' + value
 }
-
-export let path2Url = path => "http://localhost:7938" + path
 
 export let iconClassName = link => "icon" + ("window" === link.refudeType ? " window" : "")
