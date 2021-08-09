@@ -20,10 +20,10 @@ var filePathPattern = regexp.MustCompile(`^/file$|^/file(/actions)$|^/file/actio
 
 var noPathError = fmt.Errorf("No path given")
 
-func GetResource(pathElements []string) resource.Resource {
-	if len(pathElements) == 1 {
-		if filePath, err := url.PathUnescape(pathElements[0]); err != nil {
-			log.Info("Could not extract path from", pathElements[0], err)
+func GetResource(relPath string) resource.Resource {
+	if strings.Index(relPath, "/") == -1 {
+		if filePath, err := url.PathUnescape(relPath); err != nil {
+			log.Info("Could not extract path from", relPath, err)
 		} else if file, err := makeFile(filePath); err != nil {
 			log.Info("Could not make file from", filePath, err)
 		} else {

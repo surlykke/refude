@@ -6,20 +6,16 @@ import (
 	"github.com/surlykke/RefudeServices/lib/searchutils"
 )
 
-func GetAppResource(pathComponents []string) resource.Resource {
-	if len(pathComponents) == 1 {
-		if app, ok := collectionStore.Load().(collection).applications[pathComponents[0]]; ok {
-			return app
-		}
+func GetAppResource(appId string) resource.Resource {
+	if app, ok := collectionStore.Load().(collection).applications[appId]; ok {
+		return app
 	}
 	return nil
 }
 
-func GetMimeResource(relPath []string) resource.Resource {
-	if len(relPath) == 1 {
-		if mt, ok := collectionStore.Load().(collection).mimetypes[relPath[0]]; ok {
-			return mt
-		}
+func GetMimeResource(mimeId string) resource.Resource {
+	if mt, ok := collectionStore.Load().(collection).mimetypes[mimeId]; ok {
+		return mt
 	}
 	return nil
 }

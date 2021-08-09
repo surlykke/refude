@@ -7,7 +7,6 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -31,39 +30,42 @@ import (
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var path = r.URL.EscapedPath()
-	// We only serve paths in the form '/foo/baa/moo', ie. starts with a slash,
-	// then a number of pathelements (eg. foo,baa,moo) separated by slash, and no ending slash
-	if !strings.HasPrefix(path, "/") || strings.HasSuffix(path, "/") {
-		respond.NotFound(w)
-	} else {
-		var pathElements = strings.Split(path[1:], "/")
-		switch pathElements[0] {
-		case "icon":
-			icons.ServeHTTP(w, r)
-		case "watch":
-			watch.ServeHTTP(w, r)
-		case "search":
-			search.ServeHTTP(w, r)
-		case "doc":
-			doc.ServeHTTP(w, r)
-		case "window":
-			serveResource(w, r, windows.GetResource(pathElements[1:]))
-		case "application":
-			serveResource(w, r, applications.GetAppResource(pathElements[1:]))
-		case "mimetype":
-			serveResource(w, r, applications.GetMimeResource(pathElements[1:]))
-		case "notification":
-			serveResource(w, r, notifications.GetResource(pathElements[1:]))
-		case "item":
-			serveResource(w, r, statusnotifications.GetResource(pathElements[1:]))
-		case "device":
-			serveResource(w, r, power.GetResource(pathElements[1:]))
-		case "file":
-			fmt.Println("Looking for file")
-			serveResource(w, r, file.GetResource(pathElements[1:]))
-		default:
-			respond.NotFound(w)
+
+	var pathAfter = func(prefix string) (string, bool) {
+		if strings.HasPrefix(path, prefix) {
+			return path[len(prefix):], true
+		} else {
+			return "", false
 		}
+	}
+
+	var s string
+	var ok bool
+
+	if path == "/icon" {
+		icons.ServeHTTP(w, r)
+	} else if path == "/watch" {
+		watch.ServeHTTP(w, r)
+	} else if _, ok = pathAfter("/search/"); ok {
+		search.ServeHTTP(w, r)
+	} else if _, ok = pathAfter("/doc"); ok {
+		doc.ServeHTTP(w, r)
+	} else if s, ok = pathAfter("/window/"); ok {
+		serveResource(w, r, windows.GetResource(s))
+	} else if s, ok = pathAfter("/application/"); ok {
+		serveResource(w, r, applications.GetAppResource(s))
+	} else if s, ok = pathAfter("/mimetype/"); ok {
+		serveResource(w, r, applications.GetMimeResource(s))
+	} else if s, ok = pathAfter("/notification/"); ok {
+		serveResource(w, r, notifications.GetResource(s))
+	} else if s, ok = pathAfter("/item/"); ok {
+		serveResource(w, r, statusnotifications.GetResource(s))
+	} else if s, ok = pathAfter("/device/"); ok {
+		serveResource(w, r, power.GetResource(s))
+	} else if s, ok = pathAfter("/file/"); ok {
+		serveResource(w, r, file.GetResource(s))
+	} else {
+		respond.NotFound(w)
 	}
 }
 

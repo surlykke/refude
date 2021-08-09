@@ -6,11 +6,9 @@ import (
 	"github.com/surlykke/RefudeServices/lib/searchutils"
 )
 
-func GetResource(pathElements []string) resource.Resource {
-	if len(pathElements) == 1 {
-		if d := getDevice("/device/" + pathElements[0]); d != nil {
-			return d
-		}
+func GetResource(relPath string) resource.Resource {
+	if d := getDevice("/device/" + relPath); d != nil {
+		return d
 	}
 	return nil
 }

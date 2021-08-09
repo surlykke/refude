@@ -192,14 +192,12 @@ var requestProxy = x11.MakeProxy()
 // - and uses this for synchronization
 var requestProxyMutex sync.Mutex
 
-func GetResource(relPath []string) resource.Resource {
-	if len(relPath) == 1 {
-		if relPath[0] == "desktoplayout" {
-			return getDesktopLayout()
-		} else if id, err := strconv.ParseUint(relPath[0], 10, 32); err == nil {
-			if win := getWindow(uint32(id)); win != nil {
-				return win
-			}
+func GetResource(relPath string) resource.Resource {
+	if relPath == "desktoplayout" {
+		return getDesktopLayout()
+	} else if id, err := strconv.ParseUint(relPath, 10, 32); err == nil {
+		if win := getWindow(uint32(id)); win != nil {
+			return win
 		}
 	}
 	return nil

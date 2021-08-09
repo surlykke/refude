@@ -7,6 +7,7 @@
 package statusnotifications
 
 import (
+	"strings"
 	"sync"
 
 	"github.com/surlykke/RefudeServices/icons"
@@ -18,25 +19,23 @@ import (
 	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
-func GetResource(pathElements []string) resource.Resource {
-	if len(pathElements) == 1 {
-		if pathElements[0] == "list" {
-			var ll = link.MakeList("/item/list", "Items", "")
+func GetResource(relPath string) resource.Resource {
+	if relPath == "list" {
+		var ll = link.MakeList("/item/list", "Items", "")
 
-			for _, item := range items {
-				ll = ll.Add(item.self, item.Title, item.IconName, relation.Related)
-			}
-
-			return link.Collection(ll)
-		} else if item := get("/item/" + pathElements[0]); item != nil {
-			return item
+		for _, item := range items {
+			ll = ll.Add(item.self, item.Title, item.IconName, relation.Related)
 		}
-	} else if len(pathElements) == 2 && pathElements[1] == "menu" {
-		if item := get("/item/" + pathElements[0]); item != nil {
+
+		return link.Collection(ll)
+	} else if strings.HasSuffix(relPath, "/menu") {
+		if item := get("/item/" + relPath[:len(relPath)-len("/menu")]); item != nil {
 			if menu := item.buildMenu(); menu != nil {
 				return menu
 			}
 		}
+	} else if item := get("/item/" + relPath); item != nil {
+		return item
 	}
 	return nil
 }

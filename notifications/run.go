@@ -34,22 +34,20 @@ func Run() {
 	}
 }
 
-func GetResource(relPath []string) resource.Resource {
-	if len(relPath) == 1 {
-		if relPath[0] == "list" {
-			var ll = link.MakeList("/notification/list", "Notifications", "")
-			for _, n := range getNotifications() {
-				ll = ll.Add(n.self, n.Subject, n.iconName, relation.Related)
-			}
-			return link.Collection(ll)
-		} else if relPath[0] == "flash" {
-			if f := getFlash(); f != nil {
-				return f
-			}
-		} else if id, err := strconv.Atoi(relPath[0]); err == nil {
-			if n := getNotification(uint32(id)); n != nil {
-				return n
-			}
+func GetResource(relPath string) resource.Resource {
+	if relPath == "list" {
+		var ll = link.MakeList("/notification/list", "Notifications", "")
+		for _, n := range getNotifications() {
+			ll = ll.Add(n.self, n.Subject, n.iconName, relation.Related)
+		}
+		return link.Collection(ll)
+	} else if relPath == "flash" {
+		if f := getFlash(); f != nil {
+			return f
+		}
+	} else if id, err := strconv.Atoi(relPath); err == nil {
+		if n := getNotification(uint32(id)); n != nil {
+			return n
 		}
 	}
 	return nil
