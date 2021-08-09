@@ -58,7 +58,7 @@ export let NotifierItem = ({ itemLink }) => {
 
         let { x, y } = getXY(event)
         if (event.button === 0) {
-            postUrl(`${itemLink.href}?action=Activate&x=${x}&y=${y}`);
+            postUrl(`${itemLink.href}?action=left&x=${x}&y=${y}`);
         } else if (event.button === 1) {
             postUrl(`${itemLink.href}?action=middle&x=${x}&y=${y}`);
         }
@@ -74,7 +74,7 @@ export let NotifierItem = ({ itemLink }) => {
                 showMenu(menuLink.href)
             } else {
                 let { x, y } = getXY(event)
-                postUrl(item.Self + '?action=ContextMenu&x=' + x + '&y=' + y);
+                postUrl(item.Self + '?action=right&x=' + x + '&y=' + y);
             }
         })
 
