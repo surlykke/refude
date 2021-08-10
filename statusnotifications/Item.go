@@ -59,6 +59,28 @@ func (item *Item) RefudeType() string {
 	return "item"
 }
 
+func (item *Item) DoPost(w http.ResponseWriter, r *http.Request) {
+	action := requests.GetSingleQueryParameter(r, "action", "left")
+	x, _ := strconv.Atoi(requests.GetSingleQueryParameter(r, "x", "0"))
+	y, _ := strconv.Atoi(requests.GetSingleQueryParameter(r, "y", "0"))
+
+	var call *dbus.Call
+	if slice.Among(action, "left", "middle", "right") {
+		action2method := map[string]string{"left": "Activate", "middle": "SecondaryActivate", "right": "ContextMenu"}
+		dbusObj := conn.Object(item.sender, item.itemPath)
+		call = dbusObj.Call("org.kde.StatusNotifierItem."+action2method[action], dbus.Flags(0), x, y)
+	} else {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		return
+	}
+	if call.Err != nil {
+		log.Warn(call.Err)
+		w.WriteHeader(http.StatusInternalServerError)
+	} else {
+		w.WriteHeader(http.StatusAccepted)
+	}
+}
+
 func (item *Item) buildMenu() *Menu {
 	if item.MenuPath == "" {
 		return nil
