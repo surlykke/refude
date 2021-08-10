@@ -5,15 +5,15 @@
 // Please refer to the GPL2 file for a copy of the license.
 //
 import React from 'react'
-import { getUrl, postUrl} from "../common/monitor";
+import Axios from 'axios'
 import { remote } from 'electron'
 const { Menu, MenuItem } = remote
 
 export let NotifierItem = ({ itemLink }) => {
 
-    let showMenu = (menuPath) => {
+    let showMenu = (menuHref) => {
         let clickHandler = (id) => {
-            return () => { postUrl(`${menuPath}?id=${id}`) }
+            return () => { Axios.post(`${menuHref}?id=${id}`) }
         }
 
         let buildMenu = entries => {
@@ -38,11 +38,9 @@ export let NotifierItem = ({ itemLink }) => {
             return menu
         }
 
-        getUrl(menuPath, resp => {
-            let m = buildMenu(resp.data.Entries)
-            m.popup()
-        })
-       
+
+        Axios.get(menuHref)
+            .then(({data}) => buildMenu(data.Entries).popup())
     }
 
     let getXY = (event) => {
@@ -58,24 +56,25 @@ export let NotifierItem = ({ itemLink }) => {
 
         let { x, y } = getXY(event)
         if (event.button === 0) {
-            postUrl(`${itemLink.href}?action=left&x=${x}&y=${y}`);
+            Axios.post(`${itemLink.href}?action=left&x=${x}&y=${y}`);
         } else if (event.button === 1) {
-            postUrl(`${itemLink.href}?action=middle&x=${x}&y=${y}`);
+            Axios.post(`${itemLink.href}?action=middle&x=${x}&y=${y}`);
         }
     }
 
     let onRightClick = (event) => {
         event.persist()
         event.preventDefault()
-        getUrl(itemLink.href, response => {
-            let item = response.data
-            let menuLink = item._links.find(l => l.rel === 'org.refude.menu')
-            if (menuLink) {
-                showMenu(menuLink.href)
-            } else {
-                let { x, y } = getXY(event)
-                postUrl(item.Self + '?action=right&x=' + x + '&y=' + y);
-            }
+        Axios.get(itemLink.href) 
+            .then(({data}) => {
+                let menuLink = data._links.find(l => l.rel === 'org.refude.menu')
+                if (menuLink) {
+                    showMenu(menuLink.href)
+                } else {
+                    let selfLink = data._links.find(l => l.rel === "self")
+                    let { x, y } = getXY(event)
+                    Axios.post(selfLink.href + '?action=right&x=' + x + '&y=' + y)
+                }
         })
 
     }

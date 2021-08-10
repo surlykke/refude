@@ -1,5 +1,6 @@
 import React, { useEffect } from "react"
-import {iconClassName} from "../common/monitor"
+
+let iconClassName = link => "icon" + ("window" === link.refudeType ? " window" : "")
 
 export let Resource = ({resource}) => {
     if ("search" === resource.refudeType) {

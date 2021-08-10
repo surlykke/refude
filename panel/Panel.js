@@ -13,6 +13,7 @@
  */
 import React from 'react'
 import ReactDOM from 'react-dom'
+import Axios from "axios";
 import { ipcRenderer } from 'electron'
 import { Clock } from './clock'
 import { Battery } from './battery'
@@ -21,7 +22,6 @@ import { CloseButton } from "./closebutton";
 import { MinimizeButton } from "./minimizebutton";
 import { Flash} from "./Flash"
 import { Resource, Term, Links} from "./Resource"
-import { getUrl, addParam, postUrl, deleteUrl } from '../common/monitor'
 import './Refude.css'
 import '../common/common.css'
 
@@ -99,34 +99,32 @@ export default class Panel extends React.Component {
         let resourceUrl = this.resourceUrl
         if (resourceUrl) {
             console.log("Getting ", resourceUrl)
-            getUrl(addParam(resourceUrl, "term", this.state.term), ({ data }) => {
-                if (resourceUrl === this.resourceUrl) {  // may have changed while request in flight
-                    this.setState({ resource: data })
-                }
-            })
+            Axios.get(`${resourceUrl}?term=${this.state.term}`)
+                .then(({data}) => {
+                    if (resourceUrl === this.resourceUrl) {  // may have changed while request in flight
+                        this.setState({ resource: data })
+                    }
+                })
         }
     }
 
     getDisplayDevice = () => {
         console.log("getDisplayDevice")
-        getUrl("http://localhost:7938/device/DisplayDevice",
-            resp => this.setState({ displayDevice: resp.data }),
-            () => this.setState({ displayDevice: undefined }))
+        Axios.get("http://localhost:7938/device/DisplayDevice")
+            .then(({data}) => this.setState({ displayDevice: data }))
+            .catch(error => this.setState({ displayDevice: undefined }))
     }
 
     getItemLinks = () => {
-        getUrl("http://localhost:7938/item/list",
-            ({data}) => this.setState({itemLinks: data._links.filter(l => l.rel == "related")}),
-            () => this.setState({ itemLinks: [] })
-        )
+        Axios.get("http://localhost:7938/item/list")
+            .then(({data}) => this.setState({itemLinks: data._links.filter(l => l.rel == "related")}))
+            .catch(error => this.setState({ itemLinks: [] }))
     }
 
     getFlash = () => {
-        getUrl(
-            "/notification/flash",
-            ({data}) => this.setState({flash: data}),
-            () => this.setState({flash: undefined})
-        )
+        Axios.get("http://localhost:7938/notification/flash")
+            .then(({data}) => this.setState({flash: data}))
+            .catch(error => this.setState({flash: undefined}))
     }
 
 
@@ -137,18 +135,19 @@ export default class Panel extends React.Component {
     activate = (link, dismiss) => {
         let dismissIf = () => dismiss && this.dismiss()
         if (link.rel === "org.refude.defaultaction" || link.rel === "org.refude.action") {
-            postUrl(link.href, dismissIf)
+            Axios.post(link.href).then(() => dismiss && this.dismiss())
         } else if (link.rel === "org.refude.delete") {
-            deleteUrl(link.href, dismissIf)
+               Axios.delete(path).then(() => dismiss && this.dismiss())
         } else if (link.rel === "related") {
-            getUrl(link.href, ({data}) => {
-                if (data && data._links) {
-                    let dfAct = data._links.find(l => l.rel === "org.refude.defaultaction") 
-                    if (dfAct) {
-                        postUrl(dfAct.href, dismissIf)
+            Axios.get(link.href)
+                .then(({data}) => {
+                    if (data && data._links) {
+                        let dfAct = data._links.find(l => l.rel === "org.refude.defaultaction") 
+                        if (dfAct) {
+                            Axios.post(link.href).then(() => dismiss && this.dismiss())
+                        }
                     }
-                }
-            })
+                })
         }
         console.log(link)
     }
@@ -157,16 +156,17 @@ export default class Panel extends React.Component {
         console.log("delete, link:", link)
         let doAfter = () => dismiss && this.dismiss()
         if (link.rel === "related") {
-            getUrl(link.href, ({data}) => {
-                if (data && data._links) {
-                    console.log("Got resource", data)
-                    let deleteLink = data._links.find(l => l.rel === "org.refude.delete") 
-                    console.log("deleteLink:", deleteLink)
-                    if (deleteLink) {
-                        deleteUrl(deleteLink.href, doAfter)
+            Axios.get(link.href)
+                .then(({data}) => {
+                    if (data && data._links) {
+                        console.log("Got resource", data)
+                        let deleteLink = data._links.find(l => l.rel === "org.refude.delete") 
+                        console.log("deleteLink:", deleteLink)
+                        if (deleteLink) {
+                            Axios.delete(deleteLink.href).then(() => dismiss && this.dismiss())
+                        }
                     }
-                }
-            })
+                })
         }
     }
 
