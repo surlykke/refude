@@ -308,18 +308,14 @@ func SetOpaque(p Proxy, wId uint32) {
 	C.XFlush(p.disp)
 }
 
+// Returns wIds of current windows, stack order, bottom up
 func GetStack(p Proxy) []uint32 {
-	if tmp, err := getUint32s(p.disp, p.rootWindow, _NET_CLIENT_LIST_STACKING); err != nil {
+	if stack, err := getUint32s(p.disp, p.rootWindow, _NET_CLIENT_LIST_STACKING); err != nil {
 		log.Warn("Unable to get stack:", err)
 		return []uint32{}
 	} else {
-		for i := 0; i < len(tmp)/2; i++ {
-			j := len(tmp) - i - 1
-			tmp[i], tmp[j] = tmp[j], tmp[i]
-		}
-		return tmp
+		return stack
 	}
-
 }
 
 func GetName(p Proxy, wId uint32) (string, error) {

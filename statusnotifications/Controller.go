@@ -8,7 +8,6 @@ package statusnotifications
 
 import (
 	"errors"
-	"fmt"
 	"regexp"
 	"strings"
 
@@ -41,7 +40,7 @@ func senderAndPath(serviceName string, sender dbus.Sender) (string, dbus.ObjectP
 }
 
 /**
- * serviceId Can be a name of service or a path of object
+ * serviceName Can be a name of service or a path of object
  */
 func addItem(serviceName string, sender dbus.Sender) *dbus.Error {
 	var s, p = senderAndPath(serviceName, sender)
@@ -71,10 +70,11 @@ func monitorSignals() {
 }
 
 func checkItemStatus(sender string) {
-	for _, item := range items {
+	for _, res := range Items.GetAll() {
+		var item = res.Data.(*Item)
 		if item.sender == sender {
-			if _, ok := dbuscall.GetSingleProp(conn, item.sender, item.itemPath, ITEM_INTERFACE, "Status"); !ok {
-				events <- Event{"ItemRemoved", item.sender, item.itemPath}
+			if _, ok := dbuscall.GetSingleProp(conn, item.sender, item.path, ITEM_INTERFACE, "Status"); !ok {
+				events <- Event{"ItemRemoved", item.sender, item.path}
 			}
 		}
 	}
@@ -128,19 +128,6 @@ func getOnTheBus() {
 	)
 }
 
-type EventType int
-
-const (
-	ItemCreated EventType = iota
-	TitleUpdated
-	IconUpdated
-	AttentionIconUpdated
-	OverlayIconUpdated
-	ToolTipUpdated
-	StatusUpdated
-	ItemRemoved
-)
-
 type Event struct {
 	eventName string // New item: "ItemCreated", otherwise name of relevant dbus signal
 	sender    string
@@ -151,20 +138,19 @@ var events = make(chan Event)
 
 func updateWatcherProperties() {
 	ids := make([]string, 0, 20)
-	for _, item := range items {
-		ids = append(ids, item.sender+":"+string(item.itemPath))
+	for _, res := range Items.GetAll() {
+		var item = res.Data.(*Item)
+		ids = append(ids, item.sender+":"+string(item.path))
 	}
 	watcherProperties.Set(WATCHER_INTERFACE, "RegisteredStatusItems", dbus.MakeVariant(ids))
 }
 
 func buildItem(sender string, path dbus.ObjectPath) *Item {
-	var item = Item{sender: sender, itemPath: path, self: fmt.Sprintf("/item/%s", strings.ReplaceAll(sender+string(path), "/", "-"))}
-	var props = dbuscall.GetAllProps(conn, item.sender, item.itemPath, ITEM_INTERFACE)
+	var item = Item{sender: sender, path: path}
+	var props = dbuscall.GetAllProps(conn, item.sender, item.path, ITEM_INTERFACE)
 	item.Id = getStringOr(props["Id"])
 	item.Category = getStringOr(props["Category"])
-	if item.MenuPath = getDbusPath(props["Menu"]); item.MenuPath != "" {
-		item.Menu = item.self + "/menu"
-	}
+	item.MenuPath = getDbusPath(props["Menu"])
 	item.Title = getStringOr(props["Title"])
 	item.Status = getStringOr(props["Status"])
 	item.ToolTip = getStringOr(props["ToolTip"])

@@ -41,7 +41,7 @@ func findIcon(iconName string) *Icon {
 
 /**
  * By the icon naming specification, dash ('-') seperates 'levels of specificity'. So given an icon name
- * 'input-mouse-usb', the levels of spcicificy, and the names and order we search will be: 'input-mouse-usb',
+ * 'input-mouse-usb', the levels of specificy, and the names and order we search will be: 'input-mouse-usb',
  * 'input-mouse' and 'input'
  */
 func dashSplit(name string) []string {

@@ -24,13 +24,13 @@ func init() {
 }
 
 type File struct {
-	Path       string
-	self       string
-	Name       string
-	Dir        bool
-	Mimetype   string
-	Icon       string
-	DefaultApp string
+	Path     string
+	self     string
+	Name     string
+	Dir      bool
+	Mimetype string
+	Icon     string
+	Apps     []string
 }
 
 func makeFile(path string) (*File, error) {
@@ -46,28 +46,26 @@ func makeFile(path string) (*File, error) {
 	} else {
 		var mimetype, _ = magicmime.TypeByFile(path)
 		var f = File{
-			Path:       path,
-			self:       "/file/" + url.PathEscape(path),
-			Name:       fileInfo.Name(),
-			Dir:        fileInfo.IsDir(),
-			Mimetype:   mimetype,
-			Icon:       strings.ReplaceAll(mimetype, "/", "-"),
-			DefaultApp: applications.GetDefaultApp(mimetype),
+			Path:     path,
+			self:     "/file/" + url.PathEscape(path),
+			Name:     fileInfo.Name(),
+			Dir:      fileInfo.IsDir(),
+			Mimetype: mimetype,
+			Icon:     strings.ReplaceAll(mimetype, "/", "-"),
+			Apps:     applications.GetAppsIds(mimetype),
 		}
 
 		return &f, nil
 	}
 }
 
-func (f *File) Links() link.List {
-	var ll = link.MakeList(f.self, f.Name, f.Icon)
-
-	var recommendedApps, _ = applications.GetAppsForMimetype(f.Mimetype)
-	for i, app := range recommendedApps {
+func (f *File) Links(path string) link.List {
+	var ll = make(link.List, 0, 10)
+	for i, app := range applications.GetApps(f.Apps...) {
 		if i == 0 {
-			ll = ll.Add(f.self, "Open with "+app.Name, app.Icon, relation.DefaultAction)
+			ll = ll.Add(path+"?action="+app.Id, "Open with "+app.Name, app.Icon, relation.DefaultAction)
 		} else {
-			ll = ll.Add(f.self+"?action="+app.Id, "Open with "+app.Name, app.Icon, relation.Action)
+			ll = ll.Add(path+"?action="+app.Id, "Open with "+app.Name, app.Icon, relation.Action)
 		}
 	}
 
@@ -78,7 +76,6 @@ func (f *File) Links() link.List {
 			log.Warn("Error reading", f.Path, err)
 			dir.Close()
 		} else {
-			// Can't use filepath.Glob as it is case sensitive
 			for _, name := range names {
 				var path = f.Path + "/" + name
 				var mimetype, _ = magicmime.TypeByFile(path)
@@ -93,17 +90,15 @@ func (f *File) Links() link.List {
 	return ll
 }
 
-func (f *File) RefudeType() string {
-	return "file"
+func (f *File) ForDisplay() bool {
+	return true
 }
 
 func (f *File) DoPost(w http.ResponseWriter, r *http.Request) {
 	var appId = requests.GetSingleQueryParameter(r, "action", "")
-	if appId == "" {
-		applications.OpenFile(f.Path, f.Mimetype)
-		respond.Accepted(w)
-	} else if app := applications.GetApp(appId); app != nil {
-		if err := app.Run(f.Path); err != nil {
+	var ok, err = applications.OpenFile(appId, f.Path)
+	if ok {
+		if err != nil {
 			respond.ServerError(w, err)
 		} else {
 			respond.Accepted(w)
@@ -111,5 +106,4 @@ func (f *File) DoPost(w http.ResponseWriter, r *http.Request) {
 	} else {
 		respond.NotFound(w)
 	}
-
 }

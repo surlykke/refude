@@ -7,15 +7,12 @@
 package power
 
 import (
-	"fmt"
-
 	"github.com/godbus/dbus/v5"
 	"github.com/surlykke/RefudeServices/lib/link"
 )
 
 type Device struct {
 	DbusPath         dbus.ObjectPath
-	self             string
 	title            string
 	NativePath       string
 	Vendor           string
@@ -45,12 +42,12 @@ type Device struct {
 	DisplayDevice    bool
 }
 
-func (d *Device) Links() link.List {
-	return link.MakeList(d.self, d.title, d.IconName)
+func (d *Device) Links(path string) link.List {
+	return link.List{}
 }
 
-func (d *Device) RefudeType() string {
-	return "device"
+func (d *Device) ForDisplay() bool {
+	return true
 }
 
 func deviceTitle(devType, model string) string {
@@ -91,10 +88,10 @@ func deviceTecnology(index uint32) string {
 	return devTecnology[index]
 }
 
-func deviceSelf(path dbus.ObjectPath) string {
-	if path == DisplayDevicePath {
-		return "/device/DisplayDevice"
+func devicePath(path dbus.ObjectPath) string {
+	if path == displayDeviceDbusPath {
+		return displayDevicePath
 	} else {
-		return fmt.Sprintf("/device%s", path)
+		return "/device" + string(path)
 	}
 }

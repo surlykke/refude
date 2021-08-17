@@ -11,12 +11,13 @@ import (
 	dbuscall "github.com/surlykke/RefudeServices/lib/dbusutils"
 )
 
-const UPowService = "org.freedesktop.UPower"
-const UPowPath = "/org/freedesktop/UPower"
-const UPowerInterface = "org.freedesktop.UPower"
-const DevicePrefix = "/org/freedesktop/UPower/devices"
-const DisplayDevicePath = dbus.ObjectPath(DevicePrefix + "/DisplayDevice")
-const UPowerDeviceInterface = "org.freedesktop.UPower.Device"
+const upowerService = "org.freedesktop.UPower"
+const upowerPath = "/org/freedesktop/UPower"
+const upowerInterface = "org.freedesktop.UPower"
+const devicePrefix = "/org/freedesktop/UPower/devices"
+const displayDeviceDbusPath = dbus.ObjectPath(devicePrefix + "/DisplayDevice")
+const upowerDeviceInterface = "org.freedesktop.UPower.Device"
+const displayDevicePath = "/device/DisplayDevice"
 
 func subscribe() chan *dbus.Signal {
 	var signals = make(chan *dbus.Signal, 100)
@@ -41,18 +42,17 @@ func subscribe() chan *dbus.Signal {
 }
 
 func retrieveDevicePaths() []dbus.ObjectPath {
-	enumCall := dbusConn.Object(UPowService, UPowPath).Call(UPowerInterface+".EnumerateDevices", dbus.Flags(0))
-	return append(enumCall.Body[0].([]dbus.ObjectPath), DisplayDevicePath)
+	enumCall := dbusConn.Object(upowerService, upowerPath).Call(upowerInterface+".EnumerateDevices", dbus.Flags(0))
+	return append(enumCall.Body[0].([]dbus.ObjectPath), displayDeviceDbusPath)
 }
 
 func retrieveDevice(path dbus.ObjectPath) *Device {
 	var device = Device{
 		DbusPath:      path,
-		self:          deviceSelf(path),
-		DisplayDevice: path == DisplayDevicePath,
+		DisplayDevice: path == displayDeviceDbusPath,
 	}
 
-	var props = dbuscall.GetAllProps(dbusConn, UPowService, path, UPowerDeviceInterface)
+	var props = dbuscall.GetAllProps(dbusConn, upowerService, path, upowerDeviceInterface)
 
 	for key, variant := range props {
 		switch key {

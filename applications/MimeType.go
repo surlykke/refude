@@ -7,13 +7,10 @@
 package applications
 
 import (
-	"os"
 	"regexp"
-	"strings"
 
 	"github.com/surlykke/RefudeServices/lib/link"
-	"github.com/surlykke/RefudeServices/lib/slice"
-	"github.com/surlykke/RefudeServices/lib/xdg"
+	"github.com/surlykke/RefudeServices/lib/resource"
 
 	"github.com/pkg/errors"
 )
@@ -31,8 +28,7 @@ type Mimetype struct {
 	SubClassOf      []string
 	IconName        string
 	GenericIcon     string
-	DefaultApp      string `json:",omitempty"`
-	DefaultAppPath  string `json:",omitempty"`
+	Applications    []string
 	path            string
 }
 
@@ -56,15 +52,17 @@ func MakeMimetype(id string) (*Mimetype, error) {
 	}
 }
 
-func (m *Mimetype) Links() link.List {
-	return link.MakeList(m.self, m.Comment, "")
+func (m *Mimetype) Links(path string) link.List {
+	return link.List{}
 }
 
-func (m *Mimetype) RefudeType() string {
-	return "mimetype"
+func (m *Mimetype) ForDisplay() bool {
+	return false
 }
 
-func SetDefaultApp(mimetypeId string, appId string) error {
+var Mimetypes = resource.MakeList("mimetype", false, "", 1000)
+
+/*func SetDefaultApp(mimetypeId string, appId string) error {
 	if mt, ok := collectionStore.Load().(collection).mimetypes[mimetypeId]; ok {
 		if mt.DefaultApp == appId {
 			return nil
@@ -102,4 +100,4 @@ func GetDefaultApp(mimetypeId string) string {
 	}
 
 	return ""
-}
+}*/

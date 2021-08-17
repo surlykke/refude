@@ -16,13 +16,13 @@ import (
 	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/requests"
+	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
 
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
 type DesktopApplication struct {
-	self            string
 	Type            string
 	Version         string `json:",omitempty"`
 	Name            string
@@ -54,19 +54,19 @@ func (d *DesktopApplication) Run(arg string) error {
 	return run(d.Exec, arg, d.Terminal)
 }
 
-func (d *DesktopApplication) Links() link.List {
-	var ll = link.MakeList(d.self, d.Name, d.Icon)
-	ll = ll.Add(d.self, "Launch", "", relation.DefaultAction)
+func (d *DesktopApplication) Links(path string) link.List {
+	var ll = link.List{}
+	ll = ll.Add(path, "Launch", "", relation.DefaultAction)
 
 	for _, da := range d.DesktopActions {
-		ll = ll.Add(d.self+"?action="+da.id, da.Name, da.Icon, relation.Action)
+		ll = ll.Add(path+"?action="+da.id, da.Name, da.Icon, relation.Action)
 	}
 	return ll
 
 }
 
-func (d *DesktopApplication) RefudeType() string {
-	return "application"
+func (d *DesktopApplication) ForDisplay() bool {
+	return !d.NoDisplay
 }
 
 type DesktopAction struct {
@@ -104,17 +104,33 @@ func (d *DesktopApplication) DoPost(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func OpenFile(path string, mimetypeId string) error {
-	var c = collectionStore.Load().(collection)
-	if mt, ok := c.mimetypes[mimetypeId]; ok {
-		if mt.DefaultApp != "" {
-			if app, ok := c.applications[mt.DefaultApp]; ok {
-				return app.Run(path)
-			}
+var Applications = resource.MakeList("application", false, "", 100)
+
+func GetAppsIds(mimetypeId string) []string {
+	if mt := Mimetypes.GetData("/mimetype/" + mimetypeId); mt != nil {
+		return mt.(*Mimetype).Applications
+	} else {
+		return []string{}
+	}
+}
+
+func GetApps(appIds ...string) []*DesktopApplication {
+	var apps = make([]*DesktopApplication, 0, len(appIds))
+	for _, appId := range appIds {
+		if app := Applications.GetData("/application/" + appId); app != nil {
+			apps = append(apps, app.(*DesktopApplication))
 		}
 	}
+	return apps
+}
 
-	return xdg.RunCmd("xdg-open", path)
+func OpenFile(appId, path string) (bool, error) {
+	fmt.Println("OpenFile", appId, ", path:", path)
+	if app := Applications.GetData("/application/" + appId); app != nil {
+		return true, app.(*DesktopApplication).Run(path)
+	} else {
+		return false, nil
+	}
 }
 
 var argPlaceholders = regexp.MustCompile("%[uUfF]")

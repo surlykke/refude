@@ -7,47 +7,11 @@
 package statusnotifications
 
 import (
-	"strings"
-	"sync"
-
 	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/watch"
 
-	"github.com/godbus/dbus/v5"
-	"github.com/surlykke/RefudeServices/lib/link"
-	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/resource"
 )
-
-func GetResource(relPath string) resource.Resource {
-	if relPath == "list" {
-		var ll = link.MakeList("/item/list", "Items", "")
-
-		for _, item := range items {
-			ll = ll.Add(item.self, item.Title, item.IconName, relation.Related)
-		}
-
-		return link.Collection(ll)
-	} else if strings.HasSuffix(relPath, "/menu") {
-		if item := get("/item/" + relPath[:len(relPath)-len("/menu")]); item != nil {
-			if menu := item.buildMenu(); menu != nil {
-				return menu
-			}
-		}
-	} else if item := get("/item/" + relPath); item != nil {
-		return item
-	}
-	return nil
-}
-
-func CollectPaths(method string, sink chan string) {
-	lock.Lock()
-	defer lock.Unlock()
-	sink <- "/item/list"
-	for _, item := range items {
-		sink <- item.self
-	}
-}
 
 func Run() {
 	getOnTheBus()
@@ -56,50 +20,56 @@ func Run() {
 	// TODO After a restart, pick up those that where?
 
 	for event := range events {
+		var path = "/item/" + pathEscape(event.sender, event.path)
+		var menuPath = "/itemmenu/" + pathEscape(event.sender, event.path)
 		switch event.eventName {
 		case "ItemCreated":
-			set(buildItem(event.sender, event.path))
+			var item = buildItem(event.sender, event.path)
+			Items.Put2(path, item.Title, "", item.IconName, item)
+			if item.MenuPath != "" {
+				Menus.Put2(menuPath, "Menu", "", "", &Menu{event.sender, item.MenuPath})
+			}
 		case "ItemRemoved":
-			remove(event.sender, event.path)
+			Items.Delete(path)
+			Menus.Delete(menuPath)
 		default:
-			var path = itemSelf(event.sender, event.path)
-			if item := get(path); item != nil {
-				var itemCopy = *item
+			if data := Items.GetData(path); data != nil {
+				var itemCopy = *(data.(*Item))
 				switch event.eventName {
 				case "org.kde.StatusNotifierItem.NewTitle":
-					if v, ok := getProp(itemCopy.sender, itemCopy.itemPath, "Title"); ok {
+					if v, ok := getProp(itemCopy.sender, itemCopy.path, "Title"); ok {
 						itemCopy.Title = getStringOr(v)
 					}
 				case "org.kde.StatusNotifierItem.NewStatus":
-					if v, ok := getProp(itemCopy.sender, itemCopy.itemPath, "Status"); ok {
+					if v, ok := getProp(itemCopy.sender, itemCopy.path, "Status"); ok {
 						itemCopy.Status = getStringOr(v)
 					}
 				case "org.kde.StatusNotifierItem.NewToolTip":
-					if v, ok := getProp(itemCopy.sender, itemCopy.itemPath, "ToolTip"); ok {
+					if v, ok := getProp(itemCopy.sender, itemCopy.path, "ToolTip"); ok {
 						itemCopy.ToolTip = getStringOr(v)
 					}
 				case "org.kde.StatusNotifierItem.NewIcon":
 					if itemCopy.UseIconPixmap {
-						if v, ok := getProp(itemCopy.sender, itemCopy.itemPath, "IconPixmap"); ok {
+						if v, ok := getProp(itemCopy.sender, itemCopy.path, "IconPixmap"); ok {
 							itemCopy.IconName = collectPixMap(v)
 						}
 					} else {
-						if v, ok := getProp(itemCopy.sender, itemCopy.itemPath, "IconName"); ok {
+						if v, ok := getProp(itemCopy.sender, itemCopy.path, "IconName"); ok {
 							itemCopy.IconName = getStringOr(v)
 						}
 					}
 				case "org.kde.StatusNotifierItem.NewIconThemePath":
-					if v, ok := getProp(itemCopy.sender, itemCopy.itemPath, "IconThemePath"); ok {
+					if v, ok := getProp(itemCopy.sender, itemCopy.path, "IconThemePath"); ok {
 						itemCopy.IconThemePath = getStringOr(v)
 						icons.AddBasedir(itemCopy.IconThemePath)
 					}
 				case "org.kde.StatusNotifierItem.NewAttentionIcon":
 					if itemCopy.UseAttentionIconPixmap {
-						if v, ok := getProp(itemCopy.sender, itemCopy.itemPath, "AttentionIconPixmap"); ok {
+						if v, ok := getProp(itemCopy.sender, itemCopy.path, "AttentionIconPixmap"); ok {
 							itemCopy.AttentionIconName = collectPixMap(v)
 						}
 					} else {
-						if v, ok := getProp(itemCopy.sender, itemCopy.itemPath, "AttentionIconName"); ok {
+						if v, ok := getProp(itemCopy.sender, itemCopy.path, "AttentionIconName"); ok {
 							itemCopy.AttentionIconName = getStringOr(v)
 						}
 					}
@@ -108,39 +78,18 @@ func Run() {
 				default:
 					continue
 				}
-				set(&itemCopy)
+				Items.Put2(path, itemCopy.Title, "", itemCopy.IconName, &itemCopy)
 			} else {
 				continue
 			}
+
 		}
+		watch.SomethingChanged("/item/list")
 	}
 }
 
-var items = make(ItemMap)
-var lock sync.Mutex
-
-func set(item *Item) {
-	lock.Lock()
-	items[item.self] = item
-	lock.Unlock()
-	sendEvent(item.self)
-	sendEvent("/item/list")
-}
-
-func get(path string) *Item {
-	lock.Lock()
-	defer lock.Unlock()
-	return items[path]
-}
-
-func remove(sender string, itemPath dbus.ObjectPath) {
-	var self = itemSelf(sender, itemPath)
-	lock.Lock()
-	delete(items, self)
-	lock.Unlock()
-	sendEvent(self)
-	sendEvent("/item/list")
-}
+var Items = resource.MakeList("item", false, "/item/list", 10)
+var Menus = resource.MakeList("menu", false, "", 10)
 
 func sendEvent(path string) {
 	watch.SomethingChanged(path)

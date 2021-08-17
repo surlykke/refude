@@ -8,7 +8,6 @@ package notifications
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"reflect"
 	"strings"
@@ -192,10 +191,9 @@ func Notify(app_name string,
 	notification := Notification{
 		Id:       id,
 		Sender:   app_name,
-		self:     fmt.Sprintf("/notification/%d", id),
 		Subject:  sanitize(summary, []string{}, []string{}),
 		Body:     sanitize(body, allowedTags, allowedEscapes),
-		Created:  time.Now(),
+		Created:  nowMillis(),
 		Urgency:  normal,
 		Actions:  map[string]string{},
 		Hints:    map[string]interface{}{},
@@ -225,12 +223,13 @@ func Notify(app_name string,
 
 	if notification.Urgency == critical {
 		// Critical notifications do not time out, but must be dismissed
-		notification.Expires = time.Now().Add(24 * time.Hour)
+		notification.Expires = 0
 	} else {
 		if expire_timeout <= 0 || expire_timeout > 60000 {
 			expire_timeout = 60000
 		}
-		notification.Expires = time.Now().Add(time.Duration(expire_timeout) * time.Millisecond)
+		notification.Expires = nowMillis() + uint64(expire_timeout)
+		time.AfterFunc(time.Duration(notification.Expires-notification.Created+20)*time.Millisecond, func() { cleaningHints <- struct{}{} })
 	}
 
 	incomingNotifications <- &notification
@@ -246,6 +245,11 @@ func installRawImageIcon(hints map[string]dbus.Variant, key string) (string, boo
 	} else {
 		return icons.AddRawImageIcon(imageData), true
 	}
+}
+
+func nowMillis() uint64 {
+	var result = uint64(time.Now().UnixNano()) / 1000000
+	return result
 }
 
 func getRawImage(v dbus.Variant) (image.ImageData, error) {

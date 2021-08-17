@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-
-	"github.com/surlykke/RefudeServices/lib/link"
 )
 
 func Ok(w http.ResponseWriter) {
@@ -61,21 +59,6 @@ func writeOrPanic(w io.Writer, byteArrArr ...[]byte) {
 			}
 		}
 	}
-}
-
-// TODO doc
-func ResourceAsJson(w http.ResponseWriter, links link.List, refudeType string, res interface{}) {
-	w.Header().Set("Content-Type", "application/vnd.refude+json")
-	var linksJson = bytes.TrimSpace(ToJson(links))
-	var resJson = bytes.TrimSpace(ToJson(res))
-	if resJson[0] != '{' || len(resJson) < 2 {
-		panic("res must serialize to a Json object")
-	}
-	writeOrPanic(w, []byte(`{"_links":`), linksJson, []byte(`,"refudeType":"`), []byte(refudeType), []byte{'"'})
-	if len(resJson) > 2 {
-		writeOrPanic(w, []byte{','})
-	}
-	writeOrPanic(w, resJson[1:len(resJson)-1], []byte{'}'})
 }
 
 func AsPng(w http.ResponseWriter, pngData []byte) {

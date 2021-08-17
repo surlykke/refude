@@ -15,7 +15,6 @@ import (
 	"github.com/surlykke/RefudeServices/file"
 	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/log"
-	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/notifications"
@@ -29,68 +28,45 @@ import (
 )
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	var path = r.URL.EscapedPath()
-
-	var pathAfter = func(prefix string) (string, bool) {
-		if strings.HasPrefix(path, prefix) {
-			return path[len(prefix):], true
-		} else {
-			return "", false
-		}
+	var prefix = func(pref string) bool {
+		return strings.HasPrefix(r.URL.Path, pref)
 	}
 
-	var s string
-	var ok bool
-
-	if path == "/icon" {
+	switch {
+	case r.URL.Path == "/icon":
 		icons.ServeHTTP(w, r)
-	} else if path == "/watch" {
+	case r.URL.Path == "/watch":
 		watch.ServeHTTP(w, r)
-	} else if _, ok = pathAfter("/search/"); ok {
+	case prefix("/search/"):
 		search.ServeHTTP(w, r)
-	} else if _, ok = pathAfter("/doc"); ok {
+	case prefix("/doc"):
 		doc.ServeHTTP(w, r)
-	} else if s, ok = pathAfter("/window/"); ok {
-		serveResource(w, r, windows.GetResource(s))
-	} else if s, ok = pathAfter("/application/"); ok {
-		serveResource(w, r, applications.GetAppResource(s))
-	} else if s, ok = pathAfter("/mimetype/"); ok {
-		serveResource(w, r, applications.GetMimeResource(s))
-	} else if s, ok = pathAfter("/notification/"); ok {
-		serveResource(w, r, notifications.GetResource(s))
-	} else if s, ok = pathAfter("/item/"); ok {
-		serveResource(w, r, statusnotifications.GetResource(s))
-	} else if s, ok = pathAfter("/device/"); ok {
-		serveResource(w, r, power.GetResource(s))
-	} else if s, ok = pathAfter("/file/"); ok {
-		serveResource(w, r, file.GetResource(s))
-	} else {
+	case prefix("/notification/"):
+		notifications.Notifications.ServeHTTP(w, r)
+	case prefix("/window/"):
+		windows.Windows.ServeHTTP(w, r)
+	case prefix("/item/"):
+		statusnotifications.Items.ServeHTTP(w, r)
+	case prefix("/itemmenu/"):
+		statusnotifications.Menus.ServeHTTP(w, r)
+	case prefix("/device/"):
+		power.Devices.ServeHTTP(w, r)
+	case prefix("/application/"):
+		applications.Applications.ServeHTTP(w, r)
+	case prefix("/mimetype/"):
+		applications.Mimetypes.ServeHTTP(w, r)
+	case prefix("/file/"):
+		if fileRes, ok := file.GetResource(r); ok {
+			fileRes.ServeHTTP(w, r)
+		} else {
+			respond.NotFound(w)
+		}
+	default:
 		respond.NotFound(w)
 	}
 }
 
-func serveResource(w http.ResponseWriter, r *http.Request, res resource.Resource) {
-	if res == nil {
-		respond.NotFound(w)
-	} else {
-		switch r.Method {
-		case "GET":
-			var links = search.Filter(res.Links(), requests.Term(r))
-			respond.ResourceAsJson(w, links, res.RefudeType(), res)
-			return
-		case "POST":
-			if postable, ok := res.(resource.Postable); ok {
-				postable.DoPost(w, r)
-				return
-			}
-		case "DELETE":
-			if deleteable, ok := res.(resource.Deleteable); ok {
-				deleteable.DoDelete(w, r)
-				return
-			}
-		}
-		respond.NotAllowed(w)
-	}
+func serveRes(res resource.Resource, ok bool) {
 }
 
 func main() {

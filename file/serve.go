@@ -2,6 +2,7 @@ package file
 
 import (
 	"fmt"
+	"net/http"
 	"net/url"
 	"os"
 	"path"
@@ -11,6 +12,7 @@ import (
 	"github.com/rakyll/magicmime"
 	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/log"
+	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
 	"github.com/surlykke/RefudeServices/lib/xdg"
@@ -20,31 +22,17 @@ var filePathPattern = regexp.MustCompile(`^/file$|^/file(/actions)$|^/file/actio
 
 var noPathError = fmt.Errorf("No path given")
 
-func GetResource(relPath string) resource.Resource {
-	if strings.Index(relPath, "/") == -1 {
-		if filePath, err := url.PathUnescape(relPath); err != nil {
-			log.Info("Could not extract path from", relPath, err)
-		} else if file, err := makeFile(filePath); err != nil {
-			log.Info("Could not make file from", filePath, err)
-		} else {
-			return file
-		}
+func GetResource(r *http.Request) (resource.Resource, bool) {
+	if filePath, err := url.PathUnescape(r.URL.Path[6:]); err != nil {
+		log.Info("Could not extract path from", r.URL.Path, err)
+	} else if file, err := makeFile(filePath); err != nil {
+		log.Info("Could not make file from", filePath, err)
+	} else {
+		var res = resource.Make("/file/"+url.PathEscape(file.Path), file.Name, "", file.Icon, "file", file)
+		res.Links = res.Links.Filter(requests.Term(r))
+		return res, true
 	}
-	return nil
-}
-
-var searchDirectories = make(map[string]bool, 9)
-
-func init() {
-	searchDirectories[xdg.Home] = true
-	searchDirectories[xdg.DesktopDir] = true
-	searchDirectories[xdg.DownloadDir] = true
-	searchDirectories[xdg.TemplatesDir] = true
-	searchDirectories[xdg.PublicshareDir] = true
-	searchDirectories[xdg.DocumentsDir] = true
-	searchDirectories[xdg.MusicDir] = true
-	searchDirectories[xdg.PicturesDir] = true
-	searchDirectories[xdg.VideosDir] = true
+	return resource.Resource{}, false
 }
 
 func Collect(term string, sink chan link.Link) {

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/surlykke/RefudeServices/lib/relation"
+	"github.com/surlykke/RefudeServices/lib/searchutils"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
@@ -41,12 +42,12 @@ func (href Href) MarshalJSON() ([]byte, error) {
 }
 
 type Link struct {
-	Href       Href              `json:"href"`
-	Title      string            `json:"title"`
-	Icon       Href              `json:"icon,omitempty"`
-	Relation   relation.Relation `json:"rel"`
-	RefudeType string            `json:"refudeType,omitempty"`
-	Rank       int               `json:"-"` // Used when searching
+	Href     Href              `json:"href"`
+	Title    string            `json:"title,omitempty"`
+	Icon     Href              `json:"icon,omitempty"`
+	Relation relation.Relation `json:"rel"`
+	Profile  string            `json:"profile,omitempty"`
+	Rank     int               `json:"-"` // Used when searching
 }
 
 func Make(href, title, iconName string, rel relation.Relation) Link {
@@ -58,14 +59,18 @@ func Make(href, title, iconName string, rel relation.Relation) Link {
 	}
 }
 
-func MakeRanked(href, title, iconName string, refudeType string, rank int) Link {
+func MakeRanked(href, title, iconName string, profile string, rank int) Link {
+	return MakeRanked2(href, title, IconUrl(iconName), profile, rank)
+}
+
+func MakeRanked2(href, title string, icon Href, profile string, rank int) Link {
 	return Link{
-		Href:       Href(href),
-		Title:      title,
-		Icon:       IconUrl(iconName),
-		Relation:   relation.Related,
-		RefudeType: refudeType,
-		Rank:       rank,
+		Href:     Href(href),
+		Title:    title,
+		Icon:     icon,
+		Relation: relation.Related,
+		Profile:  profile,
+		Rank:     rank,
 	}
 }
 
@@ -80,8 +85,8 @@ func MakeList(href, title, iconName string) List {
 	}}
 }
 
-func (ll List) Add(href, title, iconName string, rel relation.Relation) List {
-	return append(ll, Link{
+func (list List) Add(href, title, iconName string, rel relation.Relation) List {
+	return append(list, Link{
 		Href:     Href(href),
 		Title:    title,
 		Icon:     IconUrl(iconName),
@@ -89,47 +94,34 @@ func (ll List) Add(href, title, iconName string, rel relation.Relation) List {
 	})
 }
 
-func (ll List) Add2(href, title, iconName string, refudeType string, rank int) List {
-	return append(ll, Link{
-		Href:       Href(href),
-		Title:      title,
-		Icon:       IconUrl(iconName),
-		Relation:   relation.Related,
-		RefudeType: refudeType,
-		Rank:       rank,
-	})
-}
-
 // ---------- Implement sort.Sort ------------------------------------
-func (ll List) Len() int { return len(ll) }
+func (list List) Len() int { return len(list) }
 
-func (ll List) Less(i int, j int) bool {
-	if ll[i].Rank == ll[j].Rank {
-		return ll[i].Href < ll[j].Href // Not that Href is particularly relevant, sortingwise. Just to have a reproducible order
+func (list List) Less(i int, j int) bool {
+	if list[i].Rank == list[j].Rank {
+		return list[i].Href < list[j].Href // Not that Href is particularly relevant, sortingwise. Just to have a reproducible order
 	} else {
-		return ll[i].Rank < ll[j].Rank
+		return list[i].Rank < list[j].Rank
 	}
 }
 
-func (ll List) Swap(i int, j int) { ll[i], ll[j] = ll[j], ll[i] }
+func (list List) Swap(i int, j int) { list[i], list[j] = list[j], list[i] }
 
 // --------------------------------------------------------------------
 
-type Collection List
-
-func (c Collection) Links() List {
-	return List(c)
+func (list List) Filter(term string) List {
+	var result = make(List, 0, len(list))
+	for _, l := range list {
+		// Links here should be newly minted, so writing them is ok.
+		if l.Rank = searchutils.Match(term, l.Title); l.Rank > -1 {
+			if l.Relation == relation.Related {
+				l.Rank += 10
+			}
+			result = append(result, l)
+		}
+	}
+	return result
 }
-
-func (c Collection) RefudeType() string {
-	return "collection"
-}
-
-func (c Collection) MarshalJSON() ([]byte, error) {
-	return []byte(`{}`), nil
-}
-
-// --------------------------------------------------------------------
 
 func IconUrl(name string) Href {
 	if strings.Index(name, "/") > -1 {

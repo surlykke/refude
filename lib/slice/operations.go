@@ -52,14 +52,20 @@ func ElementsInCommon(l1 []string, l2 []string) bool {
 	return false
 }
 
-func AppendIfNotThere(list []string, s string) []string {
-	for _, v := range list {
-		if v == s {
-			return list
+func AppendIfNotThere(list []string, otherList ...string) []string {
+	for _, other := range otherList {
+		var found = false
+		for _, v := range list {
+			if v == other {
+				found = true
+				break
+			}
+		}
+		if !found {
+			list = append(list, other)
 		}
 	}
-
-	return append(list, s)
+	return list
 }
 
 func PushFront(s string, list []string) []string {
@@ -72,10 +78,22 @@ func PushFront(s string, list []string) []string {
 	return res
 }
 
-func Remove(list []string, str string) []string {
-	return Filter(list, func(s string) bool {
-		return s != str
-	})
+func Remove(list []string, otherList ...string) []string {
+	var pos = 0
+	for i := 0; i < len(list); i++ {
+		var found = false
+		for _, other := range otherList {
+			if other == list[i] {
+				found = true
+				break
+			}
+		}
+		if !found {
+			list[pos] = list[i]
+			pos += 1
+		}
+	}
+	return list[0:pos]
 }
 
 func Filter(list []string, test func(s string) bool) []string {

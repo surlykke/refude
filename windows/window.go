@@ -7,7 +7,6 @@
 package windows
 
 import (
-	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
@@ -28,7 +27,6 @@ type Bounds struct {
 
 type Window struct {
 	Id       uint32
-	self     string
 	Name     string
 	IconName string `json:",omitempty"`
 	State    x11.WindowStateMask
@@ -38,7 +36,6 @@ type Window struct {
 // Caller ensures thread safety (calls to x11)
 func makeWindow(p x11.Proxy, wId uint32) *Window {
 	var win = &Window{Id: wId}
-	win.self = fmt.Sprintf("/window/%d", wId)
 	win.Name, _ = x11.GetName(p, wId)
 	win.IconName, _ = GetIconName(p, wId)
 	win.State = x11.GetStates(p, wId)
@@ -46,27 +43,27 @@ func makeWindow(p x11.Proxy, wId uint32) *Window {
 	return win
 }
 
-func (win *Window) Links() link.List {
-	var ll = link.MakeList(win.self, win.Name, win.IconName)
-	ll = ll.Add(win.self, "Raise and focus", "", relation.DefaultAction)
-	ll = ll.Add(win.self+"?action=close", "Close", "", relation.Delete)
+func (win *Window) Links(path string) link.List {
+	var ll = make(link.List, 0, 8)
+	ll = ll.Add(path, "Raise and focus", "", relation.DefaultAction)
+	ll = ll.Add(path+"?action=close", "Close", "", relation.Delete)
 	if win.State.Is(x11.HIDDEN) || win.State.Is(x11.MAXIMIZED_HORZ|x11.MAXIMIZED_VERT) {
-		ll = ll.Add(win.self+"?action=restore", "Restore window", "", relation.Action)
+		ll = ll.Add(path+"?action=restore", "Restore window", "", relation.Action)
 	} else {
-		ll = ll.Add(win.self+"?action=minimize", "Minimize window", "", relation.Action)
-		ll = ll.Add(win.self+"?action=maximize", "Maximize window", "", relation.Action)
+		ll = ll.Add(path+"?action=minimize", "Minimize window", "", relation.Action)
+		ll = ll.Add(path+"?action=maximize", "Maximize window", "", relation.Action)
 	}
 
 	for _, m := range getDesktopLayout().Monitors {
 		var actionId = url.QueryEscape("move::" + m.Name)
-		ll = ll.Add(win.self+"?action="+actionId, "Move to monitor "+m.Name, "", relation.Action)
+		ll = ll.Add(path+"?action="+actionId, "Move to monitor "+m.Name, "", relation.Action)
 	}
 
 	return ll
 }
 
-func (win *Window) RefudeType() string {
-	return "window"
+func (win *Window) ForDisplay() bool {
+	return win.State&(x11.SKIP_TASKBAR|x11.SKIP_PAGER|x11.ABOVE) == 0
 }
 
 func (win *Window) DoDelete(w http.ResponseWriter, r *http.Request) {
@@ -119,7 +116,6 @@ func performAction(wId uint32, action string) bool {
 func (win *Window) shallowCopy() *Window {
 	return &Window{
 		Id:       win.Id,
-		self:     win.self,
 		Name:     win.Name,
 		IconName: win.IconName,
 		State:    win.State,

@@ -9,43 +9,25 @@ import (
 	"github.com/surlykke/RefudeServices/file"
 	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/link"
-	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/requests"
+	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
-	"github.com/surlykke/RefudeServices/lib/searchutils"
 	"github.com/surlykke/RefudeServices/notifications"
 	"github.com/surlykke/RefudeServices/power"
 	"github.com/surlykke/RefudeServices/statusnotifications"
 	"github.com/surlykke/RefudeServices/windows"
 )
 
-func Filter(ll link.List, term string) link.List {
-	var result = make(link.List, 1, len(ll))
-	result[0] = ll[0]
-	result[0].Rank = 0
-	for _, l := range ll[1:] {
-		// Links here should be newly minted, so writing them is ok.
-		if l.Rank = searchutils.Match(term, l.Title); l.Rank > -1 {
-			if l.Relation == relation.Related {
-				l.Rank += 10
-			}
-			result = append(result, l)
-		}
-	}
-	sort.Sort(result[1:])
-	return result
-}
-
 func doDesktopSearch(term string) link.List {
 	var sink = make(chan link.Link)
 	var done = make(chan struct{})
 	var collectors []func(string, chan link.Link)
 
-	collectors = append(collectors, notifications.Collect, windows.Collect)
+	collectors = append(collectors, notifications.Notifications.Search, windows.Windows.Search)
 	if len(term) > 0 {
-		collectors = append(collectors, applications.CollectLinks)
+		collectors = append(collectors, applications.Applications.Search)
 		if len(term) > 3 {
-			collectors = append(collectors, file.Collect, power.Collect)
+			collectors = append(collectors, file.Collect, power.Devices.Search)
 		}
 	}
 
@@ -57,9 +39,7 @@ func doDesktopSearch(term string) link.List {
 		}()
 	}
 
-	var links = make(link.List, 1, 1000)
-	links[0] = link.Make("/desktop/search?term="+term, "Desktop Search", "", relation.Self)
-
+	var links = make(link.List, 0, 1000)
 	for n := len(collectors); n > 0; {
 		select {
 		case link := <-sink:
@@ -68,7 +48,7 @@ func doDesktopSearch(term string) link.List {
 			n--
 		}
 	}
-	sort.Sort(links[1:])
+	sort.Sort(links)
 	return links
 }
 
@@ -79,7 +59,7 @@ func collectPaths(prefix string) []string {
 	var sink, done = make(chan string), make(chan struct{})
 
 	var collectors = []func(string, chan string){
-		windows.CollectPaths, applications.CollectPaths, icons.CollectPaths, statusnotifications.CollectPaths, notifications.CollectPaths, power.CollectPaths,
+		windows.Windows.Paths, applications.Applications.Paths, icons.CollectPaths, statusnotifications.Items.Paths, notifications.Notifications.Paths, power.Devices.Paths,
 	}
 
 	for _, collector := range collectors {
@@ -103,11 +83,24 @@ func collectPaths(prefix string) []string {
 	return paths
 }
 
+type search struct {
+	links link.List
+	Term  string
+}
+
+func (s search) Links(path string) link.List {
+	return s.links
+}
+
+func (s search) ForDisplay() bool {
+	return false
+}
+
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == "/search/desktop" {
 		if r.Method == "GET" {
 			var term = requests.Term(r)
-			respond.ResourceAsJson(w, doDesktopSearch(term), "search", struct{ Term string }{term})
+			resource.Make("/search/desktop", "Search", "", "", "search", search{links: doDesktopSearch(term), Term: term}).ServeHTTP(w, r)
 		} else {
 			respond.NotAllowed(w)
 		}
