@@ -24,6 +24,7 @@ import { Flash} from "./Flash"
 import { Resource, Term, Links} from "./Resource"
 import './Refude.css'
 import '../common/common.css'
+import { linkHref } from '../common/utils';
 
 export default class Panel extends React.Component {
     content = React.createRef()
@@ -31,7 +32,7 @@ export default class Panel extends React.Component {
     constructor(props) {
         super(props)
         this.history = []
-        this.state = { term: "", itemLinks: [] }
+        this.state = { term: "", itemlist: []}
         ipcRenderer.on("show", (evt, up) => {
             if (!this.resourceUrl) {
                 this.setState({ term: "" })
@@ -56,19 +57,18 @@ export default class Panel extends React.Component {
 
         evtSource.onopen = () => {
             this.getDisplayDevice()
-            this.getItemLinks()
+            this.getItemlist()
             this.getFlash()
         }
 
         evtSource.onmessage = event => {
-            console.log("sse:", event)
             if (this.resourceUrl === "http://localhost:7938" + event.data) {
                 this.getResource()
             } else if ("/device/DisplayDevice" === event.data) {
                 this.getDisplayDevice()
             } else if ("/item/list" === event.data) {
-                this.getItemLinks()
-            } else if ("/notification/flash" === event.data) {
+                this.getItemlist()
+            } else if ("/notification/list" === event.data) {
                 this.getFlash()
             }
         }
@@ -95,35 +95,46 @@ export default class Panel extends React.Component {
      };
 
     getResource = () => {
-        console.log("resource:", this.resourceUrl)
-        let resourceUrl = this.resourceUrl
-        if (resourceUrl) {
-            console.log("Getting ", resourceUrl)
-            Axios.get(`${resourceUrl}?term=${this.state.term}`)
-                .then(({data}) => {
-                    if (resourceUrl === this.resourceUrl) {  // may have changed while request in flight
-                        this.setState({ resource: data })
-                    }
-                })
-        }
+        this.resourceUrl && Axios.get(`${this.resourceUrl}?term=${this.state.term}`)
+            .then(({data:res}) => {
+                this.setState({ resource: res })
+            })
+            .catch(error => this.setState({resource: undefined}))
     }
 
     getDisplayDevice = () => {
-        console.log("getDisplayDevice")
         Axios.get("http://localhost:7938/device/DisplayDevice")
-            .then(({data}) => this.setState({ displayDevice: data }))
+            .then(({data: resource}) => {
+                this.setState({ displayDevice: resource.data})
+            })
             .catch(error => this.setState({ displayDevice: undefined }))
     }
 
-    getItemLinks = () => {
+    getItemlist = () => {
         Axios.get("http://localhost:7938/item/list")
-            .then(({data}) => this.setState({itemLinks: data._links.filter(l => l.rel == "related")}))
-            .catch(error => this.setState({ itemLinks: [] }))
+            .then(({data:collection}) => {
+                this.setState({itemlist: collection.data})
+            })
+            .catch(error => this.setState({itemlist: []}))
     }
 
     getFlash = () => {
-        Axios.get("http://localhost:7938/notification/flash")
-            .then(({data}) => this.setState({flash: data}))
+        Axios.get("http://localhost:7938/notification/list")
+            .then(({data: resource}) => {
+                let criticalRes = resource.data.find(r => r.data.Urgency == "Critical")
+                if (criticalRes) {
+                    this.setState({flash: criticalRes})
+                } else {
+                    let nowInMillis = new Date().getTime()
+                    let first = resource.data[0] 
+                    if ( first && first.data.Created > nowInMillis - 6000) {
+                        this.setState({flash: first})
+                        setTimeout(this.getFlash, first.data.Created + 6020 - nowInMillis)
+                    } else {
+                        this.setState({flash: undefined})
+                    }
+                }
+            })
             .catch(error => this.setState({flash: undefined}))
     }
 
@@ -133,7 +144,6 @@ export default class Panel extends React.Component {
     }
     
     activate = (link, dismiss) => {
-        let dismissIf = () => dismiss && this.dismiss()
         if (link.rel === "org.refude.defaultaction" || link.rel === "org.refude.action") {
             Axios.post(link.href).then(() => dismiss && this.dismiss())
         } else if (link.rel === "org.refude.delete") {
@@ -144,24 +154,19 @@ export default class Panel extends React.Component {
                     if (data && data._links) {
                         let dfAct = data._links.find(l => l.rel === "org.refude.defaultaction") 
                         if (dfAct) {
-                            Axios.post(link.href).then(() => dismiss && this.dismiss())
+                            Axios.post(dfAct.href).then(() => dismiss && this.dismiss())
                         }
                     }
                 })
         }
-        console.log(link)
     }
 
     delete = (link, dismiss) => {
-        console.log("delete, link:", link)
-        let doAfter = () => dismiss && this.dismiss()
         if (link.rel === "related") {
             Axios.get(link.href)
                 .then(({data}) => {
                     if (data && data._links) {
-                        console.log("Got resource", data)
                         let deleteLink = data._links.find(l => l.rel === "org.refude.delete") 
-                        console.log("deleteLink:", deleteLink)
                         if (deleteLink) {
                             Axios.delete(deleteLink.href).then(() => dismiss && this.dismiss())
                         }
@@ -171,30 +176,24 @@ export default class Panel extends React.Component {
     }
 
     dismiss = () => {
-        console.log("dismissing...")
         this.resourceUrl = undefined
         this.setState({ resource: undefined, term: "" })
     }
 
     navigateTo = href => {
-        this.history.unshift([this.resourceUrl, this.state.term])
+        this.history.unshift(this.resourceUrl)
         this.resourceUrl = href
         this.setState({ term: "" }, this.getResource)
     }
 
     navigateBack = () => {
-        let term
-        [this.resourceUrl, term] = this.history.shift() || []
-        console.log("back to:", this.resourceUrl)
-        this.setState({ term: term }, () => this.resourceUrl ? this.getResource() : this.dismiss())
+        this.resourceUrl = this.history.shift() 
+        this.setState({ term: ""}, () => this.resourceUrl ? this.getResource() : this.dismiss())
     }
 
     onKeyDown = (event) => {
-        let { key, keyCode, ctrlKey, altKey, shiftKey, metaKey } = event;
-        /*if (key === "i" && ctrlKey && shiftKey) {
-            ipcRenderer.send("devtools")
-        } else*/ if (key === "ArrowRight" || key === "l" && ctrlKey) {
-            console.log("currentLink:", this.currentLink)
+        let { key, keyCode, ctrlKey, altKey, metaKey } = event;
+        if (key === "ArrowRight" || key === "l" && ctrlKey) {
             this.currentLink.rel === "related" && this.navigateTo(this.currentLink.href)
         } else if(key === "ArrowLeft" || key === "h" && ctrlKey) { 
             this.navigateBack()
@@ -229,23 +228,17 @@ export default class Panel extends React.Component {
     } 
 
     render = () => {
-        let { itemLinks, displayDevice, flash, resource, term } = this.state
-        console.log("panel render, resource:", resource)
+        let { itemlist, displayDevice, flash, resource, term } = this.state
         return <div className="refude" id="content" ref={this.content}>
             <div className="panel">
                 <Clock />
-                {itemLinks.map(itemLink => <NotifierItem key={itemLink.href} itemLink={itemLink} />)}
+                {itemlist.map(res => <NotifierItem key={linkHref(res)} res={res} />)}
                 <Battery displayDevice={displayDevice} />
                 <MinimizeButton />
                 <CloseButton />
             </div>
             { !resource && flash && <Flash flash={flash}/> }
-            { resource && <>
-                <Resource resource={resource}/>
-                <Term term={term}/>
-                <Links links={resource._links.filter(l => "self" !== l.rel)} activate={this.activate} select={this.select}/>
-              </>
-            }
+            { resource && <Resource resource={resource} term={term} activate={this.activate} select={this.select}/>}
         </div>
     }
 }

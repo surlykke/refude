@@ -63,10 +63,17 @@
    outline-style: none;
 }
 
+
 .item:focus {
    border: solid black 2px;
    border-radius: 5px;
    box-shadow: 1px 1px 1px #888888;
+}
+
+.itemheading {
+    margin: 2px 0px 0px 18px;
+    color: #707070;
+    font-style: italic;
 }
 
 .icon  {
@@ -93,17 +100,42 @@
    margin-right: 6px;
 }
 
-
-
-.name {
-   overflow: hidden;
-   white-space: nowrap;
-   margin-right: 6px;
+.resource-header {
+    display: flex;
 }
 
-.comment {
+.resource-icon {
+    margin: 8px;
+}
+
+.resource-name {
+    margin-top: 6px;
+    font-size: 1em;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.resource-comment {
    font-size: 0.8em;
-   width: calc(100% - 24px);
+   white-space: nowrap;
+   overflow: hidden;
+ }
+
+.resource-props {
+    border-top: solid 1px gray;
+    margin: 8px 0px 0px 8px;
+    padding-top: 6px;
+}
+
+.resource-props td {
+    font-size: 0.8em;
+    white-space: nowrap;
+    overflow: hidden;
+ }
+
+.resource-props td:first-child {
+    font-style: italic;
+    width: 1%;
 }
 
 .action {
@@ -154,7 +186,7 @@
 }
 
 .self {
-    height: 32px;
+    /*height: 32px;*/
     padding: 8px;
     border-bottom: 1px solid lightblue;   
 }

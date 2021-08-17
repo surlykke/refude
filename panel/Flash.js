@@ -7,19 +7,18 @@
 import React from 'react'
 
 export let Flash = ({ flash }) => {
-    let self = flash._links.find(l => l.rel == "self")
     return flash ? 
         <div id="flashDiv" className="flash">
             <div id="iconDiv" className="flash-icon">
-                <img width="100%" height="100%" src={self.icon} alt="" />
+                <img width="100%" height="100%" src={flash.icon} alt="" />
             </div>
             <div id="messageDiv" className="flash-message">
                 <>
                     <div className="flash-title">
-                        {flash.Subject}
+                        {flash.title}
                     </div>
                     <div className="flash-body">
-                        {flash.Body}
+                        {flash.comment}
                     </div>
                 </>
 

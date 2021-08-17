@@ -7,9 +7,10 @@
 import React from 'react'
 import Axios from 'axios'
 import { remote } from 'electron'
+import { linkHref } from '../common/utils'
 const { Menu, MenuItem } = remote
 
-export let NotifierItem = ({ itemLink }) => {
+export let NotifierItem = ({ res }) => {
 
     let showMenu = (menuHref) => {
         let clickHandler = (id) => {
@@ -26,7 +27,7 @@ export let NotifierItem = ({ itemLink }) => {
                 } else if (jsonMenuItem.Type === "separator") {
                     menu.append(new MenuItem({ type: "separator" }))
                 } else if (jsonMenuItem.ToggleType === "checkmark") {
-                    menu.append(new MenuItem({ label: label, type: "checkbox", click: clickHandler(jsonMenuItem.Id) }))
+                    menu.append(new MenuItem({ label: label, type: "checkbox", checked: jsonMenuItem.ToggleState > 0, click: clickHandler(jsonMenuItem.Id) }))
                 } else if (jsonMenuItem.ToggleType === "radio") {
                     menu.append(new MenuItem({ label: label, type: "radio", click: clickHandler(jsonMenuItem.Id) }))
                 } else {
@@ -38,9 +39,11 @@ export let NotifierItem = ({ itemLink }) => {
             return menu
         }
 
-
         Axios.get(menuHref)
-            .then(({data}) => buildMenu(data.Entries).popup())
+            .then(({data:res}) => {
+                let menu = buildMenu(res.data)
+                menu.popup()
+            })
     }
 
     let getXY = (event) => {
@@ -53,34 +56,29 @@ export let NotifierItem = ({ itemLink }) => {
     let onClick = (event) => {
         event.persist()
         event.preventDefault()
-
+        let href = linkHref(res)
         let { x, y } = getXY(event)
         if (event.button === 0) {
-            Axios.post(`${itemLink.href}?action=left&x=${x}&y=${y}`);
+            Axios.post(`${href}?action=left&x=${x}&y=${y}`);
         } else if (event.button === 1) {
-            Axios.post(`${itemLink.href}?action=middle&x=${x}&y=${y}`);
+            Axios.post(`${href}?action=middle&x=${x}&y=${y}`);
         }
     }
 
     let onRightClick = (event) => {
         event.persist()
         event.preventDefault()
-        Axios.get(itemLink.href) 
-            .then(({data}) => {
-                let menuLink = data._links.find(l => l.rel === 'org.refude.menu')
-                if (menuLink) {
-                    showMenu(menuLink.href)
-                } else {
-                    let selfLink = data._links.find(l => l.rel === "self")
-                    let { x, y } = getXY(event)
-                    Axios.post(selfLink.href + '?action=right&x=' + x + '&y=' + y)
-                }
-        })
-
+        let menuHref = linkHref(res, "org.refude.menu") 
+        if (menuHref) {
+            showMenu(menuHref)
+        } else {
+            let { x, y } = getXY(event)
+            Axios.post(linkHref(res) + '?action=right&x=' + x + '&y=' + y)
+        }
     }
 
     return <div className="clickable">
-        <img src={itemLink.icon} alt="" height="20px" width="20px" onClick={onClick} onContextMenu={onRightClick}/>
+        <img src={res.icon} alt="" height="20px" width="20px" onClick={onClick} onContextMenu={onRightClick}/>
     </div>
 }
 
