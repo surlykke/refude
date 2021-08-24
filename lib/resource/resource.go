@@ -85,8 +85,8 @@ type List struct {
 	resources      []Resource
 }
 
-func MakeList(profile string, insertAtFront bool, collectionPath string, initialCap int) List {
-	return List{
+func MakeList(profile string, insertAtFront bool, collectionPath string, initialCap int) *List {
+	return &List{
 		profile:        profile,
 		insertAtFront:  insertAtFront,
 		collectionPath: collectionPath,

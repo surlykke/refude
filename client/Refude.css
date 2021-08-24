@@ -1,0 +1,104 @@
+.refude {
+    width: fit-content;
+    display: flex;
+    flex-direction: column;
+}
+
+.searchbox {
+    display: flex;
+    align-items: center;
+    height: 32px;
+    width: 300px;
+    border: lightblue solid 2px;
+    border-radius: 5px;
+    margin-top: 6px;
+    margin-left: 10px; 
+}
+
+.item {
+   position: relative;
+   margin-top: 4px;
+   margin-left: 8px;
+   margin-right: 5px;
+   padding: 4px;
+   padding-right: 18px;
+   vertical-align: top;
+   overflow: hidden;
+   height: 20px;
+   outline-style: none;
+}
+
+
+.item:focus {
+   border: solid black 2px;
+   border-radius: 5px;
+   box-shadow: 1px 1px 1px #888888;
+}
+
+.itemheading {
+    margin: 2px 0px 0px 18px;
+    color: #707070;
+    font-style: italic;
+}
+
+.icon  {
+   float: left;
+   margin-right: 6px;
+}
+
+.window {
+   -webkit-filter: drop-shadow(5px 5px 3px grey);
+   overflow: visible;
+}
+
+.minimized {
+   margin-left: 10px;
+   margin-top: 10px;
+   width: 14px;
+   height: 14px;
+   opacity: 0.7;
+}
+
+.title {
+   overflow: hidden;
+   white-space: nowrap;
+   margin-right: 6px;
+}
+
+.resource-header {
+    display: flex;
+}
+
+.resource-icon {
+    margin: 8px;
+}
+
+.resource-name {
+    margin-top: 6px;
+    font-size: 1em;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.resource-comment {
+   font-size: 0.8em;
+   white-space: nowrap;
+   overflow: hidden;
+ }
+
+.resource-props {
+    border-top: solid 1px gray;
+    margin: 8px 0px 0px 8px;
+    padding-top: 6px;
+}
+
+.resource-props td {
+    font-size: 0.8em;
+    white-space: nowrap;
+    overflow: hidden;
+ }
+
+.resource-props td:first-child {
+    font-style: italic;
+    width: 1%;
+}

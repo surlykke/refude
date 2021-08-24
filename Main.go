@@ -7,16 +7,14 @@
 package main
 
 import (
+	"embed"
 	"net/http"
-	"strings"
 
 	"github.com/surlykke/RefudeServices/applications"
 	"github.com/surlykke/RefudeServices/doc"
 	"github.com/surlykke/RefudeServices/file"
 	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/log"
-	"github.com/surlykke/RefudeServices/lib/resource"
-	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/notifications"
 	"github.com/surlykke/RefudeServices/power"
 	"github.com/surlykke/RefudeServices/search"
@@ -27,47 +25,10 @@ import (
 	_ "net/http/pprof"
 )
 
-func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	var prefix = func(pref string) bool {
-		return strings.HasPrefix(r.URL.Path, pref)
-	}
+//go:embed client
+var clientResources embed.FS
 
-	switch {
-	case r.URL.Path == "/icon":
-		icons.ServeHTTP(w, r)
-	case r.URL.Path == "/watch":
-		watch.ServeHTTP(w, r)
-	case prefix("/search/"):
-		search.ServeHTTP(w, r)
-	case prefix("/doc"):
-		doc.ServeHTTP(w, r)
-	case prefix("/notification/"):
-		notifications.Notifications.ServeHTTP(w, r)
-	case prefix("/window/"):
-		windows.Windows.ServeHTTP(w, r)
-	case prefix("/item/"):
-		statusnotifications.Items.ServeHTTP(w, r)
-	case prefix("/itemmenu/"):
-		statusnotifications.Menus.ServeHTTP(w, r)
-	case prefix("/device/"):
-		power.Devices.ServeHTTP(w, r)
-	case prefix("/application/"):
-		applications.Applications.ServeHTTP(w, r)
-	case prefix("/mimetype/"):
-		applications.Mimetypes.ServeHTTP(w, r)
-	case prefix("/file/"):
-		if fileRes, ok := file.GetResource(r); ok {
-			fileRes.ServeHTTP(w, r)
-		} else {
-			respond.NotFound(w)
-		}
-	default:
-		respond.NotFound(w)
-	}
-}
-
-func serveRes(res resource.Resource, ok bool) {
-}
+var clientResourceServer = http.FileServer(http.FS(clientResources))
 
 func main() {
 	go windows.Run()
@@ -78,7 +39,21 @@ func main() {
 	go icons.Run()
 	go watch.Run()
 
-	if err := http.ListenAndServe(":7938", http.HandlerFunc(ServeHTTP)); err != nil {
+	http.Handle("/client/", clientResourceServer)
+	http.HandleFunc("/icon", icons.ServeHTTP)
+	http.HandleFunc("/search/", search.ServeHTTP)
+	http.HandleFunc("/watch", watch.ServeHTTP)
+	http.HandleFunc("/doc", doc.ServeHTTP)
+	http.HandleFunc("/file/", file.ServeHTTP)
+	http.Handle("/notification/", notifications.Notifications)
+	http.Handle("/window/", windows.Windows)
+	http.Handle("/item/", statusnotifications.Items)
+	http.Handle("/itemmenu/", statusnotifications.Menus)
+	http.Handle("/device/", power.Devices)
+	http.Handle("/application/", applications.Applications)
+	http.Handle("/mimetype/", applications.Mimetypes)
+
+	if err := http.ListenAndServe(":7938", nil); err != nil {
 		log.Warn("http.ListenAndServe failed:", err)
 	}
 }
