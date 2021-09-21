@@ -74,6 +74,7 @@ func (n *Notification) DoPost(w http.ResponseWriter, r *http.Request) {
 }
 
 func (n *Notification) DoDelete(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("Deleting ", n.Id)
 	removals <- removal{n.Id, Dismissed}
 	respond.Accepted(w)
 }
@@ -83,9 +84,12 @@ var Notifications = resource.MakeList("notification", true, "/notification/list"
 // Notifiation collection
 
 func removeNotification(id uint32, reason uint32) {
+	fmt.Println("In removeNotification")
 	var path = fmt.Sprintf("/notification/%X", id)
+	fmt.Println("Looking for", path)
 	if found := Notifications.Delete(path); found {
 		conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", id, reason)
+		fmt.Println("somethingChanged...")
 		somethingChanged()
 	}
 }

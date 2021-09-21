@@ -63,7 +63,7 @@ func (win *Window) Links(path string) link.List {
 }
 
 func (win *Window) ForDisplay() bool {
-	return win.State&(x11.SKIP_TASKBAR|x11.SKIP_PAGER|x11.ABOVE) == 0
+	return win.Name != "Refude client" && win.State&(x11.SKIP_TASKBAR|x11.SKIP_PAGER|x11.ABOVE) == 0
 }
 
 func (win *Window) DoDelete(w http.ResponseWriter, r *http.Request) {

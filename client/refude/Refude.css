@@ -4,6 +4,21 @@
     flex-direction: column;
 }
 
+.panel {
+    display: flex;
+    margin: 0px 0px 4px 14px;
+    font-size: 1.1em;
+    border-bottom: solid gray 1px;
+}
+
+.panel div {
+    margin-right: 6px;
+}
+
+.panel div:first-child {
+    margin-right: 8px;
+}
+
 .searchbox {
     display: flex;
     align-items: center;

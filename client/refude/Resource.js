@@ -3,9 +3,7 @@ import {div, img, table, tbody, tr, td} from "./utils.js"
 let iconClassName = profile => "icon" + ("window" === profile ? " window" : "")
 
 let ResourceHead = ({resource}) => {
-    console.log("resource:", resource) 
     let {title, comment, icon, profile, data} = resource
-    console.log("ResourceHead - title, comment:", title, comment)
     let props
     switch (profile) {
     case "search":

@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/http"
 
+	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/respond"
 )
 
@@ -38,9 +39,12 @@ func Run() {
 		select {
 		case path := <-changedPaths:
 			for s := range subscriptionSet {
-				// Concurrently, in case a recipient blocks.
-				sCopy := s
-				go func() { sCopy <- path }()
+				// Drop if we cannot send immediately
+				select {
+				case s <- path:
+				default:
+					log.Warn("Dropped message", path)
+				}
 			}
 		case s := <-subscriptions:
 			subscriptionSet[s] = true
@@ -72,6 +76,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Connection", "keep-alive")
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.Header().Set("Cache-Control", "no-cache")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.(http.Flusher).Flush()
 
 		fmt.Fprintf(w, "data:%s\n\n", "")

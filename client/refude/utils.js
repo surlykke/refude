@@ -5,7 +5,7 @@ export const tbody = (props, ...children) => React.createElement('tbody', props,
 export const tr = (props, ...children) => React.createElement('tr', props, ...children)
 export const td= (props, ...children) => React.createElement('td', props, ...children)
 export const materialIcon = (name) => React.createElement('i', {className: 'material-icons', style:{color: 'light-grey'}}, name)
-
+export const frag = (...children) => React.createElement(React.Fragment, null, ...children)
 
 export const iconClassName = profile => "icon" + ("window" === profile ? " window" : "")
 

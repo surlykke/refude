@@ -6,26 +6,34 @@
  * Please refer to the LICENSE file for a copy of the license.
  */
 
-import {div, materialIcon, getJson, doPost, doDelete} from './utils.js'
+import {div, materialIcon, frag, getJson, doPost, doDelete} from './utils.js'
 import {resourceHead} from './Resource.js'
 import {links} from './Link.js'
+import { panel, updateClock } from './panel.js'
 
 const startUrl = "/search/desktop"
 
-class Panel extends React.Component {
+class Refude extends React.Component {
     
     constructor(props) {
+        console.log("Refude constructor")
         super(props)
         this.history = []
         this.resourceUrl = startUrl 
         this.state = { term: "", itemlist: [] }
         this.watchSse()
+        document.addEventListener("moveUp", () => this.move(true))
+        document.addEventListener("moveDown", () => this.move())
+        updateClock()
     }
-
+    
     watchSse = () => {
         let evtSource = new EventSource("http://localhost:7938/watch")
 
-        evtSource.onopen = this.getResource
+        evtSource.onopen = () => {
+            this.getResource()
+            this.getItemlist()
+        }
 
         evtSource.onerror = event => {
             ipcRenderer.send("sseerror")
@@ -35,26 +43,38 @@ class Panel extends React.Component {
         }
 
         evtSource.onmessage = event => {
+            console.log("watch message:", event.data)
             if (this.resourceUrl === event.data) {
                 this.getResource()
+            } else if ("/item/list" === event.data) {
+                this.getItemlist()
             }
         }
     }
 
     componentDidMount = () => {
-       document.addEventListener("keydown", this.onKeyDown)
+        document.addEventListener("keydown", this.onKeyDown)
     };
 
     getResource = () => {
-        console.log("this.resourceUrl", this.resourceUrl)
         let href = `${this.resourceUrl}?term=${this.state.term}`
         fetch(href)
             .then(resp => resp.json())
             .then(
-                json => {console.log("json:", json); this.setState({resource: json})},
-                error => {console.log(error); this.setState({ resource: undefined })}
+                json => {this.setState({resource: json})},
+                error => {this.setState({ resource: undefined })}
             )
     }
+
+    getItemlist = () => {
+        fetch("http://localhost:7938/item/list")
+            .then(resp => resp.json())
+            .then( 
+                json => {this.setState({itemlist: json.data})},
+                error => {this.setState({itemlist: []})}
+            )
+    }
+
 
     select = link => {
         this.currentLink = link
@@ -97,6 +117,7 @@ class Panel extends React.Component {
     dismiss = () => {
         this.resourceUrl = startUrl 
         this.setState({ term: "" }, this.getResource)
+        document.dispatchEvent(new Event("dismiss"))
     }
 
     navigateTo = href => {
@@ -117,9 +138,9 @@ class Panel extends React.Component {
         } else if (key === "ArrowLeft" || key === "h" && ctrlKey) {
             this.navigateBack()
         } else if (key === "ArrowUp" || key === "k" && ctrlKey || key === 'Tab' && shiftKey && !ctrlKey && !altKey) {
-            this.move(true)
+            this.up()
         } else if (key === "ArrowDown" || key === "j" && ctrlKey || key === 'Tab' && !shiftKey && !ctrlKey && !altKey) {
-            this.move()
+            this.down()
         } else if (key === "Enter") {
             this.activate(this.currentLink, !ctrlKey)
         } else if (key === "Delete") {
@@ -136,6 +157,9 @@ class Panel extends React.Component {
         event.preventDefault();
     }
 
+    up = () => this.move(true)
+    down = () => this.move(false)
+
     move = up => {
         let items = document.getElementsByClassName("item")
         let idx = Array.from(items).indexOf(document.activeElement)
@@ -148,20 +172,17 @@ class Panel extends React.Component {
 
 
     render = () => {
-        let { resource, term } = this.state
-        console.log("Panel render..., resource:", resource)
+        let { resource, term,  itemlist} = this.state
+        let elements = [panel(itemlist)]
         if (resource) {
-            return (
-                div({className:"refude", id:"content"},
-                    resourceHead(resource),
-                    term ? div({className:"searchbox"}, materialIcon("search"), term): null,
-                    links(resource, this.activate, this.select)
-                )
-            ) 
-        } else {
-            return null
+            elements.push(
+                resourceHead(resource),
+                term && div({className: "searchbox"}, materialIcon("search"), term),
+                links(resource, this.activate, this.select)
+            )
         }
+        return frag( elements)
     }
 }
 
-ReactDOM.render(React.createElement(Panel), document.getElementById('app'))
+ReactDOM.render(React.createElement(Refude), document.getElementById('app'))
