@@ -162,6 +162,7 @@ export class Refude extends React.Component {
         } else if (key === "ArrowDown" || key === "j" && ctrlKey || key === 'Tab' && !shiftKey && !ctrlKey && !altKey) {
             this.move()
         } else if (key === "Enter") {
+            console.log("Enter, this.activate")
             this.activate(this.currentLink, !ctrlKey)
         } else if (key === "Delete") {
             this.delete(this.currentLink, !ctrlKey)

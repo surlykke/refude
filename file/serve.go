@@ -18,12 +18,10 @@ import (
 )
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if filePath, err := url.PathUnescape(r.URL.Path[6:]); err != nil {
-		log.Info("Could not extract path from", r.URL.Path, err)
-	} else if file, err := makeFile(filePath); err != nil {
-		log.Info("Could not make file from", filePath, err)
-	} else {
-		var res = resource.MakeResource("/file/"+url.PathEscape(file.Path), file.Name, "", file.Icon, "file", file)
+	if file, err := makeFile(r.URL.Path[5:]); err != nil {
+		log.Info("Could not make file from", r.URL.Path, err)
+	} else if file != nil {
+		var res = resource.MakeResource("/file"+file.Path, file.Name, "", file.Icon, "file", file)
 		res.Links = res.Links.Filter(requests.Term(r))
 		res.ServeHTTP(w, r)
 		return

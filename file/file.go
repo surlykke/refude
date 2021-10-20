@@ -47,7 +47,7 @@ func makeFile(path string) (*File, error) {
 		var mimetype, _ = magicmime.TypeByFile(path)
 		var f = File{
 			Path:     path,
-			self:     "/file/" + url.PathEscape(path),
+			self:     "/file" + path,
 			Name:     fileInfo.Name(),
 			Dir:      fileInfo.IsDir(),
 			Mimetype: mimetype,
@@ -95,7 +95,11 @@ func (f *File) ForDisplay() bool {
 }
 
 func (f *File) DoPost(w http.ResponseWriter, r *http.Request) {
-	var appId = requests.GetSingleQueryParameter(r, "action", "")
+	var defaultAppId = ""
+	if len(f.Apps) > 0 {
+		defaultAppId = f.Apps[0]
+	}
+	var appId = requests.GetSingleQueryParameter(r, "action", defaultAppId)
 	var ok, err = applications.OpenFile(appId, f.Path)
 	if ok {
 		if err != nil {

@@ -126,7 +126,10 @@ func GetApps(appIds ...string) []*DesktopApplication {
 
 func OpenFile(appId, path string) (bool, error) {
 	fmt.Println("OpenFile", appId, ", path:", path)
-	if app := Applications.GetData("/application/" + appId); app != nil {
+	if appId == "" {
+		xdg.RunCmd("xdg-open", path)
+		return true, nil
+	} else if app := Applications.GetData("/application/" + appId); app != nil {
 		return true, app.(*DesktopApplication).Run(path)
 	} else {
 		return false, nil
