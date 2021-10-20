@@ -40,10 +40,8 @@ func main() {
 	go power.Run()
 	go statusnotifications.Run()
 	go icons.Run()
-	go watch.Run()
 
-	http.Handle("/refude/", client.StaticServer)
-	http.HandleFunc("/client", client.ServeHTTP)
+	http.Handle("/refude/", http.StripPrefix("/refude", client.StaticServer))
 	http.HandleFunc("/client/", client.ServeHTTP)
 	http.HandleFunc("/icon", icons.ServeHTTP)
 	http.HandleFunc("/search/", search.ServeHTTP)

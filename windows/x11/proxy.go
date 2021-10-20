@@ -30,7 +30,6 @@ inline unsigned long gp(XImage* img, int x, int y) {return XGetPixel(img, x, y);
 // Accessing a field inside a union inside a struct from Go is messy. Hence these helpers
 inline XConfigureEvent* xconfigure(XEvent* e) { return &(e->xconfigure); }
 inline XPropertyEvent* xproperty(XEvent* e) { return &(e->xproperty); }
-
 // Converting sequences unsigned chars to byte or long. Most easily done in C, so..
 const unsigned long sizeOfLong = sizeof(long);
 inline char getByte(unsigned char* data, int index) { return ((char*)data)[index]; }
@@ -401,6 +400,12 @@ func CloseWindow(p Proxy, wId uint32) {
 	C.XSendEvent(p.disp, p.rootWindow, 0, redirectAndNotifyMask, &event)
 	C.XFlush(p.disp)
 
+}
+
+func MapAndRaiseWindow(p Proxy, wId uint32) {
+	C.XMapSubwindows(p.disp, C.Window(wId))
+	C.XMapRaised(p.disp, C.Window(wId))
+	C.XFlush(p.disp)
 }
 
 func GetScreenshotAsPng(p Proxy, wId uint32, downscale uint8) ([]byte, error) {

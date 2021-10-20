@@ -61,14 +61,20 @@ func (n *Notification) ForDisplay() bool {
 }
 
 func (n *Notification) DoPost(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("notification doPost")
 	var action = requests.GetSingleQueryParameter(r, "action", "default")
+	fmt.Println("Action:", action)
 	if _, ok := n.Actions[action]; ok {
+		fmt.Println("Emitting")
 		if err := conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".ActionInvoked", n.Id, action); err != nil {
+			fmt.Println("Got error", err)
 			respond.ServerError(w, err)
 		} else {
+			fmt.Println("ok")
 			respond.Accepted(w)
 		}
 	} else {
+		fmt.Println("not found")
 		respond.NotFound(w)
 	}
 }
@@ -86,7 +92,6 @@ var Notifications = resource.MakeList("notification", true, "/notification/list"
 func removeNotification(id uint32, reason uint32) {
 	fmt.Println("In removeNotification")
 	var path = fmt.Sprintf("/notification/%X", id)
-	fmt.Println("Looking for", path)
 	if found := Notifications.Delete(path); found {
 		conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", id, reason)
 		fmt.Println("somethingChanged...")

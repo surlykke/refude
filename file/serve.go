@@ -23,7 +23,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	} else if file, err := makeFile(filePath); err != nil {
 		log.Info("Could not make file from", filePath, err)
 	} else {
-		var res = resource.Make("/file/"+url.PathEscape(file.Path), file.Name, "", file.Icon, "file", file)
+		var res = resource.MakeResource("/file/"+url.PathEscape(file.Path), file.Name, "", file.Icon, "file", file)
 		res.Links = res.Links.Filter(requests.Term(r))
 		res.ServeHTTP(w, r)
 		return

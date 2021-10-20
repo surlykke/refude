@@ -59,5 +59,5 @@ func getAddedRemovedPath(signal *dbus.Signal) (dbus.ObjectPath, bool) {
 var Devices = resource.MakeList("device", false, "/device/list", 10)
 
 func setDevice(dev *Device) {
-	Devices.Put2(devicePath(dev.DbusPath), dev.title, "", dev.IconName, dev)
+	Devices.MakeAndPut(devicePath(dev.DbusPath), dev.title, "", dev.IconName, dev)
 }

@@ -100,7 +100,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == "/search/desktop" {
 		if r.Method == "GET" {
 			var term = requests.Term(r)
-			resource.Make("/search/desktop", "Search", "", "", "search", search{links: doDesktopSearch(term), Term: term}).ServeHTTP(w, r)
+			resource.MakeResource("/search/desktop", "Search", "", "", "search", search{links: doDesktopSearch(term), Term: term}).ServeHTTP(w, r)
 		} else {
 			respond.NotAllowed(w)
 		}

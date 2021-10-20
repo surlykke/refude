@@ -72,7 +72,12 @@ func RunCmd(argv ...string) error {
 	cmd.Stderr = nil
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true} // So ctrl-C against RefudeDesktopService doesn't affect
 
-	return cmd.Start()
+	if err := cmd.Start(); err == nil {
+		go cmd.Wait()
+		return nil
+	} else {
+		return err
+	}
 }
 
 func notEmptyOr(primary string, secondary string) string {

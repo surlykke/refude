@@ -7,32 +7,37 @@
  */
 
 import {div, materialIcon, frag, getJson, doPost, doDelete} from './utils.js'
-import {resourceHead} from './Resource.js'
-import {links} from './Link.js'
-import { panel, updateClock } from './panel.js'
+import { clock } from './clock.js'
+import { notifierItem } from './notifieritem.js'
+import { battery } from './battery.js'
+import {resourceHead} from './resource.js'
+import {links} from './link.js'
 
 const startUrl = "/search/desktop"
 
-class Refude extends React.Component {
+export class Refude extends React.Component {
     
     constructor(props) {
         console.log("Refude constructor")
         super(props)
         this.history = []
         this.resourceUrl = startUrl 
-        this.state = { term: "", itemlist: [] }
+        this.state = { term: "", itemlist: []}
         this.watchSse()
-        document.addEventListener("moveUp", () => this.move(true))
-        document.addEventListener("moveDown", () => this.move())
-        updateClock()
     }
-    
+
+    componentDidMount = () => {
+        document.addEventListener("keydown", this.onKeyDown)
+    };
+
     watchSse = () => {
         let evtSource = new EventSource("http://localhost:7938/watch")
 
         evtSource.onopen = () => {
             this.getResource()
+            this.getDisplayDevice()
             this.getItemlist()
+            this.getFlash()
         }
 
         evtSource.onerror = event => {
@@ -46,24 +51,27 @@ class Refude extends React.Component {
             console.log("watch message:", event.data)
             if (this.resourceUrl === event.data) {
                 this.getResource()
+            } else if ("/device/DisplayDevice" === event.data) {
+                this.getDisplayDevice()
             } else if ("/item/list" === event.data) {
                 this.getItemlist()
-            }
+            } else if ("/notification/list" === event.data) {
+                this.getFlash()
+            } 
         }
     }
 
-    componentDidMount = () => {
-        document.addEventListener("keydown", this.onKeyDown)
-    };
-
-    getResource = () => {
-        let href = `${this.resourceUrl}?term=${this.state.term}`
-        fetch(href)
+    getDisplayDevice = () => {
+        fetch("http://localhost:7938/device/DisplayDevice")
             .then(resp => resp.json())
             .then(
-                json => {this.setState({resource: json})},
-                error => {this.setState({ resource: undefined })}
+                json => this.setState({displayDevice: json.data}),
+                error => this.setState({displayDevice: undefined})
             )
+    }
+
+    getFlash = () => {
+        /* FIXME */
     }
 
     getItemlist = () => {
@@ -75,6 +83,15 @@ class Refude extends React.Component {
             )
     }
 
+    getResource = () => {
+        let href = `${this.resourceUrl}?term=${this.state.term}`
+        fetch(href)
+            .then(resp => resp.json())
+            .then(
+                json => {this.setState({resource: json})},
+                error => {this.setState({ resource: undefined })}
+            )
+    }
 
     select = link => {
         this.currentLink = link
@@ -115,9 +132,12 @@ class Refude extends React.Component {
     }
 
     dismiss = () => {
+        console.log("Posting:", "http://localhost:7938/client/dismiss")
+        this.history = []
         this.resourceUrl = startUrl 
-        this.setState({ term: "" }, this.getResource)
-        document.dispatchEvent(new Event("dismiss"))
+        this.setState({ term: "", itemlist: [] })
+ 
+        doPost("http://localhost:7938/client/dismiss")
     }
 
     navigateTo = href => {
@@ -138,9 +158,9 @@ class Refude extends React.Component {
         } else if (key === "ArrowLeft" || key === "h" && ctrlKey) {
             this.navigateBack()
         } else if (key === "ArrowUp" || key === "k" && ctrlKey || key === 'Tab' && shiftKey && !ctrlKey && !altKey) {
-            this.up()
+            this.move(true)
         } else if (key === "ArrowDown" || key === "j" && ctrlKey || key === 'Tab' && !shiftKey && !ctrlKey && !altKey) {
-            this.down()
+            this.move()
         } else if (key === "Enter") {
             this.activate(this.currentLink, !ctrlKey)
         } else if (key === "Delete") {
@@ -157,9 +177,6 @@ class Refude extends React.Component {
         event.preventDefault();
     }
 
-    up = () => this.move(true)
-    down = () => this.move(false)
-
     move = up => {
         let items = document.getElementsByClassName("item")
         let idx = Array.from(items).indexOf(document.activeElement)
@@ -170,12 +187,18 @@ class Refude extends React.Component {
         }
     }
 
-
     render = () => {
-        let { resource, term,  itemlist} = this.state
-        let elements = [panel(itemlist)]
+        let { resource, term, itemlist, displayDevice} = this.state
+        let elements = []
         if (resource) {
             elements.push(
+                div(
+                    { className: "panel"}, 
+                    clock(),
+                    itemlist.map(item => { return notifierItem(item)}),
+                    battery(displayDevice)
+                ),
+                React.createElement('hr'),
                 resourceHead(resource),
                 term && div({className: "searchbox"}, materialIcon("search"), term),
                 links(resource, this.activate, this.select)

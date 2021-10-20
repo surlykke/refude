@@ -1,3 +1,7 @@
+*,*:focus,*:hover{
+    outline:none;
+}
+
 .refude {
     width: fit-content;
     display: flex;
@@ -8,7 +12,8 @@
     display: flex;
     margin: 0px 0px 4px 14px;
     font-size: 1.1em;
-    border-bottom: solid gray 1px;
+    width:min-content;
+    white-space: nowrap;
 }
 
 .panel div {
@@ -116,4 +121,64 @@
 .resource-props td:first-child {
     font-style: italic;
     width: 1%;
+}
+
+.menu {
+    position: absolute;
+    padding-right: 16px;
+    width: min-content;
+    background-color: white;
+    z-index: 1;
+}
+.menu ul {
+    border: solid gray 1px;
+    margin: 0px;
+    padding: 0px;
+    background-color: white;
+}
+.menu li {
+    padding: 2px 4px 2px 4px;
+    position: relative;
+    list-style-type: none;
+    white-space: nowrap;
+}
+.menu li:hover {
+    background-color: lightgrey; 
+}
+.menu li:hover ul {
+    position: absolute;
+    top: 0px;
+    left: calc(100% - 3px);
+    display: block;
+}
+
+.menu li:not(hover) ul {
+    display: none;
+}
+
+.menu-item {
+    display: flex;
+    width: 100%;
+}
+
+.menu-item .marker {
+    width: 8px;
+    padding-right: 6px;
+}
+
+.menu-item .label {
+    flex-grow: 1;
+}
+
+.menu-item .submarker {
+    font-size: 0.7em;
+    padding-left: 2px;
+}
+
+.clickable {
+    position: relative;
+}
+
+.clickable > ul {
+    position: absolute;
 }

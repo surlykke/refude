@@ -25,9 +25,9 @@ func Run() {
 		switch event.eventName {
 		case "ItemCreated":
 			var item = buildItem(event.sender, event.path)
-			Items.Put2(path, item.Title, "", item.IconName, item)
+			Items.MakeAndPut(path, item.Title, "", item.IconName, item)
 			if item.MenuPath != "" {
-				Menus.Put2(menuPath, "Menu", "", "", &Menu{event.sender, item.MenuPath})
+				Menus.MakeAndPut(menuPath, "Menu", "", "", &Menu{event.sender, item.MenuPath})
 			}
 		case "ItemRemoved":
 			Items.Delete(path)
@@ -78,7 +78,7 @@ func Run() {
 				default:
 					continue
 				}
-				Items.Put2(path, itemCopy.Title, "", itemCopy.IconName, &itemCopy)
+				Items.MakeAndPut(path, itemCopy.Title, "", itemCopy.IconName, &itemCopy)
 			} else {
 				continue
 			}

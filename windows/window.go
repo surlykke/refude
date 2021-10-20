@@ -63,14 +63,18 @@ func (win *Window) Links(path string) link.List {
 }
 
 func (win *Window) ForDisplay() bool {
-	return win.Name != "Refude client" && win.State&(x11.SKIP_TASKBAR|x11.SKIP_PAGER|x11.ABOVE) == 0
+	return win.Name != "org.refude.client" && win.State&(x11.SKIP_TASKBAR|x11.SKIP_PAGER|x11.ABOVE) == 0
 }
 
 func (win *Window) DoDelete(w http.ResponseWriter, r *http.Request) {
+	performDelete(win.Id)
+	respond.Accepted(w)
+}
+
+func performDelete(wId uint32) {
 	requestProxyMutex.Lock()
 	defer requestProxyMutex.Unlock()
-	x11.CloseWindow(requestProxy, win.Id)
-	respond.Accepted(w)
+	x11.CloseWindow(requestProxy, wId)
 }
 
 func (win *Window) DoPost(w http.ResponseWriter, r *http.Request) {

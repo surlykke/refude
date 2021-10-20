@@ -21,7 +21,7 @@ func Run() {
 		select {
 		case notification := <-incomingNotifications:
 			var path = fmt.Sprintf("/notification/%X", notification.Id)
-			Notifications.Put2(path, notification.Subject, notification.Body, notification.iconName, notification)
+			Notifications.MakeAndPut(path, notification.Subject, notification.Body, notification.iconName, notification)
 			somethingChanged()
 		case rem := <-removals:
 			removeNotification(rem.id, rem.reason)
