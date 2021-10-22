@@ -104,11 +104,11 @@ func (d *DesktopApplication) DoPost(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-var Applications = resource.MakeList("application", false, "", 100)
+var Applications = resource.MakeList("/application/list")
 
 func GetAppsIds(mimetypeId string) []string {
-	if mt := Mimetypes.GetData("/mimetype/" + mimetypeId); mt != nil {
-		return mt.(*Mimetype).Applications
+	if res := Mimetypes.Get("/mimetype/" + mimetypeId); res != nil {
+		return res.Data.(*Mimetype).Applications
 	} else {
 		return []string{}
 	}
@@ -117,8 +117,8 @@ func GetAppsIds(mimetypeId string) []string {
 func GetApps(appIds ...string) []*DesktopApplication {
 	var apps = make([]*DesktopApplication, 0, len(appIds))
 	for _, appId := range appIds {
-		if app := Applications.GetData("/application/" + appId); app != nil {
-			apps = append(apps, app.(*DesktopApplication))
+		if res := Applications.Get("/application/" + appId); res != nil {
+			apps = append(apps, res.Data.(*DesktopApplication))
 		}
 	}
 	return apps
@@ -129,8 +129,8 @@ func OpenFile(appId, path string) (bool, error) {
 	if appId == "" {
 		xdg.RunCmd("xdg-open", path)
 		return true, nil
-	} else if app := Applications.GetData("/application/" + appId); app != nil {
-		return true, app.(*DesktopApplication).Run(path)
+	} else if res := Applications.Get(appId); res != nil {
+		return true, res.Data.(*DesktopApplication).Run(path)
 	} else {
 		return false, nil
 	}

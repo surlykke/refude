@@ -61,12 +61,12 @@ func Collect() {
 		}
 	}
 
-	var appResources = make([]resource.Resource, 0, len(apps))
+	var appResources = make([]*resource.Resource, 0, len(apps))
 	for _, app := range apps {
 		appResources = append(appResources, resource.MakeResource("/application/"+app.Id, app.Name, app.Comment, app.Icon, "application", app))
 	}
 
-	var mimetypeResources = make([]resource.Resource, 0, len(mimetypes))
+	var mimetypeResources = make([]*resource.Resource, 0, len(mimetypes))
 	for _, mt := range mimetypes {
 		mimetypeResources = append(mimetypeResources, resource.MakeResource("/mimetype/"+mt.Id, mt.Comment, mt.ExpandedAcronym, mt.IconName, "mimetype", mt))
 	}

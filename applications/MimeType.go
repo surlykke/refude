@@ -60,7 +60,7 @@ func (m *Mimetype) ForDisplay() bool {
 	return false
 }
 
-var Mimetypes = resource.MakeList("mimetype", false, "", 1000)
+var Mimetypes = resource.MakeList("/mimetype/list")
 
 /*func SetDefaultApp(mimetypeId string, appId string) error {
 	if mt, ok := collectionStore.Load().(collection).mimetypes[mimetypeId]; ok {

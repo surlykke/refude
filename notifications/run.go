@@ -8,6 +8,8 @@ package notifications
 
 import (
 	"fmt"
+
+	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
 var incomingNotifications = make(chan *Notification)
@@ -21,7 +23,7 @@ func Run() {
 		select {
 		case notification := <-incomingNotifications:
 			var path = fmt.Sprintf("/notification/%X", notification.Id)
-			Notifications.MakeAndPut(path, notification.Subject, notification.Body, notification.iconName, notification)
+			Notifications.Put(resource.MakeResource(path, notification.Subject, notification.Body, notification.iconName, "notification", notification))
 			somethingChanged()
 		case rem := <-removals:
 			removeNotification(rem.id, rem.reason)

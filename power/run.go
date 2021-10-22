@@ -25,7 +25,7 @@ func Run() {
 	for signal := range signals {
 		var path = devicePath(signal.Path)
 		if signal.Name == "org.freedesktop.DBus.Properties.PropertiesChanged" {
-			if dev := Devices.GetData(path); dev != nil {
+			if res := Devices.Get(path); res != nil {
 				setDevice(retrieveDevice(signal.Path))
 			}
 		} else if signal.Name == "org.freedesktop.UPower.DeviceAdded" {
@@ -56,8 +56,8 @@ func getAddedRemovedPath(signal *dbus.Signal) (dbus.ObjectPath, bool) {
 	}
 }
 
-var Devices = resource.MakeList("device", false, "/device/list", 10)
+var Devices = resource.MakeList("/device/list")
 
 func setDevice(dev *Device) {
-	Devices.MakeAndPut(devicePath(dev.DbusPath), dev.title, "", dev.IconName, dev)
+	Devices.Put(resource.MakeResource(devicePath(dev.DbusPath), dev.title, "", dev.IconName, "device", dev))
 }

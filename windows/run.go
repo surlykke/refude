@@ -34,8 +34,8 @@ func Run() {
 		} else {
 			// So it's a 'single'-window event
 			var path string = fmt.Sprintf("/window/%X", wId)
-			if data := Windows.GetData(path); data != nil {
-				var win = data.(*Window).shallowCopy()
+			if res := Windows.Get(path); res != nil {
+				var win = *(res.Data.(*Window))
 				switch event {
 				case x11.WindowTitle:
 					win.Name, _ = x11.GetName(proxy, wId)
@@ -47,8 +47,8 @@ func Run() {
 				default:
 					continue
 				}
-				Windows.MakeAndPut(path, win.Name, "", win.IconName, win)
-				if relevantForDesktopSearch(win) {
+				Windows.Put(resource.MakeResource(path, win.Name, "", win.IconName, "window", &win))
+				if relevantForDesktopSearch(&win) {
 					watch.DesktopSearchMayHaveChanged()
 				}
 			}
@@ -56,18 +56,18 @@ func Run() {
 	}
 }
 
-var Windows = resource.MakeList("window", true, "/window/list", 20)
+var Windows = resource.MakeRevertedList("/window/list")
 
 func updateWindowList(p x11.Proxy) (somethingChanged bool) {
 	var wIds = x11.GetStack(p)
 	var oldResources = Windows.GetAll()
-	var newResources = make([]resource.Resource, len(wIds), len(wIds))
+	var newResources = make([]*resource.Resource, len(wIds), len(wIds))
 	for i, wId := range wIds {
 		var path = fmt.Sprintf("/window/%X", wId)
 		var win *Window = nil
 		for _, o := range oldResources {
 			if path == o.Path {
-				win = o.Data.(*Window).shallowCopy()
+				win = o.Data.(*Window)
 				break
 			}
 		}

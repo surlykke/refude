@@ -23,8 +23,8 @@ type Resource struct {
 	Data    Data      `json:"data"`
 }
 
-func MakeResource(path, title, comment, iconName, profile string, data Data) Resource {
-	return Resource{
+func MakeResource(path, title, comment, iconName, profile string, data Data) *Resource {
+	return &Resource{
 		Links:   append(link.List{link.Make(path, "", "", relation.Self)}, data.Links(path)...),
 		Path:    path,
 		Title:   title,
@@ -35,6 +35,10 @@ func MakeResource(path, title, comment, iconName, profile string, data Data) Res
 	}
 }
 
+func (res *Resource) MakeRankedLink(rank int) link.Link {
+	return link.MakeRanked2(res.Links[0].Href, res.Title, res.Icon, res.Profile, rank)
+}
+
 type Postable interface {
 	DoPost(w http.ResponseWriter, r *http.Request)
 }
@@ -43,7 +47,7 @@ type Deleteable interface {
 	DoDelete(w http.ResponseWriter, r *http.Request)
 }
 
-func (res Resource) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (res *Resource) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
 		respond.AsJson(w, res)
@@ -63,7 +67,7 @@ func (res Resource) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 }
 
-type dataSlice []Resource
+type dataSlice []*Resource
 
 func (ds dataSlice) Links(path string) link.List {
 	return link.List{}

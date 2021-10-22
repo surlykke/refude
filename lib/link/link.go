@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/surlykke/RefudeServices/lib/relation"
-	"github.com/surlykke/RefudeServices/lib/searchutils"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
@@ -60,10 +59,10 @@ func Make(href, title, iconName string, rel relation.Relation) Link {
 }
 
 func MakeRanked(href, title, iconName string, profile string, rank int) Link {
-	return MakeRanked2(href, title, IconUrl(iconName), profile, rank)
+	return MakeRanked2(Href(href), title, IconUrl(iconName), profile, rank)
 }
 
-func MakeRanked2(href, title string, icon Href, profile string, rank int) Link {
+func MakeRanked2(href Href, title string, icon Href, profile string, rank int) Link {
 	return Link{
 		Href:     Href(href),
 		Title:    title,
@@ -94,6 +93,15 @@ func (list List) Add(href, title, iconName string, rel relation.Relation) List {
 	})
 }
 
+func (list List) SelfLink() (Link, bool) {
+	for _, lnk := range list {
+		if lnk.Relation == relation.Self {
+			return lnk, true
+		}
+	}
+	return Link{}, false
+}
+
 // ---------- Implement sort.Sort ------------------------------------
 func (list List) Len() int { return len(list) }
 
@@ -108,20 +116,6 @@ func (list List) Less(i int, j int) bool {
 func (list List) Swap(i int, j int) { list[i], list[j] = list[j], list[i] }
 
 // --------------------------------------------------------------------
-
-func (list List) Filter(term string) List {
-	var result = make(List, 0, len(list))
-	for _, l := range list {
-		// Links here should be newly minted, so writing them is ok.
-		if l.Rank = searchutils.Match(term, l.Title); l.Rank > -1 {
-			if l.Relation == relation.Related {
-				l.Rank += 10
-			}
-			result = append(result, l)
-		}
-	}
-	return result
-}
 
 func IconUrl(name string) Href {
 	if strings.Index(name, "/") > -1 {

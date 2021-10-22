@@ -85,7 +85,7 @@ func (n *Notification) DoDelete(w http.ResponseWriter, r *http.Request) {
 	respond.Accepted(w)
 }
 
-var Notifications = resource.MakeList("notification", true, "/notification/list", 10)
+var Notifications = resource.MakeRevertedList("/notification/list")
 
 // Notifiation collection
 

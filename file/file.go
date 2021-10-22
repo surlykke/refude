@@ -2,7 +2,6 @@ package file
 
 import (
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -80,7 +79,7 @@ func (f *File) Links(path string) link.List {
 				var path = f.Path + "/" + name
 				var mimetype, _ = magicmime.TypeByFile(path)
 				var icon = strings.ReplaceAll(mimetype, "/", "-")
-				ll = ll.Add("/file/"+url.PathEscape(path), name, icon, relation.Related)
+				ll = ll.Add("/file"+path, name, icon, relation.Related)
 			}
 			dir.Close()
 		}

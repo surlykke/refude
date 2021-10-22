@@ -117,16 +117,6 @@ func performAction(wId uint32, action string) bool {
 	return found
 }
 
-func (win *Window) shallowCopy() *Window {
-	return &Window{
-		Id:       win.Id,
-		Name:     win.Name,
-		IconName: win.IconName,
-		State:    win.State,
-		Stacking: win.Stacking,
-	}
-}
-
 func relevantForDesktopSearch(w *Window) bool {
 	return w.State&(x11.SKIP_TASKBAR|x11.SKIP_PAGER|x11.ABOVE) == 0
 }
