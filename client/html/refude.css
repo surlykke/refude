@@ -14,27 +14,25 @@ html, body {
     padding-top: 6px;
     display: flex;
     flex-direction: column;
+    flex: 1 1 1 1;
     gap: 8px;
 }
 
 /* ---------- Panel ------------- */
 .panel {
+    flex-shrink: 0;
     display: flex;
     margin: 0px; 
     font-size: 1.1em;
     width: calc(100% - 16px);
-    /*width:min-content;*/
     white-space: nowrap;
     padding-bottom: 2px;
     border-bottom: solid 1px lightgrey;
+    gap: 6px;
 }
 
-.panel div {
+.panel>div:first-child {
     margin-right: 6px;
-}
-
-.panel div:first-child {
-    margin-right: 0px;
 }
 
 .menu {
@@ -129,6 +127,7 @@ html, body {
 
 /* ---------- Searchbox --------- */
 .search-box {
+    flex-shrink: 0;
     height: 28px;
     width: 300px;
     border: lightblue solid 2px;

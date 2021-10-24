@@ -4,6 +4,7 @@ import (
 	"embed"
 	"io/fs"
 	"net/http"
+	"os"
 	"os/exec"
 
 	"github.com/surlykke/RefudeServices/lib/log"
@@ -15,15 +16,15 @@ var clientResources embed.FS
 var StaticServer http.Handler
 
 func init() {
-	// When Installed
-	if htmlDir, err := fs.Sub(clientResources, "html"); err != nil {
-		log.Panic(err)
-	} else {
+	if projectDir, ok := os.LookupEnv("DEV_PROJECT_ROOT_DIR"); ok {
+		// Used when developing
+		StaticServer = http.FileServer(http.Dir(projectDir + "/client/html"))
+	} else if htmlDir, err := fs.Sub(clientResources, "html"); err == nil {
+		// Otherwise, what's baked in
 		StaticServer = http.FileServer(http.FS(htmlDir))
+	} else {
+		log.Panic(err)
 	}
-
-	//When developing
-	//StaticServer = http.FileServer(http.Dir("/home/surlykke/RefudeServices/client/html"))
 }
 
 var events = make(chan string)
