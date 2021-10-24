@@ -129,7 +129,7 @@ func OpenFile(appId, path string) (bool, error) {
 	if appId == "" {
 		xdg.RunCmd("xdg-open", path)
 		return true, nil
-	} else if res := Applications.Get(appId); res != nil {
+	} else if res := Applications.Get("/application/" + appId); res != nil {
 		return true, res.Data.(*DesktopApplication).Run(path)
 	} else {
 		return false, nil
