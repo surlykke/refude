@@ -2,6 +2,7 @@ package client
 
 import (
 	"embed"
+	"io/fs"
 	"net/http"
 	"os/exec"
 
@@ -11,9 +12,19 @@ import (
 
 //go:embed html
 var clientResources embed.FS
-var StaticServer = http.FileServer(http.Dir("/home/surlykke/RefudeServices/client/html"))
+var StaticServer http.Handler
 
-//http.FileServer(http.FS(clientResources))
+func init() {
+	// When Installed
+	if htmlDir, err := fs.Sub(clientResources, "html"); err != nil {
+		log.Panic(err)
+	} else {
+		StaticServer = http.FileServer(http.FS(htmlDir))
+	}
+
+	// When developing
+	//var StaticServer = http.FileServer(http.Dir("/home/surlykke/RefudeServices/client/html"))
+}
 
 var events = make(chan string)
 
