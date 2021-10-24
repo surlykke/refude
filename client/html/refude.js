@@ -42,7 +42,7 @@ export class Refude extends React.Component {
     dismiss = () => {
         this.history = []
         this.resourceUrl = startUrl 
-        this.setState({ term: "", itemlist: [] })
+        this.setState({ term: ""})
         doPost("http://localhost:7938/client/dismiss")
     }
 
