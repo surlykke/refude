@@ -1,4 +1,5 @@
-import { div, doPost, linkHref, p } from "./utils.js"
+import { doPost, linkHref } from "./utils.js"
+import { div, p } from "./elements.js"
 
 const ul = (props, ...children) => React.createElement('ul', props, ...children)
 const menuItem = (text, marked, clickHandler) => {

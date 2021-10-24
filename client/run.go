@@ -2,7 +2,6 @@ package client
 
 import (
 	"embed"
-	"io/fs"
 	"net/http"
 	"os/exec"
 
@@ -16,14 +15,14 @@ var StaticServer http.Handler
 
 func init() {
 	// When Installed
-	if htmlDir, err := fs.Sub(clientResources, "html"); err != nil {
+	/*if htmlDir, err := fs.Sub(clientResources, "html"); err != nil {
 		log.Panic(err)
 	} else {
 		StaticServer = http.FileServer(http.FS(htmlDir))
-	}
+	}*/
 
-	// When developing
-	//var StaticServer = http.FileServer(http.Dir("/home/surlykke/RefudeServices/client/html"))
+	//When developing
+	StaticServer = http.FileServer(http.Dir("/home/surlykke/RefudeServices/client/html"))
 }
 
 var events = make(chan string)
