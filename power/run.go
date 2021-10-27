@@ -30,10 +30,12 @@ func Run() {
 			}
 		} else if signal.Name == "org.freedesktop.UPower.DeviceAdded" {
 			if path, ok := getAddedRemovedPath(signal); ok {
+				log.Info("Adding device:", path)
 				setDevice(retrieveDevice(path))
 			}
 		} else if signal.Name == "org.freedesktop.UPower.DeviceRemoved" {
 			if path, ok := signal.Body[0].(dbus.ObjectPath); ok {
+				log.Info("Deleting device:", path)
 				Devices.Delete(devicePath(path))
 			}
 		} else {

@@ -70,15 +70,16 @@ func (l *List) ReplaceWith(resources []*Resource) {
 func (l *List) Delete(path string) bool {
 	l.Lock()
 	defer l.Unlock()
-	var deleted = 0
-	for i := 0; i < len(l.resources); i++ {
-		if l.resources[i].Path != path {
-			l.resources[i-deleted] = l.resources[i]
-			deleted++
+	var filteredResources = make([]*Resource, 0, len(l.resources))
+	for _, res := range l.resources {
+		if res.Path != path {
+			filteredResources = append(filteredResources, res)
 		}
 	}
-	l.resources = l.resources[0 : len(l.resources)-deleted]
-	return deleted > 0
+	var deletedSome = len(l.resources) != len(filteredResources)
+	l.resources = filteredResources
+
+	return deletedSome
 }
 
 func (l *List) ServeHTTP(w http.ResponseWriter, r *http.Request) {
