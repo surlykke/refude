@@ -9,6 +9,8 @@ package notifications
 import (
 	"fmt"
 	"net/http"
+	"sync"
+	"time"
 
 	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/relation"
@@ -21,9 +23,9 @@ import (
 type Urgency string
 
 const (
-	critical Urgency = "Critical"
-	normal           = "Normal"
 	low              = "Low"
+	normal           = "Normal"
+	critical Urgency = "Critical"
 )
 
 type Notification struct {
@@ -31,8 +33,8 @@ type Notification struct {
 	Sender   string
 	Subject  string
 	Body     string
-	Created  uint64
-	Expires  uint64 `json:",omitempty"`
+	Created  time.Time
+	Expires  time.Time `json:",omitempty"`
 	Urgency  Urgency
 	Actions  map[string]string
 	Hints    map[string]interface{}
@@ -55,9 +57,7 @@ func (n *Notification) Links(path string) link.List {
 }
 
 func (n *Notification) ForDisplay() bool {
-	return n.Urgency == critical ||
-		n.Created > nowMillis()-6000 ||
-		len(n.Actions) > 0
+	return false
 }
 
 func (n *Notification) DoPost(w http.ResponseWriter, r *http.Request) {
@@ -87,31 +87,28 @@ func (n *Notification) DoDelete(w http.ResponseWriter, r *http.Request) {
 
 var Notifications = resource.MakeRevertedList("/notification/list")
 
-// Notifiation collection
+var flashResource *resource.Resource
+var flashLock sync.Mutex
 
-func removeNotification(id uint32, reason uint32) {
-	fmt.Println("In removeNotification")
-	var path = fmt.Sprintf("/notification/%X", id)
-	if found := Notifications.Delete(path); found {
-		conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", id, reason)
-		fmt.Println("somethingChanged...")
-		somethingChanged()
+func getFlashResource() *resource.Resource {
+	flashLock.Lock()
+	defer flashLock.Unlock()
+	return flashResource
+}
+
+func getFlash() *Notification {
+	var res = getFlashResource()
+	if res == nil {
+		return nil
+	} else {
+		return res.Data.(*Notification)
 	}
 }
 
-func removeExpired() {
-	fmt.Println("removeExpired")
-	var somethingExpired = false
-	for _, res := range Notifications.GetAll() {
-		var notification = res.Data.(*Notification)
-		if notification.Expires > 0 && notification.Expires < nowMillis() {
-			Notifications.Delete(fmt.Sprintf("/notification/%X", notification.Id))
-			conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", notification.Id, Expired)
-		}
-	}
-	if somethingExpired {
-		somethingChanged()
-	}
+func setFlash(newFlashResource *resource.Resource) {
+	flashLock.Lock()
+	defer flashLock.Unlock()
+	flashResource = newFlashResource
 }
 
 func somethingChanged() {

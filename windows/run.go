@@ -87,40 +87,10 @@ func updateWindowList(p x11.Proxy) (somethingChanged bool) {
 	return
 }
 
-func clientWindowIds() []uint32 {
-	var result []uint32
-	for _, res := range Windows.GetAll() {
-		if res.Data.(*Window).Name == "org.refude.client" {
-			result = append(result, res.Data.(*Window).Id)
-		}
-	}
-	return result
-}
-
-func ShowClientWindow() bool {
-	var found bool = false
-	for i, id := range clientWindowIds() {
-		found = true
-		if i == 0 {
-			showAndRaise(id)
-		} else {
-			performDelete(id)
-		}
-	}
-
-	return found
-}
-
 func showAndRaise(id uint32) {
 	requestProxyMutex.Lock()
 	defer requestProxyMutex.Unlock()
 	x11.MapAndRaiseWindow(requestProxy, id)
-}
-
-func CloseClientWindow() {
-	for _, id := range clientWindowIds() {
-		performDelete(id)
-	}
 }
 
 // --------------------------- Serving http requests -------------------------------

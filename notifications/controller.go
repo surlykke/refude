@@ -193,7 +193,7 @@ func Notify(app_name string,
 		Sender:   app_name,
 		Subject:  sanitize(summary, []string{}, []string{}),
 		Body:     sanitize(body, allowedTags, allowedEscapes),
-		Created:  nowMillis(),
+		Created:  time.Now(),
 		Urgency:  normal,
 		Actions:  map[string]string{},
 		Hints:    map[string]interface{}{},
@@ -221,15 +221,12 @@ func Notify(app_name string,
 		}
 	}
 
-	if notification.Urgency == critical {
-		// Critical notifications do not time out, but must be dismissed
-		notification.Expires = 0
-	} else {
+	if notification.Urgency != critical {
+		// Critical notifications do not expire. Non-critical always do
 		if expire_timeout <= 0 || expire_timeout > 60000 {
 			expire_timeout = 60000
 		}
-		notification.Expires = nowMillis() + uint64(expire_timeout)
-		time.AfterFunc(time.Duration(notification.Expires-notification.Created+20)*time.Millisecond, func() { cleaningHints <- struct{}{} })
+		notification.Expires = time.Now().Add(time.Millisecond * time.Duration(expire_timeout))
 	}
 
 	incomingNotifications <- &notification

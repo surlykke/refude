@@ -82,6 +82,17 @@ func (l *List) Delete(path string) bool {
 	return deletedSome
 }
 
+func (l *List) FindFirst(test func(data Data) bool) Data {
+	l.Lock()
+	defer l.Unlock()
+	for _, resource := range l.resources {
+		if test(resource.Data) {
+			return resource.Data
+		}
+	}
+	return nil
+}
+
 func (l *List) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if l.collectionPath == r.URL.Path {
 		(&Resource{

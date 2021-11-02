@@ -16,6 +16,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/requests"
+	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/windows/x11"
 )
@@ -63,7 +64,7 @@ func (win *Window) Links(path string) link.List {
 }
 
 func (win *Window) ForDisplay() bool {
-	return win.Name != "org.refude.client" && win.State&(x11.SKIP_TASKBAR|x11.SKIP_PAGER|x11.ABOVE) == 0
+	return win.Name != "org.refude.browser" && win.Name != "org.refude.panel" && win.State&(x11.SKIP_TASKBAR|x11.SKIP_PAGER|x11.ABOVE) == 0
 }
 
 func (win *Window) DoDelete(w http.ResponseWriter, r *http.Request) {
@@ -115,6 +116,15 @@ func performAction(wId uint32, action string) bool {
 		}
 	}
 	return found
+}
+
+func ResizeNamedWindow(name string, newWidth, newHeight uint32) bool {
+	if d := Windows.FindFirst(func(d resource.Data) bool { return d.(*Window).Name == name }); d != nil {
+		x11.Resize(requestProxy, d.(*Window).Id, newWidth, newHeight)
+		return true
+	} else {
+		return false
+	}
 }
 
 func relevantForDesktopSearch(w *Window) bool {

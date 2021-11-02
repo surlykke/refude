@@ -4,14 +4,11 @@
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
 //
-import { doPost, linkHref, menuHref } from './utils.js'
-import { div, img } from "./elements.js"
+import { doPost, linkHref, menuHref } from '../common/utils.js'
+import { div, img } from "../common/elements.js"
 import {menu} from './menu.js'
 
-let NotifierItem = ({res}) => {
-
-
-    const [menuObject, setMenuObject] = React.useState(undefined)
+let NotifierItem = ({res, setMenuObject}) => {
 
     let href = linkHref(res)
     let mHref = menuHref(res)
@@ -60,14 +57,13 @@ let NotifierItem = ({res}) => {
     return (
         div(
             {
-                className:"clickable", 
                 onKeyDown: onKeyDown, 
             }, 
-            img({src:res.icon, alt:"", height:"20px", width:"20px", onClick:click, onContextMenu:rightClick}),
-            menuObject && menu(menuObject, () => setMenuObject(undefined))
+            img({src:res.icon, alt:"", height:"16px", width:"16px", onClick:click, onContextMenu:rightClick})
         )
     )
 }
 
-export let notifierItem = res => React.createElement(NotifierItem, {res: res})
+export let notifierItem = (res, setMenuObject) => 
+    React.createElement(NotifierItem, {res: res, setMenuObject: setMenuObject})
 

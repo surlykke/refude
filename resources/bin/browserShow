@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+if [[ "i3" == "$XDG_CURRENT_DESKTOP" ]]; then 
+	i3-msg '[title="org.refude.browser"] scratchpad show focus' >/dev/null 2>/dev/null ||
+	i3-msg '[title="org.refude.browser"] focus' >/dev/null 2>/dev/null ||
+	nohup /opt/google/chrome/google-chrome --app=http://localhost:7938/refude/html/browser >/dev/null 2>/dev/null &
+else 
+	# Assume we have an EWMH compliant WM. TODO Adapt to more DE's
+	wmctrl -a org.refude.browser ||
+	nohup /opt/google/chrome/google-chrome --app=http://localhost:7938/refude/html/browser >/dev/null 2>/dev/null &	
+fi
+
+	

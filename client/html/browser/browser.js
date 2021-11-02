@@ -6,18 +6,15 @@
  * Please refer to the LICENSE file for a copy of the license.
  */
 
-import {doPost} from './utils.js'
+import {doPost} from '../common/utils.js'
 import { setNavigation, onKeyDown } from "./navigation.js"
-import { div, materialIcon, hr, input, frag } from "./elements.js"
-import { clock } from './clock.js'
-import { notifierItem } from './notifieritem.js'
-import { battery } from './battery.js'
+import {input, frag } from "../common/elements.js"
 import {resourceHead} from './resource.js'
 import {linkDivs} from './linkdiv.js'
 
 const startUrl = "/search/desktop"
 
-export class Refude extends React.Component {
+export class Browser extends React.Component {
     
     constructor(props) {
         super(props)
@@ -43,7 +40,7 @@ export class Refude extends React.Component {
         this.history = []
         this.resourceUrl = startUrl 
         this.setState({ term: ""})
-        doPost("http://localhost:7938/client/dismiss")
+        doPost("http://localhost:7938/refude/browser/dismiss")
     }
 
     componentDidMount = () => {
@@ -55,9 +52,6 @@ export class Refude extends React.Component {
 
         evtSource.onopen = () => {
             this.getResource()
-            this.getDisplayDevice()
-            this.getItemlist()
-            this.getFlash()
         }
 
         evtSource.onerror = event => {
@@ -70,36 +64,8 @@ export class Refude extends React.Component {
         evtSource.onmessage = event => {
             if (this.resourceUrl === event.data) {
                 this.getResource()
-            } else if ("/device/DisplayDevice" === event.data) {
-                this.getDisplayDevice()
-            } else if ("/item/list" === event.data) {
-                this.getItemlist()
-            } else if ("/notification/list" === event.data) {
-                this.getFlash()
             } 
         }
-    }
-
-    getDisplayDevice = () => {
-        fetch("http://localhost:7938/device/DisplayDevice")
-            .then(resp => resp.json())
-            .then(
-                json => this.setState({displayDevice: json.data}),
-                error => this.setState({displayDevice: undefined})
-            )
-    }
-
-    getFlash = () => {
-        /* FIXME */
-    }
-
-    getItemlist = () => {
-        fetch("http://localhost:7938/item/list")
-            .then(resp => resp.json())
-            .then( 
-                json => {this.setState({itemlist: json.data})},
-                error => {this.setState({itemlist: []})}
-            )
     }
 
     getResource = () => {
@@ -122,29 +88,19 @@ export class Refude extends React.Component {
     }
 
     render = () => {
-        let { term, resource, itemlist, displayDevice} = this.state
-        let elements = []
-        if (resource) {
-            elements.push(
-                div(
-                    { className: "panel"}, 
-                    clock(),
-                    itemlist.map(item => { return notifierItem(item)}),
-                    battery(displayDevice)
-                ),
-                resourceHead(resource),
-                input({
-                    type: 'text',
-                    className:'search-box', 
-                    value: term,
-                    onFocus: () => this.handleInputFocus,
-                    onInput: this.handleInput, 
-                    autoFocus: true}),
-                linkDivs(resource, this.activate)
-            )
-        }
-        return frag(elements)
+        let { term, resource} = this.state
+        return resource ? frag(
+            resourceHead(resource),
+            input({
+                type: 'text',
+                className:'search-box', 
+                value: term,
+                onFocus: () => this.handleInputFocus,
+                onInput: this.handleInput, 
+                autoFocus: true}),
+            linkDivs(resource, this.activate)
+        ) : null
     }
 }
 
-ReactDOM.render(React.createElement(Refude), document.getElementById('app'))
+ReactDOM.render(React.createElement(Browser), document.getElementById('app'))

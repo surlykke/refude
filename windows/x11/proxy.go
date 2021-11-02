@@ -383,6 +383,11 @@ func SetBounds(p Proxy, wId uint32, x int32, y int32, w uint32, h uint32) {
 	C.XFlush(p.disp)
 }
 
+func Resize(p Proxy, wId uint32, w uint32, h uint32) {
+	C.XResizeWindow(p.disp, C.Window(wId), C.uint(w), C.uint(h))
+	C.XFlush(p.disp)
+}
+
 func RaiseWindow(p Proxy, wId uint32) {
 	var event = C.createClientMessage32(C.Window(wId), _NET_RESTACK_WINDOW, 2, 0, 0, 0, 0)
 	C.XSendEvent(p.disp, p.rootWindow, 0, redirectAndNotifyMask, &event)

@@ -11,7 +11,7 @@
  * It is distributed under the GPL v2 license.
  * Please refer to the LICENSE file for a copy of the license.
  */
-import { div } from "./elements.js";
+import { div } from "../common/elements.js";
 
 // TODO i18n
 const monthNames = ["jan", "feb", "mar", "apr", "maj", "jun", "jul", "aug", "sep", "okt", "nov", "dec"];

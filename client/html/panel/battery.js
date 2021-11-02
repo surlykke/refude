@@ -12,7 +12,7 @@
  * Please refer to the LICENSE file for a copy of the license.
  */
 
-import { div } from "./elements.js";
+import { div } from "../common/elements.js";
 
 
 /**
@@ -59,7 +59,7 @@ export let battery = (displayDevice) => {
         path({d:`M ${startX} ${startY} A ${segmentRadius} ${segmentRadius} 0 ${bigArchFlag} 0 ${-startX} ${startY}`, fill:fillColor, stroke:"none"});
 
     return div({title: title}, 
-        svg({xmlns:"http://www.w3.org/2000/svg", width:"20px", height:"20px", viewBox:"-60 -65 120 125"},
+        svg({xmlns:"http://www.w3.org/2000/svg", width:"16px", height:"16px", viewBox:"-60 -65 120 125"},
             circle({cx:"0", cy:"0", r:circleRadius, fill:"white", stroke:strokeColor, strokeWidth:strokeWidth}),
             marker,
             text({textAnchor:"middle", x:"0", y:"30", style:{ fontWeight: "bold", fontSize: "90px", fill: "red" }}, alertText)

@@ -1,4 +1,4 @@
-import { doPost, doDelete, getJson, linkHref } from "./utils.js";
+import { doPost, doDelete, getJson, linkHref } from "../common/utils.js";
 
 export let navigator;
 

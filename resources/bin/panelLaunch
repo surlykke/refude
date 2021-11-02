@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+google-chrome --app=http://localhost:7938/refude/html/panel
+
+for i in $(seq 1 10); do 
+	sleep 0.2
+	if wmctrl -l | grep org.refude.panel >/dev/null 2>/dev/null; then
+		break
+	fi
+done
+
+wmctrl -r org.refude.panel -e 0,24,0,-1,-1
+
