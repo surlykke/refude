@@ -24,7 +24,7 @@ export class Panel extends React.Component {
     }
 
     componentDidMount = () => {
-        //document.addEventListener("keydown", onKeyDown)
+        document.getElementById('panel').addEventListener('focusout', () => this.setState({menuObject: undefined}))
     };
 
     watchSse = () => {

@@ -6,7 +6,7 @@ const ul = (...children) => {
 }
 
 const toggleVisible = event => {
-    event.currentTarget.parentElement.classList.toggle('open')
+    event.currentTarget.classList.toggle('open')
 }
 
 let Menu = ({menuObject, dismiss}) => {
@@ -31,8 +31,8 @@ let Menu = ({menuObject, dismiss}) => {
                 clickHandler = makeClickHandler(Id)
             } 
             return React.createElement('li', 
-                {className: className},
-                React.createElement('span', {onClick: clickHandler}, text),
+                {className: className, onClick: clickHandler},
+                React.createElement('span', {}, text),
                 SubEntries && entryList(SubEntries) 
             )
         }

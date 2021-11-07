@@ -63,10 +63,11 @@ html, body {
 
 .menu li {
     position: relative;
-    margin: 2px 20px 2px 16px;
+    padding: 2px 20px 2px 16px;
     list-style-type: none;
     white-space: nowrap;
     width: min-content;
+    cursor: pointer;
 }
 
 li:not(.open) ul {
@@ -75,7 +76,7 @@ li:not(.open) ul {
 
 li::before {
     position: absolute;
-    left: -16px;
+    left: 0px;
 }
 
 li.submenu.open::before {
