@@ -39,11 +39,11 @@ html, body {
 
 .panel>div {
     height: 16px;
+    cursor: default;
 }
 
 .panel>div:first-child {
     margin-right: 6px;
-    cursor: default;
 }
 
 .menu {
@@ -67,7 +67,11 @@ html, body {
     list-style-type: none;
     white-space: nowrap;
     width: min-content;
-    cursor: pointer;
+    cursor: default;
+}
+
+.menu li>span:hover {
+    background-color: lightgrey;
 }
 
 li:not(.open) ul {
