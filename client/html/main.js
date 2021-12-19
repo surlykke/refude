@@ -20,7 +20,7 @@ import { linkDivs } from "./linkdiv.js"
 const browserStartUrl = "/search/desktop"
 
 
-export class Panel extends React.Component {
+export class Main extends React.Component {
     
     constructor(props) {
         super(props)
@@ -192,7 +192,7 @@ export class Panel extends React.Component {
     }
 }
 
-ReactDOM.render(React.createElement(Panel), document.getElementById('panel'))
+ReactDOM.render(React.createElement(Main), document.getElementById('panel'))
 
 let resizeToContent = div => {
    let {width, height} =  div.getBoundingClientRect()
