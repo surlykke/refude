@@ -7,11 +7,11 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
-	"strings"
 
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/respond"
+	"github.com/surlykke/RefudeServices/watch"
 	"github.com/surlykke/RefudeServices/windows"
 )
 
@@ -47,16 +47,14 @@ func Run() {
 }
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if strings.HasPrefix(r.URL.Path, "/refude/html/") {
-		StaticServer.ServeHTTP(w, r)
-	} else if r.URL.Path == "/refude/browser/dismiss" {
-		if r.Method == "POST" {
-			events <- "dismiss"
-			respond.Accepted(w)
+	if r.URL.Path == "/refude/openBrowser" {
+		if !windows.RaiseAndFocusNamedWindow("org.refude.panel") {
+			respond.NotFound(w)
 		} else {
-			respond.NotAllowed(w)
+			watch.SomethingChanged(r.URL.Path)
+			respond.Accepted(w)
 		}
-	} else if r.URL.Path == "/refude/panel/resize" {
+	} else if r.URL.Path == "/refude/resizePanel" {
 		if r.Method == "POST" {
 			if width, err := strconv.ParseUint(requests.GetSingleQueryParameter(r, "width", ""), 10, 32); err != nil {
 				respond.UnprocessableEntity(w, err)
@@ -71,6 +69,6 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			respond.NotAllowed(w)
 		}
 	} else {
-		respond.NotFound(w)
+		StaticServer.ServeHTTP(w, r)
 	}
 }

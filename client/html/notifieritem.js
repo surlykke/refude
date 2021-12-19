@@ -4,8 +4,8 @@
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
 //
-import { doPost, linkHref, menuHref } from '../common/utils.js'
-import { div, img } from "../common/elements.js"
+import { doPost, linkHref, menuHref } from './utils.js'
+import { div, img } from "./elements.js"
 import {menu} from './menu.js'
 
 let NotifierItem = ({res, setMenuObject}) => {

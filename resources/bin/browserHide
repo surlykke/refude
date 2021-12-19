@@ -1,9 +1,0 @@
-#!/usr/bin/env bash
-
-if [[ "i3" == "$XDG_CURRENT_DESKTOP" ]]; then 
-	i3-msg '[title="org.refude.browser"] move scratchpad' >/dev/null 2>/dev/null 
-else 
-	wmctrl -c org.refude.browser
-fi
-
-	

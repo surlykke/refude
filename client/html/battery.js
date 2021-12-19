@@ -12,7 +12,7 @@
  * Please refer to the LICENSE file for a copy of the license.
  */
 
-import { div } from "../common/elements.js";
+import { div } from "./elements.js";
 
 
 /**

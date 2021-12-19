@@ -118,6 +118,15 @@ func performAction(wId uint32, action string) bool {
 	return found
 }
 
+func RaiseAndFocusNamedWindow(name string) bool {
+	if d := Windows.FindFirst(func(d resource.Data) bool { return d.(*Window).Name == name }); d != nil {
+		x11.RaiseAndFocusWindow(requestProxy, d.(*Window).Id)
+		return true
+	} else {
+		return false
+	}
+}
+
 func ResizeNamedWindow(name string, newWidth, newHeight uint32) bool {
 	if d := Windows.FindFirst(func(d resource.Data) bool { return d.(*Window).Name == name }); d != nil {
 		x11.Resize(requestProxy, d.(*Window).Id, newWidth, newHeight)

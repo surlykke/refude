@@ -1,5 +1,5 @@
-import { doPost, linkHref } from "../common/utils.js"
-import { div} from "../common/elements.js"
+import { doPost, linkHref } from "./utils.js"
+import { div} from "./elements.js"
 
 const ul = (...children) => {
     return React.createElement('ul', undefined, ...children)

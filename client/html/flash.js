@@ -1,4 +1,4 @@
-import { div, img } from "../common/elements.js";
+import { div, img } from "./elements.js";
 
 export let flash = n => {
     console.log("flash:", n)

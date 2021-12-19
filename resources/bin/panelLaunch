@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-google-chrome --app=http://localhost:7938/refude/html/panel
+google-chrome --app=http://localhost:7938/refude/html/
 
 for i in $(seq 1 10); do 
 	sleep 0.2

@@ -1,6 +1,6 @@
-import {iconClassName} from "../common/utils.js"
+import {iconClassName} from "./utils.js"
 import { select, selectActivateAndDismiss } from "./navigation.js"
-import { div, img, a } from "../common/elements.js"
+import { div, img, a } from "./elements.js"
 
 let LinkDivs = ({links}) => {
     React.useEffect(select) 

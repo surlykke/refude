@@ -1,11 +1,11 @@
-import { doPost, doDelete, getJson, linkHref } from "../common/utils.js";
+import { doPost, doDelete, getJson, linkHref } from "./utils.js";
 
 export let navigator;
 
 export const setNavigation = n => navigator = n;
-const getLinkDivs = () => Array.from(document.querySelectorAll(".link"));
-const getSelectedLinkDiv = () => getLinkDivs().find(l => l.classList.contains('selected'));
-const getSelectedAnchor = () => getSelectedLinkDiv()?.lastChild;
+export const getLinkDivs = () => Array.from(document.querySelectorAll(".link"));
+export const getSelectedLinkDiv = () => getLinkDivs().find(l => l.classList.contains('selected'));
+export const getSelectedAnchor = () => getSelectedLinkDiv()?.lastChild;
 export const select = linkDiv => {
     let list = getLinkDivs();
     linkDiv = linkDiv || list[0];
@@ -32,7 +32,7 @@ export const activateSelected = (then) => {
     }
 };
 
-const deleteSelected = then => {
+export const deleteSelected = then => {
     let selectedAnchor = getSelectedAnchor();
     if (selectedAnchor) {
         if (selectedAnchor.rel === "org.refude.delete") {
@@ -67,7 +67,6 @@ export const move = up => {
 
 export const onKeyDown = (event) => {
     let { key, ctrlKey, altKey, shiftKey } = event;
-    console.log("onKeyDown, key:", key);
     if (key === "ArrowRight" || key === "l" && ctrlKey) {
         let selectedAnchor = getSelectedAnchor();
         if (selectedAnchor?.rel === "related") {

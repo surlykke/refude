@@ -1,4 +1,4 @@
-import { div, img, table, tbody, tr, td } from "../common/elements.js"
+import { div, img, table, tbody, tr, td } from "./elements.js"
 
 let iconClassName = profile => "icon" + ("window" === profile ? " window" : "")
 

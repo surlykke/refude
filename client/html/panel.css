@@ -45,7 +45,94 @@ html, body {
 .panel>div:first-child {
     margin-right: 6px;
 }
+/* ------------------ Browser --------------- */
 
+.resource-header {
+    display: flex;
+}
+
+.resource-icon {
+    margin: 8px;
+}
+
+.resource-name {
+    margin-top: 6px;
+    font-size: 1em;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.resource-comment {
+   font-size: 0.8em;
+   white-space: nowrap;
+   overflow: hidden;
+ }
+
+.resource-props {
+    border-top: solid 1px gray;
+    margin: 8px 0px 0px 8px;
+    padding-top: 6px;
+}
+
+.resource-props td {
+    font-size: 0.8em;
+    white-space: nowrap;
+    overflow: hidden;
+ }
+
+.resource-props td:first-child {
+    font-style: italic;
+    width: 1%;
+}
+
+.search-box {
+    flex-shrink: 0;
+    height: 28px;
+    width: 300px;
+    border: lightblue solid 2px;
+    border-radius: 5px;
+    margin: 6px;
+}
+
+.linkDivs {
+    overflow-x: hidden;
+    overflow-y: auto;
+    margin: 6px;
+}
+
+.link {
+    white-space: nowrap;
+    /*position: relative;*/
+    width: calc(100% - 20px);
+    overflow: hidden;
+    height: 28px;
+    vertical-align: top;
+}
+.link>div{
+    display: inline-block;
+    width: 28px; 
+    padding-top: 2px;
+}
+
+.window {
+   -webkit-filter: drop-shadow(5px 5px 3px grey);
+   overflow: visible;
+}
+
+.link>a {
+    text-decoration: none;
+    color: inherit;
+    vertical-align: top;
+}
+
+.link.selected {
+    border: solid black 2px;
+    border-radius: 5px;
+    box-shadow: 1px 1px 1px #888888;
+    /*background-color: lightgrey;*/
+}
+
+/* ------------------ Menu ------------------ */
 .menu {
     padding: 0 0 16px 16px
 }
