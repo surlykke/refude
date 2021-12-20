@@ -183,7 +183,7 @@ export class Main extends React.Component {
                     value: term,
                     onInput: this.handleInput, 
                     autoFocus: true}),
-                linkDivs(resource)
+                linkDivs(resource, this.closeBrowser)
             ) : 
             menuObject ? menu(menuObject, () => this.setState({menuObject: undefined})) :
             flashNotification ? flash(flashNotification):
