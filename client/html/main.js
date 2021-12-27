@@ -50,7 +50,6 @@ export class Main extends React.Component {
         }
 
         evtSource.onmessage = event => {
-            console.log("watchSse, event:", event)
             if ("/item/list" === event.data) {
                 this.getItemlist()
             } else if ("/device/DisplayDevice" === event.data) {
@@ -59,7 +58,7 @@ export class Main extends React.Component {
                 this.getFlash()
             } else if ("/refude/openBrowser" === event.data) {
                 this.openBrowser()
-            } else if (this.resourceUrl === event.data) {
+            } else if (this.browserUrl && this.browserUrl === event.data) {
                 this.getResource()
             }
         }
@@ -93,13 +92,19 @@ export class Main extends React.Component {
 
 
     getResource = () => {
-        let href = `${this.browserUrl}?term=${this.state.term}`
-        console.log("Fetching", href)
+        console.log("getResource")
+        let browserUrl = this.browserUrl
+        let href = `${browserUrl}?term=${this.state.term}`
         fetch(href)
             .then(resp => resp.json())
             .then(
-                json => {this.setState({resource: json})},
-                error => {this.setState({ resource: undefined })}
+                json => {
+                    // browserUrl may have changed while request in flight 
+                    if (browserUrl === this.browserUrl) {
+                        this.setState({resource: json})
+                    }
+                }, 
+                error => this.setState({ resource: undefined })
             )
     }
 
@@ -107,7 +112,7 @@ export class Main extends React.Component {
     setMenuObject = menuObject => this.setState({menuObject: menuObject})
 
     openBrowser = () => {
-        console.log("open browser..")
+        console.log("openBrowser")
         if (this.browserUrl) {
             move()
         } else {
@@ -117,6 +122,7 @@ export class Main extends React.Component {
     }
 
     closeBrowser = () => {
+        console.log("Closing...")
         this.browserUrl = undefined
         this.browserHistory = []
         this.setState({term: "", resource: undefined})
@@ -151,7 +157,6 @@ export class Main extends React.Component {
         } else if (key === "ArrowDown" || key === "j" && ctrlKey || key === 'Tab' && !shiftKey && !ctrlKey && !altKey) {
             move();
         } else if (key === "Enter") {
-            console.log("Activate");
             activateSelected(!ctrlKey && this.closeBrowser);
         } else if (key === "Delete") {
             deleteSelected(!ctrlKey && this.closeBrowser);
@@ -167,7 +172,7 @@ export class Main extends React.Component {
 
     render = () => {
         let {itemlist, displayDevice, resource, term, menuObject, flashNotification} = this.state
-        console.log("panel render, resource:", resource)
+        console.log("render, term:", term, ", resource:", resource)
         return frag(
             div(
                 { className: "panel", onClick: () => this.setMenuObject()}, 
@@ -199,7 +204,6 @@ let resizeToContent = div => {
 
     width = Math.round((width)*window.devicePixelRatio)
     height = Math.round((height)*window.devicePixelRatio)
-    console.log("width, height:", width, height)
     doPost("/refude/resizePanel", {width: width, height: height}) 
 }
 

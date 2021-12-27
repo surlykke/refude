@@ -8,6 +8,7 @@ package notifications
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"reflect"
 	"strings"
@@ -18,7 +19,9 @@ import (
 	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/image"
 	"github.com/surlykke/RefudeServices/lib/log"
+	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/xdg"
+	"github.com/surlykke/RefudeServices/watch"
 )
 
 const NOTIFICATIONS_SERVICE = "org.freedesktop.Notifications"
@@ -160,7 +163,7 @@ func Notify(app_name string,
 	body string,
 	actions []string,
 	hints map[string]dbus.Variant,
-	expire_timeout int32 /*We may correct this */) (uint32, *dbus.Error) {
+	expire_timeout int32) (uint32, *dbus.Error) {
 
 	var id uint32
 	if replaces_id != 0 {
@@ -221,15 +224,29 @@ func Notify(app_name string,
 		}
 	}
 
-	if notification.Urgency != critical {
-		// Critical notifications do not expire. Non-critical always do
-		if expire_timeout <= 0 || expire_timeout > 60000 {
-			expire_timeout = 60000
-		}
-		notification.Expires = time.Now().Add(time.Millisecond * time.Duration(expire_timeout))
+	if notification.Urgency == critical && expire_timeout <= 0 {
+		expire_timeout = 84600000
+	} else if expire_timeout <= 0 || expire_timeout > 120000 {
+		expire_timeout = 120000
 	}
 
-	incomingNotifications <- &notification
+	notification.Expires = time.Now().Add(time.Millisecond * time.Duration(expire_timeout))
+
+	var res = resource.MakeResource(fmt.Sprintf("/notification/%X", notification.Id), notification.Subject, notification.Body, notification.iconName, "notification", &notification)
+
+	Notifications.Put(res)
+	somethingChanged()
+
+	if notification.Expires.Before(time.Now().Add(time.Hour)) {
+		time.AfterFunc(notification.Expires.Sub(notification.Created)+time.Millisecond*50, removeExpired)
+	}
+
+	if notification.Urgency == low {
+		time.AfterFunc(time.Millisecond*2050, func() { watch.SomethingChanged("/notification/flash") })
+	} else if notification.Urgency == normal {
+		time.AfterFunc(time.Millisecond*6050, func() { watch.SomethingChanged("/notification/flash") })
+	}
+
 	return id, nil
 }
 
@@ -291,11 +308,8 @@ func installFileIcon(hints map[string]dbus.Variant, key string) (string, bool) {
 	}
 }
 
-func makeCloseFuntion(removals chan removal) interface{} {
-	return func(id uint32) *dbus.Error {
-		removals <- removal{id, Closed}
-		return nil
-	}
+func closeNotification(id uint32) {
+	removeNotification(id, Closed)
 }
 
 func GetServerInformation() (string, string, string, string, *dbus.Error) {
@@ -357,7 +371,7 @@ func DoDBus() {
 		map[string]interface{}{
 			"GetCapabilities":      GetCapabilities,
 			"Notify":               Notify,
-			"CloseNotification":    makeCloseFuntion(removals),
+			"CloseNotification":    closeNotification,
 			"GetServerInformation": GetServerInformation,
 		},
 		NOTIFICATIONS_PATH,

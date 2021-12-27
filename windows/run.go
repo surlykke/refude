@@ -47,7 +47,7 @@ func Run() {
 				default:
 					continue
 				}
-				Windows.Put(resource.MakeResource(path, win.Name, "", win.IconName, "window", &win))
+				Windows.PutFirst(resource.MakeResource(path, win.Name, "", win.IconName, "window", &win))
 				if relevantForDesktopSearch(&win) {
 					watch.DesktopSearchMayHaveChanged()
 				}
@@ -56,7 +56,7 @@ func Run() {
 	}
 }
 
-var Windows = resource.MakeRevertedList("/window/list")
+var Windows = resource.MakeList("/window/list")
 
 func updateWindowList(p x11.Proxy) (somethingChanged bool) {
 	var wIds = x11.GetStack(p)

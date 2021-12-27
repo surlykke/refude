@@ -12,21 +12,13 @@ type List struct {
 	sync.Mutex
 	collectionPath string
 	resources      []*Resource
-	serveReverted  bool
 }
 
 func MakeList(collectionPath string) *List {
 	return &List{
 		collectionPath: collectionPath,
 		resources:      make([]*Resource, 0, 20),
-		serveReverted:  false,
 	}
-}
-
-func MakeRevertedList(collectionPath string) *List {
-	var list = MakeList(collectionPath)
-	list.serveReverted = true
-	return list
 }
 
 func (l *List) Get(path string) *Resource {
@@ -61,6 +53,19 @@ func (l *List) Put(res *Resource) {
 	l.resources = append(l.resources, res)
 }
 
+func (l *List) PutFirst(res *Resource) {
+	l.Lock()
+	defer l.Unlock()
+	for i := 0; i < len(l.resources); i++ {
+		if l.resources[i].Path == res.Path {
+			l.resources[i] = res
+			return
+		}
+	}
+
+	l.resources = append([]*Resource{res}, l.resources...)
+}
+
 func (l *List) ReplaceWith(resources []*Resource) {
 	l.Lock()
 	defer l.Unlock()
@@ -70,16 +75,22 @@ func (l *List) ReplaceWith(resources []*Resource) {
 func (l *List) Delete(path string) bool {
 	l.Lock()
 	defer l.Unlock()
-	var filteredResources = make([]*Resource, 0, len(l.resources))
-	for _, res := range l.resources {
-		if res.Path != path {
-			filteredResources = append(filteredResources, res)
-		}
-	}
-	var deletedSome = len(l.resources) != len(filteredResources)
-	l.resources = filteredResources
 
-	return deletedSome
+	var retained = 0
+	for i := 0; i < len(l.resources); i++ {
+		if l.resources[i].Path != path {
+			l.resources[retained] = l.resources[i]
+			retained++
+		}
+
+	}
+	if retained < len(l.resources) {
+		l.resources = l.resources[:retained]
+		return true
+	} else {
+		return false
+	}
+
 }
 
 func (l *List) FindFirst(test func(data Data) bool) Data {
@@ -91,6 +102,29 @@ func (l *List) FindFirst(test func(data Data) bool) Data {
 		}
 	}
 	return nil
+}
+
+func (l *List) DeleteIf(cond func(res *Resource) bool) {
+	l.Lock()
+	defer l.Unlock()
+	var retained = 0
+	for i := 0; i < len(l.resources); i++ {
+		if !cond(l.resources[i]) {
+			l.resources[retained] = l.resources[i]
+			retained++
+		}
+	}
+	if retained < len(l.resources) {
+		l.resources = l.resources[:retained]
+	}
+}
+
+func (l *List) Walk(walker func(res *Resource)) {
+	l.Lock()
+	defer l.Unlock()
+	for _, res := range l.resources {
+		walker(res)
+	}
 }
 
 func (l *List) ServeHTTP(w http.ResponseWriter, r *http.Request) {

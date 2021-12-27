@@ -32,16 +32,16 @@ export const activateSelected = (then) => {
     }
 };
 
-export const deleteSelected = then => {
+export const deleteSelected = (then) => {
     let selectedAnchor = getSelectedAnchor();
     if (selectedAnchor) {
         if (selectedAnchor.rel === "org.refude.delete") {
             doDelete(selectedAnchor.href).then(response => response.ok && then());
         } else if (selectedAnchor.rel === "related") {
-            getJson(link.href, json => {
+            getJson(selectedAnchor.href, json => {
                 let deleteLink = linkHref(json, "org.refude.delete");
                 if (deleteLink) {
-                    doDelete(deleteLink.href, then);
+                    doDelete(deleteLink).then(response => response.ok && then())
                 }
             });
         }
@@ -63,31 +63,4 @@ export const move = up => {
     } else {
         select(list[(currentIndex + list.length + (up ? -1 : 1)) % list.length]);
     }
-};
-
-export const onKeyDown = (event) => {
-    let { key, ctrlKey, altKey, shiftKey } = event;
-    if (key === "ArrowRight" || key === "l" && ctrlKey) {
-        let selectedAnchor = getSelectedAnchor();
-        if (selectedAnchor?.rel === "related") {
-            navigator.goTo(selectedAnchor.href);
-        }
-    } else if (key === "ArrowLeft" || key === "h" && ctrlKey) {
-        navigator.goBack();
-    } else if (key === "ArrowUp" || key === "k" && ctrlKey || key === 'Tab' && shiftKey && !ctrlKey && !altKey) {
-        move(true);
-    } else if (key === "ArrowDown" || key === "j" && ctrlKey || key === 'Tab' && !shiftKey && !ctrlKey && !altKey) {
-        move();
-    } else if (key === "Enter") {
-        console.log("Activate");
-        activateSelected(!ctrlKey && navigator.dismiss);
-    } else if (key === "Delete") {
-        deleteSelected(!ctrlKey && navigator.dismiss);
-    } else if (key === "Escape") {
-        navigator.dismiss();
-    } else {
-        return;
-    }
-
-    event.preventDefault();
 };

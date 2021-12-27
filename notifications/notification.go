@@ -9,7 +9,6 @@ package notifications
 import (
 	"fmt"
 	"net/http"
-	"sync"
 	"time"
 
 	"github.com/surlykke/RefudeServices/lib/link"
@@ -20,12 +19,12 @@ import (
 	"github.com/surlykke/RefudeServices/watch"
 )
 
-type Urgency string
+type Urgency uint8
 
 const (
-	low              = "Low"
-	normal           = "Normal"
-	critical Urgency = "Critical"
+	low      Urgency = 0
+	normal           = 1
+	critical         = 2
 )
 
 type Notification struct {
@@ -34,7 +33,7 @@ type Notification struct {
 	Subject  string
 	Body     string
 	Created  time.Time
-	Expires  time.Time `json:",omitempty"`
+	Expires  time.Time
 	Urgency  Urgency
 	Actions  map[string]string
 	Hints    map[string]interface{}
@@ -57,7 +56,7 @@ func (n *Notification) Links(path string) link.List {
 }
 
 func (n *Notification) ForDisplay() bool {
-	return false
+	return n.Urgency == critical || len(n.Actions) > 0
 }
 
 func (n *Notification) DoPost(w http.ResponseWriter, r *http.Request) {
@@ -80,38 +79,30 @@ func (n *Notification) DoPost(w http.ResponseWriter, r *http.Request) {
 }
 
 func (n *Notification) DoDelete(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Deleting ", n.Id)
-	removals <- removal{n.Id, Dismissed}
+	removeNotification(n.Id, Dismissed)
 	respond.Accepted(w)
 }
 
-var Notifications = resource.MakeRevertedList("/notification/list")
-
-var flashResource *resource.Resource
-var flashLock sync.Mutex
+var Notifications = resource.MakeList("/notification/list")
 
 func getFlashResource() *resource.Resource {
-	flashLock.Lock()
-	defer flashLock.Unlock()
-	return flashResource
-}
+	var found *resource.Resource
+	var sixSecondsAgo = time.Now().Add(-6 * time.Second)
+	var twoSecondsAgo = time.Now().Add(-2 * time.Second)
 
-func getFlash() *Notification {
-	var res = getFlashResource()
-	if res == nil {
-		return nil
-	} else {
-		return res.Data.(*Notification)
-	}
-}
-
-func setFlash(newFlashResource *resource.Resource) {
-	flashLock.Lock()
-	defer flashLock.Unlock()
-	flashResource = newFlashResource
+	Notifications.Walk(func(res *resource.Resource) {
+		var n = res.Data.(*Notification)
+		if found == nil || found.Data.(*Notification).Urgency < n.Urgency {
+			if n.Urgency == critical || n.Urgency == normal && n.Created.After(sixSecondsAgo) || n.Urgency == low && n.Created.After(twoSecondsAgo) {
+				found = res
+			}
+		}
+	})
+	return found
 }
 
 func somethingChanged() {
+	watch.SomethingChanged("/notification/flash")
 	watch.SomethingChanged("/notification/list")
 	watch.DesktopSearchMayHaveChanged()
 }

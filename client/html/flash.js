@@ -1,7 +1,6 @@
 import { div, img } from "./elements.js";
 
 export let flash = n => {
-    console.log("flash:", n)
     return (
         div({ className: "flash" },
             div({ className: "flash-icon" },
