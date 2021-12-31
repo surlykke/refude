@@ -92,7 +92,6 @@ export class Main extends React.Component {
 
 
     getResource = () => {
-        console.log("getResource")
         let browserUrl = this.browserUrl
         let href = `${browserUrl}?term=${this.state.term}`
         fetch(href)
@@ -112,7 +111,6 @@ export class Main extends React.Component {
     setMenuObject = menuObject => this.setState({menuObject: menuObject})
 
     openBrowser = () => {
-        console.log("openBrowser")
         if (this.browserUrl) {
             move()
         } else {
@@ -122,7 +120,6 @@ export class Main extends React.Component {
     }
 
     closeBrowser = () => {
-        console.log("Closing...")
         this.browserUrl = undefined
         this.browserHistory = []
         this.setState({term: "", resource: undefined})
@@ -172,7 +169,6 @@ export class Main extends React.Component {
 
     render = () => {
         let {itemlist, displayDevice, resource, term, menuObject, flashNotification} = this.state
-        console.log("render, term:", term, ", resource:", resource)
         return frag(
             div(
                 { className: "panel", onClick: () => this.setMenuObject()}, 

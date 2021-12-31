@@ -185,13 +185,10 @@ li.marked::before {
 .flash {
     display: flex;
     background-color: white;
-    max-width: 30em;
-    max-height: 8em;
 }
 
 .flash-icon {
-    width: 2.2em;
-    height: 2.2em;
+    /*width: 3em;*/
     padding: 0.5em;
 }
 
@@ -206,9 +203,9 @@ li.marked::before {
 }
 
 .flash-body {
-    max-height: 4em;
     font-size: 1em;
     padding-top: 0.2em;
     padding-bottom: 0.2em;
-    overflow-y: hidden;
+    white-space: nowrap;
+    overflow: hidden;
 }

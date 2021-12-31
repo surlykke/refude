@@ -1,8 +1,10 @@
 package icons
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/surlykke/RefudeServices/lib/requests"
@@ -16,51 +18,25 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		respond.UnprocessableEntity(w, fmt.Errorf("Query parameter 'name' must be given, and not empty"))
 	} else if strings.HasPrefix(name, "/") {
 		http.ServeFile(w, r, name)
-	} else if icon := findIcon(name); icon != nil {
-		icon.ServeHTTP(w, r)
-	} else if iconImage, ok := other[name]; ok {
-		iconImage.ServeHTTP(w, r)
-	} else {
+	} else if size, err := extractSize(r); err != nil {
+		respond.UnprocessableEntity(w, err)
+	} else if iconFilePath := findIconPath(name, size); iconFilePath == "" {
 		respond.NotFound(w)
+	} else {
+		http.ServeFile(w, r, iconFilePath)
 	}
 }
 
-func findIcon(iconName string) *Icon {
-	for _, name := range dashSplit(iconName) {
-		for _, theme := range themeList {
-			if icon, ok := theme.icons[name]; ok {
-				return icon
-			}
-		}
-		if icon, ok := hicolor.icons[name]; ok {
-			return icon
-		}
-	}
-	return nil
-}
+func extractSize(r *http.Request) (uint32, error) {
+	var size uint32 = 32
 
-/**
- * By the icon naming specification, dash ('-') seperates 'levels of specificity'. So given an icon name
- * 'input-mouse-usb', the levels of specificy, and the names and order we search will be: 'input-mouse-usb',
- * 'input-mouse' and 'input'
- */
-func dashSplit(name string) []string {
-	var res = make([]string, 0, 3)
-	for {
-		res = append(res, name)
-		if pos := strings.LastIndex(name, "-"); pos > 0 {
-			name = name[0:pos]
+	if len(r.URL.Query()["size"]) > 0 {
+		if size64, err := strconv.ParseUint(r.URL.Query()["size"][0], 10, 32); err != nil {
+			return 0, errors.New("Invalid size given:" + r.URL.Query()["size"][0])
 		} else {
-			break
+			size = uint32(size64)
 		}
 	}
-	return res
-}
 
-func CollectPaths(method string, sink chan string) {
-	lock.Lock()
-	defer lock.Unlock()
-	for _, theme := range themeMap {
-		sink <- theme.self
-	}
+	return size, nil
 }

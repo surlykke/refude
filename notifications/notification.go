@@ -27,6 +27,10 @@ const (
 	critical         = 2
 )
 
+const flashTimeoutLow time.Duration = 3 * time.Second
+const flashTimeoutNormal time.Duration = 8 * time.Second
+const _50ms = 50 * time.Millisecond
+
 type Notification struct {
 	Id       uint32
 	Sender   string
@@ -38,6 +42,7 @@ type Notification struct {
 	Actions  map[string]string
 	Hints    map[string]interface{}
 	iconName string
+	IconSize uint32 `json:",omitempty"`
 }
 
 func (n *Notification) Links(path string) link.List {
@@ -87,13 +92,13 @@ var Notifications = resource.MakeList("/notification/list")
 
 func getFlashResource() *resource.Resource {
 	var found *resource.Resource
-	var sixSecondsAgo = time.Now().Add(-6 * time.Second)
-	var twoSecondsAgo = time.Now().Add(-2 * time.Second)
 
 	Notifications.Walk(func(res *resource.Resource) {
 		var n = res.Data.(*Notification)
 		if found == nil || found.Data.(*Notification).Urgency < n.Urgency {
-			if n.Urgency == critical || n.Urgency == normal && n.Created.After(sixSecondsAgo) || n.Urgency == low && n.Created.After(twoSecondsAgo) {
+			if n.Urgency == critical ||
+				n.Urgency == normal && n.Created.After(time.Now().Add(-flashTimeoutNormal)) ||
+				n.Urgency == low && n.Created.After(time.Now().Add(-flashTimeoutLow)) {
 				found = res
 			}
 		}

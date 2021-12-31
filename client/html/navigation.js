@@ -14,7 +14,6 @@ export const select = linkDiv => {
 
 export const activateSelected = (then) => {
     let selectedAnchor = getSelectedAnchor();
-    console.log("Into activate", selectedAnchor, then);
     if (selectedAnchor) {
         then = then || (() => { });
         if (selectedAnchor.rel === "org.refude.defaultaction" || selectedAnchor.rel === "org.refude.action") {
@@ -54,10 +53,8 @@ export const selectActivateAndDismiss = (element) => {
 }
 
 export const move = up => {
-    console.log("move");
     let list = getLinkDivs();
     let currentIndex = list.findIndex(ld => ld.classList.contains('selected'));
-    console.log("currentIndex:", currentIndex, "list.length:", list.length);
     if (list.length < 2 || currentIndex < 0) {
         select(list[0]);
     } else {

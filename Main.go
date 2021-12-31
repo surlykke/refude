@@ -39,9 +39,9 @@ func main() {
 	go notifications.Run()
 	go power.Run()
 	go statusnotifications.Run()
-	go icons.Run()
 
 	http.HandleFunc("/refude/", client.ServeHTTP)
+	http.HandleFunc("/icontheme/", icons.IconThemes.ServeHTTP)
 	http.HandleFunc("/icon", icons.ServeHTTP)
 	http.HandleFunc("/search/", search.ServeHTTP)
 	http.HandleFunc("/watch", watch.ServeHTTP)

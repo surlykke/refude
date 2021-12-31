@@ -15,6 +15,7 @@ import (
 
 	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/log"
+	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/slice"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
@@ -25,12 +26,15 @@ type IconTheme struct {
 	Name     string
 	Comment  string
 	Inherits []string
-	Dirs     map[string]IconDir
-	icons    map[string]*Icon
+	Dirs     []IconDir
 }
 
-func (it *IconTheme) Links() link.List {
-	return link.MakeList(it.self, it.Name, "")
+func (it *IconTheme) Links(path string) link.List {
+	return link.List{}
+}
+
+func (it *IconTheme) ForDisplay() bool {
+	return false
 }
 
 type IconDir struct {
@@ -40,10 +44,8 @@ type IconDir struct {
 	Context string
 }
 
-type ThemeMap map[string]*IconTheme
-
-func readThemes() ThemeMap {
-	var themeMap = make(ThemeMap)
+func readThemes() map[string]*IconTheme {
+	var themeMap = make(map[string]*IconTheme)
 
 	for _, basedir := range basedirs {
 		if indexFilePaths, err := filepath.Glob(basedir + "/*/index.theme"); err != nil {
@@ -54,6 +56,7 @@ func readThemes() ThemeMap {
 					log.Warn("Could not read", indexFilePath)
 				} else if _, ok := themeMap[theme.Id]; !ok {
 					themeMap[theme.Id] = theme
+					IconThemes.Put(resource.MakeResource("/icontheme/"+theme.Id, theme.Name, theme.Comment, "", "icontheme", theme))
 				}
 			}
 		}
@@ -88,16 +91,22 @@ func readTheme(indexThemeFilePath string) (*IconTheme, bool) {
 	theme.Name = themeGroup.Entries["Name"]
 	theme.Comment = themeGroup.Entries["Comment"]
 	theme.Inherits = slice.Split(themeGroup.Entries["Inherits"], ",")
-	theme.Dirs = make(map[string]IconDir)
+	theme.Dirs = make([]IconDir, 0, 50)
+	var addedDirs = make(map[string]bool)
 	directories := slice.Split(themeGroup.Entries["Directories"], ",")
 	if len(directories) == 0 {
-		log.Warn("Ignoring theme %s - no directories", theme.Id)
+		log.Warn("Ignoring theme ", theme.Id, " - no directories")
 		return nil, false
 	}
 	for _, iniGroup := range iniFile[1:] {
 
 		if !slice.Contains(directories, iniGroup.Name) {
 			//fmt.Fprintln(os.Stderr, iniGroup.Name, " not found in Directories")
+			continue
+		}
+
+		if addedDirs[iniGroup.Name] {
+			log.Warn(iniGroup.Name, "encountered more than once")
 			continue
 		}
 
@@ -129,10 +138,25 @@ func readTheme(indexThemeFilePath string) (*IconTheme, bool) {
 			continue
 		}
 
-		theme.Dirs[iniGroup.Name] = IconDir{iniGroup.Name, minSize, maxSize, iniGroup.Entries["Context"]}
+		theme.Dirs = append(theme.Dirs, IconDir{iniGroup.Name, minSize, maxSize, iniGroup.Entries["Context"]})
+		addedDirs[iniGroup.Name] = true
 	}
 
-	theme.icons = make(IconMap)
+	if themeId == "hicolor" {
+		// We have icons from other sources than the various icon directories.. x11, statusnotifications, notifications. In order to serve those in
+		// a way similar to ordinary icons - we add them either as not-themed icons or as icons in the hicolor theme.
+		// Here we create an extra set of directories for hicolor - context 'converted' - where we put those
+		var lowerBound uint32 = 0
+		for _, upperBound := range []uint32{16, 22, 24, 32, 36, 48, 64, 72, 96, 128, 192, 256, 512, 1024, 2048} {
+			var path = fmt.Sprintf("converted/%d", upperBound)
+			if addedDirs[path] {
+				panic(path + " in use")
+			}
+			theme.Dirs = append(theme.Dirs, IconDir{path, lowerBound, upperBound, "converted"})
+			lowerBound = upperBound + 1
+		}
+	}
+
 	return &theme, true
 }
 
@@ -148,3 +172,5 @@ func readUint32OrFallback(uintAsString string, fallback uint32) uint32 {
 		return fallback
 	}
 }
+
+var IconThemes = resource.MakeList("/icontheme/list")

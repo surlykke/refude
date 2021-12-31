@@ -9,7 +9,6 @@ package notifications
 import (
 	"errors"
 	"fmt"
-	"os"
 	"reflect"
 	"strings"
 	"time"
@@ -20,7 +19,6 @@ import (
 	"github.com/surlykke/RefudeServices/lib/image"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/resource"
-	"github.com/surlykke/RefudeServices/lib/xdg"
 	"github.com/surlykke/RefudeServices/watch"
 )
 
@@ -126,14 +124,6 @@ const (
 	Closed           = 3
 )
 
-var imageDir = func() string {
-	var dir = xdg.RuntimeDir + "/org.refude.notification-images/"
-	if err := os.MkdirAll(dir, 0700); err != nil {
-		panic(err)
-	}
-	return dir
-}()
-
 type removal struct{ id, reason uint32 }
 
 var conn *dbus.Conn
@@ -177,14 +167,15 @@ func Notify(app_name string,
 	var iconName string
 	var ok bool
 
-	if iconName, ok = installRawImageIcon(hints, "image-data"); !ok {
-		if iconName, ok = installRawImageIcon(hints, "image_data"); !ok {
+	var sizeHint uint32
+	if iconName, sizeHint, ok = installRawImageIcon(hints, "image-data"); !ok {
+		if iconName, sizeHint, ok = installRawImageIcon(hints, "image_data"); !ok {
 			if iconName, ok = installFileIcon(hints, "image-path"); !ok {
 				if iconName, ok = installFileIcon(hints, "image_path"); !ok {
 					if "" != app_icon {
 						iconName = app_icon
 					} else {
-						// TODO iconName, _ = installRawImageIcon(hints, "icon_data")
+						iconName, sizeHint, _ = installRawImageIcon(hints, "icon_data")
 					}
 				}
 			}
@@ -201,6 +192,7 @@ func Notify(app_name string,
 		Actions:  map[string]string{},
 		Hints:    map[string]interface{}{},
 		iconName: iconName,
+		IconSize: sizeHint,
 	}
 
 	for i := 0; i+1 < len(actions); i = i + 2 {
@@ -242,22 +234,22 @@ func Notify(app_name string,
 	}
 
 	if notification.Urgency == low {
-		time.AfterFunc(time.Millisecond*2050, func() { watch.SomethingChanged("/notification/flash") })
+		time.AfterFunc(flashTimeoutLow+_50ms, func() { watch.SomethingChanged("/notification/flash") })
 	} else if notification.Urgency == normal {
-		time.AfterFunc(time.Millisecond*6050, func() { watch.SomethingChanged("/notification/flash") })
+		time.AfterFunc(flashTimeoutNormal+_50ms, func() { watch.SomethingChanged("/notification/flash") })
 	}
 
 	return id, nil
 }
 
-func installRawImageIcon(hints map[string]dbus.Variant, key string) (string, bool) {
+func installRawImageIcon(hints map[string]dbus.Variant, key string) (string, uint32, bool) {
 	if v, ok := hints[key]; !ok {
-		return "", false
+		return "", 0, false
 	} else if imageData, err := getRawImage(v); err != nil {
 		log.Warn("Error converting variant to image data:", err)
-		return "", true
+		return "", 0, false
 	} else {
-		return icons.AddRawImageIcon(imageData), true
+		return icons.AddRawImageIcon(imageData), uint32(imageData.Width), true
 	}
 }
 
@@ -303,8 +295,8 @@ func installFileIcon(hints map[string]dbus.Variant, key string) (string, bool) {
 		log.Warn("Value not a string")
 		return "", true
 	} else {
-		iconName, err := icons.AddFileIcon(path)
-		return iconName, err == nil
+		icons.AddFileIcon(path)
+		return path, false
 	}
 }
 

@@ -131,7 +131,7 @@ type ImageData struct {
 func ImageDataHashName(id ImageData) string {
 	var hasher = sha256.New()
 	hasher.Write(id.Data)
-	return fmt.Sprintf("%X", hasher.Sum(nil))
+	return fmt.Sprintf("%x", hasher.Sum(nil))
 }
 
 func (id ImageData) AsPng() ([]byte, error) {

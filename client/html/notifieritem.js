@@ -23,7 +23,6 @@ let NotifierItem = ({res, setMenuObject}) => {
     let click = (event) => {
         event.persist()
         event.preventDefault()
-        console.log("notifierItem click:", event.target, event.currentTarget)
         let { x, y } = getXY(event)
         if (event.button === 0) {
             fetch(`${href}?action=left&x=${x}&y=${y}`, {method: "POST"});
