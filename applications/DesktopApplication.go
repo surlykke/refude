@@ -65,10 +65,6 @@ func (d *DesktopApplication) Links(path string) link.List {
 
 }
 
-func (d *DesktopApplication) ForDisplay() bool {
-	return !d.NoDisplay
-}
-
 type DesktopAction struct {
 	id   string
 	Name string

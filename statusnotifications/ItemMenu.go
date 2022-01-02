@@ -38,10 +38,6 @@ func (*Menu) Links(path string) link.List {
 	return link.List{}
 }
 
-func (*Menu) ForDisplay() bool {
-	return false
-}
-
 var emptyList = []byte("[]")
 
 func (m *Menu) MarshalJSON() ([]byte, error) {

@@ -46,10 +46,6 @@ func (d *Device) Links(path string) link.List {
 	return link.List{}
 }
 
-func (d *Device) ForDisplay() bool {
-	return true
-}
-
 func deviceTitle(devType, model string) string {
 	// Try to, with the info we have from UPower, make a meaningful Title and Comment
 	switch devType {

@@ -26,7 +26,7 @@ func removeExpired() {
 	var somethingExpired = false
 	for _, res := range Notifications.GetAll() {
 		var notification = res.Data.(*Notification)
-		if notification.Urgency < critical {
+		if notification.Urgency < Critical {
 			if notification.Expires.Before(time.Now()) {
 				Notifications.Delete(fmt.Sprintf("/notification/%X", notification.Id))
 				conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", notification.Id, Expired)

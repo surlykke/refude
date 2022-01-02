@@ -89,10 +89,6 @@ func (f *File) Links(path string) link.List {
 	return ll
 }
 
-func (f *File) ForDisplay() bool {
-	return true
-}
-
 func (f *File) DoPost(w http.ResponseWriter, r *http.Request) {
 	var defaultAppId = ""
 	if len(f.Apps) > 0 {

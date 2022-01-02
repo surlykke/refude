@@ -56,10 +56,6 @@ func (m *Mimetype) Links(path string) link.List {
 	return link.List{}
 }
 
-func (m *Mimetype) ForDisplay() bool {
-	return false
-}
-
 var Mimetypes = resource.MakeList("/mimetype/list")
 
 /*func SetDefaultApp(mimetypeId string, appId string) error {

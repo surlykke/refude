@@ -22,9 +22,9 @@ import (
 type Urgency uint8
 
 const (
-	low      Urgency = 0
-	normal           = 1
-	critical         = 2
+	Low      Urgency = 0
+	Normal           = 1
+	Critical         = 2
 )
 
 const flashTimeoutLow time.Duration = 3 * time.Second
@@ -60,10 +60,6 @@ func (n *Notification) Links(path string) link.List {
 	return ll
 }
 
-func (n *Notification) ForDisplay() bool {
-	return n.Urgency == critical || len(n.Actions) > 0
-}
-
 func (n *Notification) DoPost(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("notification doPost")
 	var action = requests.GetSingleQueryParameter(r, "action", "default")
@@ -96,9 +92,9 @@ func getFlashResource() *resource.Resource {
 	Notifications.Walk(func(res *resource.Resource) {
 		var n = res.Data.(*Notification)
 		if found == nil || found.Data.(*Notification).Urgency < n.Urgency {
-			if n.Urgency == critical ||
-				n.Urgency == normal && n.Created.After(time.Now().Add(-flashTimeoutNormal)) ||
-				n.Urgency == low && n.Created.After(time.Now().Add(-flashTimeoutLow)) {
+			if n.Urgency == Critical ||
+				n.Urgency == Normal && n.Created.After(time.Now().Add(-flashTimeoutNormal)) ||
+				n.Urgency == Low && n.Created.After(time.Now().Add(-flashTimeoutLow)) {
 				found = res
 			}
 		}

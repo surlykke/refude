@@ -63,10 +63,6 @@ func (win *Window) Links(path string) link.List {
 	return ll
 }
 
-func (win *Window) ForDisplay() bool {
-	return win.Name != "org.refude.browser" && win.Name != "org.refude.panel" && win.State&(x11.SKIP_TASKBAR|x11.SKIP_PAGER|x11.ABOVE) == 0
-}
-
 func (win *Window) DoDelete(w http.ResponseWriter, r *http.Request) {
 	performDelete(win.Id)
 	respond.Accepted(w)

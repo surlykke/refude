@@ -33,10 +33,6 @@ func (it *IconTheme) Links(path string) link.List {
 	return link.List{}
 }
 
-func (it *IconTheme) ForDisplay() bool {
-	return false
-}
-
 type IconDir struct {
 	Path    string
 	MinSize uint32

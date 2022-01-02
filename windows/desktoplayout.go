@@ -17,10 +17,6 @@ func (dl *DesktopLayout) Links() link.List {
 	return link.MakeList("/desktoplayout", "DesktopLayout", "")
 }
 
-func (dl *DesktopLayout) ForDisplay() bool {
-	return false
-}
-
 var desktopLayout *DesktopLayout
 var dlLock sync.Mutex
 

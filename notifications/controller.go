@@ -188,7 +188,7 @@ func Notify(app_name string,
 		Subject:  sanitize(summary, []string{}, []string{}),
 		Body:     sanitize(body, allowedTags, allowedEscapes),
 		Created:  time.Now(),
-		Urgency:  normal,
+		Urgency:  Normal,
 		Actions:  map[string]string{},
 		Hints:    map[string]interface{}{},
 		iconName: iconName,
@@ -203,9 +203,9 @@ func Notify(app_name string,
 		if name == "urgency" {
 			if b, ok := val.Value().(uint8); ok {
 				if b == 0 {
-					notification.Urgency = low
+					notification.Urgency = Low
 				} else if b > 1 {
-					notification.Urgency = critical
+					notification.Urgency = Critical
 				}
 			} else {
 				log.Info("urgency hint not of type uint8, rather:", reflect.TypeOf(val.Value()))
@@ -216,7 +216,7 @@ func Notify(app_name string,
 		}
 	}
 
-	if notification.Urgency == critical && expire_timeout <= 0 {
+	if notification.Urgency == Critical && expire_timeout <= 0 {
 		expire_timeout = 84600000
 	} else if expire_timeout <= 0 || expire_timeout > 120000 {
 		expire_timeout = 120000
@@ -233,9 +233,9 @@ func Notify(app_name string,
 		time.AfterFunc(notification.Expires.Sub(notification.Created)+time.Millisecond*50, removeExpired)
 	}
 
-	if notification.Urgency == low {
+	if notification.Urgency == Low {
 		time.AfterFunc(flashTimeoutLow+_50ms, func() { watch.SomethingChanged("/notification/flash") })
-	} else if notification.Urgency == normal {
+	} else if notification.Urgency == Normal {
 		time.AfterFunc(flashTimeoutNormal+_50ms, func() { watch.SomethingChanged("/notification/flash") })
 	}
 

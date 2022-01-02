@@ -48,10 +48,6 @@ func (item *Item) Links(path string) link.List {
 	}
 }
 
-func (item *Item) ForDisplay() bool {
-	return false
-}
-
 func (item *Item) DoPost(w http.ResponseWriter, r *http.Request) {
 	action := requests.GetSingleQueryParameter(r, "action", "left")
 	x, _ := strconv.Atoi(requests.GetSingleQueryParameter(r, "x", "0"))

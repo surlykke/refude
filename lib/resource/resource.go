@@ -9,7 +9,6 @@ import (
 )
 
 type Data interface {
-	ForDisplay() bool
 	Links(path string) link.List
 }
 
@@ -71,8 +70,4 @@ type dataSlice []*Resource
 
 func (ds dataSlice) Links(path string) link.List {
 	return link.List{}
-}
-
-func (ds dataSlice) ForDisplay() bool {
-	return false
 }
