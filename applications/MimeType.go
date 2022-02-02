@@ -9,7 +9,6 @@ package applications
 import (
 	"regexp"
 
-	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/resource"
 
 	"github.com/pkg/errors"
@@ -50,10 +49,6 @@ func MakeMimetype(id string) (*Mimetype, error) {
 		}
 		return &mt, nil
 	}
-}
-
-func (m *Mimetype) Links(path string) link.List {
-	return link.List{}
 }
 
 var Mimetypes = resource.MakeList("/mimetype/list")

@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/godbus/dbus/v5"
-	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/respond"
@@ -32,10 +31,6 @@ type MenuEntry struct {
 type Menu struct {
 	sender string
 	path   dbus.ObjectPath
-}
-
-func (*Menu) Links(path string) link.List {
-	return link.List{}
 }
 
 var emptyList = []byte("[]")

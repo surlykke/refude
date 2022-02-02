@@ -6,12 +6,8 @@
 //
 import { doPost, linkHref, menuHref } from './utils.js'
 import { div, img } from "./elements.js"
-import {menu} from './menu.js'
 
 let NotifierItem = ({res, setMenuObject}) => {
-
-    let href = linkHref(res)
-    let mHref = menuHref(res)
 
     let getXY = (event) => {
         return {
@@ -25,9 +21,9 @@ let NotifierItem = ({res, setMenuObject}) => {
         event.preventDefault()
         let { x, y } = getXY(event)
         if (event.button === 0) {
-            fetch(`${href}?action=left&x=${x}&y=${y}`, {method: "POST"});
+            fetch(`${res.self}?action=left&x=${x}&y=${y}`, {method: "POST"});
         } else if (event.button === 1) {
-            fetch(`${href}?action=middle&x=${x}&y=${y}`, {method: "POST"});
+            fetch(`${res.self}?action=middle&x=${x}&y=${y}`, {method: "POST"});
         }
     }
 
@@ -35,15 +31,21 @@ let NotifierItem = ({res, setMenuObject}) => {
     let rightClick = (event) => {
         event.persist()
         event.preventDefault()
-        if (mHref) {
-            fetch(mHref) 
-                .then(resp => resp.json())
-                .then(json => setMenuObject(json),
-                      ()   => setMenuObject(undefined))
-        } else {
-            let { x, y } = getXY(event)
-            doPost(`${href}?action=right&x=${x}&y=${y}`)
-        }
+        let menuRetreieved 
+        fetch(res.links)
+            .then(resp => resp.json())
+            .then(linksJson => fetch(linkHref(linksJson, 'org.refude.menu')))
+            .then(resp => resp.json()) 
+            .then(menuJson => { 
+                setMenuObject(menuJson)
+                menuRetreieved = true
+            },() => setMenuObject(undefined))
+            .finally(() => {
+                if (!menuRetreieved) {
+                    let { x, y } = getXY(event)
+                    doPost(`${res.self}?action=right&x=${x}&y=${y}`)
+                }
+            })
     }
 
     let onKeyDown = (event) => {

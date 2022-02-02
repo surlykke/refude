@@ -19,9 +19,8 @@ export const doPost = (href, params) => {
 
 export const doDelete = href => fetch(href, { method: "DELETE" })
 
-export let linkHref = (res, rel) => {
-    rel = rel || "self"
-    return res._links.find(l => l.rel === rel)?.href
+export let linkHref = (linkList, rel) => {
+    return linkList.find(l => l.rel === rel)?.href
 }
 export let menuHref = res => linkHref(res, "org.refude.menu")
 

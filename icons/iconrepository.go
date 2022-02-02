@@ -65,7 +65,6 @@ func determineBasedirs() {
 		}
 	}
 	basedirs = append(basedirs, refudeSessionIconsDir)
-	fmt.Println("Icon basedirs:", basedirs)
 }
 
 /**
@@ -90,13 +89,13 @@ func determineDefaultIconTheme() {
 	)
 
 	if defaultThemeName, ok = os.LookupEnv("REFUDE_ICON_THEME"); ok {
-		fmt.Println("default icon theme taken from env REFUDE_ICON_THEME", defaultThemeName)
+		log.Info("default icon theme taken from env REFUDE_ICON_THEME", defaultThemeName)
 	} else {
 		for _, fileToLookAt := range filesToLookAt {
 			if bytes, err := ioutil.ReadFile(fileToLookAt); err == nil {
 				if matches := iconThemeDefPattern.FindStringSubmatch(string(bytes)); matches != nil {
 					defaultThemeName = matches[1]
-					fmt.Println("default icon theme taken from", fileToLookAt, defaultThemeName)
+					log.Info("default icon theme taken from", fileToLookAt, defaultThemeName)
 					break
 				}
 			}
@@ -136,7 +135,6 @@ func AddX11Icon(data []uint32) (string, error) {
 	lock.Lock()
 	defer lock.Unlock()
 	if _, ok := addedSessionIcons[iconName]; !ok {
-		fmt.Println("Adding session icon", iconName)
 		addedSessionIcons[iconName] = struct{}{}
 
 		if pngList, err := image.X11IconToPngs(data); err != nil {
@@ -153,7 +151,6 @@ func AddX11Icon(data []uint32) (string, error) {
 		}
 
 	} else {
-		fmt.Println("Had session icon", iconName)
 	}
 
 	return iconName, nil

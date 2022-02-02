@@ -17,6 +17,7 @@ import (
 	"github.com/godbus/dbus/v5/introspect"
 	"github.com/godbus/dbus/v5/prop"
 	dbuscall "github.com/surlykke/RefudeServices/lib/dbusutils"
+	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/log"
 )
 
@@ -151,6 +152,9 @@ func buildItem(sender string, path dbus.ObjectPath) *Item {
 	item.Id = getStringOr(props["Id"])
 	item.Category = getStringOr(props["Category"])
 	item.MenuPath = getDbusPath(props["Menu"])
+	if (item.MenuPath != "") {
+		item.Menu = link.Href("/itemmenu/" + pathEscape(sender, path))
+	}
 	item.Title = getStringOr(props["Title"])
 	item.Status = getStringOr(props["Status"])
 	item.ToolTip = getStringOr(props["ToolTip"])

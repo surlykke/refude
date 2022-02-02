@@ -8,13 +8,10 @@ package windows
 
 import (
 	"net/http"
-	"net/url"
 	"strings"
 
 	"github.com/surlykke/RefudeServices/icons"
-	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/log"
-	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
@@ -44,23 +41,10 @@ func makeWindow(p x11.Proxy, wId uint32) *Window {
 	return win
 }
 
-func (win *Window) Links(path string) link.List {
-	var ll = make(link.List, 0, 8)
-	ll = ll.Add(path, "Raise and focus", "", relation.DefaultAction)
-	ll = ll.Add(path+"?action=close", "Close", "", relation.Delete)
-	if win.State.Is(x11.HIDDEN) || win.State.Is(x11.MAXIMIZED_HORZ|x11.MAXIMIZED_VERT) {
-		ll = ll.Add(path+"?action=restore", "Restore window", "", relation.Action)
-	} else {
-		ll = ll.Add(path+"?action=minimize", "Minimize window", "", relation.Action)
-		ll = ll.Add(path+"?action=maximize", "Maximize window", "", relation.Action)
-	}
 
-	for _, m := range getDesktopLayout().Monitors {
-		var actionId = url.QueryEscape("move::" + m.Name)
-		ll = ll.Add(path+"?action="+actionId, "Move to monitor "+m.Name, "", relation.Action)
-	}
 
-	return ll
+func (win *Window) GetDeleteAction() *resource.Action {
+	return &resource.Action{Title: "Close"} 
 }
 
 func (win *Window) DoDelete(w http.ResponseWriter, r *http.Request) {
@@ -72,6 +56,10 @@ func performDelete(wId uint32) {
 	requestProxyMutex.Lock()
 	defer requestProxyMutex.Unlock()
 	x11.CloseWindow(requestProxy, wId)
+}
+
+func (win *Window) GetPostActions() []resource.Action {
+	return []resource.Action{{Title: "Raise and focus"}}
 }
 
 func (win *Window) DoPost(w http.ResponseWriter, r *http.Request) {
@@ -115,7 +103,7 @@ func performAction(wId uint32, action string) bool {
 }
 
 func RaiseAndFocusNamedWindow(name string) bool {
-	if d := Windows.FindFirst(func(d resource.Data) bool { return d.(*Window).Name == name }); d != nil {
+	if d := Windows.FindFirst(func(d interface{}) bool { return d.(*Window).Name == name }); d != nil {
 		x11.RaiseAndFocusWindow(requestProxy, d.(*Window).Id)
 		return true
 	} else {
@@ -124,7 +112,7 @@ func RaiseAndFocusNamedWindow(name string) bool {
 }
 
 func ResizeNamedWindow(name string, newWidth, newHeight uint32) bool {
-	if d := Windows.FindFirst(func(d resource.Data) bool { return d.(*Window).Name == name }); d != nil {
+	if d := Windows.FindFirst(func(d interface{}) bool { return d.(*Window).Name == name }); d != nil {
 		x11.Resize(requestProxy, d.(*Window).Id, newWidth, newHeight)
 		return true
 	} else {

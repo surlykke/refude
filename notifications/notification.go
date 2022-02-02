@@ -7,12 +7,9 @@
 package notifications
 
 import (
-	"fmt"
 	"net/http"
 	"time"
 
-	"github.com/surlykke/RefudeServices/lib/link"
-	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
@@ -39,42 +36,42 @@ type Notification struct {
 	Created  time.Time
 	Expires  time.Time
 	Urgency  Urgency
-	Actions  map[string]string
+	NActions map[string]string `json:"actions"`
 	Hints    map[string]interface{}
 	iconName string
 	IconSize uint32 `json:",omitempty"`
 }
 
-func (n *Notification) Links(path string) link.List {
-	var ll = make(link.List, 0, 3)
-	ll = ll.Add(path, "Dismiss", "", relation.Delete)
+func (n *Notification) GetPostActions() []resource.Action {
+	var actions []resource.Action
 
-	for actionId, actionDesc := range n.Actions {
-		if actionId == "default" {
-			ll = ll.Add(path, actionDesc, "", relation.DefaultAction)
-		} else {
-			ll = ll.Add(path+"?action="+actionId, actionDesc, "", relation.DefaultAction)
+	if actionDesc, ok := n.NActions["default"]; ok {
+		actions = []resource.Action{{Title: actionDesc}}
+	}
+	for actionId, actionDesc := range n.NActions {
+		if actionId != "default" {
+			actions = append(actions, resource.Action{Id: actionId, Title: actionDesc})
 		}
 	}
 
-	return ll
+	return actions
+}
+
+func (n *Notification) GetDeleteAction() *resource.Action {
+	return &resource.Action{Title: "Dismiss", Icon: ""}
 }
 
 func (n *Notification) DoPost(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("notification doPost")
+
 	var action = requests.GetSingleQueryParameter(r, "action", "default")
-	fmt.Println("Action:", action)
-	if _, ok := n.Actions[action]; ok {
-		fmt.Println("Emitting")
+
+	if _, ok := n.NActions[action]; ok {
 		if err := conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".ActionInvoked", n.Id, action); err != nil {
-			fmt.Println("Got error", err)
 			respond.ServerError(w, err)
 		} else {
-			fmt.Println("ok")
 			respond.Accepted(w)
 		}
 	} else {
-		fmt.Println("not found")
 		respond.NotFound(w)
 	}
 }

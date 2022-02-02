@@ -8,7 +8,6 @@ package power
 
 import (
 	"github.com/godbus/dbus/v5"
-	"github.com/surlykke/RefudeServices/lib/link"
 )
 
 type Device struct {
@@ -40,10 +39,6 @@ type Device struct {
 	Capacity         float64
 	Technology       string
 	DisplayDevice    bool
-}
-
-func (d *Device) Links(path string) link.List {
-	return link.List{}
 }
 
 func deviceTitle(devType, model string) string {

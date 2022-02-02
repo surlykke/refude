@@ -189,14 +189,14 @@ func Notify(app_name string,
 		Body:     sanitize(body, allowedTags, allowedEscapes),
 		Created:  time.Now(),
 		Urgency:  Normal,
-		Actions:  map[string]string{},
+		NActions: map[string]string{},
 		Hints:    map[string]interface{}{},
 		iconName: iconName,
 		IconSize: sizeHint,
 	}
 
 	for i := 0; i+1 < len(actions); i = i + 2 {
-		notification.Actions[actions[i]] = actions[i+1]
+		notification.NActions[actions[i]] = actions[i+1]
 	}
 
 	for name, val := range hints {

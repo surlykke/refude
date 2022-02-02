@@ -13,7 +13,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/slice"
@@ -27,10 +26,6 @@ type IconTheme struct {
 	Comment  string
 	Inherits []string
 	Dirs     []IconDir
-}
-
-func (it *IconTheme) Links(path string) link.List {
-	return link.List{}
 }
 
 type IconDir struct {

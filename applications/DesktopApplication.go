@@ -13,8 +13,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/surlykke/RefudeServices/lib/link"
-	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
@@ -54,15 +52,13 @@ func (d *DesktopApplication) Run(arg string) error {
 	return run(d.Exec, arg, d.Terminal)
 }
 
-func (d *DesktopApplication) Links(path string) link.List {
-	var ll = link.List{}
-	ll = ll.Add(path, "Launch", "", relation.DefaultAction)
+func (d *DesktopApplication) GetPostActions() []resource.Action {
+	var actions = []resource.Action{{Title: "Launch"}}	
 
 	for _, da := range d.DesktopActions {
-		ll = ll.Add(path+"?action="+da.id, da.Name, da.Icon, relation.Action)
+		actions = append(actions, resource.Action{Id: da.id, Title: da.Name, Icon: da.Icon})
 	}
-	return ll
-
+	return actions 
 }
 
 type DesktopAction struct {
@@ -121,7 +117,6 @@ func GetApps(appIds ...string) []*DesktopApplication {
 }
 
 func OpenFile(appId, path string) (bool, error) {
-	fmt.Println("OpenFile", appId, ", path:", path)
 	if appId == "" {
 		xdg.RunCmd("xdg-open", path)
 		return true, nil

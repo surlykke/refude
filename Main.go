@@ -12,6 +12,7 @@ import (
 
 	"github.com/surlykke/RefudeServices/applications"
 	"github.com/surlykke/RefudeServices/client"
+	"github.com/surlykke/RefudeServices/complete"
 	"github.com/surlykke/RefudeServices/doc"
 	"github.com/surlykke/RefudeServices/file"
 	"github.com/surlykke/RefudeServices/icons"
@@ -19,7 +20,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/notifications"
 	"github.com/surlykke/RefudeServices/power"
-	"github.com/surlykke/RefudeServices/search"
+	"github.com/surlykke/RefudeServices/start"
 	"github.com/surlykke/RefudeServices/statusnotifications"
 	"github.com/surlykke/RefudeServices/watch"
 	"github.com/surlykke/RefudeServices/windows"
@@ -32,6 +33,7 @@ func FallBack(w http.ResponseWriter, r *http.Request) {
 	respond.NotFound(w)
 }
 
+
 func main() {
 	go client.Run()
 	go windows.Run()
@@ -43,7 +45,7 @@ func main() {
 	http.HandleFunc("/refude/", client.ServeHTTP)
 	http.HandleFunc("/icontheme/", icons.IconThemes.ServeHTTP)
 	http.HandleFunc("/icon", icons.ServeHTTP)
-	http.HandleFunc("/search/", search.ServeHTTP)
+	http.HandleFunc("/complete", complete.ServeHTTP)
 	http.HandleFunc("/watch", watch.ServeHTTP)
 	http.HandleFunc("/doc", doc.ServeHTTP)
 	http.HandleFunc("/file/", file.ServeHTTP)
@@ -54,6 +56,7 @@ func main() {
 	http.Handle("/device/", power.Devices)
 	http.Handle("/application/", applications.Applications)
 	http.Handle("/mimetype/", applications.Mimetypes)
+	http.Handle("/start", start.StartRes)
 	http.HandleFunc("/", FallBack)
 
 	if err := http.ListenAndServe(":7938", nil); err != nil {

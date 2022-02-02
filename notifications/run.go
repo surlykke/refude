@@ -22,7 +22,6 @@ func Run() {
 }
 
 func removeExpired() {
-	fmt.Println("removeExpired")
 	var somethingExpired = false
 	for _, res := range Notifications.GetAll() {
 		var notification = res.Data.(*Notification)

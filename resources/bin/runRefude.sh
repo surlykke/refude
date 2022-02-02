@@ -9,6 +9,6 @@ if [[ "--restart" == "$1" ]]; then
 	[[ -n "$pid" ]] && kill $pid
 fi
 
-LOGFILE=/tmp/RefudeServices_`date +%y.%m.%d-%H:%M:%S`.log
+LOGFILE=${XDG_RUNTIME_DIR:-/tmp}/RefudeServices.log
 nohup RefudeServices >$LOGFILE 2>$LOGFILE &
 

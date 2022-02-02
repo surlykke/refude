@@ -46,7 +46,7 @@ func (l *List) Put(res *Resource) {
 	for i := 0; i < len(l.resources); i++ {
 		if l.resources[i].Path == res.Path {
 			l.resources[i] = res
-			return
+		return
 		}
 	}
 
@@ -93,7 +93,7 @@ func (l *List) Delete(path string) bool {
 
 }
 
-func (l *List) FindFirst(test func(data Data) bool) Data {
+func (l *List) FindFirst(test func(data interface{}) bool) interface{} {
 	l.Lock()
 	defer l.Unlock()
 	for _, resource := range l.resources {
@@ -130,7 +130,7 @@ func (l *List) Walk(walker func(res *Resource)) {
 func (l *List) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if l.collectionPath == r.URL.Path {
 		(&Resource{
-			Links: link.MakeList(r.URL.Path, "", ""),
+			Self: link.Href(r.URL.Path),
 			Title: "Collection",
 			Data:  dataSlice(l.GetAll()),
 		}).ServeHTTP(w, r)

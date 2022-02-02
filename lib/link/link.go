@@ -11,6 +11,16 @@ import (
 
 type Href string
 
+
+func Tertiary(cond bool, first string, second string) Href {
+	if cond {
+		return Href(first)
+	} else {
+		return Href(second)
+	}
+}
+
+
 var httpLocalHost7838 = []byte("http://localhost:7938")
 var controlEscape = [][]byte{
 	[]byte(`\u0000`), []byte(`\u0001`), []byte(`\u0002`), []byte(`\u0003`), []byte(`\u0004`), []byte(`\u0005`), []byte(`\u0006`), []byte(`\u0007`),
@@ -44,7 +54,7 @@ type Link struct {
 	Href     Href              `json:"href"`
 	Title    string            `json:"title,omitempty"`
 	Icon     Href              `json:"icon,omitempty"`
-	Relation relation.Relation `json:"rel"`
+	Relation relation.Relation `json:"rel,omitempty"`
 	Profile  string            `json:"profile,omitempty"`
 	Rank     int               `json:"-"` // Used when searching
 }
@@ -80,7 +90,7 @@ func MakeList(href, title, iconName string) List {
 		Href:     Href(href),
 		Title:    title,
 		Icon:     IconUrl(iconName),
-		Relation: relation.Self,
+		Relation: relation.None,
 	}}
 }
 
@@ -91,15 +101,6 @@ func (list List) Add(href, title, iconName string, rel relation.Relation) List {
 		Icon:     IconUrl(iconName),
 		Relation: rel,
 	})
-}
-
-func (list List) SelfLink() (Link, bool) {
-	for _, lnk := range list {
-		if lnk.Relation == relation.Self {
-			return lnk, true
-		}
-	}
-	return Link{}, false
 }
 
 // ---------- Implement sort.Sort ------------------------------------

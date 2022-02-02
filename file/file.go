@@ -1,6 +1,7 @@
 package file
 
 import (
+	"io/fs"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -9,10 +10,10 @@ import (
 	"github.com/rakyll/magicmime"
 	"github.com/surlykke/RefudeServices/applications"
 	"github.com/surlykke/RefudeServices/lib/link"
-	"github.com/surlykke/RefudeServices/lib/log"
-	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/requests"
+	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
+	"github.com/surlykke/RefudeServices/lib/searchutils"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
@@ -22,14 +23,35 @@ func init() {
 	}
 }
 
+func getFileType(m os.FileMode) string {
+	if m&fs.ModeDir > 0 {
+		return "Directory"
+	} else if m&fs.ModeSymlink > 0 {
+		return "Symbolic link"
+	} else if m&fs.ModeNamedPipe > 0 {
+		return "Named pipe"
+	} else if m&fs.ModeSocket > 0 {
+		return "Socket"
+	} else if m&fs.ModeDevice > 0 {
+		return "Device"
+	} else if m&fs.ModeCharDevice > 0 {
+		return "Char device"
+	} else if m&fs.ModeIrregular > 0 {
+		return "Irregular"
+	} else {
+		return "File"
+	}
+}
+
 type File struct {
-	Path     string
-	self     string
-	Name     string
-	Dir      bool
-	Mimetype string
-	Icon     string
-	Apps     []string
+	Path        string
+	self        string
+	Name        string
+	Type        string
+	Permissions string
+	Mimetype    string
+	Icon        string
+	Apps        []string
 }
 
 func makeFile(path string) (*File, error) {
@@ -45,48 +67,63 @@ func makeFile(path string) (*File, error) {
 	} else {
 		var mimetype, _ = magicmime.TypeByFile(path)
 		var f = File{
-			Path:     path,
-			self:     "/file" + path,
-			Name:     fileInfo.Name(),
-			Dir:      fileInfo.IsDir(),
-			Mimetype: mimetype,
-			Icon:     strings.ReplaceAll(mimetype, "/", "-"),
-			Apps:     applications.GetAppsIds(mimetype),
+			Path:        path,
+			self:        "/file" + path,
+			Name:        fileInfo.Name(),
+			Type:        getFileType(fileInfo.Mode()),
+			Permissions: fileInfo.Mode().String(),
+			Mimetype:    mimetype,
+			Icon:        strings.ReplaceAll(mimetype, "/", "-"),
+			Apps:        applications.GetAppsIds(mimetype),
 		}
 
 		return &f, nil
 	}
 }
 
-func (f *File) Links(path string) link.List {
-	var ll = make(link.List, 0, 10)
-	for i, app := range applications.GetApps(f.Apps...) {
-		if i == 0 {
-			ll = ll.Add(path+"?action="+app.Id, "Open with "+app.Name, app.Icon, relation.DefaultAction)
-		} else {
-			ll = ll.Add(path+"?action="+app.Id, "Open with "+app.Name, app.Icon, relation.Action)
-		}
-	}
+func (f *File) IsSearchable() bool {
+	return f.Type == "Directory"
+}
 
-	if f.Dir {
-		if dir, err := os.Open(f.Path); err != nil {
-			log.Warn("Error opening", f.Path, err)
-		} else if names, err := dir.Readdirnames(-1); err != nil {
-			log.Warn("Error reading", f.Path, err)
-			dir.Close()
-		} else {
-			for _, name := range names {
-				var path = f.Path + "/" + name
-				var mimetype, _ = magicmime.TypeByFile(path)
-				var icon = strings.ReplaceAll(mimetype, "/", "-")
-				ll = ll.Add("/file"+path, name, icon, relation.Related)
+func (f *File) GetLinks(term string) link.List {
+	var ll = make(link.List, 0, 10)
+
+	if f.Type == "Directory" {
+
+		if candidatePaths, err := filepath.Glob(f.Path + "/*"); err == nil { // TODO: readdir faster?
+			for _, path := range candidatePaths {
+				var fileName = filepath.Base(path)
+				// Hidden files should be a little harder to find
+				if strings.HasPrefix(fileName, ".") && !strings.HasPrefix(term, ".") {
+					continue
+				}
+				if rnk := searchutils.Match(term, fileName); rnk > -1 {
+					var mimetype, _ = magicmime.TypeByFile(path)
+					var icon = strings.ReplaceAll(mimetype, "/", "-")
+					ll = append(ll, link.MakeRanked("/file"+path, shortenPath(path), icon, "file", rnk+50))
+				}
 			}
-			dir.Close()
 		}
 
 	}
 
 	return ll
+}
+
+func shortenPath(path string) string {
+	if strings.HasPrefix(path, xdg.Home) {
+		return "~" + path[len(xdg.Home):]
+	} else {
+		return path
+	}
+}
+
+func (f *File) GetPostActions() []resource.Action {
+	var actions = make([]resource.Action, 0, 10)
+	for _, app := range applications.GetApps(f.Apps...) {
+		actions = append(actions, resource.Action{Id: app.Id, Title: "Open with " + app.Name, Icon: app.Icon})
+	}
+	return actions
 }
 
 func (f *File) DoPost(w http.ResponseWriter, r *http.Request) {

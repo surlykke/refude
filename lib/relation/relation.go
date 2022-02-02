@@ -3,7 +3,7 @@ package relation
 type Relation uint8
 
 const (
-	Self Relation = iota
+	None Relation = iota
 	DefaultAction
 	Action
 	Delete
@@ -12,7 +12,7 @@ const (
 )
 
 var relationSerializations = map[Relation][]byte{
-	Self:          []byte(`"self"`),
+	None:          []byte(`""`),
 	DefaultAction: []byte(`"org.refude.defaultaction"`),
 	Action:        []byte(`"org.refude.action"`),
 	Delete:        []byte(`"org.refude.delete"`),

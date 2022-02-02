@@ -1,7 +1,6 @@
 import { div, img } from "./elements.js";
 
 export let flash = n => {
-    console.log("flash:", n)
     let size = 48
     if (n?.data.IconSize > 48) {
         size = Math.min(n.data.IconSize, 256)

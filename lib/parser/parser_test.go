@@ -7,7 +7,6 @@
 package parser
 
 import (
-	"fmt"
 	"testing"
 )
 
@@ -133,11 +132,9 @@ func TestMultiValue2(t *testing.T) {
 func testHelper(resource interface{}, query string, expect bool, t *testing.T) {
 	m, err := Parse(query)
 	if err != nil {
-		fmt.Println("Error:\n" + err.Error())
 		t.Fail()
 	} else {
 		var actual = m(resource)
-		fmt.Println(query, ", expect: ", expect, ", actual: ", actual)
 		if actual != expect {
 			t.Fail()
 		}

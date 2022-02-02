@@ -18,6 +18,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/requests"
+	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/slice"
 )
 
@@ -34,19 +35,18 @@ type Item struct {
 	Title                   string
 	ToolTip                 string
 	MenuPath                dbus.ObjectPath
+	Menu					link.Href	
 	IconThemePath           string
 	UseIconPixmap           bool
 	UseAttentionIconPixmap  bool
 	UseOverlayIconPixmap    bool
 }
 
-func (item *Item) Links(path string) link.List {
-	if item.MenuPath != "" {
-		return link.List{link.Make("/itemmenu/"+pathEscape(item.sender, item.path), "Menu", "", relation.Menu)}
-	} else {
-		return link.List{}
-	}
+
+func (i *Item) GetPostActions() []resource.Action {
+	return []resource.Action{{Title: "activate"}}
 }
+
 
 func (item *Item) DoPost(w http.ResponseWriter, r *http.Request) {
 	action := requests.GetSingleQueryParameter(r, "action", "left")
@@ -69,6 +69,15 @@ func (item *Item) DoPost(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusAccepted)
 	}
 }
+
+func (i *Item) IsSearchable() bool {
+	return false
+}
+
+func (i *Item) GetLinks(term string) link.List {
+	return link.List{{Href: i.Menu, Title: "Menu", Relation: relation.Menu}}
+}
+
 
 func collectPixMap(variant dbus.Variant) string {
 	if arrs, ok := variant.Value().([][]interface{}); ok {
