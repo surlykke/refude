@@ -154,6 +154,7 @@ export class Main extends React.Component {
 
     closeBrowser = () => {
         this.browserUrl = undefined
+        setPreferred(undefined)
         this.browserHistory = []
         this.setState({term: "", resource: undefined, links: undefined})
     }
