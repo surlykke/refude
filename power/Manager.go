@@ -1,4 +1,4 @@
-// Copyright (c) 2017,2018,2019 Christian Surlykke
+// Copyright (c) Christian Surlykke
 //
 // This file is part of the RefudeServices project.
 // It is distributed under the GPL v2 license.
