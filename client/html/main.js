@@ -13,6 +13,7 @@ import { flash } from "./flash.js"
 import { activateSelected, deleteSelected, getSelectedAnchor, move, selectDiv, preferred, selectPreferred, setPreferred } from "./navigation.js"
 import { resourceHead } from "./resourcehead.js"
 import { linkDiv } from "./linkdiv.js"
+import { menu } from "./menu.js"
 
 const browserStartUrl = "/start"
 
@@ -86,9 +87,10 @@ export class Main extends React.Component {
     }
 
     getFlash = () => {
+        console.log("getFlash")
         fetch("http://localhost:7938/notification/flash")
             .then(resp => resp.json())
-            .then(json => this.setState({flashNotification: json}),
+            .then(json => {console.log('getFlash got:', json); this.setState({flashNotification: json})},
                   error => this.setState({flashNotification: undefined}))
     }
 
@@ -198,6 +200,8 @@ export class Main extends React.Component {
             deleteSelected(!ctrlKey && this.closeBrowser);
         } else if (key === "Escape") {
             this.closeBrowser();
+            this.setMenuObject();
+            this.setState({flashNotification: undefined})
         } else {
             return;
         }
@@ -252,12 +256,13 @@ export class Main extends React.Component {
                     )
                 }
                 elmts.push(...links.map(l => linkDiv(l, this.linkDblClick)))
-            } else if (menuObject) {
-                elmts.push(menuObject, () => this.setState({menuObject: undefined}))
-            } else if (flashNotification) {
-                elmts.push(flash(flashNotification))
             }
+        } else if (menuObject) {
+            elmts.push(menu(menuObject, () => this.setState({menuObject: undefined})))
+        } else if (flashNotification) {
+            elmts.push(flash(flashNotification))
         }
+       
         return frag( ...elmts)
     }
 }
