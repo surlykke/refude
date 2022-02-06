@@ -10,9 +10,9 @@ import { notifierItem } from './notifieritem.js'
 import { battery } from './battery.js'
 import { doPost } from "./utils.js"
 import { flash } from "./flash.js"
-import { activateSelected, deleteSelected, getSelectedAnchor, move, selectDiv, preferred, selectPreferred, setPreferred } from "./navigation.js"
+import { activateSelected, deleteSelected, getSelectedLink, move, selectLink, preferred, selectPreferred, setPreferred } from "./navigation.js"
 import { resourceHead } from "./resourcehead.js"
-import { linkDiv } from "./linkdiv.js"
+import { link } from "./link.js"
 import { menu } from "./menu.js"
 
 const browserStartUrl = "/start"
@@ -156,7 +156,7 @@ export class Main extends React.Component {
 
     closeBrowser = () => {
         this.browserUrl = undefined
-        setPreferred(undefined)
+        setPreferred()
         this.browserHistory = []
         this.setState({term: "", resource: undefined, links: undefined})
     }
@@ -170,7 +170,6 @@ export class Main extends React.Component {
     goBack = () => {
         let {url, term, oldPreferred} = this.browserHistory.shift()
         this.browserUrl = url || this.browserStartUrl
-        console.log("Back, oldPreferred:", oldPreferred)
         setPreferred(oldPreferred)
         this.setState({term: term || ""}, this.getResource)
     }
@@ -184,9 +183,9 @@ export class Main extends React.Component {
         let { key, ctrlKey, altKey, shiftKey } = event;
         console.log(key, ctrlKey, altKey, shiftKey)
         if (key === "ArrowRight" || key === "l" && ctrlKey) {
-            let selectedAnchor = getSelectedAnchor();
-            if (selectedAnchor?.rel === "related") {
-                this.goTo(selectedAnchor.href);
+            let selectedLink = getSelectedLink();
+            if (selectedLink?.rel === "related") {
+                this.goTo(selectedLink.href);
             }
         } else if (key === "ArrowLeft" || key === "h" && ctrlKey) {
             this.goBack();
@@ -210,7 +209,7 @@ export class Main extends React.Component {
     }
 
     linkDblClick = e => {
-        selectDiv(e.currentTarget)
+        selectLink(e.currentTarget)
         activateSelected(this.closeBrowser)
     }
 
@@ -223,8 +222,7 @@ export class Main extends React.Component {
                 clock(),
                 itemlist.map(item => { return notifierItem(item, this.setMenuObject)}),
                 battery(displayDevice)
-            )
-        ]
+            )        ]
         if (resource) {
             elmts.push(resourceHead(resource))
             let actionLinks = [...resource.post]
@@ -235,7 +233,7 @@ export class Main extends React.Component {
                 elmts.push(
                     p({className: "linkHeading"}, "Actions"),
                     ...actionLinks.map(l => {
-                        return linkDiv(l, this.linkDblClick)
+                        return link(l, "Action", this.linkDblClick)
                     })
                 )
             }
@@ -255,7 +253,7 @@ export class Main extends React.Component {
                         )
                     )
                 }
-                elmts.push(...links.map(l => linkDiv(l, this.linkDblClick)))
+                elmts.push(...links.map(l => link(l, l.profile, this.linkDblClick)))
             }
         } else if (menuObject) {
             elmts.push(menu(menuObject, () => this.setState({menuObject: undefined})))
