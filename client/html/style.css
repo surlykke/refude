@@ -117,7 +117,9 @@ html, body {
 
 .link {
     position: relative;
-    margin: 0px 0px 6px 8px; 
+    margin-left: 8px;
+    padding-top: 4px;
+    padding-bottom: 4px;
     white-space: nowrap;
     width: calc(100% - 20px);
     overflow: hidden;
@@ -130,7 +132,7 @@ html, body {
 .link>.title {
     position: absolute;
     left: 28px;
-    top: -4px
+    top: -1px;
 }
 
 .link>.comment {
@@ -139,7 +141,7 @@ html, body {
     color: gray;
     position: absolute;
     left: 28px;
-    top: 12px;
+    top: 16px;
 }
 
 .link.selected {

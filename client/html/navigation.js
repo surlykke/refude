@@ -6,8 +6,6 @@
 //
 import { doPost, doDelete } from "./utils.js";
 
-export let navigator;
-
 export const getLinks = () => Array.from(document.querySelectorAll(".link"));
 export const getSelectedLink = () => getLinks().find(l => l.classList.contains('selected'));
 export const selectLink = link => {
@@ -43,11 +41,6 @@ export const deleteSelected = (then) => {
         doDelete(selectedLink.href).then(response => response.ok && then())
     }
 };
-
-export const selectActivateAndDismiss = (element) => {
-    selectLink(element)
-    activateSelected(navigator.dismiss)
-}
 
 export const move = up => {
     let list = getLinks();
