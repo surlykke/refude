@@ -10,7 +10,6 @@ import { notifierItem } from './notifieritem.js'
 import { battery } from './battery.js'
 import { doPost } from "./utils.js"
 import { flash } from "./flash.js"
-import { activateSelected, deleteSelected, getSelectedLink, move, selectLink, preferred, selectPreferred, setPreferred } from "./navigation.js"
 import { resourceHead } from "./resourcehead.js"
 import { link } from "./link.js"
 import { menu } from "./menu.js"
@@ -33,7 +32,9 @@ export class Main extends React.Component {
     };
 
     componentDidUpdate = () => {
-        selectPreferred()
+        let links = Array.from(document.querySelectorAll("a.link"))
+        let link = links.find(l => l.href == this.preferred) || links[0]
+        link?.focus()
     }
 
     watchSse = () => {
@@ -87,16 +88,14 @@ export class Main extends React.Component {
     }
 
     getFlash = () => {
-        console.log("getFlash")
         fetch("http://localhost:7938/notification/flash")
             .then(resp => resp.json())
-            .then(json => {console.log('getFlash got:', json); this.setState({flashNotification: json})},
+            .then(json => this.setState({flashNotification: json}),
                   error => this.setState({flashNotification: undefined}))
     }
 
 
     getResource = () => {
-        console.log("getResource")
         let browserUrl = this.browserUrl
         fetch(browserUrl)
             .then(resp => resp.json())
@@ -115,7 +114,6 @@ export class Main extends React.Component {
     }
 
     getLinks = () => {
-        console.log("getLinks")
         let browserUrl = this.browserUrl
         if (this.state.resource) {
             let linksUrl = this.state.resource.links
@@ -124,11 +122,9 @@ export class Main extends React.Component {
                 linksUrl = linksUrl + separator + "search=" + encodeURIComponent(this.state.term)
             }
             if (linksUrl) {
-                console.log("fetching", linksUrl)
                 fetch(linksUrl)
                     .then(resp => resp.json())
                     .then(json => {
-                        console.log("getLinks retrieved:", json) 
                         if (browserUrl === this.browserUrl) {
                             this.setState({links: json})
                         }
@@ -147,7 +143,7 @@ export class Main extends React.Component {
 
     openBrowser = () => {
         if (this.state.links) {
-            move()
+            this.move("down")
         } else {
             this.browserUrl = browserStartUrl
             this.getResource()
@@ -156,63 +152,56 @@ export class Main extends React.Component {
 
     closeBrowser = () => {
         this.browserUrl = undefined
-        setPreferred()
+        this.preferred = undefined
         this.browserHistory = []
         this.setState({term: "", resource: undefined, links: undefined})
     }
 
-    goTo = href => {
-        this.browserHistory.unshift({url: this.browserUrl, term: this.state.term, oldPreferred: preferred})
-        this.browserUrl = href
-        this.setState({ term: "" }, this.getResource)
-    }
-
-    goBack = () => {
-        let {url, term, oldPreferred} = this.browserHistory.shift()
-        this.browserUrl = url || this.browserStartUrl
-        setPreferred(oldPreferred)
-        this.setState({term: term || ""}, this.getResource)
-    }
-
     handleInput = e => {
-        console.log("handleInput", e?.target?.value)
         this.setState({term: e.target.value}, this.getResource)
     }
 
-    onKeyDown = (event) => {
-        let { key, ctrlKey, altKey, shiftKey } = event;
-        console.log(key, ctrlKey, altKey, shiftKey)
-        if (key === "ArrowRight" || key === "l" && ctrlKey) {
-            let selectedLink = getSelectedLink();
-            if (selectedLink?.rel === "related") {
-                this.goTo(selectedLink.href);
+    move = direction => {
+        if (direction === "up" || direction === "down") {
+            let list = Array.from(document.querySelectorAll("a.link"))
+            let currentIndex = list.indexOf(document.activeElement)
+            if (list.length < 2 || currentIndex < 0) {
+                list[0]?.focus();
+            } else {
+                list[(currentIndex + list.length + (direction === "up" ? -1 : 1)) % list.length].focus()
+                this.preferred = document.activeElement.href
             }
-        } else if (key === "ArrowLeft" || key === "h" && ctrlKey) {
-            this.goBack();
-        } else if (key === "ArrowUp" || key === "k" && ctrlKey || key === 'Tab' && shiftKey && !ctrlKey && !altKey) {
-            move(true);
-        } else if (key === "ArrowDown" || key === "j" && ctrlKey || key === 'Tab' && !shiftKey && !ctrlKey && !altKey) {
-            move();
-        } else if (key === "Enter") {
-            activateSelected(!ctrlKey && this.closeBrowser);
-        } else if (key === "Delete") {
-            deleteSelected(!ctrlKey && this.closeBrowser);
-        } else if (key === "Escape") {
+        } else if (direction === "right") {
+            let href = document.activeElement.href
+            if (href) {
+                this.browserHistory.unshift({url: this.browserUrl, term: this.state.term, oldPreferred: this.preferred})
+                this.browserUrl = href
+                this.setState({ term: "" }, this.getResource)
+            }
+        } else { // left
+            let {url, term, oldPreferred} = this.browserHistory.shift()
+            this.browserUrl = url || this.browserStartUrl
+            this.preferred = oldPreferred
+            this.setState({term: term || ""}, this.getResource)
+        }
+    }
+
+    onKeyDown = (event) => {
+        let { key, ctrlKey, altKey } = event;
+        console.log("key:", key)
+        if (key === "Escape") {
             this.closeBrowser();
             this.setMenuObject();
             this.setState({flashNotification: undefined})
+        } else if (key.length === 1 && !ctrlKey && !altKey) {
+            this.setState({term: this.state.term + key}, this.getResource)            
+        } else if (key === "Backspace") {
+            this.setState({term: this.state.term.slice(0, -1)}, this.getResource)
         } else {
-            return;
+            return 
         }
-
         event.preventDefault();
     }
-
-    linkDblClick = e => {
-        selectLink(e.currentTarget)
-        activateSelected(this.closeBrowser)
-    }
-
 
     render = () => {
         let {itemlist, displayDevice, resource, term, links, menuObject, flashNotification} = this.state
@@ -233,7 +222,7 @@ export class Main extends React.Component {
                 elmts.push(
                     p({className: "linkHeading"}, "Actions"),
                     ...actionLinks.map(l => {
-                        return link(l, "Action", this.linkDblClick)
+                        return link(l, "Action", this.closeBrowser, this.move)
                     })
                 )
             }
@@ -242,18 +231,10 @@ export class Main extends React.Component {
                 if (actionLinks.length > 0) {
                     elmts.push(p({className: "linkHeading related"}, "Related"))
                 } 
-                if (resource.searchable) {
-                    elmts.push(
-                        input({
-                            type: 'text',
-                            className:'search-box', 
-                            value: term,
-                            onInput: this.handleInput, 
-                            autoFocus: true}
-                        )
-                    )
-                }
-                elmts.push(...links.map(l => link(l, l.profile, this.linkDblClick)))
+                elmts.push(
+                    div({className:'search-box'}, term)
+                )
+                elmts.push(...links.map(l => link(l, l.profile, this.closeBrowser, this.move)))
             }
         } else if (menuObject) {
             elmts.push(menu(menuObject, () => this.setState({menuObject: undefined})))
