@@ -200,28 +200,23 @@ export class Main extends React.Component {
 
     render = () => {
         let {itemlist, displayDevice, resource, term, links, menuObject, flashNotification} = this.state
+        links = links || []
         console.log("itemlist:", itemlist)
-        let elmts = [
-            div(
+        return frag(
+           div(
                 { className: "panel", onClick: () => this.setMenuObject()}, 
                 clock(),
                 itemlist.map(item => { return notifierItem(item, this.setMenuObject)}),
                 battery(displayDevice)
-            )        
-        ]
-        if (resource) {
-            elmts.push(resourceHead(resource))
-            if (links) {
-                elmts.push(div({className:'search-box'}, term))
-                elmts.push(...links.map(l => link(l, l.profile, this.closeBrowser, this.move)))
-            }
-        } else if (menuObject) {
-            elmts.push(menu(menuObject, () => this.setState({menuObject: undefined})))
-        } else if (flashNotification) {
-            elmts.push(flash(flashNotification))
-        }
-       
-        return frag( ...elmts)
+            ),
+            resource ? frag(
+                resourceHead(resource),
+                div({className:'search-box', style: {display: term ? "" : "none"}}, term),
+                ...links.map(l => link(l, l.profile, this.closeBrowser, this.move))
+            ) : menuObject ? menu(menuObject, () => this.setState({menuObject: undefined})) 
+              : flashNotification ? flash(flashNotification)
+              : null
+        )
     }
 }
 
