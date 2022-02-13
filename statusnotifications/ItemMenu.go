@@ -53,7 +53,6 @@ func (menu *Menu) Links(term string) (links link.List, filtered bool) {
 }
 
 
-
 var emptyList = []byte("[]")
 
 func (m *Menu) MarshalJSON() ([]byte, error) {

@@ -28,12 +28,6 @@ func getDesktopLayout() *DesktopLayout {
 	return desktopLayout
 }
 
-func setDesktopLayout(newDesktopLayout *DesktopLayout) {
-	dlLock.Lock()
-	defer dlLock.Unlock()
-	desktopLayout = newDesktopLayout
-}
-
 func updateDesktopLayout(p x11.Proxy) {
 	var monitors = x11.GetMonitorDataList(p)
 	var layout = &DesktopLayout{

@@ -138,17 +138,3 @@ func GetIconName(p x11.Proxy, wId uint32) (string, error) {
 	}
 }
 
-type WindowStack []*Window
-
-// Implement sort.Interface
-func (ws WindowStack) Len() int {
-	return len(ws)
-}
-
-func (ws WindowStack) Less(i, j int) bool {
-	return ws[i].Stacking < ws[j].Stacking
-}
-
-func (ws WindowStack) Swap(i, j int) {
-	ws[i], ws[j] = ws[j], ws[i]
-}

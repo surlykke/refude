@@ -77,9 +77,6 @@ type DesktopAction struct {
 	Icon string
 }
 
-func (da *DesktopAction) Run(arg string) error {
-	return run(da.Exec, arg, false)
-}
 
 func (d *DesktopApplication) DoPost(w http.ResponseWriter, r *http.Request) {
 	var exec string

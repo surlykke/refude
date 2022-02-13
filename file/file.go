@@ -18,7 +18,6 @@ import (
 	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/requests"
-	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
 	"github.com/surlykke/RefudeServices/lib/xdg"
@@ -136,24 +135,12 @@ func makeFile(path string) (*File, error) {
 	}
 }
 
-func (f *File) IsSearchable() bool {
-	return f.Type == "Directory"
-}
-
 func shortenPath(path string) string {
 	if strings.HasPrefix(path, xdg.Home) {
 		return "~" + path[len(xdg.Home):]
 	} else {
 		return path
 	}
-}
-
-func (f *File) GetPostActions() []resource.Action {
-	var actions = make([]resource.Action, 0, 10)
-	for _, app := range applications.GetApps(f.Apps...) {
-		actions = append(actions, resource.Action{Id: app.Id, Title: "Open with " + app.Name, Icon: app.Icon})
-	}
-	return actions
 }
 
 func (f *File) DoPost(w http.ResponseWriter, r *http.Request) {

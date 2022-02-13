@@ -18,15 +18,6 @@ import (
 type Href string
 
 
-func Tertiary(cond bool, first string, second string) Href {
-	if cond {
-		return Href(first)
-	} else {
-		return Href(second)
-	}
-}
-
-
 var httpLocalHost7838 = []byte("http://localhost:7938")
 var controlEscape = [][]byte{
 	[]byte(`\u0000`), []byte(`\u0001`), []byte(`\u0002`), []byte(`\u0003`), []byte(`\u0004`), []byte(`\u0005`), []byte(`\u0006`), []byte(`\u0007`),
@@ -90,24 +81,6 @@ func MakeRanked2(href Href, title string, icon Href, profile string, rank int) L
 }
 
 type List []Link
-
-func MakeList(href, title, iconName string) List {
-	return List{{
-		Href:     Href(href),
-		Title:    title,
-		Icon:     IconUrl(iconName),
-		Relation: relation.None,
-	}}
-}
-
-func (list List) Add(href, title, iconName string, rel relation.Relation) List {
-	return append(list, Link{
-		Href:     Href(href),
-		Title:    title,
-		Icon:     IconUrl(iconName),
-		Relation: rel,
-	})
-}
 
 // ---------- Implement sort.Sort ------------------------------------
 func (list List) Len() int { return len(list) }

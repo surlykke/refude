@@ -48,7 +48,7 @@ func next(ev *event) *event {
 }
 
 func DesktopSearchMayHaveChanged() {
-	publish("/search/desktop")
+	publish("/start")
 }
 
 func SomethingChanged(path string) {

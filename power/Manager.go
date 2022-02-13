@@ -120,6 +120,3 @@ var dbusConn = func() *dbus.Conn {
 	}
 }()
 
-func updateDevice(d *Device, m map[string]dbus.Variant) {
-
-}

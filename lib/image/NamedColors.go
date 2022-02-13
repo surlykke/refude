@@ -1,3 +1,4 @@
+/* _nolicense _*/
 /**
  *  Colornames for parsing xpm files
  *	These names are taken from the file 'rgb.txt' distributed with neovim, which, in turn, seems to have gotten it from X11.

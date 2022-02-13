@@ -10,15 +10,6 @@ import (
 	"strings"
 )
 
-func Copy(sl []string) []string {
-	res := make([]string, len(sl))
-	for i, s := range sl {
-		res[i] = s
-	}
-
-	return res
-}
-
 func Contains(sl []string, s ...string) bool {
 	for _, str := range sl {
 		for _, s2 := range s {
@@ -68,16 +59,6 @@ func AppendIfNotThere(list []string, otherList ...string) []string {
 	return list
 }
 
-func PushFront(s string, list []string) []string {
-	res := make([]string, 1+len(list))
-	res[0] = s
-	for i, item := range list {
-		res[i+1] = item
-	}
-
-	return res
-}
-
 func Remove(list []string, otherList ...string) []string {
 	var pos = 0
 	for i := 0; i < len(list); i++ {
@@ -125,25 +106,4 @@ func Split(str string, sep string) []string {
 		})
 }
 
-func PrependEach(sl []string, prefix string) []string {
-	return Map(sl, func(s string) string {
-		return prefix + s
-	})
-}
 
-func Uint32SliceContains(slice []uint32, val uint32) bool {
-	for _, s := range slice {
-		if s == val {
-			return true
-			// Len is the number of elements in the collection.
-
-		}
-	}
-	return false
-}
-
-type SortableStringSlice []string
-
-func (sss SortableStringSlice) Len() int               { return len(sss) }
-func (sss SortableStringSlice) Less(i int, j int) bool { return sss[i] < sss[j] }
-func (sss SortableStringSlice) Swap(i int, j int)      { sss[i], sss[j] = sss[j], sss[i] }

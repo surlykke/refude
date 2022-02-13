@@ -85,7 +85,6 @@ func checkItemStatus(sender string) {
 func getOnTheBus() {
 	var err error
 
-	// Get on the bus
 	conn, err = dbus.SessionBus()
 	if err != nil {
 		panic(err)

@@ -8,9 +8,6 @@ package requests
 
 import (
 	"net/http"
-	"strings"
-
-	"github.com/surlykke/RefudeServices/lib/parser"
 )
 
 func GetSingleQueryParameter(r *http.Request, parameterName string, fallbackValue string) string {
@@ -21,23 +18,4 @@ func GetSingleQueryParameter(r *http.Request, parameterName string, fallbackValu
 	}
 }
 
-func Term(r *http.Request) string {
-	return strings.ToLower(strings.TrimSpace(GetSingleQueryParameter(r, "term", "")))
-}
 
-func Action(r *http.Request) string {
-	return strings.TrimSpace(GetSingleQueryParameter(r, "action", ""))
-}
-
-func GetMatcher(r *http.Request) (parser.Matcher, error) {
-	if q, ok := r.URL.Query()["q"]; ok && len(q) > 0 {
-		return parser.Parse(q[0])
-	} else {
-		return nil, nil
-	}
-}
-
-func HaveParam(r *http.Request, paramName string) bool {
-	var _, ok = r.URL.Query()[paramName]
-	return ok
-}

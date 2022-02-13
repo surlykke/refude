@@ -79,6 +79,7 @@ func Run() {
 					continue
 				}
 				Items.Put(&itemCopy)
+				watch.SomethingChanged(itemCopy.Self())
 			} else {
 				continue
 			}
@@ -90,7 +91,3 @@ func Run() {
 
 var Items = resource.MakeCollection()
 var Menus = resource.MakeCollection()
-
-func sendEvent(path string) {
-	watch.SomethingChanged(path)
-}

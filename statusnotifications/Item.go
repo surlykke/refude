@@ -18,7 +18,6 @@ import (
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/requests"
-	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/slice"
 )
 
@@ -43,7 +42,7 @@ type Item struct {
 }
 
 func (item *Item) Self() string {
-	return itemSelf(item.sender, item.path)
+	return "/item/" + pathEscape(item.sender, item.path)
 }
 
 func (item *Item) Presentation() (title string, comment string, iconUrl link.Href, profile string) {
@@ -56,17 +55,6 @@ func (item *Item) Links(term string) (links link.List, filtered bool) {
 		ll = append(ll, link.Make("/itemmenu/" + pathEscape(item.sender, dbus.ObjectPath(item.MenuPath)), "Menu",  "", relation.Menu))
 	}
 	return ll, false
-}
-
-
-func itemSelf(sender string, path dbus.ObjectPath) string {
-	return "/item/" + pathEscape(sender, path)
-}	
-
-
-
-func (i *Item) GetPostActions() []resource.Action {
-	return []resource.Action{{Title: "activate"}}
 }
 
 
@@ -91,15 +79,6 @@ func (item *Item) DoPost(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusAccepted)
 	}
 }
-
-func (i *Item) IsSearchable() bool {
-	return false
-}
-
-func (i *Item) GetLinks(term string) link.List {
-	return link.List{{Href: i.Menu, Title: "Menu", Relation: relation.Menu}}
-}
-
 
 func collectPixMap(variant dbus.Variant) string {
 	if arrs, ok := variant.Value().([][]interface{}); ok {

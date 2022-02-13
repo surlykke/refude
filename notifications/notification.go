@@ -109,6 +109,6 @@ func GetFlashResource() resource.Resource {
 
 func somethingChanged() {
 	watch.SomethingChanged("/notification/flash")
-	watch.SomethingChanged("/notification/list")
+	watch.SomethingChanged("/notification/")
 	watch.DesktopSearchMayHaveChanged()
 }

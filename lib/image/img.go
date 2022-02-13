@@ -21,8 +21,7 @@ type ARGBImage struct {
 	Width  uint32
 	Height uint32
 	/**
-	 * Holds pixels in blocks of 4 bytes. Each block (from low address to high)
-	 * the R,G,B and A component of the pixel
+	 * Holds pixels in blocks of 4 bytes. Each block contains (from low address to high) the A,R,G, and B component of the pixel
 	 * Pixels are arranged left-to-right, top to bottom, so Pixels[0:4] is the leftmost pixel of the top row
 	 * Pixel[4*(width-1):4*width] is the right-most pixel of the top row, Pixel[4*width:4*width+4] leftmost of second row etc.
 	 */

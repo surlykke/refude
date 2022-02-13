@@ -44,11 +44,6 @@ func Accepted(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusAccepted)
 }
 
-func AcceptedAndThen(w http.ResponseWriter, f func()) {
-	w.WriteHeader(http.StatusAccepted)
-	f()
-}
-
 func AsJson(w http.ResponseWriter, data interface{}) {
 	var json = ToJson(data)
 	w.Header().Set("Content-Type", "application/vnd.refude+json")
@@ -67,10 +62,6 @@ func writeOrPanic(w io.Writer, byteArrArr ...[]byte) {
 	}
 }
 
-func AsPng(w http.ResponseWriter, pngData []byte) {
-	w.Header().Set("Content-Type", "image/png")
-	w.Write(pngData)
-}
 
 // We don't care about embedding in html, so no escaping
 // (The standard encoder escapes '&' which was a nuisance)

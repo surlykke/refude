@@ -12,7 +12,7 @@ import (
 )
 
 /**
-Basically, a syncronized map
+	Basically, a syncronized map
 */
 type Collection struct {
 	sync.Mutex
@@ -20,20 +20,6 @@ type Collection struct {
 	resources map[string]Resource
 }
 
-type sortableList []Resource 
-
-// Len is the number of elements in the collection.
-func (rl sortableList) Len() int {
-	return len(rl)
-}
-
-func (rl sortableList) Less(i int, j int) bool {
-	return rl[i].Self() < rl[j].Self()
-}
-
-func (rl sortableList) Swap(i int, j int) {
-	rl[i], rl[j] = rl[j], rl[i]	
-}
 
 func MakeCollection() *Collection {
 	return &Collection{
@@ -123,11 +109,19 @@ func (l *Collection) FindFirst(test func(res Resource) bool) interface{} {
 	return nil
 }
 
-func (l *Collection) Walk(walker func(res Resource)) {
-	l.Lock()
-	defer l.Unlock()
-	for _, res := range l.resources {
-		walker(res)
-	}
+/* ---------- Used by GetAll, so we have predictable order --------- */
+type sortableList []Resource 
+
+// Len is the number of elements in the collection.
+func (rl sortableList) Len() int {
+	return len(rl)
+}
+
+func (rl sortableList) Less(i int, j int) bool {
+	return rl[i].Self() < rl[j].Self()
+}
+
+func (rl sortableList) Swap(i int, j int) {
+	rl[i], rl[j] = rl[j], rl[i]	
 }
 

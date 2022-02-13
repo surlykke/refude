@@ -12,13 +12,6 @@ import (
 	"github.com/surlykke/RefudeServices/lib/link"
 )
 
-type Action struct {
-	Id    string
-	Title string
-	Icon  string
-}
-
-
 type Resource interface {
 	Self() string
 	Presentation() (title string, comment string, iconUrl link.Href, profile string)

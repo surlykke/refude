@@ -95,13 +95,7 @@ const INTROSPECT_XML = `<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object 
     </interface>
 </node>`
 
-/*const*/
-var expireryOverride = map[string]int32{
-	// TODO should be user configurable
-	"Spotify":  10000,
-	"Chromium": 30000,
-	"IDEA":     10000,
-}
+
 
 var acceptableHintTypes = map[string]bool{
 	"y": true,
@@ -252,11 +246,6 @@ func installRawImageIcon(hints map[string]dbus.Variant, key string) (string, uin
 	} else {
 		return icons.AddRawImageIcon(imageData), uint32(imageData.Width), true
 	}
-}
-
-func nowMillis() uint64 {
-	var result = uint64(time.Now().UnixNano()) / 1000000
-	return result
 }
 
 func getRawImage(v dbus.Variant) (image.ImageData, error) {
