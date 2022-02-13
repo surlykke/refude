@@ -6,6 +6,7 @@
 //
 package icons
 
+
 import (
 	"fmt"
 	"os"
@@ -13,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/slice"
@@ -27,6 +29,20 @@ type IconTheme struct {
 	Inherits []string
 	Dirs     []IconDir
 }
+
+func (it *IconTheme) Self() string {
+	return "/icontheme/" + it.Id
+}
+
+func (it *IconTheme) Presentation() (title string, comment string, icon link.Href, profile string) {
+	return it.Name, it.Comment, "", "icontheme"
+}
+
+func (it *IconTheme) Links(term string) (links link.List, filtered bool) {
+	return link.List{}, true
+}
+
+
 
 type IconDir struct {
 	Path    string
@@ -47,7 +63,7 @@ func readThemes() map[string]*IconTheme {
 					log.Warn("Could not read", indexFilePath)
 				} else if _, ok := themeMap[theme.Id]; !ok {
 					themeMap[theme.Id] = theme
-					IconThemes.Put(resource.MakeResource("/icontheme/"+theme.Id, theme.Name, theme.Comment, "", "icontheme", theme))
+					IconThemes.Put(theme)
 				}
 			}
 		}
@@ -164,4 +180,4 @@ func readUint32OrFallback(uintAsString string, fallback uint32) uint32 {
 	}
 }
 
-var IconThemes = resource.MakeList("/icontheme/list")
+var IconThemes = resource.MakeCollection()

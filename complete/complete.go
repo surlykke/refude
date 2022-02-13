@@ -30,10 +30,10 @@ func collectPaths(prefix string) []string {
 		}
 	}
 
-	for _, list := range []*resource.List{windows.Windows, applications.Applications, applications.Mimetypes, statusnotifications.Items, notifications.Notifications, power.Devices, icons.IconThemes} {
+	for _, list := range []*resource.Collection{windows.Windows, applications.Applications, applications.Mimetypes, statusnotifications.Items, notifications.Notifications, power.Devices, icons.IconThemes} {
 		for _, res := range list.GetAll() {
-			if strings.HasPrefix(string(res.Self), prefix) {
-				paths = append(paths, string(res.Self))
+			if strings.HasPrefix(string(res.Self()), prefix) {
+				paths = append(paths, string(res.Self()))
 			}
 		}
 	}

@@ -17,21 +17,21 @@ import (
 func Run() {
 	var signals = subscribe()
 
-	setDevice(retrieveDevice(displayDeviceDbusPath))
+	Devices.Put(retrieveDevice(displayDeviceDbusPath))
 	for _, dbusPath := range retrieveDevicePaths() {
-		setDevice(retrieveDevice(dbusPath))
+		Devices.Put(retrieveDevice(dbusPath))
 	}
 
 	for signal := range signals {
 		var path = devicePath(signal.Path)
 		if signal.Name == "org.freedesktop.DBus.Properties.PropertiesChanged" {
 			if res := Devices.Get(path); res != nil {
-				setDevice(retrieveDevice(signal.Path))
+				Devices.Put(retrieveDevice(signal.Path))
 			}
 		} else if signal.Name == "org.freedesktop.UPower.DeviceAdded" {
 			if path, ok := getAddedRemovedPath(signal); ok {
 				log.Info("Adding device:", path)
-				setDevice(retrieveDevice(path))
+				Devices.Put(retrieveDevice(path))
 			}
 		} else if signal.Name == "org.freedesktop.UPower.DeviceRemoved" {
 			if path, ok := signal.Body[0].(dbus.ObjectPath); ok {
@@ -58,8 +58,6 @@ func getAddedRemovedPath(signal *dbus.Signal) (dbus.ObjectPath, bool) {
 	}
 }
 
-var Devices = resource.MakeList("/device/list")
+var Devices = resource.MakeCollection()
 
-func setDevice(dev *Device) {
-	Devices.Put(resource.MakeResource(devicePath(dev.DbusPath), dev.title, "", dev.IconName, "device", dev))
-}
+

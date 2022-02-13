@@ -54,7 +54,7 @@ export class Main extends React.Component {
         }
 
         evtSource.onmessage = event => {
-            if ("/item/list" === event.data) {
+            if ("/item/" === event.data) {
                 this.getItemlist()
             } else if ("/device/DisplayDevice" === event.data) {
                 this.getDisplayDevice()
@@ -69,10 +69,10 @@ export class Main extends React.Component {
     }
 
     getItemlist = () => {
-        fetch("http://localhost:7938/item/list")
+        fetch("http://localhost:7938/item/")
             .then(resp => resp.json())
             .then( 
-                json => {this.setState({itemlist: json.data})},
+                json => {console.log("getItemlist, json:", json); this.setState({itemlist: json})},
                 error => {this.setState({itemlist: []})}
             )
     }
@@ -117,25 +117,20 @@ export class Main extends React.Component {
         let browserUrl = this.browserUrl
         if (this.state.resource) {
             let linksUrl = this.state.resource.links
-            if (this.state.resource.searchable && this.state.term) {
-                let separator = linksUrl.indexOf('?') == -1 ? '?' : '&'
-                linksUrl = linksUrl + separator + "search=" + encodeURIComponent(this.state.term)
-            }
-            if (linksUrl) {
-                fetch(linksUrl)
-                    .then(resp => resp.json())
-                    .then(json => {
-                        if (browserUrl === this.browserUrl) {
-                            this.setState({links: json})
-                        }
-                    }, 
-                    error => {
-                        console.log("error:", error)
-                        this.setState({links: undefined})
-                    })
-            } else {
-                this.setState({links: undefined})
-            }
+            linksUrl = linksUrl + '?' + "search=" + encodeURIComponent(this.state.term)
+            fetch(linksUrl)
+                .then(resp => resp.json())
+                .then(json => {
+                    if (browserUrl === this.browserUrl) {
+                        this.setState({links: json})
+                    }
+                }, 
+                error => {
+                    console.log("error:", error)
+                    this.setState({links: undefined})
+                })
+        } else {
+            this.setState({links: undefined})
         }
     }
 
@@ -205,35 +200,19 @@ export class Main extends React.Component {
 
     render = () => {
         let {itemlist, displayDevice, resource, term, links, menuObject, flashNotification} = this.state
+        console.log("itemlist:", itemlist)
         let elmts = [
             div(
                 { className: "panel", onClick: () => this.setMenuObject()}, 
                 clock(),
                 itemlist.map(item => { return notifierItem(item, this.setMenuObject)}),
                 battery(displayDevice)
-            )        ]
+            )        
+        ]
         if (resource) {
             elmts.push(resourceHead(resource))
-            let actionLinks = [...resource.post]
-            if (resource.delete) {
-                actionLinks.push(resource.delete)
-            }
-            if (actionLinks.length > 0) {
-                elmts.push(
-                    p({className: "linkHeading"}, "Actions"),
-                    ...actionLinks.map(l => {
-                        return link(l, "Action", this.closeBrowser, this.move)
-                    })
-                )
-            }
-
-            if (links && (resource.searchable || links.length > 0)) {
-                if (actionLinks.length > 0) {
-                    elmts.push(p({className: "linkHeading related"}, "Related"))
-                } 
-                elmts.push(
-                    div({className:'search-box'}, term)
-                )
+            if (links) {
+                elmts.push(div({className:'search-box'}, term))
                 elmts.push(...links.map(l => link(l, l.profile, this.closeBrowser, this.move)))
             }
         } else if (menuObject) {

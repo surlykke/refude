@@ -21,15 +21,18 @@ import (
 	"github.com/surlykke/RefudeServices/windows/x11"
 )
 
-type Start struct {
+type Start struct{}
+
+func (s Start) Self() string {
+	return "/start"
 }
 
-func (s Start) IsSearchable() bool {
-	return true
+func (s Start) Presentation() (title string, comment string, icon link.Href, profile string) {
+	return "Start", "", "", "start"
 }
 
-func (s Start) GetLinks(term string) link.List {
-	return doDesktopSearch(term)
+func (s Start) Links(term string) (links link.List, filtered bool) {
+	return doDesktopSearch(term), true
 }
 
 func doDesktopSearch(term string) link.List {
@@ -52,32 +55,33 @@ func doDesktopSearch(term string) link.List {
 	return links
 }
 
-func searchCollection(list []*resource.Resource, term string, filter func(*resource.Resource) bool) link.List {
+func searchCollection(list []resource.Resource, term string, filter func(resource.Resource) bool) link.List {
 	var result = make(link.List, 0, 300)
 	for _, res := range list {
 		if filter != nil && !filter(res) {
 			continue
-		} else if rnk := searchutils.Match(term, res.Title /*TODO keywords*/); rnk > -1 {
-			result = append(result, res.MakeRankedLink(rnk))
+		} else {
+			var title,_,_,_ = res.Presentation()
+			if rnk := searchutils.Match(term, title /*TODO keywords*/); rnk > -1 {
+				result = append(result, resource.LinkTo(res, rnk))
+			}
 		}
 	}
 	return result
 }
 
-func notificationFilter(r *resource.Resource) bool {
-	var n = r.Data.(*notifications.Notification)
+func notificationFilter(r resource.Resource) bool {
+	var n = r.(*notifications.Notification)
 	return n.Urgency == notifications.Critical || len(n.NActions) > 0
 }
 
-func windowFilter(r *resource.Resource) bool {
-	var win = r.Data.(*windows.Window)
+func windowFilter(r resource.Resource) bool {
+	var win = r.(*windows.Window)
 	return win.Name != "org.refude.browser" && win.Name != "org.refude.panel" && win.State&(x11.SKIP_TASKBAR|x11.SKIP_PAGER|x11.ABOVE) == 0
 }
 
-func applicationFilter(r *resource.Resource) bool {
-	var app = r.Data.(*applications.DesktopApplication)
+func applicationFilter(r resource.Resource) bool {
+	var app = r.(*applications.DesktopApplication)
 	return !app.NoDisplay
 }
 
-
-var StartRes = resource.MakeResource("/start", "Start", "", "", "start", Start{})

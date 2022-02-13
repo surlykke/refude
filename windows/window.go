@@ -7,11 +7,14 @@
 package windows
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/surlykke/RefudeServices/icons"
+	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/log"
+	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
@@ -31,6 +34,21 @@ type Window struct {
 	Stacking int // 0 means: on top, then 1, then 2 etc. -1 means we don't know (yet)
 }
 
+func (w *Window) Self() string {
+	return fmt.Sprintf("/window/%d", w.Id)
+}
+
+func (w *Window) Presentation() (title string, comment string, icon link.Href, profile string) {
+	return w.Name, "", link.IconUrl(w.IconName), "window"
+}
+
+func (w *Window) Links(context string) (links link.List, filtered bool) {
+	return link.List{
+		link.Make(context+w.Self(), w.Name, w.IconName, relation.DefaultAction),
+		link.Make(context+w.Self(), w.Name, w.IconName, relation.Delete),
+	}, false
+}
+
 // Caller ensures thread safety (calls to x11)
 func makeWindow(p x11.Proxy, wId uint32) *Window {
 	var win = &Window{Id: wId}
@@ -41,25 +59,11 @@ func makeWindow(p x11.Proxy, wId uint32) *Window {
 	return win
 }
 
-
-
-func (win *Window) GetDeleteAction() *resource.Action {
-	return &resource.Action{Title: "Close"} 
-}
-
 func (win *Window) DoDelete(w http.ResponseWriter, r *http.Request) {
-	performDelete(win.Id)
-	respond.Accepted(w)
-}
-
-func performDelete(wId uint32) {
 	requestProxyMutex.Lock()
-	defer requestProxyMutex.Unlock()
-	x11.CloseWindow(requestProxy, wId)
-}
-
-func (win *Window) GetPostActions() []resource.Action {
-	return []resource.Action{{Title: "Raise and focus"}}
+	x11.CloseWindow(requestProxy, win.Id)
+	requestProxyMutex.Unlock()
+	respond.Accepted(w)
 }
 
 func (win *Window) DoPost(w http.ResponseWriter, r *http.Request) {
@@ -103,8 +107,8 @@ func performAction(wId uint32, action string) bool {
 }
 
 func RaiseAndFocusNamedWindow(name string) bool {
-	if d := Windows.FindFirst(func(d interface{}) bool { return d.(*Window).Name == name }); d != nil {
-		x11.RaiseAndFocusWindow(requestProxy, d.(*Window).Id)
+	if res := Windows.FindFirst(func(res resource.Resource) bool { return res.(*Window).Name == name }); res != nil {
+		x11.RaiseAndFocusWindow(requestProxy, res.(*Window).Id)
 		return true
 	} else {
 		return false
@@ -112,8 +116,8 @@ func RaiseAndFocusNamedWindow(name string) bool {
 }
 
 func ResizeNamedWindow(name string, newWidth, newHeight uint32) bool {
-	if d := Windows.FindFirst(func(d interface{}) bool { return d.(*Window).Name == name }); d != nil {
-		x11.Resize(requestProxy, d.(*Window).Id, newWidth, newHeight)
+	if res := Windows.FindFirst(func(res resource.Resource) bool { return res.(*Window).Name == name }); res != nil {
+		x11.Resize(requestProxy, res.(*Window).Id, newWidth, newHeight)
 		return true
 	} else {
 		return false
@@ -133,8 +137,6 @@ func GetIconName(p x11.Proxy, wId uint32) (string, error) {
 		return icons.AddX11Icon(pixelArray)
 	}
 }
-
-var noBounds = &Bounds{0, 0, 0, 0}
 
 type WindowStack []*Window
 

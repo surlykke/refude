@@ -8,6 +8,7 @@ package power
 
 import (
 	"github.com/godbus/dbus/v5"
+	"github.com/surlykke/RefudeServices/lib/link"
 )
 
 type Device struct {
@@ -86,3 +87,16 @@ func devicePath(path dbus.ObjectPath) string {
 		return "/device" + string(path)
 	}
 }
+
+func (d *Device) Self() string {
+	return devicePath(d.DbusPath)	
+}
+
+func (d *Device) Presentation() (title string, comment string, icon link.Href, profile string) {
+	return d.title, "", link.IconUrl(d.IconName), "device"
+}
+
+func (d *Device) Links(term string) (links link.List, filtered bool) {
+	return link.List{}, true
+}
+

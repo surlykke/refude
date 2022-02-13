@@ -42,6 +42,28 @@ type Item struct {
 	UseOverlayIconPixmap    bool
 }
 
+func (item *Item) Self() string {
+	return itemSelf(item.sender, item.path)
+}
+
+func (item *Item) Presentation() (title string, comment string, iconUrl link.Href, profile string) {
+	return item.Title, "", link.IconUrl(item.IconName), "item"
+}
+
+func (item *Item) Links(term string) (links link.List, filtered bool) {
+	var ll = make(link.List, 0, 5)
+	if (item.MenuPath != "") {
+		ll = append(ll, link.Make("/itemmenu/" + pathEscape(item.sender, dbus.ObjectPath(item.MenuPath)), "Menu",  "", relation.Menu))
+	}
+	return ll, false
+}
+
+
+func itemSelf(sender string, path dbus.ObjectPath) string {
+	return "/item/" + pathEscape(sender, path)
+}	
+
+
 
 func (i *Item) GetPostActions() []resource.Action {
 	return []resource.Action{{Title: "activate"}}

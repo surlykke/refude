@@ -35,7 +35,7 @@ func Run() {
 			// So it's a 'single'-window event
 			var path string = fmt.Sprintf("/window/%X", wId)
 			if res := Windows.Get(path); res != nil {
-				var win = *(res.Data.(*Window))
+				var win = *(res.(*Window))
 				switch event {
 				case x11.WindowTitle:
 					win.Name, _ = x11.GetName(proxy, wId)
@@ -47,7 +47,7 @@ func Run() {
 				default:
 					continue
 				}
-				Windows.PutFirst(resource.MakeResource(path, win.Name, "", win.IconName, "window", &win))
+				Windows.Put(&win)
 				if relevantForDesktopSearch(&win) {
 					watch.DesktopSearchMayHaveChanged()
 				}
@@ -56,18 +56,18 @@ func Run() {
 	}
 }
 
-var Windows = resource.MakeList("/window/list")
+var Windows = resource.MakeCollection()
 
 func updateWindowList(p x11.Proxy) (somethingChanged bool) {
 	var wIds = x11.GetStack(p)
 	var oldResources = Windows.GetAll()
-	var newResources = make([]*resource.Resource, len(wIds), len(wIds))
+	var newResources = make([]resource.Resource, len(wIds), len(wIds))
 	for i, wId := range wIds {
 		var path = fmt.Sprintf("/window/%X", wId)
 		var win *Window = nil
 		for _, o := range oldResources {
-			if path == o.Path {
-				win = o.Data.(*Window)
+			if path == o.Self() {
+				win = o.(*Window)
 				break
 			}
 		}
@@ -79,7 +79,7 @@ func updateWindowList(p x11.Proxy) (somethingChanged bool) {
 			win.Stacking = i
 			somethingChanged = true
 		}
-		newResources[i] = resource.MakeResource(path, win.Name, "", win.IconName, "window", win)
+		newResources[i] = win
 	}
 	if somethingChanged {
 		Windows.ReplaceWith(newResources)

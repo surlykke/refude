@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/godbus/dbus/v5"
+	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/respond"
@@ -38,6 +39,20 @@ type Menu struct {
 	sender string
 	path   dbus.ObjectPath
 }
+
+func (menu *Menu) Self() string {
+	return "/itemmenu/" + pathEscape(menu.sender, menu.path)
+}
+
+func (menu *Menu) Presentation() (title string, comment string, iconUrl link.Href, profile string) {
+	return "Menu", "", "", "menu"	
+}
+
+func (menu *Menu) Links(term string) (links link.List, filtered bool) {
+	return link.List{}, true // FIXME should contain posts
+}
+
+
 
 var emptyList = []byte("[]")
 

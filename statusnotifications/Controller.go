@@ -16,8 +16,7 @@ import (
 	"github.com/godbus/dbus/v5"
 	"github.com/godbus/dbus/v5/introspect"
 	"github.com/godbus/dbus/v5/prop"
-	dbuscall "github.com/surlykke/RefudeServices/lib/dbusutils"
-	"github.com/surlykke/RefudeServices/lib/link"
+	"github.com/surlykke/RefudeServices/lib/dbusutils"
 	"github.com/surlykke/RefudeServices/lib/log"
 )
 
@@ -72,7 +71,7 @@ func monitorSignals() {
 
 func checkItemStatus(sender string) {
 	for _, res := range Items.GetAll() {
-		var item = res.Data.(*Item)
+		var item = res.(*Item)
 		if item.sender == sender {
 			if _, ok := dbuscall.GetSingleProp(conn, item.sender, item.path, ITEM_INTERFACE, "Status"); !ok {
 				events <- Event{"ItemRemoved", item.sender, item.path}
@@ -140,7 +139,7 @@ var events = make(chan Event)
 func updateWatcherProperties() {
 	ids := make([]string, 0, 20)
 	for _, res := range Items.GetAll() {
-		var item = res.Data.(*Item)
+		var item = res.(*Item)
 		ids = append(ids, item.sender+":"+string(item.path))
 	}
 	watcherProperties.Set(WATCHER_INTERFACE, "RegisteredStatusItems", dbus.MakeVariant(ids))
@@ -152,9 +151,6 @@ func buildItem(sender string, path dbus.ObjectPath) *Item {
 	item.Id = getStringOr(props["Id"])
 	item.Category = getStringOr(props["Category"])
 	item.MenuPath = getDbusPath(props["Menu"])
-	if (item.MenuPath != "") {
-		item.Menu = link.Href("/itemmenu/" + pathEscape(sender, path))
-	}
 	item.Title = getStringOr(props["Title"])
 	item.Status = getStringOr(props["Status"])
 	item.ToolTip = getStringOr(props["ToolTip"])

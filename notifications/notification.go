@@ -7,9 +7,12 @@
 package notifications
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
+	"github.com/surlykke/RefudeServices/lib/link"
+	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
@@ -42,23 +45,27 @@ type Notification struct {
 	IconSize uint32 `json:",omitempty"`
 }
 
-func (n *Notification) GetPostActions() []resource.Action {
-	var actions []resource.Action
+func (n *Notification) Self() string {
+	return fmt.Sprintf("/notification/%d", n.Id)
+}
 
+func (n *Notification) Presentation() (title string, comment string, icon link.Href, profile string) {
+	return n.Subject, n.Body, link.IconUrl(n.iconName), "notification"
+}
+
+func (n *Notification) Links(term string) (links link.List, filtered bool) {
+	var ll = link.List{}
 	if actionDesc, ok := n.NActions["default"]; ok {
-		actions = []resource.Action{{Title: actionDesc}}
+		ll = append(ll, link.Make(n.Self() + "?action=default", actionDesc, "", relation.DefaultAction))
 	}
 	for actionId, actionDesc := range n.NActions {
 		if actionId != "default" {
-			actions = append(actions, resource.Action{Id: actionId, Title: actionDesc})
+			ll = append(ll, link.Make(n.Self() + "?action=" + actionId, actionDesc, "", relation.Action))
 		}
 	}
+	ll = append(ll, link.Make(n.Self(), "Dismiss", "", relation.Delete))
 
-	return actions
-}
-
-func (n *Notification) GetDeleteAction() *resource.Action {
-	return &resource.Action{Title: "Dismiss", Icon: ""}
+	return ll, false
 }
 
 func (n *Notification) DoPost(w http.ResponseWriter, r *http.Request) {
@@ -77,25 +84,26 @@ func (n *Notification) DoPost(w http.ResponseWriter, r *http.Request) {
 }
 
 func (n *Notification) DoDelete(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("Notification DoDelete, n.Id:", n.Id)
 	removeNotification(n.Id, Dismissed)
 	respond.Accepted(w)
 }
 
-var Notifications = resource.MakeList("/notification/list")
+var Notifications = resource.MakeCollection()
 
-func getFlashResource() *resource.Resource {
-	var found *resource.Resource
+func GetFlashResource() resource.Resource {
+	var found resource.Resource
 
-	Notifications.Walk(func(res *resource.Resource) {
-		var n = res.Data.(*Notification)
-		if found == nil || found.Data.(*Notification).Urgency < n.Urgency {
+	for _, res := range Notifications.GetAll() {
+		var n = res.(*Notification)
+		if found == nil || found.(*Notification).Urgency < n.Urgency {
 			if n.Urgency == Critical ||
 				n.Urgency == Normal && n.Created.After(time.Now().Add(-flashTimeoutNormal)) ||
 				n.Urgency == Low && n.Created.After(time.Now().Add(-flashTimeoutLow)) {
 				found = res
 			}
 		}
-	})
+	}
 	return found
 }
 

@@ -8,10 +8,7 @@ package notifications
 
 import (
 	"fmt"
-	"net/http"
 	"time"
-
-	"github.com/surlykke/RefudeServices/lib/respond"
 )
 
 var notificationExpireryHints = make(chan struct{})
@@ -24,10 +21,10 @@ func Run() {
 func removeExpired() {
 	var somethingExpired = false
 	for _, res := range Notifications.GetAll() {
-		var notification = res.Data.(*Notification)
+		var notification = res.(*Notification)
 		if notification.Urgency < Critical {
 			if notification.Expires.Before(time.Now()) {
-				Notifications.Delete(fmt.Sprintf("/notification/%X", notification.Id))
+				Notifications.Delete(fmt.Sprintf("/notification/%d", notification.Id))
 				conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", notification.Id, Expired)
 				somethingExpired = true
 			}
@@ -40,21 +37,10 @@ func removeExpired() {
 }
 
 func removeNotification(id uint32, reason uint32) {
-	var path = fmt.Sprintf("/notification/%X", id)
+	var path = fmt.Sprintf("/notification/%d", id)
 	if deleted := Notifications.Delete(path); deleted {
 		conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", id, reason)
 		somethingChanged()
 	}
 }
 
-func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path == "/notification/flash" {
-		if res := getFlashResource(); res == nil {
-			respond.NotFound(w)
-		} else {
-			res.ServeHTTP(w, r)
-		}
-	} else {
-		Notifications.ServeHTTP(w, r)
-	}
-}

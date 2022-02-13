@@ -16,6 +16,7 @@ import (
 	"github.com/rakyll/magicmime"
 	"github.com/surlykke/RefudeServices/applications"
 	"github.com/surlykke/RefudeServices/lib/link"
+	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
@@ -50,14 +51,62 @@ func getFileType(m os.FileMode) string {
 }
 
 type File struct {
-	Path        string
 	self        string
+	Path        string
 	Name        string
 	Type        string
 	Permissions string
 	Mimetype    string
 	Icon        string
 	Apps        []string
+}
+
+func (f *File) Self() string {
+	return "/file" + f.Path
+}
+
+func (f *File) Presentation() (title string, comment string, icon link.Href, profile string) {
+	return f.Name, f.Path, link.IconUrl(f.Icon), "file"
+}
+
+func (f *File) Links(term string) (links link.List, filtered bool) {
+	var ll = make(link.List, 0, 10)
+
+	var rel = relation.DefaultAction
+	for _, app := range applications.GetApps(f.Apps...) {
+		if rnk := searchutils.Match(term, app.Name); rnk > -1 {
+			ll = append(ll, link.Make(f.Self()+"?action="+app.Id, "Open with "+app.Name, app.Icon, rel))
+			rel = relation.Action
+		}
+	}
+
+	ll = append(ll, f.Related(term)...)
+
+	return ll, true
+
+}
+
+func (f *File) Related(term string) link.List {
+	var ll = make(link.List, 0, 10)
+	if f.Type == "Directory" {
+		if candidatePaths, err := filepath.Glob(f.Path + "/*"); err == nil { // TODO: readdir faster?
+			for _, path := range candidatePaths {
+				var fileName = filepath.Base(path)
+				// Hidden files should be a little harder to find
+				if strings.HasPrefix(fileName, ".") && !strings.HasPrefix(term, ".") {
+					continue
+				}
+				if rnk := searchutils.Match(term, fileName); rnk > -1 {
+					var mimetype, _ = magicmime.TypeByFile(path)
+					var icon = strings.ReplaceAll(mimetype, "/", "-")
+					ll = append(ll, link.MakeRanked("/file"+path, shortenPath(path), icon, "file", rnk+50))
+				}
+			}
+		}
+
+	}
+
+	return ll
 }
 
 func makeFile(path string) (*File, error) {
@@ -89,31 +138,6 @@ func makeFile(path string) (*File, error) {
 
 func (f *File) IsSearchable() bool {
 	return f.Type == "Directory"
-}
-
-func (f *File) GetLinks(term string) link.List {
-	var ll = make(link.List, 0, 10)
-
-	if f.Type == "Directory" {
-
-		if candidatePaths, err := filepath.Glob(f.Path + "/*"); err == nil { // TODO: readdir faster?
-			for _, path := range candidatePaths {
-				var fileName = filepath.Base(path)
-				// Hidden files should be a little harder to find
-				if strings.HasPrefix(fileName, ".") && !strings.HasPrefix(term, ".") {
-					continue
-				}
-				if rnk := searchutils.Match(term, fileName); rnk > -1 {
-					var mimetype, _ = magicmime.TypeByFile(path)
-					var icon = strings.ReplaceAll(mimetype, "/", "-")
-					ll = append(ll, link.MakeRanked("/file"+path, shortenPath(path), icon, "file", rnk+50))
-				}
-			}
-		}
-
-	}
-
-	return ll
 }
 
 func shortenPath(path string) string {

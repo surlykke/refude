@@ -25,16 +25,16 @@ func Run() {
 		switch event.eventName {
 		case "ItemCreated":
 			var item = buildItem(event.sender, event.path)
-			Items.Put(resource.MakeResource(path, item.Title, "", item.IconName, "item", item))
+			Items.Put(item)
 			if item.MenuPath != "" {
-				Menus.Put(resource.MakeResource(menuPath, "Menu", "", "", "menu", &Menu{event.sender, item.MenuPath}))
+				Menus.Put(&Menu{event.sender, item.MenuPath})
 			}
 		case "ItemRemoved":
 			Items.Delete(path)
 			Menus.Delete(menuPath)
 		default:
 			if res := Items.Get(path); res != nil {
-				var itemCopy = *(res.Data.(*Item))
+				var itemCopy = *(res.(*Item))
 				switch event.eventName {
 				case "org.kde.StatusNotifierItem.NewTitle":
 					if v, ok := getProp(itemCopy.sender, itemCopy.path, "Title"); ok {
@@ -78,7 +78,7 @@ func Run() {
 				default:
 					continue
 				}
-				Items.Put(resource.MakeResource(path, itemCopy.Title, "", itemCopy.IconName, "item", &itemCopy))
+				Items.Put(&itemCopy)
 			} else {
 				continue
 			}
@@ -88,8 +88,8 @@ func Run() {
 	}
 }
 
-var Items = resource.MakeList("/item/list")
-var Menus = resource.MakeList("/menuitem/list")
+var Items = resource.MakeCollection()
+var Menus = resource.MakeCollection()
 
 func sendEvent(path string) {
 	watch.SomethingChanged(path)

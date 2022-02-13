@@ -13,6 +13,8 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/surlykke/RefudeServices/lib/link"
+	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
@@ -34,7 +36,7 @@ type DesktopApplication struct {
 	DbusActivatable bool   `json:",omitempty"`
 	TryExec         string `json:",omitempty"`
 	Exec            string `json:",omitempty"`
-	Path            string `json:",omitempty"`
+	Path           string //`json:",omitempty"`
 	Terminal        bool
 	Categories      []string
 	Implements      []string
@@ -48,17 +50,24 @@ type DesktopApplication struct {
 	path            string `json:"-"`
 }
 
-func (d *DesktopApplication) Run(arg string) error {
-	return run(d.Exec, arg, d.Terminal)
+func (d *DesktopApplication) Self() string {
+	return "/application/" + d.Id
 }
 
-func (d *DesktopApplication) GetPostActions() []resource.Action {
-	var actions = []resource.Action{{Title: "Launch"}}	
+func (d *DesktopApplication) Presentation() (title string, comment string, iconUrl link.Href, profile string) {
+	return d.Name, d.Comment, link.IconUrl(d.Icon), "application"
+}
 
+func (d *DesktopApplication) Links(term string) (links link.List, filtered bool) {
+	var ll = link.List{link.Make(d.Self(), "Launch", d.Icon, relation.DefaultAction)}	
 	for _, da := range d.DesktopActions {
-		actions = append(actions, resource.Action{Id: da.id, Title: da.Name, Icon: da.Icon})
+		ll = append(ll, link.Make(d.Self() + "?action=" + da.id, da.Name, da.Icon, relation.Action))
 	}
-	return actions 
+	return ll, false
+}
+
+func (d *DesktopApplication) Run(arg string) error {
+	return run(d.Exec, arg, d.Terminal)
 }
 
 type DesktopAction struct {
@@ -96,11 +105,11 @@ func (d *DesktopApplication) DoPost(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-var Applications = resource.MakeList("/application/list")
+var Applications = resource.MakeCollection()
 
 func GetAppsIds(mimetypeId string) []string {
 	if res := Mimetypes.Get("/mimetype/" + mimetypeId); res != nil {
-		return res.Data.(*Mimetype).Applications
+		return res.(*Mimetype).Applications
 	} else {
 		return []string{}
 	}
@@ -110,7 +119,7 @@ func GetApps(appIds ...string) []*DesktopApplication {
 	var apps = make([]*DesktopApplication, 0, len(appIds))
 	for _, appId := range appIds {
 		if res := Applications.Get("/application/" + appId); res != nil {
-			apps = append(apps, res.Data.(*DesktopApplication))
+			apps = append(apps, res.(*DesktopApplication))
 		}
 	}
 	return apps
@@ -121,7 +130,7 @@ func OpenFile(appId, path string) (bool, error) {
 		xdg.RunCmd("xdg-open", path)
 		return true, nil
 	} else if res := Applications.Get("/application/" + appId); res != nil {
-		return true, res.Data.(*DesktopApplication).Run(path)
+		return true, res.(*DesktopApplication).Run(path)
 	} else {
 		return false, nil
 	}

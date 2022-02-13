@@ -9,6 +9,7 @@ package applications
 import (
 	"regexp"
 
+	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/resource"
 
 	"github.com/pkg/errors"
@@ -17,7 +18,6 @@ import (
 const freedesktopOrgXml = "/usr/share/mime/packages/freedesktop.org.xml"
 
 type Mimetype struct {
-	self            string
 	Id              string
 	Comment         string
 	Acronym         string `json:",omitempty"`
@@ -51,7 +51,21 @@ func MakeMimetype(id string) (*Mimetype, error) {
 	}
 }
 
-var Mimetypes = resource.MakeList("/mimetype/list")
+var Mimetypes = resource.MakeCollection()
+
+func (m *Mimetype) Self() string {
+	return "/mimetype/" + m.Id
+}
+
+func (m *Mimetype) Presentation() (title string, comment string, icon link.Href, profile string) {
+	return m.Comment, m.ExpandedAcronym, link.IconUrl(m.IconName), "mimetype"
+}
+
+func (m *Mimetype) Links(term string) (links link.List, filtered bool) {
+	return link.List{}, true
+}
+
+
 
 /*func SetDefaultApp(mimetypeId string, appId string) error {
 	if mt, ok := collectionStore.Load().(collection).mimetypes[mimetypeId]; ok {

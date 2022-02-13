@@ -18,7 +18,6 @@ import (
 	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/image"
 	"github.com/surlykke/RefudeServices/lib/log"
-	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/watch"
 )
 
@@ -130,7 +129,7 @@ var conn *dbus.Conn
 var ids = make(chan uint32, 0)
 
 func generate(out chan uint32) {
-	for id := uint32(1); ; id++ {
+	for id := uint32(1000); ; id++ {
 		out <- id
 	}
 }
@@ -157,7 +156,11 @@ func Notify(app_name string,
 
 	var id uint32
 	if replaces_id != 0 {
-		id = replaces_id
+		if Notifications.Get(fmt.Sprintf("/notification/%d", replaces_id)) == nil {
+			return 0, nil
+		} else {
+			id = replaces_id
+		}
 	} else {
 		id = <-ids
 	}
@@ -224,9 +227,7 @@ func Notify(app_name string,
 
 	notification.Expires = time.Now().Add(time.Millisecond * time.Duration(expire_timeout))
 
-	var res = resource.MakeResource(fmt.Sprintf("/notification/%X", notification.Id), notification.Subject, notification.Body, notification.iconName, "notification", &notification)
-
-	Notifications.Put(res)
+	Notifications.Put(&notification)
 	somethingChanged()
 
 	if notification.Expires.Before(time.Now().Add(time.Hour)) {
