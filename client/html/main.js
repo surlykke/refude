@@ -4,7 +4,7 @@
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
 //
-import { div, frag, input, p} from "./elements.js"
+import { div, frag, input, p, span} from "./elements.js"
 import { clock } from './clock.js'
 import { notifierItem } from './notifieritem.js'
 import { battery } from './battery.js'
@@ -211,7 +211,9 @@ export class Main extends React.Component {
             ),
             resource ? frag(
                 resourceHead(resource),
-                div({className:'search-box', style: {display: term ? "" : "none"}}, term),
+                div({className:'search-box'}, 
+                    span({style: {display: term ? "" : "none"}}, term)
+                ),
                 ...links.map(l => link(l, l.profile, this.closeBrowser, this.move))
             ) : menuObject ? menu(menuObject, () => this.setState({menuObject: undefined})) 
               : flashNotification ? flash(flashNotification)
