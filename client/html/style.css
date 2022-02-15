@@ -105,8 +105,7 @@ html, body {
 }
 
 .search-box span:before {
-    font-family: "Material Icons";
-    content: "search";
+    content: "\1F50E";
     color: gray;
     margin-right: 6px;
     vertical-align: bottom;
@@ -239,6 +238,8 @@ li.marked::before {
     font-size: 1em;
     padding-top: 0.2em;
     padding-bottom: 0.2em;
-    white-space: nowrap;
+    word-wrap: break-word;
+    width: max-content;
+    max-width: 400px;
     overflow: hidden;
 }
