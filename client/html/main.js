@@ -4,7 +4,7 @@
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
 //
-import { div, frag, input, p, span} from "./elements.js"
+import { div, frag, input, p, span } from "./elements.js"
 import { clock } from './clock.js'
 import { notifierItem } from './notifieritem.js'
 import { battery } from './battery.js'
@@ -18,17 +18,17 @@ const browserStartUrl = "/start"
 
 
 export class Main extends React.Component {
-    
+
     constructor(props) {
         super(props)
-        this.state = { itemlist: [], term: ""}
+        this.state = { itemlist: [], term: "" }
         this.browserHistory = []
         this.watchSse()
     }
 
     componentDidMount = () => {
         document.addEventListener("keydown", this.onKeyDown)
-        document.getElementById('panel').addEventListener('focusout', () => this.setState({menuObject: undefined}))
+        document.getElementById('panel').addEventListener('focusout', () => this.setState({ menuObject: undefined }))
     };
 
     componentDidUpdate = () => {
@@ -47,7 +47,7 @@ export class Main extends React.Component {
         }
 
         evtSource.onerror = event => {
-            this.setState({itemList: [], displayDevice: undefined})
+            this.setState({ itemList: [], displayDevice: undefined })
             if (evtSource.readyState === 2) {
                 setTimeout(watchSse, 5000)
             }
@@ -71,9 +71,9 @@ export class Main extends React.Component {
     getItemlist = () => {
         fetch("http://localhost:7938/item/")
             .then(resp => resp.json())
-            .then( 
-                json => {console.log("getItemlist, json:", json); this.setState({itemlist: json})},
-                error => {this.setState({itemlist: []})}
+            .then(
+                json => { console.log("getItemlist, json:", json); this.setState({ itemlist: json }) },
+                error => { this.setState({ itemlist: [] }) }
             )
     }
 
@@ -82,16 +82,16 @@ export class Main extends React.Component {
         fetch("http://localhost:7938/device/DisplayDevice")
             .then(resp => resp.json())
             .then(
-                json => this.setState({displayDevice: json.data}),
-                error => this.setState({displayDevice: undefined})
+                json => this.setState({ displayDevice: json.data }),
+                error => this.setState({ displayDevice: undefined })
             )
     }
 
     getFlash = () => {
         fetch("http://localhost:7938/notification/flash")
             .then(resp => resp.json())
-            .then(json => this.setState({flashNotification: json}),
-                  error => this.setState({flashNotification: undefined}))
+            .then(json => this.setState({ flashNotification: json }),
+                error => this.setState({ flashNotification: undefined }))
     }
 
 
@@ -103,9 +103,9 @@ export class Main extends React.Component {
                 json => {
                     // browserUrl may have changed while request in flight 
                     if (browserUrl === this.browserUrl) {
-                        this.setState({resource: json}, this.getLinks)
+                        this.setState({ resource: json }, this.getLinks)
                     }
-                }, 
+                },
                 error => {
                     console.log("getResource error:", error)
                     this.setState({ resource: undefined })
@@ -122,19 +122,19 @@ export class Main extends React.Component {
                 .then(resp => resp.json())
                 .then(json => {
                     if (browserUrl === this.browserUrl) {
-                        this.setState({links: json})
+                        this.setState({ links: json })
                     }
-                }, 
-                error => {
-                    console.log("error:", error)
-                    this.setState({links: undefined})
-                })
+                },
+                    error => {
+                        console.log("error:", error)
+                        this.setState({ links: undefined })
+                    })
         } else {
-            this.setState({links: undefined})
+            this.setState({ links: undefined })
         }
     }
 
-    setMenuObject = menuObject => this.setState({menuObject: menuObject})
+    setMenuObject = menuObject => this.setState({ menuObject: menuObject })
 
     openBrowser = () => {
         if (this.state.links) {
@@ -149,11 +149,11 @@ export class Main extends React.Component {
         this.browserUrl = undefined
         this.preferred = undefined
         this.browserHistory = []
-        this.setState({term: "", resource: undefined, links: undefined})
+        this.setState({ term: "", resource: undefined, links: undefined })
     }
 
     handleInput = e => {
-        this.setState({term: e.target.value}, this.getResource)
+        this.setState({ term: e.target.value }, this.getResource)
     }
 
     move = direction => {
@@ -169,15 +169,15 @@ export class Main extends React.Component {
         } else if (direction === "right") {
             let href = document.activeElement.href
             if (href) {
-                this.browserHistory.unshift({url: this.browserUrl, term: this.state.term, oldPreferred: this.preferred})
+                this.browserHistory.unshift({ url: this.browserUrl, term: this.state.term, oldPreferred: this.preferred })
                 this.browserUrl = href
                 this.setState({ term: "" }, this.getResource)
             }
         } else { // left
-            let {url, term, oldPreferred} = this.browserHistory.shift()
+            let { url, term, oldPreferred } = this.browserHistory.shift()
             this.browserUrl = url || this.browserStartUrl
             this.preferred = oldPreferred
-            this.setState({term: term || ""}, this.getResource)
+            this.setState({ term: term || "" }, this.getResource)
         }
     }
 
@@ -187,37 +187,37 @@ export class Main extends React.Component {
         if (key === "Escape") {
             this.closeBrowser();
             this.setMenuObject();
-            this.setState({flashNotification: undefined})
+            this.setState({ flashNotification: undefined })
         } else if (key.length === 1 && !ctrlKey && !altKey) {
-            this.setState({term: this.state.term + key}, this.getResource)            
+            this.setState({ term: this.state.term + key }, this.getResource)
         } else if (key === "Backspace") {
-            this.setState({term: this.state.term.slice(0, -1)}, this.getResource)
+            this.setState({ term: this.state.term.slice(0, -1) }, this.getResource)
         } else {
-            return 
+            return
         }
         event.preventDefault();
     }
 
     render = () => {
-        let {itemlist, displayDevice, resource, term, links, menuObject, flashNotification} = this.state
+        let { itemlist, displayDevice, resource, term, links, menuObject, flashNotification } = this.state
         links = links || []
         console.log("itemlist:", itemlist)
         return frag(
-           div(
-                { className: "panel", onClick: () => this.setMenuObject()}, 
+            div(
+                { className: "panel", onClick: () => this.setMenuObject() },
                 clock(),
-                itemlist.map(item => { return notifierItem(item, this.setMenuObject)}),
+                itemlist.map(item => { return notifierItem(item, this.setMenuObject) }),
                 battery(displayDevice)
             ),
             resource ? frag(
                 resourceHead(resource),
-                div({className:'search-box'}, 
-                    span({style: {display: term ? "" : "none"}}, term)
+                div({ className: 'search-box' },
+                    span({ style: { display: term ? "" : "none" } }, term)
                 ),
-                ...links.map(l => link(l, l.profile, this.closeBrowser, this.move))
-            ) : menuObject ? menu(menuObject, () => this.setState({menuObject: undefined})) 
-              : flashNotification ? flash(flashNotification)
-              : null
+                div({ className: 'links' }, ...links.map(l => link(l, l.profile, this.closeBrowser, this.move)))
+            ) : menuObject ? menu(menuObject, () => this.setState({ menuObject: undefined }))
+                : flashNotification ? flash(flashNotification)
+                    : null
         )
     }
 }
@@ -225,16 +225,16 @@ export class Main extends React.Component {
 ReactDOM.render(React.createElement(Main), document.getElementById('panel'))
 
 let resizeToContent = div => {
-   let {width, height} =  div.getBoundingClientRect()
+    let { width, height } = div.getBoundingClientRect()
 
-    width = Math.round((width)*window.devicePixelRatio)
-    height = Math.round((height)*window.devicePixelRatio)
-    doPost("/refude/resizePanel", {width: width, height: height}) 
+    width = Math.round((width) * window.devicePixelRatio)
+    height = Math.round((height) * window.devicePixelRatio)
+    doPost("/refude/resizePanel", { width: width, height: height })
 }
 
 new ResizeObserver((observed) => {
     if (observed && observed[0]) { // shouldn't be nessecary 
-        resizeToContent(observed[0].target)    
+        resizeToContent(observed[0].target)
     }
 }).observe(document.getElementById('panel'))
 
