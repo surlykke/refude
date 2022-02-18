@@ -85,7 +85,7 @@ func Run() {
 			}
 
 		}
-		watch.SomethingChanged("/item/list")
+		watch.SomethingChanged("/item/")
 	}
 }
 
