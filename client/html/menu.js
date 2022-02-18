@@ -16,7 +16,7 @@ const toggleVisible = event => {
 }
 
 let Menu = ({menuObject, dismiss}) => {
-    let makeClickHandler = (id) => () => doPost(linkHref(menuObject), {id: id}).then(() => dismiss())
+    let makeClickHandler = (id) => () => doPost(menuObject.self, {id: id}).then(() => dismiss())
 
     let entry = e => {
         let { Label: text, Type, ToggleState, Id, SubEntries } = e
