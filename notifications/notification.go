@@ -27,8 +27,8 @@ const (
 	Critical         = 2
 )
 
-const flashTimeoutLow time.Duration = 3 * time.Second
-const flashTimeoutNormal time.Duration = 8 * time.Second
+const flashTimeoutLow time.Duration = 2 * time.Second
+const flashTimeoutNormal time.Duration = 6 * time.Second
 const _50ms = 50 * time.Millisecond
 
 type Notification struct {
@@ -94,13 +94,15 @@ var Notifications = resource.MakeCollection()
 func GetFlashResource() resource.Resource {
 	var found resource.Resource
 
-	for _, res := range Notifications.GetAll() {
-		var n = res.(*Notification)
+	var notifications = Notifications.GetAll()
+
+	for i := len(notifications) - 1; i >= 0; i-- {
+		var n = notifications[i].(*Notification)
 		if found == nil || found.(*Notification).Urgency < n.Urgency {
 			if n.Urgency == Critical ||
 				n.Urgency == Normal && n.Created.After(time.Now().Add(-flashTimeoutNormal)) ||
 				n.Urgency == Low && n.Created.After(time.Now().Add(-flashTimeoutLow)) {
-				found = res
+				found = n 
 			}
 		}
 	}
