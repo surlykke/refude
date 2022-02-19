@@ -10,7 +10,6 @@ import { img, a, span } from "./elements.js"
 export let link = (link, comment, dismiss, move) => {
     
     let  onKeyDown = event => {
-        console.log("link, onKeyDown", event)
         let { key, ctrlKey, shiftKey, altKey} = event;
         if (key === "ArrowRight" || key === "l" && ctrlKey) {
             if (event.target.rel === "related") {

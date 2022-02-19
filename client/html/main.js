@@ -183,7 +183,6 @@ export class Main extends React.Component {
 
     onKeyDown = (event) => {
         let { key, ctrlKey, altKey } = event;
-        console.log("key:", key)
         if (key === "Escape") {
             this.closeBrowser();
             this.setMenuObject();
@@ -201,7 +200,6 @@ export class Main extends React.Component {
     render = () => {
         let { itemlist, displayDevice, resource, term, links, menuObject, flashNotification } = this.state
         links = links || []
-        console.log("itemlist:", itemlist)
         return frag(
             div(
                 { className: "panel", onClick: () => this.setMenuObject() },
