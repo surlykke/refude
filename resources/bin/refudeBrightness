@@ -1,31 +1,30 @@
 #!/usr/bin/env bash
 
-brightness_path=`ls /sys/class/backlight/*/brightness`
-max_brightness=`cat /sys/class/backlight/*/max_brightness`
-brightness=`cat $brightness_path`
-
-let five_pct=$max_brightness/20
+brightness_path=$(ls /sys/class/backlight/*/brightness)
+current_brightness=$(cat $brightness_path)
+max_brightness=$(cat /sys/class/backlight/*/max_brightness)
 
 if [[ "+" == $1 ]]; then
-	let new_brightness=$brightness+five_pct
+	range="1 2 3 4 5 6 7 8 9 10"
+	direction="up"
 elif [[ "-" == $1 ]]; then 
-	let new_brightness=$brightness-five_pct
+	range="10 9 8 7 6 5 4 3 2 1"
 else
-	echo usage: adjust_backlight +\|-
+	echo usage: refudeBrightness +\|-
 	exit 1
 fi
 
-if (( $new_brightness > $max_brightness )); then
-	let new_brightness=$max_brightness
-elif (( $new_brightness <= $five_pct)); then 
-	new_brightness=$five_pct
+for i in $range; do 
+	level=$(($i*$max_brightness/10))
+	if [[ -n "$direction"  &&  $level -gt $current_brightness || -z "$direction"  &&  $level -lt $current_brightness ]]; then
+		new_brightness=$level
+		break
+	fi
+done
+
+if [[ $new_brightness != $brightness ]]; then
+	echo $new_brightness > $brightness_path
+	notify-send brightness $new_brightness -u low -c x-org.refude.gauge.brightness -i display-brightness-symbolic
 fi
-
-
-echo adjust: from  $brightness to $new_brightness
-
-echo $new_brightness > $brightness_path
-let rel_brightness=(100*$new_brightness)/$max_brightness
-notify-send brightness $rel_brightness -c x-org.refude.gauge.brightness -i display-brightness-symbolic
  
 
