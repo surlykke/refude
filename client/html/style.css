@@ -89,7 +89,6 @@ html, body {
 
 .search-box {
     flex-shrink: 0;
-    width: 300px;
     margin: 6px 10px 6px 8px;
     padding: 4px;
 }
@@ -114,7 +113,7 @@ html, body {
 .linkHeading {
     color: gray;
     font-style: italic;
-    margin: 0 0 0 8px;
+    margin: 4px 0px 10px 12px;
 }
 
 .related {

@@ -72,7 +72,7 @@ export class Main extends React.Component {
         fetch("http://localhost:7938/item/")
             .then(resp => resp.json())
             .then(
-                json => { console.log("getItemlist, json:", json); this.setState({ itemlist: json }) },
+                json => this.setState({ itemlist: json }),
                 error => { this.setState({ itemlist: [] }) }
             )
     }
@@ -212,6 +212,7 @@ export class Main extends React.Component {
                 div({ className: 'search-box' },
                     span({ style: { display: term ? "" : "none" } }, term)
                 ),
+                term && links.length === 0 && div({className: 'linkHeading'}, "No match"),
                 div({ className: 'links' }, ...links.map(l => link(l, l.profile, this.closeBrowser, this.move)))
             ) : menuObject ? menu(menuObject, () => this.setState({ menuObject: undefined }))
                 : flashNotification ? flash(flashNotification)
