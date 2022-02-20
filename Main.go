@@ -39,7 +39,6 @@ func FallBack(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	go client.Run()
 	go windows.Run()
 	go applications.Run()
 	go notifications.Run()

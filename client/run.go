@@ -11,7 +11,6 @@ import (
 	"io/fs"
 	"net/http"
 	"os"
-	"os/exec"
 	"strconv"
 
 	"github.com/surlykke/RefudeServices/lib/log"
@@ -40,17 +39,6 @@ func init() {
 }
 
 var events = make(chan string)
-
-func Run() {
-	for ev := range events {
-		switch ev {
-		case "dismiss":
-			if err := exec.Command("browserHide").Run(); err != nil {
-				log.Warn("Error hiding client:", err)
-			}
-		}
-	}
-}
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == "/refude/openBrowser" {
