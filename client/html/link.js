@@ -15,9 +15,7 @@ export let link = (link, comment, dismiss, move) => {
             if (event.target.rel === "related") {
                 move("right", event.target.href);
             }
-        } else if (key === "ArrowLeft" || key === "h" && ctrlKey) {
-            move("left")
-        } else if (key === "ArrowUp" || key === "k" && ctrlKey || key === 'Tab' && shiftKey && !ctrlKey && !altKey) {
+        }  else if (key === "ArrowUp" || key === "k" && ctrlKey || key === 'Tab' && shiftKey && !ctrlKey && !altKey) {
             move("up");
         } else if (key === "ArrowDown" || key === "j" && ctrlKey || key === 'Tab' && !shiftKey && !ctrlKey && !altKey) {
             move("down");

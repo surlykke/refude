@@ -174,8 +174,8 @@ export class Main extends React.Component {
                 this.setState({ term: "" }, this.getResource)
             }
         } else { // left
-            let { url, term, oldPreferred } = this.browserHistory.shift()
-            this.browserUrl = url || this.browserStartUrl
+            let { url, term, oldPreferred } = this.browserHistory.shift() || {}
+            this.browserUrl = url || browserStartUrl
             this.preferred = oldPreferred
             this.setState({ term: term || "" }, this.getResource)
         }
@@ -187,6 +187,8 @@ export class Main extends React.Component {
             this.closeBrowser();
             this.setMenuObject();
             this.setState({ flashNotification: undefined })
+        } else if (key === "ArrowLeft" || key === "h" && ctrlKey) {
+            this.move("left")
         } else if (key.length === 1 && !ctrlKey && !altKey) {
             this.setState({ term: this.state.term + key }, this.getResource)
         } else if (key === "Backspace") {
