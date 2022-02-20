@@ -33,7 +33,7 @@ func Run() {
 			}
 		} else {
 			// So it's a 'single'-window event
-			var path string = fmt.Sprintf("/window/%X", wId)
+			var path string = fmt.Sprintf("/window/%d", wId)
 			if res := Windows.Get(path); res != nil {
 				var win = *(res.(*Window))
 				switch event {
@@ -63,7 +63,7 @@ func updateWindowList(p x11.Proxy) (somethingChanged bool) {
 	var oldResources = Windows.GetAll()
 	var newResources = make([]resource.Resource, len(wIds), len(wIds))
 	for i, wId := range wIds {
-		var path = fmt.Sprintf("/window/%X", wId)
+		var path = fmt.Sprintf("/window/%d", wId)
 		var win *Window = nil
 		for _, o := range oldResources {
 			if path == o.Self() {
