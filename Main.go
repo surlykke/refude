@@ -67,7 +67,7 @@ func serveLinks(w http.ResponseWriter, r *http.Request) {
 		var term = requests.GetSingleQueryParameter(r, "search", "")
 		var links, filtered = res.Links(term)
 		if !filtered {
-			var retained = 0;
+			var retained = 0
 			for i := 0; i < len(links); i++ {
 				if rnk := searchutils.Match(term, links[i].Title); rnk > -1 {
 					links[retained] = links[i]
@@ -83,7 +83,7 @@ func serveLinks(w http.ResponseWriter, r *http.Request) {
 
 func serveHttp(w http.ResponseWriter, r *http.Request) {
 	var path = r.URL.Path
-	
+
 	if path == "/start" {
 		serveResource(start.Start{}, w, r)
 	} else if path == "/notification/flash" {
@@ -116,14 +116,23 @@ func serveList(resourceList []resource.Resource, w http.ResponseWriter, r *http.
 func serveResource(res resource.Resource, w http.ResponseWriter, r *http.Request) {
 	if res == nil {
 		respond.NotFound(w)
-	} else if r.Method == "GET" {
-		respond.AsJson(w, makeJsonWrapper(res))
-	} else if postable, ok := res.(resource.Postable); ok && r.Method == "POST" {
-		postable.DoPost(w, r)
-	} else if deletable, ok := res.(resource.Deleteable); ok && r.Method == "DELETE" {
-		deletable.DoDelete(w, r)
 	} else {
-		respond.NotAllowed(w)
+		var etag = resource.ETag(res)
+		if r.Method == "GET" {
+			if !respond.PreventedByETag(w, r, etag) {
+				respond.AsJsonWithETag(w, makeJsonWrapper(res), etag)
+			}
+		} else if postable, ok := res.(resource.Postable); ok && r.Method == "POST" {
+			if !respond.PreventedByETag(w, r, etag) {
+				postable.DoPost(w, r)
+			}
+		} else if deletable, ok := res.(resource.Deleteable); ok && r.Method == "DELETE" {
+			if !respond.PreventedByETag(w, r, etag) {
+				deletable.DoDelete(w, r)
+			}
+		} else {
+			respond.NotAllowed(w)
+		}
 	}
 }
 
@@ -173,7 +182,7 @@ type jsonResource struct {
 
 func makeJsonWrapper(res resource.Resource) jsonResource {
 	var self = link.Href(res.Self())
-	var links = link.Href("/links" + self) 
+	var links = link.Href("/links" + self)
 	var data = res
 	var title, comment, iconName, profile = res.Presentation()
 	return jsonResource{Self: self, Links: links, Title: title, Comment: comment, Icon: link.Href(iconName), Profile: profile, Data: data}

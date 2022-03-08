@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 )
 
 func Ok(w http.ResponseWriter) {
@@ -42,6 +43,51 @@ func ServerError(w http.ResponseWriter, err error) {
 
 func Accepted(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusAccepted)
+}
+
+func NotModified(w http.ResponseWriter) {
+	w.WriteHeader(http.StatusNotModified)
+}
+
+func PreconditionFailed(w http.ResponseWriter) {
+	w.WriteHeader(http.StatusPreconditionFailed)
+}
+
+
+func PreventedByETag(w http.ResponseWriter, r *http.Request, etag string) bool {
+	if etags := r.Header.Get("If-None-Match"); etags != "" {
+		if etagMatchHelper(etags, etag, true) {
+			NotModified(w)
+			return true
+		}
+	} else if etags = r.Header.Get("If-Match"); etags != "" {
+		if !etagMatchHelper(etags, etag, false) {
+			PreconditionFailed(w)
+			return true
+		}
+	}
+	return false
+}
+
+
+func etagMatchHelper(etags, etag string, weakMatch bool) bool {
+	if strings.Index(etags, `"*"`) > -1 { // A personal view: etag "*" is stupid
+		return true
+	} else if pos := strings.Index(etags, etag); pos > -1 {
+		// Our etags are not weak
+		// If strong matching and we have ETag "1234" and the client sends '..W/"1234", "1234"..' this won't work. We live with that.
+		if weakMatch || pos < 2 || etags[pos-2:pos] != "W/" {
+			return true
+		}
+	}
+
+	return false
+}
+
+
+func AsJsonWithETag(w http.ResponseWriter, data interface{}, etag string) {
+	w.Header().Set("ETag", etag)
+	AsJson(w, data)
 }
 
 func AsJson(w http.ResponseWriter, data interface{}) {
