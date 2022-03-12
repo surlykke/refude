@@ -18,14 +18,26 @@ type Collection struct {
 	sync.Mutex
 	Prefix    string
 	resources map[string]Resource
+	less func(r1, r2 Resource) bool
 }
 
+
+func MakeOrderedCollection(less func(r1, r2 Resource) bool) *Collection {
+	return &Collection {
+		resources: make(map[string]Resource, 20),
+		less: less,
+	}
+}
 
 func MakeCollection() *Collection {
 	return &Collection{
 		resources: make(map[string]Resource, 20),
+		less: defaultLess,
 	}
 }
+
+
+
 
 func (l *Collection) Get(path string) Resource {
 	l.Lock()
@@ -41,7 +53,8 @@ func (l *Collection) GetAll() []Resource {
 	for _, res := range l.resources {
 		all = append(all, res)
 	}
-	sort.Sort(sortableList(all))
+	sl := sortableList{resources: all, less: l.less}
+	sort.Sort(&sl)
 	return all
 }
 
@@ -109,19 +122,26 @@ func (l *Collection) FindFirst(test func(res Resource) bool) interface{} {
 	return nil
 }
 
+func defaultLess(r1, r2 Resource) bool {
+	return r1.Self() < r2.Self()
+}
+
 /* ---------- Used by GetAll, so we have predictable order --------- */
-type sortableList []Resource 
+type sortableList struct {
+	less func(r1, r2 Resource) bool
+	resources []Resource 
+}
 
 // Len is the number of elements in the collection.
-func (rl sortableList) Len() int {
-	return len(rl)
+func (sl *sortableList) Len() int {
+	return len(sl.resources)
 }
 
-func (rl sortableList) Less(i int, j int) bool {
-	return rl[i].Self() < rl[j].Self()
+func (sl *sortableList) Less(i int, j int) bool {
+	return sl.less(sl.resources[i], sl.resources[j])
 }
 
-func (rl sortableList) Swap(i int, j int) {
-	rl[i], rl[j] = rl[j], rl[i]	
+func (sl *sortableList) Swap(i int, j int) {
+	sl.resources[i], sl.resources[j] = sl.resources[j], sl.resources[i]	
 }
 

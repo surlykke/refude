@@ -89,7 +89,12 @@ func (n *Notification) DoDelete(w http.ResponseWriter, r *http.Request) {
 	respond.Accepted(w)
 }
 
-var Notifications = resource.MakeCollection()
+var Notifications = resource.MakeOrderedCollection(notificationLess)
+
+func notificationLess(r1, r2 resource.Resource) bool {
+	return r1.(*Notification).Id > r2.(*Notification).Id
+}
+
 
 func GetFlashResource() resource.Resource {
 	var found resource.Resource

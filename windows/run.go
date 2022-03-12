@@ -56,7 +56,11 @@ func Run() {
 	}
 }
 
-var Windows = resource.MakeCollection()
+var Windows = resource.MakeOrderedCollection(windowLess)
+
+func windowLess(r1, r2 resource.Resource) bool {
+	return r1.(*Window).Stacking < r2.(*Window).Stacking
+}
 
 func updateWindowList(p x11.Proxy) (somethingChanged bool) {
 	var wIds = x11.GetStack(p)

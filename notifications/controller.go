@@ -123,7 +123,7 @@ var conn *dbus.Conn
 var ids = make(chan uint32, 0)
 
 func generate(out chan uint32) {
-	for id := uint32(1000); ; id++ {
+	for id := uint32(1); ; id++ {
 		out <- id
 	}
 }
