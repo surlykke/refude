@@ -110,7 +110,7 @@ func writeOrPanic(w io.Writer, byteArrArr ...[]byte) {
 
 
 // We don't care about embedding in html, so no escaping
-// (The standard encoder escapes '&' which was a nuisance)
+// (The standard encoder escapes '&', which is annoying when having links in json)
 func ToJson(res interface{}) []byte {
 	var buf = bytes.NewBuffer([]byte{})
 	var encoder = json.NewEncoder(buf)

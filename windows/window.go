@@ -18,6 +18,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
+	"github.com/surlykke/RefudeServices/lib/searchutils"
 	"github.com/surlykke/RefudeServices/windows/x11"
 )
 
@@ -42,11 +43,15 @@ func (w *Window) Presentation() (title string, comment string, icon link.Href, p
 	return w.Name, "", link.IconUrl(w.IconName), "window"
 }
 
-func (w *Window) Links(context string) (links link.List, filtered bool) {
-	return link.List{
-		link.Make(context+w.Self(), w.Name, w.IconName, relation.DefaultAction),
-		link.Make(context+w.Self(), w.Name, w.IconName, relation.Delete),
-	}, false
+func (w *Window) Links(context string) link.List {
+	if searchutils.Match(context, w.Name) > -1 {
+		return link.List{
+			link.Make(context+w.Self(), w.Name, w.IconName, relation.DefaultAction),
+			link.Make(context+w.Self(), w.Name, w.IconName, relation.Delete),
+		}
+	} else {
+		return link.List{} 
+	}
 }
 
 // Caller ensures thread safety (calls to x11)
@@ -137,4 +142,3 @@ func GetIconName(p x11.Proxy, wId uint32) (string, error) {
 		return icons.AddX11Icon(pixelArray)
 	}
 }
-

@@ -68,7 +68,7 @@ func (f *File) Presentation() (title string, comment string, icon link.Href, pro
 	return f.Name, f.Path, link.IconUrl(f.Icon), "file"
 }
 
-func (f *File) Links(term string) (links link.List, filtered bool) {
+func (f *File) Links(term string) link.List {
 	var ll = make(link.List, 0, 10)
 
 	var rel = relation.DefaultAction
@@ -81,7 +81,7 @@ func (f *File) Links(term string) (links link.List, filtered bool) {
 
 	ll = append(ll, f.Related(term)...)
 
-	return ll, true
+	return ll
 
 }
 

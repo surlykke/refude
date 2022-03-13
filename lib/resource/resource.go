@@ -7,18 +7,15 @@
 package resource
 
 import (
-	"crypto/sha256"
-	"fmt"
 	"net/http"
 
 	"github.com/surlykke/RefudeServices/lib/link"
-	"github.com/surlykke/RefudeServices/lib/respond"
 )
 
 type Resource interface {
 	Self() string
 	Presentation() (title string, comment string, iconUrl link.Href, profile string)
-	Links(term string) (links link.List, filtered bool)
+	Links(term string) link.List
 }
 
 
@@ -37,8 +34,21 @@ type Deleteable interface {
 	DoDelete(w http.ResponseWriter, r *http.Request)
 }
 
-func ETag(res Resource) string {
-	var hasher = sha256.New()
-	hasher.Write(respond.ToJson(res))
-	return fmt.Sprintf(`"%X"`, hasher.Sum(nil))
+type Wrapper struct {
+	Self    link.Href   `json:"self"`
+	Links   link.List   `json:"links"`
+	Title   string      `json:"title"`
+	Comment string      `json:"comment,omitempty"`
+	Icon    link.Href   `json:"icon,omitempty"`
+	Profile string      `json:"profile"`
+	Data    interface{} `json:"data"`
 }
+
+func MakeWrapper(res Resource, linkSearchTerm string) Wrapper {
+	var wrapper = Wrapper{}
+	wrapper.Self, wrapper.Links, wrapper.Data = link.Href(res.Self()), res.Links(linkSearchTerm), res
+	wrapper.Title, wrapper.Comment, wrapper.Icon, wrapper.Profile = res.Presentation()
+	return wrapper
+}
+
+

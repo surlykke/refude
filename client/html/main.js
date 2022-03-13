@@ -14,7 +14,7 @@ import { resourceHead } from "./resourcehead.js"
 import { link } from "./link.js"
 import { menu } from "./menu.js"
 
-const browserStartUrl = "/start"
+const browserStartUrl = "http://localhost:7938/start"
 
 
 export class Main extends React.Component {
@@ -96,14 +96,23 @@ export class Main extends React.Component {
 
 
     getResource = () => {
-        let browserUrl = this.browserUrl
-        fetch(browserUrl)
+        let browserUrlCopy = this.browserUrl
+        let dummy = new URL("http://localhost:7938?foo=FOO")
+        console.log("dummy:", dummy.toString())
+        dummy.searchParams.append("baa", "BAA")
+        console.log("dummy:", dummy.toString())
+        
+        console.log("this.browserUrl", this.browserUrl)
+        let url = new URL(this.browserUrl)
+        url.searchParams.append("search", this.state.term)
+        console.log("fetching ", url.toString())
+        fetch(url)
             .then(resp => resp.json())
             .then(
                 json => {
                     // browserUrl may have changed while request in flight 
-                    if (browserUrl === this.browserUrl) {
-                        this.setState({ resource: json }, this.getLinks)
+                    if (browserUrlCopy === this.browserUrl) {
+                        this.setState({ resource: json })
                     }
                 },
                 error => {
@@ -113,31 +122,10 @@ export class Main extends React.Component {
             )
     }
 
-    getLinks = () => {
-        let browserUrl = this.browserUrl
-        if (this.state.resource) {
-            let linksUrl = this.state.resource.links
-            linksUrl = linksUrl + '?' + "search=" + encodeURIComponent(this.state.term)
-            fetch(linksUrl)
-                .then(resp => resp.json())
-                .then(json => {
-                    if (browserUrl === this.browserUrl) {
-                        this.setState({ links: json })
-                    }
-                },
-                    error => {
-                        console.log("error:", error)
-                        this.setState({ links: undefined })
-                    })
-        } else {
-            this.setState({ links: undefined })
-        }
-    }
-
     setMenuObject = menuObject => this.setState({ menuObject: menuObject })
 
     openBrowser = () => {
-        if (this.state.links) {
+        if (this.state.resource) {
             this.move("down")
         } else {
             this.browserUrl = browserStartUrl
@@ -200,8 +188,7 @@ export class Main extends React.Component {
     }
 
     render = () => {
-        let { itemlist, displayDevice, resource, term, links, menuObject, flashNotification } = this.state
-        links = links || []
+        let { itemlist, displayDevice, resource, term, menuObject, flashNotification } = this.state
         return frag(
             div(
                 { className: "panel", onClick: () => this.setMenuObject() },
@@ -214,8 +201,8 @@ export class Main extends React.Component {
                 div({ className: 'search-box' },
                     span({ style: { display: term ? "" : "none" } }, term)
                 ),
-                term && links.length === 0 && div({className: 'linkHeading'}, "No match"),
-                div({ className: 'links' }, ...links.map(l => link(l, l.profile, this.closeBrowser, this.move)))
+                term && resource.links.length === 0 && div({className: 'linkHeading'}, "No match"),
+                div({ className: 'links' }, ...resource.links.map(l => link(l, l.profile, this.closeBrowser, this.move)))
             ) : menuObject ? menu(menuObject, () => this.setState({ menuObject: undefined }))
                 : flashNotification ? flash(flashNotification)
                     : null

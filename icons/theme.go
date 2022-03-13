@@ -38,8 +38,8 @@ func (it *IconTheme) Presentation() (title string, comment string, icon link.Hre
 	return it.Name, it.Comment, "", "icontheme"
 }
 
-func (it *IconTheme) Links(term string) (links link.List, filtered bool) {
-	return link.List{}, true
+func (it *IconTheme) Links(term string) link.List {
+	return link.List{}
 }
 
 

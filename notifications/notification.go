@@ -16,6 +16,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
+	"github.com/surlykke/RefudeServices/lib/searchutils"
 	"github.com/surlykke/RefudeServices/watch"
 )
 
@@ -53,19 +54,23 @@ func (n *Notification) Presentation() (title string, comment string, icon link.H
 	return n.Subject, n.Body, link.IconUrl(n.iconName), "notification"
 }
 
-func (n *Notification) Links(term string) (links link.List, filtered bool) {
+func (n *Notification) Links(term string) link.List {
 	var ll = link.List{}
 	if actionDesc, ok := n.NActions["default"]; ok {
-		ll = append(ll, link.Make(n.Self() + "?action=default", actionDesc, "", relation.DefaultAction))
+		if searchutils.Match(term, actionDesc) > -1 {
+			ll = append(ll, link.Make(n.Self()+"?action=default", actionDesc, "", relation.DefaultAction))
+		}
 	}
 	for actionId, actionDesc := range n.NActions {
-		if actionId != "default" {
-			ll = append(ll, link.Make(n.Self() + "?action=" + actionId, actionDesc, "", relation.Action))
+		if searchutils.Match(term, actionDesc) > -1 {
+			if actionId != "default" {
+				ll = append(ll, link.Make(n.Self()+"?action="+actionId, actionDesc, "", relation.Action))
+			}
 		}
 	}
 	ll = append(ll, link.Make(n.Self(), "Dismiss", "", relation.Delete))
 
-	return ll, false
+	return ll
 }
 
 func (n *Notification) DoPost(w http.ResponseWriter, r *http.Request) {
@@ -95,7 +100,6 @@ func notificationLess(r1, r2 resource.Resource) bool {
 	return r1.(*Notification).Id > r2.(*Notification).Id
 }
 
-
 func GetFlashResource() resource.Resource {
 	var found resource.Resource
 
@@ -107,7 +111,7 @@ func GetFlashResource() resource.Resource {
 			if n.Urgency == Critical ||
 				n.Urgency == Normal && n.Created.After(time.Now().Add(-flashTimeoutNormal)) ||
 				n.Urgency == Low && n.Created.After(time.Now().Add(-flashTimeoutLow)) {
-				found = n 
+				found = n
 			}
 		}
 	}

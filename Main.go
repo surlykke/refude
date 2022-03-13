@@ -17,12 +17,10 @@ import (
 	"github.com/surlykke/RefudeServices/doc"
 	"github.com/surlykke/RefudeServices/file"
 	"github.com/surlykke/RefudeServices/icons"
-	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
-	"github.com/surlykke/RefudeServices/lib/searchutils"
 	"github.com/surlykke/RefudeServices/notifications"
 	"github.com/surlykke/RefudeServices/power"
 	"github.com/surlykke/RefudeServices/start"
@@ -50,7 +48,6 @@ func main() {
 	http.HandleFunc("/complete", complete.ServeHTTP)
 	http.HandleFunc("/watch", watch.ServeHTTP)
 	http.HandleFunc("/doc", doc.ServeHTTP)
-	http.HandleFunc("/links/", serveLinks)
 	http.HandleFunc("/", serveHttp)
 
 	if err := http.ListenAndServe(":7938", nil); err != nil {
@@ -58,78 +55,51 @@ func main() {
 	}
 }
 
-func serveLinks(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
-		respond.NotAllowed(w)
-	} else if res := findResource(r.URL.Path[6:]); res == nil {
-		respond.NotFound(w)
-	} else {
-		var term = requests.GetSingleQueryParameter(r, "search", "")
-		var links, filtered = res.Links(term)
-		if !filtered {
-			var retained = 0
-			for i := 0; i < len(links); i++ {
-				if rnk := searchutils.Match(term, links[i].Title); rnk > -1 {
-					links[retained] = links[i]
-					links[retained].Rank = rnk
-					retained++
-				}
-			}
-			links = links[:retained]
-		}
-		respond.AsJson(w, links)
-	}
-}
-
 func serveHttp(w http.ResponseWriter, r *http.Request) {
 	var path = r.URL.Path
 
 	if path == "/start" {
-		serveResource(start.Start{}, w, r)
+		serveResource(w, r, start.Start{})
 	} else if path == "/notification/flash" {
-		serveResource(notifications.GetFlashResource(), w, r)
+		serveResource(w, r, notifications.GetFlashResource())
 	} else if strings.HasPrefix(path, "/file/") {
-		serveResource(file.Get(path[5:]), w, r)
+		serveResource(w, r, file.Get(path[5:]))
 	} else if collection := findCollection(path); collection != nil {
 		if path == collection.Prefix {
-			serveList(collection.GetAll(), w, r)
+			serveList(w, r, collection.GetAll())
 		} else {
-			serveResource(collection.Get(path), w, r)
+			serveResource(w, r, collection.Get(path))
 		}
 	} else {
 		respond.NotFound(w)
 	}
+
 }
 
-func serveList(resourceList []resource.Resource, w http.ResponseWriter, r *http.Request) {
+func serveList(w http.ResponseWriter, r *http.Request, resources []resource.Resource) {
 	if r.Method != "GET" {
 		respond.NotAllowed(w)
 	} else {
-		var wrapperList = make([]jsonResource, len(resourceList), len(resourceList))
-		for i := 0; i < len(resourceList); i++ {
-			wrapperList[i] = makeJsonWrapper(resourceList[i])
+		var wrapperList = make([]resource.Wrapper, len(resources), len(resources))
+		for i, res := range resources {
+			wrapperList[i] = resource.MakeWrapper(res, "")
 		}
 		respond.AsJson(w, wrapperList)
 	}
 }
 
-func serveResource(res resource.Resource, w http.ResponseWriter, r *http.Request) {
+func serveResource(w http.ResponseWriter, r *http.Request, res resource.Resource) {
 	if res == nil {
 		respond.NotFound(w)
 	} else {
-		var etag = resource.ETag(res)
+		var linkSearchTerm = requests.GetSingleQueryParameter(r, "search", "")
+		var wrapper = resource.MakeWrapper(res, linkSearchTerm)
 		if r.Method == "GET" {
-			if !respond.PreventedByETag(w, r, etag) {
-				respond.AsJsonWithETag(w, makeJsonWrapper(res), etag)
-			}
+			respond.AsJson(w, wrapper)
 		} else if postable, ok := res.(resource.Postable); ok && r.Method == "POST" {
-			if !respond.PreventedByETag(w, r, etag) {
-				postable.DoPost(w, r)
-			}
+			postable.DoPost(w, r)
 		} else if deletable, ok := res.(resource.Deleteable); ok && r.Method == "DELETE" {
-			if !respond.PreventedByETag(w, r, etag) {
-				deletable.DoDelete(w, r)
-			}
+			deletable.DoDelete(w, r)
 		} else {
 			respond.NotAllowed(w)
 		}
@@ -156,34 +126,4 @@ func findCollection(path string) *resource.Collection {
 	} else {
 		return nil
 	}
-}
-
-func findResource(path string) resource.Resource {
-	if path == "/start" {
-		return start.Start{}
-	} else if strings.HasPrefix(path, "/file/") {
-		return file.Get(path[5:])
-	} else if collection := findCollection(path); collection != nil {
-		return collection.Get(path)
-	} else {
-		return nil
-	}
-}
-
-type jsonResource struct {
-	Self    link.Href   `json:"self"`
-	Links   link.Href   `json:"links,omitempty"`
-	Title   string      `json:"title"`
-	Comment string      `json:"comment,omitempty"`
-	Icon    link.Href   `json:"icon,omitempty"`
-	Profile string      `json:"profile"`
-	Data    interface{} `json:"data"`
-}
-
-func makeJsonWrapper(res resource.Resource) jsonResource {
-	var self = link.Href(res.Self())
-	var links = link.Href("/links" + self)
-	var data = res
-	var title, comment, iconName, profile = res.Presentation()
-	return jsonResource{Self: self, Links: links, Title: title, Comment: comment, Icon: link.Href(iconName), Profile: profile, Data: data}
 }

@@ -48,8 +48,8 @@ func (menu *Menu) Presentation() (title string, comment string, iconUrl link.Hre
 	return "Menu", "", "", "menu"	
 }
 
-func (menu *Menu) Links(term string) (links link.List, filtered bool) {
-	return link.List{}, true // FIXME should contain posts
+func (menu *Menu) Links(term string) link.List {
+	return link.List{} // FIXME should contain posts
 }
 
 

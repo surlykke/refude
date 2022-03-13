@@ -18,6 +18,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
+	"github.com/surlykke/RefudeServices/lib/searchutils"
 
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
@@ -36,7 +37,7 @@ type DesktopApplication struct {
 	DbusActivatable bool   `json:",omitempty"`
 	TryExec         string `json:",omitempty"`
 	Exec            string `json:",omitempty"`
-	Path           string //`json:",omitempty"`
+	Path            string //`json:",omitempty"`
 	Terminal        bool
 	Categories      []string
 	Implements      []string
@@ -58,12 +59,14 @@ func (d *DesktopApplication) Presentation() (title string, comment string, iconU
 	return d.Name, d.Comment, link.IconUrl(d.Icon), "application"
 }
 
-func (d *DesktopApplication) Links(term string) (links link.List, filtered bool) {
-	var ll = link.List{link.Make(d.Self(), "Launch", d.Icon, relation.DefaultAction)}	
+func (d *DesktopApplication) Links(term string) link.List {
+	var ll = link.List{link.Make(d.Self(), "Launch", d.Icon, relation.DefaultAction)}
 	for _, da := range d.DesktopActions {
-		ll = append(ll, link.Make(d.Self() + "?action=" + da.id, da.Name, da.Icon, relation.Action))
+		if searchutils.Match(term, da.Name) > -1 {
+			ll = append(ll, link.Make(d.Self()+"?action="+da.id, da.Name, da.Icon, relation.Action))
+		}
 	}
-	return ll, false
+	return ll
 }
 
 func (d *DesktopApplication) Run(arg string) error {
@@ -76,7 +79,6 @@ type DesktopAction struct {
 	Exec string
 	Icon string
 }
-
 
 func (d *DesktopApplication) DoPost(w http.ResponseWriter, r *http.Request) {
 	var exec string

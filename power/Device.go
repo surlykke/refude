@@ -96,7 +96,7 @@ func (d *Device) Presentation() (title string, comment string, icon link.Href, p
 	return d.title, "", link.IconUrl(d.IconName), "device"
 }
 
-func (d *Device) Links(term string) (links link.List, filtered bool) {
-	return link.List{}, true
+func (d *Device) Links(term string) link.List {
+	return link.List{}
 }
 

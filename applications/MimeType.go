@@ -61,8 +61,8 @@ func (m *Mimetype) Presentation() (title string, comment string, icon link.Href,
 	return m.Comment, m.ExpandedAcronym, link.IconUrl(m.IconName), "mimetype"
 }
 
-func (m *Mimetype) Links(term string) (links link.List, filtered bool) {
-	return link.List{}, true
+func (m *Mimetype) Links(term string) link.List {
+	return link.List{}
 }
 
 

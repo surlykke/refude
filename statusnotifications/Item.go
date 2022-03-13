@@ -18,6 +18,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/requests"
+	"github.com/surlykke/RefudeServices/lib/searchutils"
 	"github.com/surlykke/RefudeServices/lib/slice"
 )
 
@@ -34,7 +35,7 @@ type Item struct {
 	Title                   string
 	ToolTip                 string
 	MenuPath                dbus.ObjectPath
-	Menu					link.Href	
+	Menu                    link.Href
 	IconThemePath           string
 	UseIconPixmap           bool
 	UseAttentionIconPixmap  bool
@@ -49,14 +50,15 @@ func (item *Item) Presentation() (title string, comment string, iconUrl link.Hre
 	return item.Title, "", link.IconUrl(item.IconName), "item"
 }
 
-func (item *Item) Links(term string) (links link.List, filtered bool) {
+func (item *Item) Links(term string) link.List {
 	var ll = make(link.List, 0, 5)
-	if (item.MenuPath != "") {
-		ll = append(ll, link.Make("/itemmenu/" + pathEscape(item.sender, dbus.ObjectPath(item.MenuPath)), "Menu",  "", relation.Menu))
+	if item.MenuPath != "" {
+		if searchutils.Match(term, "Menu") > -1 {
+			ll = append(ll, link.Make("/itemmenu/"+pathEscape(item.sender, dbus.ObjectPath(item.MenuPath)), "Menu", "", relation.Menu))
+		}
 	}
-	return ll, false
+	return ll
 }
-
 
 func (item *Item) DoPost(w http.ResponseWriter, r *http.Request) {
 	action := requests.GetSingleQueryParameter(r, "action", "left")

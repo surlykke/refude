@@ -31,8 +31,8 @@ func (s Start) Presentation() (title string, comment string, icon link.Href, pro
 	return "Start", "", "", "start"
 }
 
-func (s Start) Links(term string) (links link.List, filtered bool) {
-	return doDesktopSearch(term), true
+func (s Start) Links(term string) link.List {
+	return doDesktopSearch(term)
 }
 
 func doDesktopSearch(term string) link.List {
