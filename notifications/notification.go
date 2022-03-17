@@ -37,8 +37,8 @@ type Notification struct {
 	Sender   string
 	Subject  string
 	Body     string
-	Created  time.Time
-	Expires  time.Time
+	Created  int64
+	Expires  int64 
 	Urgency  Urgency
 	NActions map[string]string `json:"actions"`
 	Hints    map[string]interface{}
@@ -100,26 +100,6 @@ func notificationLess(r1, r2 resource.Resource) bool {
 	return r1.(*Notification).Id > r2.(*Notification).Id
 }
 
-func GetFlashResource() resource.Resource {
-	var found resource.Resource
-
-	var notifications = Notifications.GetAll()
-
-	for i := len(notifications) - 1; i >= 0; i-- {
-		var n = notifications[i].(*Notification)
-		if found == nil || found.(*Notification).Urgency < n.Urgency {
-			if n.Urgency == Critical ||
-				n.Urgency == Normal && n.Created.After(time.Now().Add(-flashTimeoutNormal)) ||
-				n.Urgency == Low && n.Created.After(time.Now().Add(-flashTimeoutLow)) {
-				found = n
-			}
-		}
-	}
-	return found
-}
-
 func somethingChanged() {
-	watch.SomethingChanged("/notification/flash")
 	watch.SomethingChanged("/notification/")
-	watch.DesktopSearchMayHaveChanged()
 }

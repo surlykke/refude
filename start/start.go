@@ -9,12 +9,14 @@ package start
 import (
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/surlykke/RefudeServices/applications"
 	"github.com/surlykke/RefudeServices/file"
 	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
+	"github.com/surlykke/RefudeServices/lib/xdg"
 	"github.com/surlykke/RefudeServices/notifications"
 	"github.com/surlykke/RefudeServices/power"
 	"github.com/surlykke/RefudeServices/windows"
@@ -40,10 +42,10 @@ func doDesktopSearch(term string) link.List {
 	term = strings.ToLower(term)
 
 	links = append(links, searchCollection(notifications.Notifications.GetAll(), term, notificationFilter)...)
-	links = append(links, searchCollection(windows.Windows.GetAll(), term, windowFilter)...)
+	links = append(links, windows.Search(term)...)
 
 	if len(term) > 0 {
-		links = append(links, file.Search(term)...)
+		links = append(links, file.SearchFrom(xdg.Home, term, "~/")...)
 		links = append(links, searchCollection(applications.Applications.GetAll(), term, applicationFilter)...)
 	}
 
@@ -72,7 +74,8 @@ func searchCollection(list []resource.Resource, term string, filter func(resourc
 
 func notificationFilter(r resource.Resource) bool {
 	var n = r.(*notifications.Notification)
-	return n.Urgency == notifications.Critical || len(n.NActions) > 0
+	return n.Urgency == notifications.Critical || 
+	       (len(n.NActions) > 0 && n.Urgency == notifications.Normal && n.Created + 60000 > time.Now().UnixMilli())
 }
 
 func windowFilter(r resource.Resource) bool {

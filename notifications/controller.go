@@ -18,7 +18,6 @@ import (
 	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/image"
 	"github.com/surlykke/RefudeServices/lib/log"
-	"github.com/surlykke/RefudeServices/watch"
 )
 
 const NOTIFICATIONS_SERVICE = "org.freedesktop.Notifications"
@@ -184,7 +183,7 @@ func Notify(app_name string,
 		Sender:   app_name,
 		Subject:  sanitize(summary, []string{}, []string{}),
 		Body:     sanitize(body, allowedTags, allowedEscapes),
-		Created:  time.Now(),
+		Created:  time.Now().UnixMilli(),
 		Urgency:  Normal,
 		NActions: map[string]string{},
 		Hints:    map[string]interface{}{},
@@ -219,20 +218,10 @@ func Notify(app_name string,
 		expire_timeout = 120000
 	}
 
-	notification.Expires = time.Now().Add(time.Millisecond * time.Duration(expire_timeout))
+	notification.Expires = notification.Created + int64(expire_timeout)
 
 	Notifications.Put(&notification)
 	somethingChanged()
-
-	if notification.Expires.Before(time.Now().Add(time.Hour)) {
-		time.AfterFunc(notification.Expires.Sub(notification.Created)+time.Millisecond*50, removeExpired)
-	}
-
-	if notification.Urgency == Low {
-		time.AfterFunc(flashTimeoutLow+_50ms, func() { watch.SomethingChanged("/notification/flash") })
-	} else if notification.Urgency == Normal {
-		time.AfterFunc(flashTimeoutNormal+_50ms, func() { watch.SomethingChanged("/notification/flash") })
-	}
 
 	return id, nil
 }

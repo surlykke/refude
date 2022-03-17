@@ -47,10 +47,6 @@ func next(ev *event) *event {
 	return ev.next
 }
 
-func DesktopSearchMayHaveChanged() {
-	publish("/start")
-}
-
 func SomethingChanged(path string) {
 	publish(path)
 }

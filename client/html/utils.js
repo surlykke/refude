@@ -6,12 +6,6 @@
 //
 export const iconClassName = profile => "icon" + ("window" === profile ? " window" : "")
 
-export const getJson = (href, handler) =>
-    fetch(href)
-        .then(resp => resp.json())
-        .then(json => handler(json), error => console.warn(error))
-
-
 export const doPost = (href, params) => {
     if (params) {
         let separator = href.indexOf('?') > -1 ? '&' : '?'
@@ -25,9 +19,34 @@ export const doPost = (href, params) => {
 
 export const doDelete = href => fetch(href, { method: "DELETE" })
 
-export let linkHref = (linkList, rel) => {
-    return linkList.find(l => l.rel === rel)?.href
+export const watchResource = (path, handler) => {
+    let evtSource = new EventSource("http://localhost:7938/watch")
+    evtSource.onmessage = ({data}) => data === path && handler()
+    evtSource.onerror = () => {
+        errorHandler()
+        if (evtSource.readyState === 2) {
+            setTimeout(followResource, 5000, path, handler, errorHandler)
+        }
+    }
 }
-export let menuHref = res => linkHref(res, "org.refude.menu")
 
+export const followResource = (path, handler, errorHandler) => {
+    let retrieveResource = () => {
+        console.log("Retrieving", path)
+        fetch("http://localhost:7938" + path) 
+            .then(resp => resp.json())
+            .then(o => {console.log("handing:", o, "to handler"); handler(o)}, error => errorHandler && errorHandler(error))
+    }
 
+   let evtSource = new EventSource("http://localhost:7938/watch")
+    evtSource.onopen = () => retrieveResource()
+    evtSource.onmessage = ({data}) => data === path && retrieveResource()
+
+    evtSource.onerror = () => {
+        errorHandler()
+        if (evtSource.readyState === 2) {
+            setTimeout(followResource, 5000, path, handler, errorHandler)
+        }
+    } 
+
+}

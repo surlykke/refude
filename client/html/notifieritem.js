@@ -4,7 +4,7 @@
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
 //
-import { doPost, linkHref} from './utils.js'
+import { doPost} from './utils.js'
 import { div, img } from "./elements.js"
 
 let NotifierItem = ({res, setMenuObject}) => {
@@ -32,9 +32,8 @@ let NotifierItem = ({res, setMenuObject}) => {
         event.persist()
         event.preventDefault()
         let menuRetreieved 
-        fetch(res.links)
-            .then(resp => resp.json())
-            .then(linksJson => fetch(linkHref(linksJson, 'org.refude.menu')))
+        
+        fetch(res.links.find(l => l.rel === 'org.refude.menu')?.href)
             .then(resp => resp.json()) 
             .then(menuJson => { 
                 setMenuObject(menuJson)

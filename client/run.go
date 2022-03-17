@@ -45,7 +45,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if !windows.RaiseAndFocusNamedWindow("org.refude.panel") {
 			respond.NotFound(w)
 		} else {
-			watch.SomethingChanged(r.URL.Path)
+			watch.SomethingChanged("/refude/openBrowser")
 			respond.Accepted(w)
 		}
 	} else if r.URL.Path == "/refude/resizePanel" {

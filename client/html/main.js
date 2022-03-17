@@ -8,7 +8,7 @@ import { div, frag, input, p, span } from "./elements.js"
 import { clock } from './clock.js'
 import { notifierItem } from './notifieritem.js'
 import { battery } from './battery.js'
-import { doPost } from "./utils.js"
+import { doPost, followResource, watchResource } from "./utils.js"
 import { flash } from "./flash.js"
 import { resourceHead } from "./resourcehead.js"
 import { link } from "./link.js"
@@ -23,7 +23,12 @@ export class Main extends React.Component {
         super(props)
         this.state = { itemlist: [], term: "" }
         this.browserHistory = []
-        this.watchSse()
+        followResource("/notification/", this.updateFlash, () => this.setState({flash: undefined}))
+        followResource("/item/", itemlist => this.setState({itemlist: itemlist}), () => this.setState({itemlist: []}))
+        followResource("/device/", 
+                       deviceList => this.setState({displayDevice: deviceList.find(d => d.data.DisplayDevice)?.data}), 
+                       () => this.setState({displayDevice: undefined}))
+        watchResource("/refude/openBrowser", this.openBrowser)
     }
 
     componentDidMount = () => {
@@ -37,63 +42,35 @@ export class Main extends React.Component {
         link?.focus()
     }
 
-    watchSse = () => {
-        let evtSource = new EventSource("http://localhost:7938/watch")
+    updateFlash = notifications => {
+        console.log("updateFlash, notifications:", notifications)
+        let now = Date.now()
+        let flashNotification = notifications.find(n => n.data.Urgency === 2) || // Critical
+                                notifications.find(n => n.data.Urgency === 1 && n.data.Created + 6000 > now) || // Normal
+                                notifications.find(n => n.data.Urgency === 0 && n.data.Created + 2000 > now);
+        
+        console.log("flashNotification:", flashNotification)
 
-        evtSource.onopen = () => {
-            this.getDisplayDevice()
-            this.getItemlist()
-            this.getFlash()
-        }
 
-        evtSource.onerror = event => {
-            this.setState({ itemList: [], displayDevice: undefined })
-            if (evtSource.readyState === 2) {
-                setTimeout(watchSse, 5000)
-            }
-        }
-
-        evtSource.onmessage = event => {
-            if ("/item/" === event.data) {
-                this.getItemlist()
-            } else if ("/device/DisplayDevice" === event.data) {
-                this.getDisplayDevice()
-            } else if ("/notification/flash" === event.data) {
-                this.getFlash()
-            } else if ("/refude/openBrowser" === event.data) {
-                this.openBrowser()
-            } else if (this.browserUrl && this.browserUrl === event.data) {
-                this.getResource()
+        if (flashNotification) {
+            this.setState({flashNotification: flashNotification})
+            if (flashNotification.data.Urgency < 2) {
+                let timeout = flashNotification.data.Urgency === 1 ? 6050 : 2050
+                console.log("Scheduling this.removeFlash", timeout, this.removeFlash)
+                setTimeout(this.removeFlash, timeout)
             }
         }
     }
 
-    getItemlist = () => {
-        fetch("http://localhost:7938/item/")
-            .then(resp => resp.json())
-            .then(
-                json => this.setState({ itemlist: json }),
-                error => { this.setState({ itemlist: [] }) }
-            )
+    removeFlash = () => {
+        console.log("removeFlash")
+        let {flashNotification: fn} = this.state
+        if (fn && fn.data.Urgency < 2) {
+            if (fn.data.Created + (fn.data.Urgency == 1 ? 6000 : 2000) < Date.now()) {
+                this.setState({flashNotification: undefined})
+            }
+        }
     }
-
-
-    getDisplayDevice = () => {
-        fetch("http://localhost:7938/device/DisplayDevice")
-            .then(resp => resp.json())
-            .then(
-                json => this.setState({ displayDevice: json.data }),
-                error => this.setState({ displayDevice: undefined })
-            )
-    }
-
-    getFlash = () => {
-        fetch("http://localhost:7938/notification/flash")
-            .then(resp => resp.json())
-            .then(json => this.setState({ flashNotification: json }),
-                error => this.setState({ flashNotification: undefined }))
-    }
-
 
     getResource = () => {
         let browserUrlCopy = this.browserUrl
@@ -189,6 +166,7 @@ export class Main extends React.Component {
 
     render = () => {
         let { itemlist, displayDevice, resource, term, menuObject, flashNotification } = this.state
+        console.log("render, displayDevice:", displayDevice)
         return frag(
             div(
                 { className: "panel", onClick: () => this.setMenuObject() },

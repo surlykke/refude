@@ -54,6 +54,41 @@ func PreconditionFailed(w http.ResponseWriter) {
 }
 
 
+
+
+func AsJson(w http.ResponseWriter, data interface{}) {
+	var json = ToJson(data)
+	w.Header().Set("Content-Type", "application/vnd.refude+json")
+	w.Write(json)
+}
+
+func writeOrPanic(w io.Writer, byteArrArr ...[]byte) {
+	for _, byteArr := range byteArrArr {
+		for len(byteArr) > 0 {
+			if i, err := w.Write(byteArr); err != nil {
+				panic(err)
+			} else {
+				byteArr = byteArr[i:]
+			}
+		}
+	}
+}
+
+
+// We don't care about embedding in html, so no escaping
+// (The standard encoder escapes '&', which is annoying when having links in json)
+func ToJson(res interface{}) []byte {
+	var buf = bytes.NewBuffer([]byte{})
+	var encoder = json.NewEncoder(buf)
+	encoder.SetEscapeHTML(false)
+	if err := encoder.Encode(res); err != nil {
+		panic(fmt.Sprintln(err))
+	}
+	return buf.Bytes()
+}
+
+// ------------- ETag support. Not currently used ----------------------------------
+
 func PreventedByETag(w http.ResponseWriter, r *http.Request, etag string) bool {
 	if etags := r.Header.Get("If-None-Match"); etags != "" {
 		if etagMatchHelper(etags, etag, true) {
@@ -88,35 +123,4 @@ func etagMatchHelper(etags, etag string, weakMatch bool) bool {
 func AsJsonWithETag(w http.ResponseWriter, data interface{}, etag string) {
 	w.Header().Set("ETag", etag)
 	AsJson(w, data)
-}
-
-func AsJson(w http.ResponseWriter, data interface{}) {
-	var json = ToJson(data)
-	w.Header().Set("Content-Type", "application/vnd.refude+json")
-	w.Write(json)
-}
-
-func writeOrPanic(w io.Writer, byteArrArr ...[]byte) {
-	for _, byteArr := range byteArrArr {
-		for len(byteArr) > 0 {
-			if i, err := w.Write(byteArr); err != nil {
-				panic(err)
-			} else {
-				byteArr = byteArr[i:]
-			}
-		}
-	}
-}
-
-
-// We don't care about embedding in html, so no escaping
-// (The standard encoder escapes '&', which is annoying when having links in json)
-func ToJson(res interface{}) []byte {
-	var buf = bytes.NewBuffer([]byte{})
-	var encoder = json.NewEncoder(buf)
-	encoder.SetEscapeHTML(false)
-	if err := encoder.Encode(res); err != nil {
-		panic(fmt.Sprintln(err))
-	}
-	return buf.Bytes()
 }

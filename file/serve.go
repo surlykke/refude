@@ -7,10 +7,8 @@
 package file
 
 import (
-	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/resource"
-	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
 func Get(filePath string) resource.Resource {
@@ -24,12 +22,3 @@ func Get(filePath string) resource.Resource {
 	}
 }
 
-
-
-func Search(term string) link.List {
-	if file, err := makeFile(xdg.Home); err != nil {
-		return link.List{}
-	} else {
-		return file.Related(term)
-	}
-}

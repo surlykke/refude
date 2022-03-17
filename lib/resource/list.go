@@ -7,37 +7,37 @@
 package resource
 
 import (
+	"net/http"
 	"sort"
 	"sync"
+
+	"github.com/surlykke/RefudeServices/lib/requests"
+	"github.com/surlykke/RefudeServices/lib/respond"
 )
 
 /**
-	Basically, a syncronized map
+Basically, a syncronized map
 */
 type Collection struct {
 	sync.Mutex
 	Prefix    string
 	resources map[string]Resource
-	less func(r1, r2 Resource) bool
+	less      func(r1, r2 Resource) bool
 }
 
-
 func MakeOrderedCollection(less func(r1, r2 Resource) bool) *Collection {
-	return &Collection {
+	return &Collection{
 		resources: make(map[string]Resource, 20),
-		less: less,
+		less:      less,
 	}
 }
 
 func MakeCollection() *Collection {
 	return &Collection{
 		resources: make(map[string]Resource, 20),
-		less: defaultLess,
+		less:      defaultLess,
 	}
 }
-
-
-
 
 func (l *Collection) Get(path string) Resource {
 	l.Lock()
@@ -45,11 +45,10 @@ func (l *Collection) Get(path string) Resource {
 	return l.resources[path]
 }
 
-
 func (l *Collection) GetAll() []Resource {
 	l.Lock()
 	defer l.Unlock()
-	var all = make([]Resource,0, len(l.resources))
+	var all = make([]Resource, 0, len(l.resources))
 	for _, res := range l.resources {
 		all = append(all, res)
 	}
@@ -64,7 +63,6 @@ func (l *Collection) Put(res Resource) {
 	l.handlePrefix(res.Self())
 	l.resources[res.Self()] = res
 }
-
 
 func (l *Collection) handlePrefix(path string) {
 	if len(path) == 0 || path[0] != '/' {
@@ -91,7 +89,7 @@ func (l *Collection) handlePrefix(path string) {
 func (l *Collection) ReplaceWith(resources []Resource) {
 	l.Lock()
 	defer l.Unlock()
-	
+
 	l.resources = make(map[string]Resource, len(resources))
 	for _, res := range resources {
 		l.handlePrefix(res.Self())
@@ -104,7 +102,7 @@ func (l *Collection) Delete(path string) bool {
 	defer l.Unlock()
 
 	if _, ok := l.resources[path]; ok {
-		delete(l.resources, path)	
+		delete(l.resources, path)
 		return true
 	} else {
 		return false
@@ -122,14 +120,52 @@ func (l *Collection) FindFirst(test func(res Resource) bool) interface{} {
 	return nil
 }
 
+func (l *Collection) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path == l.Prefix {
+		ServeList(w, r, l.GetAll())
+	} else {
+		ServeResource(w, r, l.Get(r.URL.Path))
+	}
+}
+
+func ServeList(w http.ResponseWriter, r *http.Request, resources []Resource) {
+	if r.Method != "GET" {
+		respond.NotAllowed(w)
+	} else {
+		var wrapperList = make([]Wrapper, len(resources), len(resources))
+		for i, res := range resources {
+			wrapperList[i] = MakeWrapper(res, "")
+		}
+		respond.AsJson(w, wrapperList)
+	}
+}
+
+func ServeResource(w http.ResponseWriter, r *http.Request, res Resource) {
+	if res == nil {
+		respond.NotFound(w)
+	} else {
+		var linkSearchTerm = requests.GetSingleQueryParameter(r, "search", "")
+		if r.Method == "GET" {
+			respond.AsJson(w, MakeWrapper(res, linkSearchTerm))
+		} else if postable, ok := res.(Postable); ok && r.Method == "POST" {
+			postable.DoPost(w, r)
+		} else if deletable, ok := res.(Deleteable); ok && r.Method == "DELETE" {
+			deletable.DoDelete(w, r)
+		} else {
+			respond.NotAllowed(w)
+		}
+	}
+}
+
+
 func defaultLess(r1, r2 Resource) bool {
 	return r1.Self() < r2.Self()
 }
 
-/* ---------- Used by GetAll, so we have predictable order --------- */
+/* ---------- Used by GetAll --------- */
 type sortableList struct {
-	less func(r1, r2 Resource) bool
-	resources []Resource 
+	less      func(r1, r2 Resource) bool
+	resources []Resource
 }
 
 // Len is the number of elements in the collection.
@@ -142,6 +178,5 @@ func (sl *sortableList) Less(i int, j int) bool {
 }
 
 func (sl *sortableList) Swap(i int, j int) {
-	sl.resources[i], sl.resources[j] = sl.resources[j], sl.resources[i]	
+	sl.resources[i], sl.resources[j] = sl.resources[j], sl.resources[i]
 }
-

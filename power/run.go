@@ -42,7 +42,8 @@ func Run() {
 			log.Warn("Update on unknown device: ", signal.Path)
 		}
 		if path == displayDevicePath {
-			watch.SomethingChanged(displayDevicePath)
+			watch.SomethingChanged(displayDevicePath)	
+			watch.SomethingChanged("/device/")	
 		}
 	}
 

@@ -4,7 +4,7 @@
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
 //
-import { doPost, linkHref } from "./utils.js"
+import { doPost} from "./utils.js"
 import { div} from "./elements.js"
 
 const ul = (...children) => {

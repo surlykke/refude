@@ -9,14 +9,12 @@ package windows
 import (
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/requests"
-	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
 	"github.com/surlykke/RefudeServices/windows/x11"
@@ -46,8 +44,8 @@ func (w *Window) Presentation() (title string, comment string, icon link.Href, p
 func (w *Window) Links(context string) link.List {
 	if searchutils.Match(context, w.Name) > -1 {
 		return link.List{
-			link.Make(context+w.Self(), w.Name, w.IconName, relation.DefaultAction),
-			link.Make(context+w.Self(), w.Name, w.IconName, relation.Delete),
+			link.Make(context+w.Self(), "Raise and focus", w.IconName, relation.DefaultAction),
+			link.Make(context+w.Self(), "Close", w.IconName, relation.Delete),
 		}
 	} else {
 		return link.List{} 
@@ -87,33 +85,16 @@ func performAction(wId uint32, action string) bool {
 	var found = true
 	if action == "" {
 		x11.RaiseAndFocusWindow(requestProxy, wId)
-	} else if action == "restore" {
-		x11.RemoveStates(requestProxy, wId, x11.HIDDEN|x11.MAXIMIZED_HORZ|x11.MAXIMIZED_VERT)
-	} else if action == "minimize" {
-		x11.AddStates(requestProxy, wId, x11.HIDDEN)
-	} else if action == "maximize" {
-		x11.AddStates(requestProxy, wId, x11.MAXIMIZED_HORZ|x11.MAXIMIZED_VERT)
-	} else if strings.HasPrefix(action, "move::") {
-		found = false
-		var monitorName = action[6:]
-		for _, m := range getDesktopLayout().Monitors {
-			if monitorName == m.Name {
-				var marginW, marginH = m.W / 10, m.H / 10
-				var saveStates = x11.GetStates(requestProxy, wId) & (x11.HIDDEN | x11.MAXIMIZED_HORZ | x11.MAXIMIZED_VERT)
-				x11.RemoveStates(requestProxy, wId, x11.HIDDEN|x11.MAXIMIZED_HORZ|x11.MAXIMIZED_VERT)
-				x11.SetBounds(requestProxy, wId, m.X+int32(marginW), m.Y+int32(marginH), m.W-2*marginW, m.H-2*marginH)
-				x11.AddStates(requestProxy, wId, saveStates)
-				found = true
-				break
-			}
-		}
-	}
+	} 
 	return found
 }
 
 func RaiseAndFocusNamedWindow(name string) bool {
-	if res := Windows.FindFirst(func(res resource.Resource) bool { return res.(*Window).Name == name }); res != nil {
-		x11.RaiseAndFocusWindow(requestProxy, res.(*Window).Id)
+	requestProxyMutex.Lock()
+	defer requestProxyMutex.Unlock()
+
+	if wId, found := findNamedWindow(requestProxy, name); found {
+		x11.RaiseAndFocusWindow(requestProxy, wId)
 		return true
 	} else {
 		return false
@@ -121,16 +102,25 @@ func RaiseAndFocusNamedWindow(name string) bool {
 }
 
 func ResizeNamedWindow(name string, newWidth, newHeight uint32) bool {
-	if res := Windows.FindFirst(func(res resource.Resource) bool { return res.(*Window).Name == name }); res != nil {
-		x11.Resize(requestProxy, res.(*Window).Id, newWidth, newHeight)
+	requestProxyMutex.Lock()
+	defer requestProxyMutex.Unlock()
+
+	if wId, found := findNamedWindow(requestProxy, name); found {
+		x11.Resize(requestProxy, wId, newWidth, newHeight)
 		return true
 	} else {
 		return false
 	}
 }
 
-func relevantForDesktopSearch(w *Window) bool {
-	return w.State&(x11.SKIP_TASKBAR|x11.SKIP_PAGER|x11.ABOVE) == 0
+
+func findNamedWindow(proxy x11.Proxy, name string) (uint32, bool) {
+	for _, wId := range x11.GetStack(proxy) {
+		if windowName, err := x11.GetName(proxy, wId); err == nil && windowName == name {
+			return wId, true
+		}
+	}
+	return 0, false
 }
 
 func GetIconName(p x11.Proxy, wId uint32) (string, error) {

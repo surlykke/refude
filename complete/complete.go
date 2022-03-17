@@ -24,13 +24,19 @@ import (
 
 func collectPaths(prefix string) []string {
 	var paths = make([]string, 0, 1000)
-	for _, path := range []string{"/icon?name=", "/start?want=links&term=", "/complete?prefix=", "/watch", "/doc"} {
+	for _, path := range []string{"/icon?name=", "/start?search=", "/complete?prefix=", "/watch", "/doc"} {
 		if strings.HasPrefix(path, prefix) {
 			paths = append(paths, path)
 		}
 	}
 
-	for _, list := range []*resource.Collection{windows.Windows, applications.Applications, applications.Mimetypes, statusnotifications.Items, notifications.Notifications, power.Devices, icons.IconThemes} {
+	for _, path := range windows.GetPaths() {
+		if strings.HasPrefix(path, prefix) {
+			paths = append(paths, path)
+		}
+	}
+
+	for _, list := range []*resource.Collection{/* FIXME windows.Windows,*/ applications.Applications, applications.Mimetypes, statusnotifications.Items, notifications.Notifications, power.Devices, icons.IconThemes} {
 		for _, res := range list.GetAll() {
 			if strings.HasPrefix(string(res.Self()), prefix) {
 				paths = append(paths, string(res.Self()))

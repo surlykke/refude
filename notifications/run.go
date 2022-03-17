@@ -12,10 +12,13 @@ import (
 )
 
 var notificationExpireryHints = make(chan struct{})
-var flashExpireryHints = make(chan struct{})
 
 func Run() {
 	go DoDBus()
+	for range time.NewTicker(30 * time.Minute).C {
+		removeExpired()
+	}
+
 }
 
 func removeExpired() {
@@ -23,7 +26,7 @@ func removeExpired() {
 	for _, res := range Notifications.GetAll() {
 		var notification = res.(*Notification)
 		if notification.Urgency < Critical {
-			if notification.Expires.Before(time.Now()) {
+			if notification.Expires < time.Now().UnixMilli() {
 				Notifications.Delete(fmt.Sprintf("/notification/%d", notification.Id))
 				conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", notification.Id, Expired)
 				somethingExpired = true
@@ -43,4 +46,3 @@ func removeNotification(id uint32, reason uint32) {
 		somethingChanged()
 	}
 }
-
