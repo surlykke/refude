@@ -7,111 +7,97 @@
 package resource
 
 import (
+	"fmt"
 	"net/http"
 	"sort"
+	"strings"
 	"sync"
 
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/respond"
+	"golang.org/x/exp/constraints"
 )
 
 /**
-Basically, a syncronized map
+Basically, a syncronized, ordered map
 */
-type Collection struct {
+type Collection[ID constraints.Ordered, T Resource[ID]] struct {
 	sync.Mutex
-	Prefix    string
-	resources map[string]Resource
-	less      func(r1, r2 Resource) bool
+	Prefix    string // Immutable
+	resources map[ID]T
 }
 
-func MakeOrderedCollection(less func(r1, r2 Resource) bool) *Collection {
-	return &Collection{
-		resources: make(map[string]Resource, 20),
-		less:      less,
+func MakeCollection[ID constraints.Ordered, T Resource[ID]](prefix string) *Collection[ID, T] {
+	return &Collection[ID, T]{
+		Prefix:    prefix,
+		resources: make(map[ID]T),
 	}
 }
 
-func MakeCollection() *Collection {
-	return &Collection{
-		resources: make(map[string]Resource, 20),
-		less:      defaultLess,
+func (l *Collection[ID, T]) Self(id ID) string {
+	return fmt.Sprint(l.Prefix, id)
+}
+
+func (l *Collection[ID, T]) Get(id ID) T {
+	l.Lock()
+	defer l.Unlock()
+	return l.resources[id]
+}
+
+func (l *Collection[ID, T]) GetPaths() []string {
+	var res = make([]string, 0, len(l.resources))
+	for _, r := range l.resources {
+		res = append(res, fmt.Sprint(l.Prefix, r.Id()))
 	}
+	return res
 }
 
-func (l *Collection) Get(path string) Resource {
+func (l *Collection[ID, T]) GetAll() []T {
 	l.Lock()
 	defer l.Unlock()
-	return l.resources[path]
-}
 
-func (l *Collection) GetAll() []Resource {
-	l.Lock()
-	defer l.Unlock()
-	var all = make([]Resource, 0, len(l.resources))
+	var all = make([]T, 0, len(l.resources))
 	for _, res := range l.resources {
 		all = append(all, res)
 	}
-	sl := sortableList{resources: all, less: l.less}
+	sl := sortableList[ID, T](all)
 	sort.Sort(&sl)
 	return all
 }
 
-func (l *Collection) Put(res Resource) {
-	l.Lock()
-	defer l.Unlock()
-	l.handlePrefix(res.Self())
-	l.resources[res.Self()] = res
-}
-
-func (l *Collection) handlePrefix(path string) {
-	if len(path) == 0 || path[0] != '/' {
-		panic("Paths should start with '/'" + path)
-	} else {
-		for i := 1; i < len(path); i++ {
-			if path[i] == '/' {
-				var prefix = path[:i+1]
-				if len(prefix) == 2 {
-					panic("Thats not a serious path prefix: " + prefix)
-				}
-				if l.Prefix == "" {
-					l.Prefix = prefix
-				} else if l.Prefix != prefix {
-					panic("All resources added to collection should have same prefix: " + l.Prefix + "," + prefix)
-				}
-				return
-			}
-		}
-		panic("Resource path does not have a prefix: " + path)
-	}
-}
-
-func (l *Collection) ReplaceWith(resources []Resource) {
+func (l *Collection[ID, T]) Put(res T) {
 	l.Lock()
 	defer l.Unlock()
 
-	l.resources = make(map[string]Resource, len(resources))
+	l.resources[res.Id()] = res
+}
+
+func (l *Collection[ID, T]) ReplaceWith(resources []T) {
+	l.Lock()
+	defer l.Unlock()
+
+	l.resources = make(map[ID]T, len(resources))
 	for _, res := range resources {
-		l.handlePrefix(res.Self())
-		l.resources[res.Self()] = res
+		l.resources[res.Id()] = res
 	}
 }
 
-func (l *Collection) Delete(path string) bool {
+func (l *Collection[ID, T]) Delete(id ID) bool {
 	l.Lock()
 	defer l.Unlock()
 
-	if _, ok := l.resources[path]; ok {
-		delete(l.resources, path)
+	if _, ok := l.resources[id]; ok {
+		delete(l.resources, id)
 		return true
 	} else {
 		return false
 	}
 }
 
-func (l *Collection) FindFirst(test func(res Resource) bool) interface{} {
+func (l *Collection[ID, T]) FindFirst(test func(t T) bool) interface{} {
 	l.Lock()
 	defer l.Unlock()
+
 	for _, res := range l.resources {
 		if test(res) {
 			return res
@@ -120,63 +106,68 @@ func (l *Collection) FindFirst(test func(res Resource) bool) interface{} {
 	return nil
 }
 
-func (l *Collection) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (l *Collection[ID, T]) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == l.Prefix {
-		ServeList(w, r, l.GetAll())
-	} else {
-		ServeResource(w, r, l.Get(r.URL.Path))
+		ServeList[ID](w, r, l.Prefix, l.GetAll())
+	} else if strings.HasPrefix(r.URL.Path, l.Prefix) {
+		l.Lock()
+
+		for id, res := range l.resources {
+			var self = l.Self(id)
+			if r.URL.Path == self {
+				l.Unlock()
+
+				ServeResource[ID](w, r, self, res)
+				return
+			}
+		}
+		l.Unlock()
+		respond.NotFound(w)
 	}
 }
 
-func ServeList(w http.ResponseWriter, r *http.Request, resources []Resource) {
+
+func ServeList[ID constraints.Ordered, T Resource[ID]](w http.ResponseWriter, r *http.Request, context string, resources []T) {
 	if r.Method != "GET" {
 		respond.NotAllowed(w)
 	} else {
 		var wrapperList = make([]Wrapper, len(resources), len(resources))
 		for i, res := range resources {
-			wrapperList[i] = MakeWrapper(res, "")
+			var self = fmt.Sprint(context, res.Id())
+			wrapperList[i] = MakeWrapper[ID](self, res, "")
 		}
 		respond.AsJson(w, wrapperList)
 	}
 }
 
-func ServeResource(w http.ResponseWriter, r *http.Request, res Resource) {
-	if res == nil {
-		respond.NotFound(w)
+func ServeResource[ID constraints.Ordered, T Resource[ID]](w http.ResponseWriter, r *http.Request, self string, res T) {
+	var linkSearchTerm = requests.GetSingleQueryParameter(r, "search", "")
+	if r.Method == "GET" {
+		respond.AsJson(w, MakeWrapper[ID](self, res, linkSearchTerm))
 	} else {
-		var linkSearchTerm = requests.GetSingleQueryParameter(r, "search", "")
-		if r.Method == "GET" {
-			respond.AsJson(w, MakeWrapper(res, linkSearchTerm))
-		} else if postable, ok := res.(Postable); ok && r.Method == "POST" {
+		var resI Resource[ID] = res
+		if postable, ok := resI.(Postable); ok && r.Method == "POST" {
 			postable.DoPost(w, r)
-		} else if deletable, ok := res.(Deleteable); ok && r.Method == "DELETE" {
+		} else if deletable, ok := resI.(Deleteable); ok && r.Method == "DELETE" {
 			deletable.DoDelete(w, r)
 		} else {
 			respond.NotAllowed(w)
 		}
 	}
-}
 
-
-func defaultLess(r1, r2 Resource) bool {
-	return r1.Self() < r2.Self()
 }
 
 /* ---------- Used by GetAll --------- */
-type sortableList struct {
-	less      func(r1, r2 Resource) bool
-	resources []Resource
+type sortableList[ID constraints.Ordered, T Resource[ID]] []T
+
+func (sl sortableList[ID, T]) Len() int {
+	return len(sl)
 }
 
-// Len is the number of elements in the collection.
-func (sl *sortableList) Len() int {
-	return len(sl.resources)
+func (sl sortableList[ID, T]) Less(i int, j int) bool {
+	return sl[i].Id() < sl[j].Id()
 }
 
-func (sl *sortableList) Less(i int, j int) bool {
-	return sl.less(sl.resources[i], sl.resources[j])
-}
-
-func (sl *sortableList) Swap(i int, j int) {
-	sl.resources[i], sl.resources[j] = sl.resources[j], sl.resources[i]
+func (sl sortableList[ID, T]) Swap(i int, j int) {
+	sl[i], sl[j] = sl[j], sl[i]
 }

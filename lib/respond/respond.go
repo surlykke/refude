@@ -53,9 +53,6 @@ func PreconditionFailed(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusPreconditionFailed)
 }
 
-
-
-
 func AsJson(w http.ResponseWriter, data interface{}) {
 	var json = ToJson(data)
 	w.Header().Set("Content-Type", "application/vnd.refude+json")
@@ -73,7 +70,6 @@ func writeOrPanic(w io.Writer, byteArrArr ...[]byte) {
 		}
 	}
 }
-
 
 // We don't care about embedding in html, so no escaping
 // (The standard encoder escapes '&', which is annoying when having links in json)
@@ -104,7 +100,6 @@ func PreventedByETag(w http.ResponseWriter, r *http.Request, etag string) bool {
 	return false
 }
 
-
 func etagMatchHelper(etags, etag string, weakMatch bool) bool {
 	if strings.Index(etags, `"*"`) > -1 { // A personal view: etag "*" is stupid
 		return true
@@ -118,7 +113,6 @@ func etagMatchHelper(etags, etag string, weakMatch bool) bool {
 
 	return false
 }
-
 
 func AsJsonWithETag(w http.ResponseWriter, data interface{}, etag string) {
 	w.Header().Set("ETag", etag)

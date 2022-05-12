@@ -42,8 +42,8 @@ func Run() {
 			log.Warn("Update on unknown device: ", signal.Path)
 		}
 		if path == displayDevicePath {
-			watch.SomethingChanged(displayDevicePath)	
-			watch.SomethingChanged("/device/")	
+			watch.SomethingChanged(displayDevicePath)
+			watch.SomethingChanged("/device/")
 		}
 	}
 
@@ -59,6 +59,4 @@ func getAddedRemovedPath(signal *dbus.Signal) (dbus.ObjectPath, bool) {
 	}
 }
 
-var Devices = resource.MakeCollection()
-
-
+var Devices = resource.MakeCollection[string, *Device]("/device/")

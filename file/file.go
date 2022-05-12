@@ -60,26 +60,26 @@ type File struct {
 	Apps        []string
 }
 
-func (f *File) Self() string {
-	return "/file" + f.Path
+func (f *File) Id() string {
+	return f.Path[1:]
 }
 
 func (f *File) Presentation() (title string, comment string, icon link.Href, profile string) {
 	return f.Name, f.Path, link.IconUrl(f.Icon), "file"
 }
 
-func (f *File) Links(term string) link.List {
+func (f *File) Links(self, term string) link.List {
 	var ll = make(link.List, 0, 10)
 
 	var rel = relation.DefaultAction
 	for _, app := range applications.GetApps(f.Apps...) {
 		if rnk := searchutils.Match(term, app.Name); rnk > -1 {
-			ll = append(ll, link.Make(f.Self()+"?action="+app.Id, "Open with "+app.Name, app.Icon, rel))
+			ll = append(ll, link.Make(self+"?action="+app.DesktopId, "Open with "+app.Name, app.Icon, rel))
 			rel = relation.Action
 		}
 	}
 
-	if f.Type == "Directory" {	
+	if f.Type == "Directory" {
 		ll = append(ll, SearchFrom(f.Path, term, "")...)
 	}
 
@@ -88,7 +88,7 @@ func (f *File) Links(term string) link.List {
 
 // Assumes dir is a directory
 func SearchFrom(dir, term, context string) link.List {
-	var depth = len(term)/3
+	var depth = len(term) / 3
 	if depth > 2 {
 		depth = 2
 	}
@@ -101,11 +101,11 @@ func searchRecursiveFrom(dir, term, context string, depth int) link.List {
 
 	if dirEntries, err := os.ReadDir(dir); err == nil {
 		for _, dirEntry := range dirEntries {
-			var entryPath = dir + "/" + dirEntry.Name() 
+			var entryPath = dir + "/" + dirEntry.Name()
 			if rnk := searchutils.Match(term, dirEntry.Name()); rnk > -1 {
 				var mimetype, _ = magicmime.TypeByFile(entryPath)
 				var icon = strings.ReplaceAll(mimetype, "/", "-")
-				ll = append(ll, link.MakeRanked("/file"+entryPath, context + dirEntry.Name(), icon, "file", rnk+50))
+				ll = append(ll, link.MakeRanked("/file"+entryPath, context+dirEntry.Name(), icon, "file", rnk+50))
 
 			}
 			if depth > 0 && dirEntry.IsDir() {
@@ -114,13 +114,11 @@ func searchRecursiveFrom(dir, term, context string, depth int) link.List {
 		}
 	}
 
-
 	for _, directory := range directoriesFound {
-		ll = append(ll, searchRecursiveFrom(dir + "/" + directory.Name(), term, context + directory.Name() + "/", depth -1)...)
+		ll = append(ll, searchRecursiveFrom(dir+"/"+directory.Name(), term, context+directory.Name()+"/", depth-1)...)
 	}
 	return ll
 }
-
 
 func makeFile(path string) (*File, error) {
 	if !strings.HasPrefix(path, "/") {
@@ -136,7 +134,6 @@ func makeFile(path string) (*File, error) {
 		var mimetype, _ = magicmime.TypeByFile(path)
 		var f = File{
 			Path:        path,
-			self:        "/file" + path,
 			Name:        fileInfo.Name(),
 			Type:        getFileType(fileInfo.Mode()),
 			Permissions: fileInfo.Mode().String(),

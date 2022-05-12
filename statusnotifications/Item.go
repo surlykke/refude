@@ -25,7 +25,7 @@ import (
 type Item struct {
 	sender                  string
 	path                    dbus.ObjectPath
-	Id                      string
+	ItemId                  string
 	Category                string
 	Status                  string
 	IconName                string
@@ -42,15 +42,15 @@ type Item struct {
 	UseOverlayIconPixmap    bool
 }
 
-func (item *Item) Self() string {
-	return "/item/" + pathEscape(item.sender, item.path)
+func (item *Item) Id() string {
+	return pathEscape(item.sender, item.path)
 }
 
 func (item *Item) Presentation() (title string, comment string, iconUrl link.Href, profile string) {
 	return item.Title, "", link.IconUrl(item.IconName), "item"
 }
 
-func (item *Item) Links(term string) link.List {
+func (item *Item) Links(self, term string) link.List {
 	var ll = make(link.List, 0, 5)
 	if item.MenuPath != "" {
 		if searchutils.Match(term, "Menu") > -1 {

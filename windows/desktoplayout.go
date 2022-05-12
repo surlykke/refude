@@ -5,5 +5,3 @@
 // Please refer to the GPL2 file for a copy of the license.
 //
 package windows
-
-

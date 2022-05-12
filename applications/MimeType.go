@@ -18,7 +18,7 @@ import (
 const freedesktopOrgXml = "/usr/share/mime/packages/freedesktop.org.xml"
 
 type Mimetype struct {
-	Id              string
+	MimeId          string
 	Comment         string
 	Acronym         string `json:",omitempty"`
 	ExpandedAcronym string `json:",omitempty"`
@@ -39,7 +39,7 @@ func MakeMimetype(id string) (*Mimetype, error) {
 		return nil, errors.New("Incomprehensible mimetype: " + id)
 	} else {
 		var mt = Mimetype{
-			Id:          id,
+			MimeId:      id,
 			Aliases:     []string{},
 			Globs:       []string{},
 			SubClassOf:  []string{},
@@ -51,21 +51,19 @@ func MakeMimetype(id string) (*Mimetype, error) {
 	}
 }
 
-var Mimetypes = resource.MakeCollection()
+var Mimetypes = resource.MakeCollection[string, *Mimetype]("/mimetype/")
 
-func (m *Mimetype) Self() string {
-	return "/mimetype/" + m.Id
+func (m *Mimetype) Id() string {
+	return m.MimeId
 }
 
 func (m *Mimetype) Presentation() (title string, comment string, icon link.Href, profile string) {
 	return m.Comment, m.ExpandedAcronym, link.IconUrl(m.IconName), "mimetype"
 }
 
-func (m *Mimetype) Links(term string) link.List {
+func (m *Mimetype) Links(self, term string) link.List {
 	return link.List{}
 }
-
-
 
 /*func SetDefaultApp(mimetypeId string, appId string) error {
 	if mt, ok := collectionStore.Load().(collection).mimetypes[mimetypeId]; ok {

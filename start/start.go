@@ -21,19 +21,20 @@ import (
 	"github.com/surlykke/RefudeServices/power"
 	"github.com/surlykke/RefudeServices/windows"
 	"github.com/surlykke/RefudeServices/windows/x11"
+	"golang.org/x/exp/constraints"
 )
 
 type Start struct{}
 
-func (s Start) Self() string {
-	return "/start"
+func (s Start) Id() string {
+	return ""
 }
 
 func (s Start) Presentation() (title string, comment string, icon link.Href, profile string) {
 	return "Start", "", "", "start"
 }
 
-func (s Start) Links(term string) link.List {
+func (s Start) Links(self, term string) link.List {
 	return doDesktopSearch(term)
 }
 
@@ -41,50 +42,45 @@ func doDesktopSearch(term string) link.List {
 	var links = make(link.List, 0, 300)
 	term = strings.ToLower(term)
 
-	links = append(links, searchCollection(notifications.Notifications.GetAll(), term, notificationFilter)...)
+	links = append(links, searchCollection(notifications.Notifications, term, notificationFilter)...)
 	links = append(links, windows.Search(term)...)
 
 	if len(term) > 0 {
 		links = append(links, file.SearchFrom(xdg.Home, term, "~/")...)
-		links = append(links, searchCollection(applications.Applications.GetAll(), term, applicationFilter)...)
+		links = append(links, searchCollection(applications.Applications, term, applicationFilter)...)
 	}
 
 	if len(term) > 3 {
-		links = append(links, searchCollection(power.Devices.GetAll(), term, nil)...)
+		links = append(links, searchCollection(power.Devices, term, nil)...)
 
 	}
 	sort.Sort(links)
 	return links
 }
 
-func searchCollection(list []resource.Resource, term string, filter func(resource.Resource) bool) link.List {
+func searchCollection[ID constraints.Ordered, T resource.Resource[ID]](collection *resource.Collection[ID, T], term string, filter func(T) bool) link.List {
 	var result = make(link.List, 0, 300)
-	for _, res := range list {
+	for _, res := range collection.GetAll() {
 		if filter != nil && !filter(res) {
 			continue
 		} else {
-			var title,_,_,_ = res.Presentation()
+			var title, _, _, _ = res.Presentation()
 			if rnk := searchutils.Match(term, title /*TODO keywords*/); rnk > -1 {
-				result = append(result, resource.LinkTo(res, rnk))
+				result = append(result, resource.LinkTo[ID](res, collection.Prefix, rnk))
 			}
 		}
 	}
 	return result
 }
 
-func notificationFilter(r resource.Resource) bool {
-	var n = r.(*notifications.Notification)
-	return n.Urgency == notifications.Critical || 
-	       (len(n.NActions) > 0 && n.Urgency == notifications.Normal && n.Created + 60000 > time.Now().UnixMilli())
+func notificationFilter(n *notifications.Notification) bool {
+	return n.Urgency == notifications.Critical || (len(n.NActions) > 0 && n.Urgency == notifications.Normal && n.Created+60000 > time.Now().UnixMilli())
 }
 
-func windowFilter(r resource.Resource) bool {
-	var win = r.(*windows.Window)
+func windowFilter(win windows.Window) bool {
 	return win.Name != "org.refude.browser" && win.Name != "org.refude.panel" && win.State&(x11.SKIP_TASKBAR|x11.SKIP_PAGER|x11.ABOVE) == 0
 }
 
-func applicationFilter(r resource.Resource) bool {
-	var app = r.(*applications.DesktopApplication)
+func applicationFilter(app *applications.DesktopApplication) bool {
 	return !app.NoDisplay
 }
-

@@ -7,7 +7,6 @@
 package windows
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/surlykke/RefudeServices/icons"
@@ -26,35 +25,35 @@ type Bounds struct {
 }
 
 type Window struct {
-	Id       uint32
+	WindowId uint32
 	Name     string
 	IconName string `json:",omitempty"`
 	State    x11.WindowStateMask
 	Stacking int // 0 means: on top, then 1, then 2 etc. -1 means we don't know (yet)
 }
 
-func (w *Window) Self() string {
-	return fmt.Sprintf("/window/%d", w.Id)
+func (w *Window) Id() uint32 {
+	return w.WindowId
 }
 
 func (w *Window) Presentation() (title string, comment string, icon link.Href, profile string) {
 	return w.Name, "", link.IconUrl(w.IconName), "window"
 }
 
-func (w *Window) Links(context string) link.List {
-	if searchutils.Match(context, w.Name) > -1 {
+func (w *Window) Links(self, searchTerm string) link.List {
+	if searchutils.Match(searchTerm, w.Name) > -1 {
 		return link.List{
-			link.Make(context+w.Self(), "Raise and focus", w.IconName, relation.DefaultAction),
-			link.Make(context+w.Self(), "Close", w.IconName, relation.Delete),
+			link.Make(self, "Raise and focus", w.IconName, relation.DefaultAction),
+			link.Make(self, "Close", w.IconName, relation.Delete),
 		}
 	} else {
-		return link.List{} 
+		return link.List{}
 	}
 }
 
 // Caller ensures thread safety (calls to x11)
 func makeWindow(p x11.Proxy, wId uint32) *Window {
-	var win = &Window{Id: wId}
+	var win = &Window{WindowId: wId}
 	win.Name, _ = x11.GetName(p, wId)
 	win.IconName, _ = GetIconName(p, wId)
 	win.State = x11.GetStates(p, wId)
@@ -64,14 +63,14 @@ func makeWindow(p x11.Proxy, wId uint32) *Window {
 
 func (win *Window) DoDelete(w http.ResponseWriter, r *http.Request) {
 	requestProxyMutex.Lock()
-	x11.CloseWindow(requestProxy, win.Id)
+	x11.CloseWindow(requestProxy, win.WindowId)
 	requestProxyMutex.Unlock()
 	respond.Accepted(w)
 }
 
 func (win *Window) DoPost(w http.ResponseWriter, r *http.Request) {
 	var action = requests.GetSingleQueryParameter(r, "action", "")
-	if performAction(win.Id, action) {
+	if performAction(win.WindowId, action) {
 		respond.Accepted(w)
 	} else {
 		respond.NotFound(w)
@@ -85,7 +84,7 @@ func performAction(wId uint32, action string) bool {
 	var found = true
 	if action == "" {
 		x11.RaiseAndFocusWindow(requestProxy, wId)
-	} 
+	}
 	return found
 }
 
@@ -112,7 +111,6 @@ func ResizeNamedWindow(name string, newWidth, newHeight uint32) bool {
 		return false
 	}
 }
-
 
 func findNamedWindow(proxy x11.Proxy, name string) (uint32, bool) {
 	for _, wId := range x11.GetStack(proxy) {

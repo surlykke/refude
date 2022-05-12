@@ -7,7 +7,6 @@
 package notifications
 
 import (
-	"fmt"
 	"time"
 )
 
@@ -23,12 +22,11 @@ func Run() {
 
 func removeExpired() {
 	var somethingExpired = false
-	for _, res := range Notifications.GetAll() {
-		var notification = res.(*Notification)
+	for _, notification := range Notifications.GetAll() {
 		if notification.Urgency < Critical {
 			if notification.Expires < time.Now().UnixMilli() {
-				Notifications.Delete(fmt.Sprintf("/notification/%d", notification.Id))
-				conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", notification.Id, Expired)
+				Notifications.Delete(notification.NotificationId)
+				conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", notification.NotificationId, Expired)
 				somethingExpired = true
 			}
 		}
@@ -40,8 +38,7 @@ func removeExpired() {
 }
 
 func removeNotification(id uint32, reason uint32) {
-	var path = fmt.Sprintf("/notification/%d", id)
-	if deleted := Notifications.Delete(path); deleted {
+	if deleted := Notifications.Delete(id); deleted {
 		conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", id, reason)
 		somethingChanged()
 	}

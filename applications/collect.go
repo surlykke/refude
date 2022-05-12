@@ -15,7 +15,6 @@ import (
 	"strings"
 
 	"github.com/surlykke/RefudeServices/lib/log"
-	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/slice"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
@@ -27,8 +26,8 @@ func Collect() {
 	// Add aliases as mimetypes
 	for _, mt := range mimetypes {
 		for _, alias := range aliasTypes(mt) {
-			if _, ok := mimetypes[alias.Id]; !ok {
-				mimetypes[alias.Id] = alias
+			if _, ok := mimetypes[alias.MimeId]; !ok {
+				mimetypes[alias.MimeId] = alias
 			}
 		}
 	}
@@ -61,12 +60,12 @@ func Collect() {
 		}
 	}
 
-	var appResources = make([]resource.Resource, 0, len(apps))
+	var appResources = make([]*DesktopApplication, 0, len(apps))
 	for _, app := range apps {
 		appResources = append(appResources, app)
 	}
 
-	var mimetypeResources = make([]resource.Resource, 0, len(mimetypes))
+	var mimetypeResources = make([]*Mimetype, 0, len(mimetypes))
 	for _, mt := range mimetypes {
 		mimetypeResources = append(mimetypeResources, mt)
 	}
@@ -79,7 +78,7 @@ func aliasTypes(mt *Mimetype) []*Mimetype {
 	var result = make([]*Mimetype, 0, len(mt.Aliases))
 	for _, id := range mt.Aliases {
 		var copy = *mt
-		copy.Id = id
+		copy.MimeId = id
 		copy.Aliases = []string{}
 		result = append(result, &copy)
 	}
@@ -168,7 +167,7 @@ func CollectMimeTypes() map[string]*Mimetype {
 			if tmp.Icon.Name != "" {
 				mimeType.IconName = tmp.Icon.Name
 			} else {
-				mimeType.IconName = strings.Replace(mimeType.Id, "/", "-", -1)
+				mimeType.IconName = strings.Replace(mimeType.MimeId, "/", "-", -1)
 			}
 
 			for _, aliasStruct := range tmp.Alias {
@@ -186,11 +185,11 @@ func CollectMimeTypes() map[string]*Mimetype {
 			if tmp.GenericIcon.Name != "" {
 				mimeType.GenericIcon = tmp.GenericIcon.Name
 			} else {
-				slashPos := strings.Index(mimeType.Id, "/")
-				mimeType.GenericIcon = mimeType.Id[:slashPos] + "-x-generic"
+				slashPos := strings.Index(mimeType.MimeId, "/")
+				mimeType.GenericIcon = mimeType.MimeId[:slashPos] + "-x-generic"
 			}
 
-			res[mimeType.Id] = mimeType
+			res[mimeType.MimeId] = mimeType
 		}
 	}
 
@@ -230,7 +229,7 @@ func collectApplications(appdir string, apps map[string]*DesktopApplication) {
 			return nil
 		}
 
-		apps[app.Id] = app
+		apps[app.DesktopId] = app
 
 		return nil
 	}
@@ -291,7 +290,7 @@ func readDesktopFile(path string, id string) (*DesktopApplication, error) {
 	} else if len(iniFile) == 0 || iniFile[0].Name != "Desktop Entry" {
 		return nil, errors.New("file must start with '[Desktop Entry]'")
 	} else {
-		var da = DesktopApplication{Id: id}
+		var da = DesktopApplication{DesktopId: id}
 		da.DesktopActions = []DesktopAction{}
 		var actionNames = []string{}
 		group := iniFile[0]

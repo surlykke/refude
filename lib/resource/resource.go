@@ -7,24 +7,24 @@
 package resource
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/surlykke/RefudeServices/lib/link"
+	"golang.org/x/exp/constraints"
 )
 
-type Resource interface {
-	Self() string
+type Resource[ID constraints.Ordered] interface {
+	Id() ID
 	Presentation() (title string, comment string, iconUrl link.Href, profile string)
-	Links(term string) link.List
+	Links(self, term string) link.List
 }
 
-
-func LinkTo(res Resource, rank int) link.Link {
-	var path = res.Self()
+func LinkTo[ID constraints.Ordered](res Resource[ID], context string, rank int) link.Link {
+	var path = fmt.Sprint(context, res.Id())
 	var title, _, iconName, profile = res.Presentation()
 	return link.MakeRanked2(link.Href(path), title, iconName, profile, rank)
 }
-
 
 type Postable interface {
 	DoPost(w http.ResponseWriter, r *http.Request)
@@ -34,7 +34,7 @@ type Deleteable interface {
 	DoDelete(w http.ResponseWriter, r *http.Request)
 }
 
-type Wrapper struct {
+type Wrapper struct { // Maybe generic?
 	Self    link.Href   `json:"self"`
 	Links   link.List   `json:"links"`
 	Title   string      `json:"title"`
@@ -44,11 +44,11 @@ type Wrapper struct {
 	Data    interface{} `json:"data"`
 }
 
-func MakeWrapper(res Resource, linkSearchTerm string) Wrapper {
+func MakeWrapper[ID constraints.Ordered, T Resource[ID]](self string, res T, linkSearchTerm string) Wrapper {
 	var wrapper = Wrapper{}
-	wrapper.Self, wrapper.Links, wrapper.Data = link.Href(res.Self()), res.Links(linkSearchTerm), res
+	wrapper.Self = link.Href(self)
+	wrapper.Links = res.Links(self, linkSearchTerm)
+	wrapper.Data = res
 	wrapper.Title, wrapper.Comment, wrapper.Icon, wrapper.Profile = res.Presentation()
 	return wrapper
 }
-
-

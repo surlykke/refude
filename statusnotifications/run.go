@@ -7,6 +7,8 @@
 package statusnotifications
 
 import (
+	"fmt"
+
 	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/watch"
 
@@ -20,8 +22,7 @@ func Run() {
 	// TODO After a restart, pick up those that where?
 
 	for event := range events {
-		var path = "/item/" + pathEscape(event.sender, event.path)
-		var menuPath = "/itemmenu/" + pathEscape(event.sender, event.path)
+		var id = pathEscape(event.sender, event.path)
 		switch event.eventName {
 		case "ItemCreated":
 			var item = buildItem(event.sender, event.path)
@@ -30,11 +31,11 @@ func Run() {
 				Menus.Put(&Menu{event.sender, item.MenuPath})
 			}
 		case "ItemRemoved":
-			Items.Delete(path)
-			Menus.Delete(menuPath)
+			Items.Delete(id)
+			Menus.Delete(id)
 		default:
-			if res := Items.Get(path); res != nil {
-				var itemCopy = *(res.(*Item))
+			if res := Items.Get(id); res != nil {
+				var itemCopy = *res
 				switch event.eventName {
 				case "org.kde.StatusNotifierItem.NewTitle":
 					if v, ok := getProp(itemCopy.sender, itemCopy.path, "Title"); ok {
@@ -79,7 +80,7 @@ func Run() {
 					continue
 				}
 				Items.Put(&itemCopy)
-				watch.SomethingChanged(itemCopy.Self())
+				watch.SomethingChanged(fmt.Sprint("/item/", itemCopy.Id()))
 			} else {
 				continue
 			}
@@ -89,5 +90,5 @@ func Run() {
 	}
 }
 
-var Items = resource.MakeCollection()
-var Menus = resource.MakeCollection()
+var Items = resource.MakeCollection[string, *Item]("/item/")
+var Menus = resource.MakeCollection[string, *Menu]("/itemmenu/")

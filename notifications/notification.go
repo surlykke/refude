@@ -33,42 +33,42 @@ const flashTimeoutNormal time.Duration = 6 * time.Second
 const _50ms = 50 * time.Millisecond
 
 type Notification struct {
-	Id       uint32
-	Sender   string
-	Subject  string
-	Body     string
-	Created  int64
-	Expires  int64 
-	Urgency  Urgency
-	NActions map[string]string `json:"actions"`
-	Hints    map[string]interface{}
-	iconName string
-	IconSize uint32 `json:",omitempty"`
+	NotificationId uint32
+	Sender         string
+	Subject        string
+	Body           string
+	Created        int64
+	Expires        int64
+	Urgency        Urgency
+	NActions       map[string]string `json:"actions"`
+	Hints          map[string]interface{}
+	iconName       string
+	IconSize       uint32 `json:",omitempty"`
 }
 
-func (n *Notification) Self() string {
-	return fmt.Sprintf("/notification/%d", n.Id)
+func (n *Notification) Id() uint32 {
+	return n.NotificationId
 }
 
 func (n *Notification) Presentation() (title string, comment string, icon link.Href, profile string) {
 	return n.Subject, n.Body, link.IconUrl(n.iconName), "notification"
 }
 
-func (n *Notification) Links(term string) link.List {
+func (n *Notification) Links(self, term string) link.List {
 	var ll = link.List{}
 	if actionDesc, ok := n.NActions["default"]; ok {
 		if searchutils.Match(term, actionDesc) > -1 {
-			ll = append(ll, link.Make(n.Self()+"?action=default", actionDesc, "", relation.DefaultAction))
+			ll = append(ll, link.Make(self+"?action=default", actionDesc, "", relation.DefaultAction))
 		}
 	}
 	for actionId, actionDesc := range n.NActions {
 		if searchutils.Match(term, actionDesc) > -1 {
 			if actionId != "default" {
-				ll = append(ll, link.Make(n.Self()+"?action="+actionId, actionDesc, "", relation.Action))
+				ll = append(ll, link.Make(self+"?action="+actionId, actionDesc, "", relation.Action))
 			}
 		}
 	}
-	ll = append(ll, link.Make(n.Self(), "Dismiss", "", relation.Delete))
+	ll = append(ll, link.Make(self, "Dismiss", "", relation.Delete))
 
 	return ll
 }
@@ -78,7 +78,7 @@ func (n *Notification) DoPost(w http.ResponseWriter, r *http.Request) {
 	var action = requests.GetSingleQueryParameter(r, "action", "default")
 
 	if _, ok := n.NActions[action]; ok {
-		if err := conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".ActionInvoked", n.Id, action); err != nil {
+		if err := conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".ActionInvoked", n.NotificationId, action); err != nil {
 			respond.ServerError(w, err)
 		} else {
 			respond.Accepted(w)
@@ -89,16 +89,12 @@ func (n *Notification) DoPost(w http.ResponseWriter, r *http.Request) {
 }
 
 func (n *Notification) DoDelete(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Notification DoDelete, n.Id:", n.Id)
-	removeNotification(n.Id, Dismissed)
+	fmt.Println("Notification DoDelete, n.Id:", n.NotificationId)
+	removeNotification(n.NotificationId, Dismissed)
 	respond.Accepted(w)
 }
 
-var Notifications = resource.MakeOrderedCollection(notificationLess)
-
-func notificationLess(r1, r2 resource.Resource) bool {
-	return r1.(*Notification).Id > r2.(*Notification).Id
-}
+var Notifications = resource.MakeCollection[uint32, *Notification]("/notification/")
 
 func somethingChanged() {
 	watch.SomethingChanged("/notification/")

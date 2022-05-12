@@ -65,12 +65,16 @@ func serveHttp(w http.ResponseWriter, r *http.Request) {
 	var path = r.URL.Path
 
 	if path == "/start" {
-		resource.ServeResource(w, r, start.Start{})
+		resource.ServeResource[string](w, r, "/start", start.Start{})
 	} else if strings.HasPrefix(path, "/file/") {
-		resource.ServeResource(w, r, file.Get(path[5:]))
+		if f := file.Get(path[5:]); f != nil {
+			var self = "/file/" + f.Id()
+			resource.ServeResource[string](w, r, self, file.Get(path[5:]))
+		} else {
+			respond.NotFound(w)
+		}
 	} else {
 		respond.NotFound(w)
 	}
 
 }
-

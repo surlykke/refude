@@ -43,7 +43,7 @@ export class Main extends React.Component {
     }
 
     updateFlash = notifications => {
-        console.log("updateFlash, notifications:", notifications)
+        notifications.reverse() 
         let now = Date.now()
         let flashNotification = notifications.find(n => n.data.Urgency === 2) || // Critical
                                 notifications.find(n => n.data.Urgency === 1 && n.data.Created + 6000 > now) || // Normal

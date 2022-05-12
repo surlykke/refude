@@ -17,7 +17,7 @@ const upowerInterface = "org.freedesktop.UPower"
 const devicePrefix = "/org/freedesktop/UPower/devices"
 const displayDeviceDbusPath = dbus.ObjectPath(devicePrefix + "/DisplayDevice")
 const upowerDeviceInterface = "org.freedesktop.UPower.Device"
-const displayDevicePath = "/device/DisplayDevice"
+const displayDevicePath = "DisplayDevice"
 
 func subscribe() chan *dbus.Signal {
 	var signals = make(chan *dbus.Signal, 100)
@@ -119,4 +119,3 @@ var dbusConn = func() *dbus.Conn {
 		return conn
 	}
 }()
-

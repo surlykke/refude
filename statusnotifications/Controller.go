@@ -70,8 +70,7 @@ func monitorSignals() {
 }
 
 func checkItemStatus(sender string) {
-	for _, res := range Items.GetAll() {
-		var item = res.(*Item)
+	for _, item := range Items.GetAll() {
 		if item.sender == sender {
 			if _, ok := dbuscall.GetSingleProp(conn, item.sender, item.path, ITEM_INTERFACE, "Status"); !ok {
 				events <- Event{"ItemRemoved", item.sender, item.path}
@@ -137,8 +136,7 @@ var events = make(chan Event)
 
 func updateWatcherProperties() {
 	ids := make([]string, 0, 20)
-	for _, res := range Items.GetAll() {
-		var item = res.(*Item)
+	for _, item := range Items.GetAll() {
 		ids = append(ids, item.sender+":"+string(item.path))
 	}
 	watcherProperties.Set(WATCHER_INTERFACE, "RegisteredStatusItems", dbus.MakeVariant(ids))
@@ -147,7 +145,7 @@ func updateWatcherProperties() {
 func buildItem(sender string, path dbus.ObjectPath) *Item {
 	var item = Item{sender: sender, path: path}
 	var props = dbuscall.GetAllProps(conn, item.sender, item.path, ITEM_INTERFACE)
-	item.Id = getStringOr(props["Id"])
+	item.ItemId = getStringOr(props["Id"])
 	item.Category = getStringOr(props["Category"])
 	item.MenuPath = getDbusPath(props["Menu"])
 	item.Title = getStringOr(props["Title"])

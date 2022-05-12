@@ -15,33 +15,36 @@ import (
 
 	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
 	"github.com/surlykke/RefudeServices/windows/x11"
 )
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path == "/window/" {
-		resource.ServeList(w, r, GetAll())
+	if r.URL.Path == "/windowlist" {
+		resource.ServeList[uint32](w, r, "/window/", GetAll())
+	} else if win := Get(r.URL.Path); win != nil {
+		resource.ServeResource[uint32](w, r, "/window/", win)
 	} else {
-		resource.ServeResource(w, r, Get(r.URL.Path))
+		respond.NotFound(w)
 	}
 }
 
-func GetAll() []resource.Resource {
+func GetAll() []resource.Resource[uint32] {
 	requestProxyMutex.Lock()
 	defer requestProxyMutex.Unlock()
 	var stackIdList = x11.GetStack(requestProxy)
-	var resources = make([]resource.Resource, 0, len(stackIdList))
+	var resources = make([]resource.Resource[uint32], 0, len(stackIdList))
 	for i, stackId := range stackIdList {
-		var res = makeWindow(requestProxy, stackId)
-		res.Stacking = i
-		resources = append(resources, res)
+		var win = makeWindow(requestProxy, stackId)
+		win.Stacking = i
+		resources = append(resources, win)
 	}
 
 	return resources
 }
 
-func Get(path string) resource.Resource {
+func Get(path string) *Window {
 	if strings.HasPrefix(path, "/window/") {
 		if i, err := strconv.Atoi(path[8:]); err == nil {
 			if i >= 0 && i <= 0xFFFFFFFF {
@@ -92,7 +95,6 @@ func GetPaths() []string {
 	}
 	return paths
 }
-
 
 func showAndRaise(id uint32) {
 	requestProxyMutex.Lock()

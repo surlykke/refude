@@ -8,10 +8,9 @@ package file
 
 import (
 	"github.com/surlykke/RefudeServices/lib/log"
-	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
-func Get(filePath string) resource.Resource {
+func Get(filePath string) *File {
 	if file, err := makeFile(filePath); err != nil {
 		log.Warn("Could not make file from", filePath, err)
 		return nil
@@ -21,4 +20,3 @@ func Get(filePath string) resource.Resource {
 		return file
 	}
 }
-

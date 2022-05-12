@@ -17,5 +17,3 @@ func GetSingleQueryParameter(r *http.Request, parameterName string, fallbackValu
 		return r.URL.Query()[parameterName][0]
 	}
 }
-
-

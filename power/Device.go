@@ -84,19 +84,18 @@ func devicePath(path dbus.ObjectPath) string {
 	if path == displayDeviceDbusPath {
 		return displayDevicePath
 	} else {
-		return "/device" + string(path)
+		return string(path)
 	}
 }
 
-func (d *Device) Self() string {
-	return devicePath(d.DbusPath)	
+func (d *Device) Id() string {
+	return devicePath(d.DbusPath)
 }
 
 func (d *Device) Presentation() (title string, comment string, icon link.Href, profile string) {
 	return d.title, "", link.IconUrl(d.IconName), "device"
 }
 
-func (d *Device) Links(term string) link.List {
+func (d *Device) Links(self, term string) link.List {
 	return link.List{}
 }
-

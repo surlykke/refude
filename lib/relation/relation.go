@@ -29,5 +29,3 @@ var relationSerializations = map[Relation][]byte{
 func (r Relation) MarshalJSON() ([]byte, error) {
 	return relationSerializations[r], nil
 }
-
-

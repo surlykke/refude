@@ -6,7 +6,6 @@
 //
 package icons
 
-
 import (
 	"fmt"
 	"os"
@@ -22,7 +21,7 @@ import (
 )
 
 type IconTheme struct {
-	Id       string
+	ThemeId  string
 	self     string
 	Name     string
 	Comment  string
@@ -30,19 +29,17 @@ type IconTheme struct {
 	Dirs     []IconDir
 }
 
-func (it *IconTheme) Self() string {
-	return "/icontheme/" + it.Id
+func (it *IconTheme) Id() string {
+	return it.ThemeId
 }
 
 func (it *IconTheme) Presentation() (title string, comment string, icon link.Href, profile string) {
 	return it.Name, it.Comment, "", "icontheme"
 }
 
-func (it *IconTheme) Links(term string) link.List {
+func (it *IconTheme) Links(self, term string) link.List {
 	return link.List{}
 }
-
-
 
 type IconDir struct {
 	Path    string
@@ -61,8 +58,8 @@ func readThemes() map[string]*IconTheme {
 			for _, indexFilePath := range indexFilePaths {
 				if theme, ok := readTheme(indexFilePath); !ok {
 					log.Warn("Could not read", indexFilePath)
-				} else if _, ok := themeMap[theme.Id]; !ok {
-					themeMap[theme.Id] = theme
+				} else if _, ok := themeMap[theme.ThemeId]; !ok {
+					themeMap[theme.ThemeId] = theme
 					IconThemes.Put(theme)
 				}
 			}
@@ -93,7 +90,7 @@ func readTheme(indexThemeFilePath string) (*IconTheme, bool) {
 	themeGroup := iniFile[0]
 
 	theme := IconTheme{}
-	theme.Id = themeId
+	theme.ThemeId = themeId
 	theme.self = "/icontheme/" + themeId
 	theme.Name = themeGroup.Entries["Name"]
 	theme.Comment = themeGroup.Entries["Comment"]
@@ -102,7 +99,7 @@ func readTheme(indexThemeFilePath string) (*IconTheme, bool) {
 	var addedDirs = make(map[string]bool)
 	directories := slice.Split(themeGroup.Entries["Directories"], ",")
 	if len(directories) == 0 {
-		log.Warn("Ignoring theme ", theme.Id, " - no directories")
+		log.Warn("Ignoring theme ", theme.ThemeId, " - no directories")
 		return nil, false
 	}
 	for _, iniGroup := range iniFile[1:] {
@@ -180,4 +177,4 @@ func readUint32OrFallback(uintAsString string, fallback uint32) uint32 {
 	}
 }
 
-var IconThemes = resource.MakeCollection()
+var IconThemes = resource.MakeCollection[string, *IconTheme]("/icontheme/")

@@ -46,24 +46,24 @@ type DesktopApplication struct {
 	StartupWmClass  string `json:",omitempty"`
 	Url             string `json:",omitempty"`
 	DesktopActions  []DesktopAction
-	Id              string
+	DesktopId       string
 	Mimetypes       []string
 	path            string `json:"-"`
 }
 
-func (d *DesktopApplication) Self() string {
-	return "/application/" + d.Id
+func (d *DesktopApplication) Id() string {
+	return d.DesktopId
 }
 
 func (d *DesktopApplication) Presentation() (title string, comment string, iconUrl link.Href, profile string) {
 	return d.Name, d.Comment, link.IconUrl(d.Icon), "application"
 }
 
-func (d *DesktopApplication) Links(term string) link.List {
-	var ll = link.List{link.Make(d.Self(), "Launch", d.Icon, relation.DefaultAction)}
+func (d *DesktopApplication) Links(self, term string) link.List {
+	var ll = link.List{link.Make(self, "Launch", d.Icon, relation.DefaultAction)}
 	for _, da := range d.DesktopActions {
 		if searchutils.Match(term, da.Name) > -1 {
-			ll = append(ll, link.Make(d.Self()+"?action="+da.id, da.Name, da.Icon, relation.Action))
+			ll = append(ll, link.Make(self+"?action="+da.id, da.Name, da.Icon, relation.Action))
 		}
 	}
 	return ll
@@ -104,11 +104,11 @@ func (d *DesktopApplication) DoPost(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-var Applications = resource.MakeCollection()
+var Applications = resource.MakeCollection[string, *DesktopApplication]("/application/")
 
 func GetAppsIds(mimetypeId string) []string {
 	if res := Mimetypes.Get("/mimetype/" + mimetypeId); res != nil {
-		return res.(*Mimetype).Applications
+		return res.Applications
 	} else {
 		return []string{}
 	}
@@ -118,7 +118,7 @@ func GetApps(appIds ...string) []*DesktopApplication {
 	var apps = make([]*DesktopApplication, 0, len(appIds))
 	for _, appId := range appIds {
 		if res := Applications.Get("/application/" + appId); res != nil {
-			apps = append(apps, res.(*DesktopApplication))
+			apps = append(apps, res)
 		}
 	}
 	return apps
@@ -129,7 +129,7 @@ func OpenFile(appId, path string) (bool, error) {
 		xdg.RunCmd("xdg-open", path)
 		return true, nil
 	} else if res := Applications.Get("/application/" + appId); res != nil {
-		return true, res.(*DesktopApplication).Run(path)
+		return true, res.Run(path)
 	} else {
 		return false, nil
 	}

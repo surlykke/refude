@@ -8,7 +8,6 @@ package notifications
 
 import (
 	"errors"
-	"fmt"
 	"reflect"
 	"strings"
 	"time"
@@ -94,8 +93,6 @@ const INTROSPECT_XML = `<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object 
     </interface>
 </node>`
 
-
-
 var acceptableHintTypes = map[string]bool{
 	"y": true,
 	"b": true,
@@ -149,7 +146,7 @@ func Notify(app_name string,
 
 	var id uint32
 	if replaces_id != 0 {
-		if Notifications.Get(fmt.Sprintf("/notification/%d", replaces_id)) == nil {
+		if Notifications.Get(replaces_id) == nil {
 			return 0, nil
 		} else {
 			id = replaces_id
@@ -179,16 +176,16 @@ func Notify(app_name string,
 	}
 
 	notification := Notification{
-		Id:       id,
-		Sender:   app_name,
-		Subject:  sanitize(summary, []string{}, []string{}),
-		Body:     sanitize(body, allowedTags, allowedEscapes),
-		Created:  time.Now().UnixMilli(),
-		Urgency:  Normal,
-		NActions: map[string]string{},
-		Hints:    map[string]interface{}{},
-		iconName: iconName,
-		IconSize: sizeHint,
+		NotificationId: id,
+		Sender:         app_name,
+		Subject:        sanitize(summary, []string{}, []string{}),
+		Body:           sanitize(body, allowedTags, allowedEscapes),
+		Created:        time.Now().UnixMilli(),
+		Urgency:        Normal,
+		NActions:       map[string]string{},
+		Hints:          map[string]interface{}{},
+		iconName:       iconName,
+		IconSize:       sizeHint,
 	}
 
 	for i := 0; i+1 < len(actions); i = i + 2 {

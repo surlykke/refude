@@ -105,5 +105,3 @@ func Split(str string, sep string) []string {
 			return s != ""
 		})
 }
-
-
