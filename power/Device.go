@@ -14,15 +14,19 @@ import (
 )
 
 type Device struct {
-	DbusPath         dbus.ObjectPath
-	title            string
+	// Properies of our making
+	DbusPath      dbus.ObjectPath
+	title         string
+	DisplayDevice bool
+
+	// Properties from upower/dbus
+	// Albeit some of them translated to text
 	NativePath       string
 	Vendor           string
 	Model            string
 	Serial           string
 	UpdateTime       uint64
 	Type             string
-	IconName         string
 	PowerSupply      bool
 	HasHistory       bool
 	HasStatistics    bool
@@ -33,6 +37,7 @@ type Device struct {
 	EnergyFullDesign float64
 	EnergyRate       float64
 	Voltage          float64
+	Luminosity       float64
 	TimeToEmpty      int64
 	TimeToFull       int64
 	Percentage       int8
@@ -41,7 +46,9 @@ type Device struct {
 	IsRechargeable   bool
 	Capacity         float64
 	Technology       string
-	DisplayDevice    bool
+	Warninglevel     string
+	Batterylevel     string
+	IconName         string
 }
 
 func deviceTitle(devType, model string) string {
@@ -91,6 +98,30 @@ func path2id(path dbus.ObjectPath) string {
 	} else {
 		return string(path)
 	}
+}
+
+func deviceWarningLevel(index uint32) string {
+	var devWarningLevel = []string{"Unknown", "None", "Discharging", "Low", "Critical", "Action"}
+	if index < 0 || index > 5 {
+		index = 0
+	}
+	return devWarningLevel[index]
+}
+
+func deviceBatteryLevel(index uint32) string {
+	var devBatteryLevel = []string{
+		"Unknown",
+		"None",
+		"Low",
+		"Critical",
+		"Normal",
+		"High",
+		"Full",
+	}
+	if index < 0 || index > 8 {
+		index = 0
+	}
+	return devBatteryLevel[index]
 }
 
 func (d *Device) Id() string {

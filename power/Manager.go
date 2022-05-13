@@ -88,6 +88,8 @@ func retrieveDevice(path dbus.ObjectPath) *Device {
 			device.EnergyRate = variant.Value().(float64)
 		case "Voltage":
 			device.Voltage = variant.Value().(float64)
+		case "Luminosity":
+			device.Voltage = variant.Value().(float64)
 		case "TimeToEmpty":
 			device.TimeToEmpty = variant.Value().(int64)
 		case "TimeToFull":
@@ -98,14 +100,18 @@ func retrieveDevice(path dbus.ObjectPath) *Device {
 			device.IsPresent = variant.Value().(bool)
 		case "State":
 			device.State = deviceState(variant.Value().(uint32))
-		case "IconName":
-			device.IconName = variant.Value().(string)
 		case "IsRechargeable":
 			device.IsRechargeable = variant.Value().(bool)
 		case "Capacity":
 			device.Capacity = variant.Value().(float64)
 		case "Technology":
 			device.Technology = deviceTecnology(variant.Value().(uint32))
+		case "WarningLevel":
+			device.Warninglevel = deviceWarningLevel(variant.Value().(uint32))
+		case "Batterylevel":
+			device.Batterylevel = deviceBatteryLevel(variant.Value().(uint32))
+		case "IconName":
+			device.IconName = variant.Value().(string)
 		}
 	}
 	device.title = deviceTitle(device.Type, device.Model)
