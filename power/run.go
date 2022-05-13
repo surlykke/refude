@@ -23,7 +23,7 @@ func Run() {
 	}
 
 	for signal := range signals {
-		var path = devicePath(signal.Path)
+		var path = path2id(signal.Path)
 		if signal.Name == "org.freedesktop.DBus.Properties.PropertiesChanged" {
 			if res := Devices.Get(path); res != nil {
 				Devices.Put(retrieveDevice(signal.Path))
@@ -36,7 +36,7 @@ func Run() {
 		} else if signal.Name == "org.freedesktop.UPower.DeviceRemoved" {
 			if path, ok := signal.Body[0].(dbus.ObjectPath); ok {
 				log.Info("Deleting device:", path)
-				Devices.Delete(devicePath(path))
+				Devices.Delete(path2id(path))
 			}
 		} else {
 			log.Warn("Update on unknown device: ", signal.Path)

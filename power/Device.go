@@ -7,6 +7,8 @@
 package power
 
 import (
+	"strings"
+
 	"github.com/godbus/dbus/v5"
 	"github.com/surlykke/RefudeServices/lib/link"
 )
@@ -80,16 +82,19 @@ func deviceTecnology(index uint32) string {
 	return devTecnology[index]
 }
 
-func devicePath(path dbus.ObjectPath) string {
-	if path == displayDeviceDbusPath {
-		return displayDevicePath
+func path2id(path dbus.ObjectPath) string {
+	// I _think_ it's safe to assume all device paths start with devicePrefix
+	if strings.HasPrefix(string(path), devicePrefix) {
+		return strings.ReplaceAll(string(path)[len(devicePrefix):], "/", "-")
+	} else if strings.HasPrefix(string(path), "/") {
+		return string(path)[1:]
 	} else {
 		return string(path)
 	}
 }
 
 func (d *Device) Id() string {
-	return devicePath(d.DbusPath)
+	return path2id(d.DbusPath)
 }
 
 func (d *Device) Presentation() (title string, comment string, icon link.Href, profile string) {

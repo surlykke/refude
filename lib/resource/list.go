@@ -19,8 +19,8 @@ import (
 )
 
 /**
-Basically, a syncronized, ordered map
-*/
+ * A syncronized map, ordered by key
+ */
 type Collection[ID constraints.Ordered, T Resource[ID]] struct {
 	sync.Mutex
 	Prefix    string // Immutable
@@ -34,23 +34,20 @@ func MakeCollection[ID constraints.Ordered, T Resource[ID]](prefix string) *Coll
 	}
 }
 
-func (l *Collection[ID, T]) Self(id ID) string {
-	return fmt.Sprint(l.Prefix, id)
-}
-
 func (l *Collection[ID, T]) Get(id ID) T {
 	l.Lock()
 	defer l.Unlock()
 	return l.resources[id]
 }
 
-func (l *Collection[ID, T]) GetPaths() []string {
-	var res = make([]string, 0, len(l.resources))
-	for _, r := range l.resources {
-		res = append(res, fmt.Sprint(l.Prefix, r.Id()))
-	}
-	return res
+func (l *Collection[ID, T]) Put(res T) {
+	l.Lock()
+	defer l.Unlock()
+
+	l.resources[res.Id()] = res
 }
+
+
 
 func (l *Collection[ID, T]) GetAll() []T {
 	l.Lock()
@@ -63,13 +60,6 @@ func (l *Collection[ID, T]) GetAll() []T {
 	sl := sortableList[ID, T](all)
 	sort.Sort(&sl)
 	return all
-}
-
-func (l *Collection[ID, T]) Put(res T) {
-	l.Lock()
-	defer l.Unlock()
-
-	l.resources[res.Id()] = res
 }
 
 func (l *Collection[ID, T]) ReplaceWith(resources []T) {
@@ -124,6 +114,18 @@ func (l *Collection[ID, T]) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		l.Unlock()
 		respond.NotFound(w)
 	}
+}
+
+func (l *Collection[ID, T]) GetPaths() []string {
+	var res = make([]string, 0, len(l.resources))
+	for _, r := range l.resources {
+		res = append(res, fmt.Sprint(l.Prefix, r.Id()))
+	}
+	return res
+}
+
+func (l *Collection[ID, T]) Self(id ID) string {
+	return fmt.Sprint(l.Prefix, id)
 }
 
 

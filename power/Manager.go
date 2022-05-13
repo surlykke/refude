@@ -14,8 +14,8 @@ import (
 const upowerService = "org.freedesktop.UPower"
 const upowerPath = "/org/freedesktop/UPower"
 const upowerInterface = "org.freedesktop.UPower"
-const devicePrefix = "/org/freedesktop/UPower/devices"
-const displayDeviceDbusPath = dbus.ObjectPath(devicePrefix + "/DisplayDevice")
+const devicePrefix = "/org/freedesktop/UPower/devices/"
+const displayDeviceDbusPath = dbus.ObjectPath(devicePrefix + "DisplayDevice")
 const upowerDeviceInterface = "org.freedesktop.UPower.Device"
 const displayDevicePath = "DisplayDevice"
 
