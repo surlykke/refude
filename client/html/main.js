@@ -73,6 +73,9 @@ export class Main extends React.Component {
     }
 
     getResource = () => {
+        if (!this.browserUrl) {
+            return
+        }
         let browserUrlCopy = this.browserUrl
         let dummy = new URL("http://localhost:7938?foo=FOO")
         console.log("dummy:", dummy.toString())
