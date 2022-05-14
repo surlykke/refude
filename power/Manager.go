@@ -108,7 +108,7 @@ func retrieveDevice(path dbus.ObjectPath) *Device {
 			device.Technology = deviceTecnology(variant.Value().(uint32))
 		case "WarningLevel":
 			device.Warninglevel = deviceWarningLevel(variant.Value().(uint32))
-		case "Batterylevel":
+		case "BatteryLevel":
 			device.Batterylevel = deviceBatteryLevel(variant.Value().(uint32))
 		case "IconName":
 			device.IconName = variant.Value().(string)
