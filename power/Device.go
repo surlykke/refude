@@ -54,8 +54,6 @@ type Device struct {
 func deviceTitle(devType, model string) string {
 	// Try to, with the info we have from UPower, make a meaningful Title and Comment
 	switch devType {
-	case "Unknown":
-		return "Unknown power device"
 	case "Line Power":
 		return "Line Power"
 	case "Battery":
