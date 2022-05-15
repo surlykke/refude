@@ -107,7 +107,7 @@ func (d *DesktopApplication) DoPost(w http.ResponseWriter, r *http.Request) {
 var Applications = resource.MakeCollection[string, *DesktopApplication]("/application/")
 
 func GetAppsIds(mimetypeId string) []string {
-	if res := Mimetypes.Get("/mimetype/" + mimetypeId); res != nil {
+	if res := Mimetypes.Get(mimetypeId); res != nil {
 		return res.Applications
 	} else {
 		return []string{}
@@ -117,7 +117,7 @@ func GetAppsIds(mimetypeId string) []string {
 func GetApps(appIds ...string) []*DesktopApplication {
 	var apps = make([]*DesktopApplication, 0, len(appIds))
 	for _, appId := range appIds {
-		if res := Applications.Get("/application/" + appId); res != nil {
+		if res := Applications.Get(appId); res != nil {
 			apps = append(apps, res)
 		}
 	}
@@ -128,7 +128,7 @@ func OpenFile(appId, path string) (bool, error) {
 	if appId == "" {
 		xdg.RunCmd("xdg-open", path)
 		return true, nil
-	} else if res := Applications.Get("/application/" + appId); res != nil {
+	} else if res := Applications.Get(appId); res != nil {
 		return true, res.Run(path)
 	} else {
 		return false, nil
