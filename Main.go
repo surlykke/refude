@@ -9,7 +9,6 @@ package main
 import (
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/surlykke/RefudeServices/applications"
 	"github.com/surlykke/RefudeServices/client"
@@ -18,7 +17,6 @@ import (
 	"github.com/surlykke/RefudeServices/file"
 	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/log"
-	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/notifications"
 	"github.com/surlykke/RefudeServices/power"
@@ -41,12 +39,14 @@ func main() {
 	go power.Run()
 	go statusnotifications.Run()
 
+	http.HandleFunc("/start", start.ServeHTTP)
 	http.HandleFunc("/refude/", client.ServeHTTP)
 	http.HandleFunc("/icon", icons.ServeHTTP)
 	http.HandleFunc("/complete", complete.ServeHTTP)
 	http.HandleFunc("/watch", watch.ServeHTTP)
 	http.HandleFunc("/doc", doc.ServeHTTP)
 	http.HandleFunc("/window/", windows.ServeHTTP)
+	http.HandleFunc("/file/", file.ServeHTTP)
 	http.Handle("/notification/", notifications.Notifications)
 	http.Handle("/icontheme/", icons.IconThemes)
 	http.Handle("/item/", statusnotifications.Items)
@@ -62,19 +62,5 @@ func main() {
 }
 
 func serveHttp(w http.ResponseWriter, r *http.Request) {
-	var path = r.URL.Path
-
-	if path == "/start" {
-		resource.ServeResource[string](w, r, "/start", start.Start{})
-	} else if strings.HasPrefix(path, "/file/") {
-		if f := file.Get(path[5:]); f != nil {
-			var self = "/file/" + f.Id()
-			resource.ServeResource[string](w, r, self, file.Get(path[5:]))
-		} else {
-			respond.NotFound(w)
-		}
-	} else {
-		respond.NotFound(w)
-	}
-
+	respond.NotFound(w)
 }

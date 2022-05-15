@@ -7,6 +7,7 @@
 package start
 
 import (
+	"net/http"
 	"strings"
 	"time"
 
@@ -23,6 +24,10 @@ import (
 	"golang.org/x/exp/constraints"
 	"golang.org/x/exp/slices"
 )
+
+func ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	resource.ServeResource[string](w, r, "/start", Start{})
+}
 
 type Start struct{}
 

@@ -7,8 +7,21 @@
 package file
 
 import (
+	"net/http"
+
 	"github.com/surlykke/RefudeServices/lib/log"
+	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib/respond"
 )
+
+func ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if f := Get(r.URL.Path[5:]); f != nil {
+		var self = "/file/" + f.Id()
+		resource.ServeResource[string](w, r, self, f)
+	} else {
+		respond.NotFound(w)
+	}
+}
 
 func Get(filePath string) *File {
 	if file, err := makeFile(filePath); err != nil {
