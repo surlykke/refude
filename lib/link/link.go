@@ -81,19 +81,6 @@ func MakeRanked2(href Href, title string, icon Href, profile string, rank int) L
 
 type List []Link
 
-// ---------- Implement sort.Sort ------------------------------------
-func (list List) Len() int { return len(list) }
-
-func (list List) Less(i int, j int) bool {
-	if list[i].Rank == list[j].Rank {
-		return list[i].Href < list[j].Href // Not that Href is particularly relevant, sortingwise. Just to have a reproducible order
-	} else {
-		return list[i].Rank < list[j].Rank
-	}
-}
-
-func (list List) Swap(i int, j int) { list[i], list[j] = list[j], list[i] }
-
 // --------------------------------------------------------------------
 
 func IconUrl(name string) Href {

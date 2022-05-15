@@ -9,13 +9,13 @@ package resource
 import (
 	"fmt"
 	"net/http"
-	"sort"
 	"strings"
 	"sync"
 
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"golang.org/x/exp/constraints"
+	"golang.org/x/exp/slices"
 )
 
 /**
@@ -57,8 +57,9 @@ func (l *Collection[ID, T]) GetAll() []T {
 	for _, res := range l.resources {
 		all = append(all, res)
 	}
-	sl := sortableList[ID, T](all)
-	sort.Sort(&sl)
+
+	slices.SortFunc(all, func(t1, t2 T) bool { return t1.Id() < t2.Id() })
+
 	return all
 }
 
@@ -159,17 +160,3 @@ func ServeResource[ID constraints.Ordered, T Resource[ID]](w http.ResponseWriter
 
 }
 
-/* ---------- Used by GetAll --------- */
-type sortableList[ID constraints.Ordered, T Resource[ID]] []T
-
-func (sl sortableList[ID, T]) Len() int {
-	return len(sl)
-}
-
-func (sl sortableList[ID, T]) Less(i int, j int) bool {
-	return sl[i].Id() < sl[j].Id()
-}
-
-func (sl sortableList[ID, T]) Swap(i int, j int) {
-	sl[i], sl[j] = sl[j], sl[i]
-}

@@ -7,7 +7,6 @@
 package start
 
 import (
-	"sort"
 	"strings"
 	"time"
 
@@ -22,6 +21,7 @@ import (
 	"github.com/surlykke/RefudeServices/windows"
 	"github.com/surlykke/RefudeServices/windows/x11"
 	"golang.org/x/exp/constraints"
+	"golang.org/x/exp/slices"
 )
 
 type Start struct{}
@@ -54,7 +54,15 @@ func doDesktopSearch(term string) link.List {
 		links = append(links, searchCollection(power.Devices, term, nil)...)
 
 	}
-	sort.Sort(links)
+
+	slices.SortFunc(links, func(l1, l2 link.Link) bool {
+		if l1.Rank == l2.Rank {
+			return l1.Href < l2.Href
+		} else {
+			return l1.Rank < l2.Rank
+		}
+	})
+
 	return links
 }
 
