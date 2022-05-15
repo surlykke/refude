@@ -169,25 +169,38 @@ export class Main extends React.Component {
 
     render = () => {
         let { itemlist, displayDevice, resource, term, menuObject, flashNotification } = this.state
-        console.log("render, displayDevice:", displayDevice)
-        return frag(
+        let fraqs = []
+        fraqs.push(
             div(
                 { className: "panel", onClick: () => this.setMenuObject() },
                 clock(),
                 itemlist.map(item => { return notifierItem(item, this.setMenuObject) }),
                 battery(displayDevice)
-            ),
-            resource ? frag(
+            )
+        )
+        if (resource) {
+            fraqs.push(
                 resourceHead(resource),
                 div({ className: 'search-box' },
                     span({ style: { display: term ? "" : "none" } }, term)
-                ),
-                term && resource.links.length === 0 && div({className: 'linkHeading'}, "No match"),
-                div({ className: 'links' }, ...resource.links.map(l => link(l, l.profile, this.closeBrowser, this.move)))
-            ) : menuObject ? menu(menuObject, () => this.setState({ menuObject: undefined }))
-                : flashNotification ? flash(flashNotification)
-                    : null
-        )
+                ) 
+            )
+            if (term && resource.links.length === 0) {
+                fraqs.push(div({className: 'linkHeading'}, "No match"))
+            }
+            let links = resource.links.map(l => link(l, l.profile, this.closeBrowser, this.move))
+            let firstRel = links.findIndex(l => l.props.rel === 'related')
+            if (firstRel > 0) {
+                links[firstRel - 1].props.className +=" last-action"
+            }
+            fraqs.push(div({ className: 'links' }, ...links))
+        } else if (menuObject) {
+            fraqs.push(menu(menuObject, () => this.setState({ menuObject: undefined })))
+        } else if (flashNotification) {
+            fraqs.push(flash(flashNotification))
+        }
+
+        return frag(fraqs)
     }
 }
 

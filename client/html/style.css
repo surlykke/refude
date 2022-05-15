@@ -161,6 +161,11 @@ html, body {
     box-shadow: 1px 1px 1px #888888;
     /*background-color: lightgrey;*/
 }
+    
+.last-action {
+    border-bottom: solid 1px gray;
+    margin-bottom: 8px;
+}
 
 /* ------------------ Menu ------------------ */
 .menu {
