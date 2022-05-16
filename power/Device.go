@@ -110,13 +110,15 @@ func deviceBatteryLevel(index uint32) string {
 	var devBatteryLevel = []string{
 		"Unknown",
 		"None",
+		"",
 		"Low",
 		"Critical",
+		"",
 		"Normal",
 		"High",
 		"Full",
 	}
-	if index < 0 || index > 8 {
+	if index < 0 || index > 8 || index == 2 || index == 5 {
 		index = 0
 	}
 	return devBatteryLevel[index]
