@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"golang.org/x/exp/constraints"
@@ -46,8 +47,6 @@ func (l *Collection[ID, T]) Put(res T) {
 
 	l.resources[res.Id()] = res
 }
-
-
 
 func (l *Collection[ID, T]) GetAll() []T {
 	l.Lock()
@@ -125,10 +124,19 @@ func (l *Collection[ID, T]) GetPaths() []string {
 	return res
 }
 
+func (c *Collection[ID, T]) ExtractLinks(rank func(t T) int) link.List {
+	var links = make(link.List, 0, len(c.resources))
+	for _, t := range c.GetAll() {
+		if rnk := rank(t); rnk > -1 {
+			links = append(links, LinkTo[ID](t, c.Prefix, rnk))
+		}
+	}
+	return links
+}
+
 func (l *Collection[ID, T]) Self(id ID) string {
 	return fmt.Sprint(l.Prefix, id)
 }
-
 
 func ServeList[ID constraints.Ordered, T Resource[ID]](w http.ResponseWriter, r *http.Request, context string, resources []T) {
 	if r.Method != "GET" {
@@ -159,4 +167,3 @@ func ServeResource[ID constraints.Ordered, T Resource[ID]](w http.ResponseWriter
 	}
 
 }
-

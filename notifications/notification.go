@@ -99,3 +99,17 @@ var Notifications = resource.MakeCollection[uint32, *Notification]("/notificatio
 func somethingChanged() {
 	watch.SomethingChanged("/notification/")
 }
+
+func Search(term string) link.List {
+	var rank = func(n *Notification) int {
+		if n.Urgency == Critical || (len(n.NActions) > 0 && n.Urgency == Normal && n.Created+60000 > time.Now().UnixMilli()) {
+			return searchutils.Match(term, n.Subject)
+		} else {
+			return -1
+		}
+	}
+	return Notifications.ExtractLinks(rank) 
+}
+
+
+

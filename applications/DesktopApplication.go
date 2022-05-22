@@ -106,6 +106,16 @@ func (d *DesktopApplication) DoPost(w http.ResponseWriter, r *http.Request) {
 
 var Applications = resource.MakeCollection[string, *DesktopApplication]("/application/")
 
+func Search(term string) link.List {
+	return Applications.ExtractLinks(func(a *DesktopApplication) int {
+		if a.NoDisplay {
+			return -1
+		} else {
+			return searchutils.Match(term, a.Name, a.Keywords...)
+		}
+	})
+}
+
 func GetAppsIds(mimetypeId string) []string {
 	if res := Mimetypes.Get(mimetypeId); res != nil {
 		return res.Applications

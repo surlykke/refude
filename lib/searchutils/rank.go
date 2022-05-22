@@ -17,7 +17,7 @@ func Match(term, name string, keywords ...string) int {
 		return rnk
 	}
 	for _, keyword := range keywords {
-		if strings.Index(strings.ToLower(keyword), term) > 0 {
+		if strings.Index(strings.ToLower(keyword), term) > -1 {
 			return 1000
 		}
 	}

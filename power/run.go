@@ -9,8 +9,10 @@ package power
 import (
 	"github.com/godbus/dbus/v5"
 
+	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib/searchutils"
 	"github.com/surlykke/RefudeServices/watch"
 )
 
@@ -60,3 +62,9 @@ func getAddedRemovedPath(signal *dbus.Signal) (dbus.ObjectPath, bool) {
 }
 
 var Devices = resource.MakeCollection[string, *Device]("/device/")
+
+func Search(term string) link.List {
+	return Devices.ExtractLinks(func(d *Device) int {
+		return searchutils.Match(term, d.title, "battery", "charge")
+	})
+}
