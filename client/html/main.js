@@ -8,7 +8,7 @@ import { div, frag, input, p, span } from "./elements.js"
 import { clock } from './clock.js'
 import { notifierItem } from './notifieritem.js'
 import { battery } from './battery.js'
-import { doPost, followResource, watchResource } from "./utils.js"
+import { doPost, followCollection, followResource, watchResource } from "./utils.js"
 import { flash } from "./flash.js"
 import { resourceHead } from "./resourcehead.js"
 import { link } from "./link.js"
@@ -23,10 +23,15 @@ export class Main extends React.Component {
         super(props)
         this.state = { itemlist: [], term: "" }
         this.browserHistory = []
-        followResource("/notification/", this.updateFlash, () => this.setState({flash: undefined}))
-        followResource("/item/", itemlist => this.setState({itemlist: itemlist}), () => this.setState({itemlist: []}))
-        followResource("/device/", 
-                       deviceList => this.setState({displayDevice: deviceList.find(d => d.data.DisplayDevice)?.data}), 
+        followCollection("/notification/", this.updateFlash, () => this.setState({flash: undefined}))
+        followCollection("/item/", 
+            itemlist => this.setState({itemlist: itemlist}), 
+            error => {
+                console.warn(error)
+                this.setState({itemlist: []})
+            })
+        followResource("/device/DisplayDevice", 
+                       displayDevice => this.setState({displayDevice: displayDevice?.data}), 
                        () => this.setState({displayDevice: undefined}))
         watchResource("/refude/openBrowser", this.openBrowser)
     }
@@ -49,21 +54,17 @@ export class Main extends React.Component {
                                 notifications.find(n => n.data.Urgency === 1 && n.data.Created + 6000 > now) || // Normal
                                 notifications.find(n => n.data.Urgency === 0 && n.data.Created + 2000 > now);
         
-        console.log("flashNotification:", flashNotification)
-
 
         if (flashNotification) {
             this.setState({flashNotification: flashNotification})
             if (flashNotification.data.Urgency < 2) {
                 let timeout = flashNotification.data.Urgency === 1 ? 6050 : 2050
-                console.log("Scheduling this.removeFlash", timeout, this.removeFlash)
                 setTimeout(this.removeFlash, timeout)
             }
         }
     }
 
     removeFlash = () => {
-        console.log("removeFlash")
         let {flashNotification: fn} = this.state
         if (fn && fn.data.Urgency < 2) {
             if (fn.data.Created + (fn.data.Urgency == 1 ? 6000 : 2000) < Date.now()) {
@@ -77,15 +78,8 @@ export class Main extends React.Component {
             return
         }
         let browserUrlCopy = this.browserUrl
-        let dummy = new URL("http://localhost:7938?foo=FOO")
-        console.log("dummy:", dummy.toString())
-        dummy.searchParams.append("baa", "BAA")
-        console.log("dummy:", dummy.toString())
-        
-        console.log("this.browserUrl", this.browserUrl)
         let url = new URL(this.browserUrl)
         url.searchParams.append("search", this.state.term)
-        console.log("fetching ", url.toString())
         fetch(url)
             .then(resp => resp.json())
             .then(
@@ -96,7 +90,7 @@ export class Main extends React.Component {
                     }
                 },
                 error => {
-                    console.log("getResource error:", error)
+                    console.warn("getResource error:", error)
                     this.setState({ resource: undefined })
                 }
             )

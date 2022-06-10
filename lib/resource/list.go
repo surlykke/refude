@@ -98,7 +98,13 @@ func (l *Collection[ID, T]) FindFirst(test func(t T) bool) interface{} {
 
 func (l *Collection[ID, T]) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == l.Prefix {
-		ServeList[ID](w, r, l.Prefix, l.GetAll())
+		l.Lock()
+		var links = make([]link.Link, 0, len(l.resources))
+		for _, res := range l.resources {
+			links = append(links, LinkTo[ID](res, l.Prefix, 0))
+		}
+		l.Unlock()
+		respond.AsJson(w, links)
 	} else if strings.HasPrefix(r.URL.Path, l.Prefix) {
 		l.Lock()
 
@@ -106,7 +112,6 @@ func (l *Collection[ID, T]) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			var self = l.Self(id)
 			if r.URL.Path == self {
 				l.Unlock()
-
 				ServeResource[ID](w, r, self, res)
 				return
 			}
@@ -138,18 +143,6 @@ func (l *Collection[ID, T]) Self(id ID) string {
 	return fmt.Sprint(l.Prefix, id)
 }
 
-func ServeList[ID constraints.Ordered, T Resource[ID]](w http.ResponseWriter, r *http.Request, context string, resources []T) {
-	if r.Method != "GET" {
-		respond.NotAllowed(w)
-	} else {
-		var wrapperList = make([]Wrapper, len(resources), len(resources))
-		for i, res := range resources {
-			var self = fmt.Sprint(context, res.Id())
-			wrapperList[i] = MakeWrapper[ID](self, res, "")
-		}
-		respond.AsJson(w, wrapperList)
-	}
-}
 
 func ServeResource[ID constraints.Ordered, T Resource[ID]](w http.ResponseWriter, r *http.Request, self string, res T) {
 	var linkSearchTerm = requests.GetSingleQueryParameter(r, "search", "")

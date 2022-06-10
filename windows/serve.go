@@ -7,104 +7,37 @@
 package windows
 
 import (
-	"fmt"
-	"net/http"
-	"strconv"
-	"strings"
 	"sync"
 
 	"github.com/surlykke/RefudeServices/lib/link"
-	"github.com/surlykke/RefudeServices/lib/resource"
-	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
 	"github.com/surlykke/RefudeServices/windows/x11"
 )
 
-func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path == "/windowlist" {
-		resource.ServeList[uint32](w, r, "/window/", GetAll())
-	} else if win := Get(r.URL.Path); win != nil {
-		resource.ServeResource[uint32](w, r, "/window/", win)
-	} else {
-		respond.NotFound(w)
-	}
-}
-
-func GetAll() []resource.Resource[uint32] {
-	requestProxyMutex.Lock()
-	defer requestProxyMutex.Unlock()
-	var stackIdList = x11.GetStack(requestProxy)
-	var resources = make([]resource.Resource[uint32], 0, len(stackIdList))
-	for i, stackId := range stackIdList {
-		var win = makeWindow(requestProxy, stackId)
-		win.Stacking = i
-		resources = append(resources, win)
-	}
-
-	return resources
-}
-
-func Get(path string) *Window {
-	if strings.HasPrefix(path, "/window/") {
-		if i, err := strconv.Atoi(path[8:]); err == nil {
-			if i >= 0 && i <= 0xFFFFFFFF {
-				var windowId = uint32(i)
-				requestProxyMutex.Lock()
-				defer requestProxyMutex.Unlock()
-				var stackIdList = x11.GetStack(requestProxy)
-				for i, stackId := range stackIdList {
-					if stackId == windowId {
-						var v = makeWindow(requestProxy, windowId)
-						v.Stacking = i
-						return v
-					}
-				}
-			}
-		}
-	}
-	return nil
-}
-
 func Search(term string) link.List {
-	requestProxyMutex.Lock()
-	defer requestProxyMutex.Unlock()
-	var stackIdList = x11.GetStack(requestProxy)
-	var ll = make(link.List, 0, len(stackIdList))
-	for _, wId := range stackIdList {
-		var name, _ = x11.GetName(requestProxy, wId)
-		if name != "org.refude.panel" {
-			if rnk := searchutils.Match(term, name); rnk > -1 {
-				var state = x11.GetStates(requestProxy, wId)
-				if state&(x11.SKIP_TASKBAR|x11.SKIP_PAGER|x11.ABOVE) == 0 {
-					var iconName, _ = GetIconName(requestProxy, wId)
-					ll = append(ll, link.MakeRanked(fmt.Sprintf("/window/%d", wId), name, iconName, "window", rnk))
-				}
-			}
+	return Windows.ExtractLinks(func(xWin XWin) int {
+		proxyMutex.Lock()
+		var name, _ = x11.GetName(synchronizedProxy, uint32(xWin))
+		var state = x11.GetStates(synchronizedProxy, uint32(xWin))
+		proxyMutex.Unlock()
+		if name != "org.refude.panel" && state&(x11.SKIP_TASKBAR|x11.SKIP_PAGER|x11.ABOVE) == 0 {
+			return searchutils.Match(term, name)
+		} else {
+			return -1
 		}
-	}
-	return ll
+	})
 }
 
-func GetPaths() []string {
-	requestProxyMutex.Lock()
-	defer requestProxyMutex.Unlock()
-	var wIdList = x11.GetStack(requestProxy)
-	var paths = make([]string, 0, len(wIdList))
-	for _, wId := range wIdList {
-		paths = append(paths, fmt.Sprintf("/window/%d", wId))
-	}
-	return paths
-}
 
 func showAndRaise(id uint32) {
-	requestProxyMutex.Lock()
-	defer requestProxyMutex.Unlock()
-	x11.MapAndRaiseWindow(requestProxy, id)
+	proxyMutex.Lock()
+	defer proxyMutex.Unlock()
+	x11.MapAndRaiseWindow(synchronizedProxy, id)
 }
 
 // http requests are concurrent, so all access to x11 from handling an http request, happens through
 // this
-var requestProxy = x11.MakeProxy()
+var synchronizedProxy = x11.MakeProxy()
 
 // - and uses this for synchronization
-var requestProxyMutex sync.Mutex
+var proxyMutex sync.Mutex

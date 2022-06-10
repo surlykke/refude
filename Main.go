@@ -7,7 +7,6 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/surlykke/RefudeServices/applications"
@@ -17,7 +16,6 @@ import (
 	"github.com/surlykke/RefudeServices/file"
 	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/log"
-	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/notifications"
 	"github.com/surlykke/RefudeServices/power"
 	"github.com/surlykke/RefudeServices/start"
@@ -28,12 +26,8 @@ import (
 	_ "net/http/pprof"
 )
 
-func FallBack(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Fallback:", r.Method, r.URL.Path)
-	respond.NotFound(w)
-}
-
 func main() {
+	go windows.Run()
 	go applications.Run()
 	go notifications.Run()
 	go power.Run()
@@ -45,8 +39,8 @@ func main() {
 	http.HandleFunc("/complete", complete.ServeHTTP)
 	http.HandleFunc("/watch", watch.ServeHTTP)
 	http.HandleFunc("/doc", doc.ServeHTTP)
-	http.HandleFunc("/window/", windows.ServeHTTP)
 	http.HandleFunc("/file/", file.ServeHTTP)
+	http.Handle("/window/", windows.Windows)
 	http.Handle("/notification/", notifications.Notifications)
 	http.Handle("/icontheme/", icons.IconThemes)
 	http.Handle("/item/", statusnotifications.Items)
@@ -54,13 +48,9 @@ func main() {
 	http.Handle("/device/", power.Devices)
 	http.Handle("/application/", applications.Applications)
 	http.Handle("/mimetype/", applications.Mimetypes)
-	http.HandleFunc("/", serveHttp)
 
 	if err := http.ListenAndServe(":7938", nil); err != nil {
 		log.Warn("http.ListenAndServe failed:", err)
 	}
 }
 
-func serveHttp(w http.ResponseWriter, r *http.Request) {
-	respond.NotFound(w)
-}

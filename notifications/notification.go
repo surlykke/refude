@@ -7,7 +7,6 @@
 package notifications
 
 import (
-	"fmt"
 	"net/http"
 	"time"
 
@@ -89,7 +88,6 @@ func (n *Notification) DoPost(w http.ResponseWriter, r *http.Request) {
 }
 
 func (n *Notification) DoDelete(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Notification DoDelete, n.Id:", n.NotificationId)
 	removeNotification(n.NotificationId, Dismissed)
 	respond.Accepted(w)
 }
