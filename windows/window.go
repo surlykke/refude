@@ -36,17 +36,31 @@ func (w XWin) Presentation() (title string, comment string, icon link.Href, prof
 }
 
 func (w XWin) Links(self, searchTerm string) link.List {
+	var name, iconName string
+	var err error
 	proxyMutex.Lock()
-	defer proxyMutex.Unlock()
+	name, err = x11.GetName(synchronizedProxy, uint32(w))
+	iconName, _ = GetIconName(synchronizedProxy, uint32(w))
+	proxyMutex.Unlock()
 
-	if name, err := x11.GetName(synchronizedProxy, uint32(w)); err == nil {
+	if err == nil {
+		var links = make(link.List, 0, 10)
 		if rnk := searchutils.Match(searchTerm, name); rnk > -1 {
-			var iconName, _ = GetIconName(synchronizedProxy, uint32(w))
-			return link.List{
-				link.Make(self, "Raise and focus", iconName, relation.DefaultAction),
-				link.Make(self, "Close", iconName, relation.Delete)}
+			links = append(links, link.Make(self, "Raise and focus", iconName, relation.DefaultAction))
+			links = append(links, link.Make(self, "Close", iconName, relation.Delete))
 		}
+		var panes = collectPanes()
+		for _, pane := range panes {
+			if pane.XWinId == w.Id() {
+				var title = pane.CurrentCommand + ":" + pane.CurrentDirectory
+				if rnk := searchutils.Match(searchTerm, title, "pane", "tmux"); rnk > -1 {
+					links = append(links, link.MakeRanked("/tmux/"+pane.PaneId, title, "", "tmux", rnk))
+				}
+			}
+		}
+		return links
 	}
+
 	return link.List{}
 }
 
@@ -59,7 +73,6 @@ func (w XWin) MarshalJSON() ([]byte, error) {
 
 var Windows = resource.MakeCollection[uint32, XWin]("/window/")
 
-
 type windowData struct {
 	WindowId uint32
 	Name     string
@@ -67,7 +80,6 @@ type windowData struct {
 	State    x11.WindowStateMask
 	Stacking int // 0 means: on top, then 1, then 2 etc. -1 means we don't know (yet)
 }
-
 
 // Caller ensures thread safety (calls to x11)
 func fetchWindowData(p x11.Proxy, wId uint32) *windowData {

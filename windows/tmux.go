@@ -234,7 +234,6 @@ func tmux(cmd string, formatElements ...string) [][]string {
 }
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Serving", r.URL.Path)
 	if strings.HasPrefix(r.URL.Path, "/tmux/") {
 		var panes = collectPanes()
 		if pane, ok := panes[r.URL.Path[6:]]; ok {
