@@ -40,6 +40,7 @@ func main() {
 	http.HandleFunc("/watch", watch.ServeHTTP)
 	http.HandleFunc("/doc", doc.ServeHTTP)
 	http.HandleFunc("/file/", file.ServeHTTP)
+	http.HandleFunc("/tmux/", windows.ServeHTTP)
 	http.Handle("/window/", windows.Windows)
 	http.Handle("/notification/", notifications.Notifications)
 	http.Handle("/icontheme/", icons.IconThemes)

@@ -370,6 +370,17 @@ func GetStates(p Proxy, wId uint32) WindowStateMask {
 	}
 }
 
+func GetPid(p Proxy, wId uint32) (uint32, error) {
+	if pidList, err := getUint32s(p.disp, C.ulong(wId), _NET_WM_PID); err != nil {
+		return 0, err 
+	} else if len(pidList) != 1 {
+		return 0, errors.New("Ambigous pid for window")
+	} else {
+		return pidList[0], nil 
+	}
+}
+
+
 func AddStates(p Proxy, wId uint32, states WindowStateMask) {
 	updateState(p.disp, p.rootWindow, C.Window(wId), states, 1)
 }
@@ -624,6 +635,7 @@ var _NET_ACTIVE_WINDOW = internAtom(commonProxy.disp, "_NET_ACTIVE_WINDOW")
 var _NET_CLOSE_WINDOW = internAtom(commonProxy.disp, "_NET_CLOSE_WINDOW")
 var _NET_WM_VISIBLE_NAME = internAtom(commonProxy.disp, "_NET_WM_VISIBLE_NAME")
 var _NET_WM_NAME = internAtom(commonProxy.disp, "_NET_WM_NAME")
+var _NET_WM_PID = internAtom(commonProxy.disp, "_NET_WM_PID")
 var _WM_NAME = internAtom(commonProxy.disp, "_WM_NAME")
 var _NET_WM_VISIBLE_ICON_NAME = internAtom(commonProxy.disp, "_NET_WM_VISIBLE_ICON_NAME")
 var _NET_WM_ICON_NAME = internAtom(commonProxy.disp, "_NET_WM_ICON_NAME")
@@ -654,6 +666,7 @@ func init() {
 	_NET_CLOSE_WINDOW = internAtom(disp, "_NET_CLOSE_WINDOW")
 	_NET_WM_VISIBLE_NAME = internAtom(disp, "_NET_WM_VISIBLE_NAME")
 	_NET_WM_NAME = internAtom(disp, "_NET_WM_NAME")
+	_NET_WM_PID = internAtom(disp, "_NET_WM_PID")
 	_WM_NAME = internAtom(disp, "_WM_NAME")
 	_NET_WM_VISIBLE_ICON_NAME = internAtom(disp, "_NET_WM_VISIBLE_ICON_NAME")
 	_NET_WM_ICON_NAME = internAtom(disp, "_NET_WM_ICON_NAME")

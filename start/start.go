@@ -47,7 +47,7 @@ func doDesktopSearch(term string) link.List {
 	links = append(links, windows.Search(term)...)
 
 	if len(term) > 0 {
-		//links = append(links, windows.SearchTmuxPanes(term)...)
+		links = append(links, windows.SearchTmuxPanes(term)...)
 		links = append(links, file.SearchFrom(xdg.Home, term, "~/")...)
 		links = append(links, applications.Search(term)...)
 	}
