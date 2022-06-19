@@ -110,6 +110,7 @@ type Event uint8
 const (
 	DesktopGeometry Event = iota
 	DesktopStacking
+	ActiveWindow
 	WindowTitle
 	WindowIconName
 	WindowGeometry
@@ -243,6 +244,8 @@ func NextEvent(p Proxy) (Event, uint32) {
 				return WindowIconName, uint32(xproperty.window)
 			} else if xproperty.atom == _NET_WM_STATE {
 				return WindowSt, uint32(xproperty.window)
+			} else if xproperty.atom == _NET_ACTIVE_WINDOW {
+				return ActiveWindow, uint32(xproperty.window)
 			}
 		} else if C.getType(&event) == C.ConfigureNotify {
 			var xconfigure = C.xconfigure(&event)
@@ -317,6 +320,17 @@ func GetStack(p Proxy) []uint32 {
 	}
 }
 
+func GetActiveWindow(p Proxy) (uint32, error) {
+	if activeWindowList, err := getUint32s(p.disp, p.rootWindow, _NET_ACTIVE_WINDOW); err != nil {
+		return 0, err
+	} else if len(activeWindowList) != 1 {
+		return 0, errors.New("Len of activeWindowList <> 1")
+	} else {
+		return activeWindowList[0], nil 
+	}
+}
+
+
 func GetName(p Proxy, wId uint32) (string, error) {
 	if bytes, err := getBytes(p.disp, C.Window(wId), _NET_WM_VISIBLE_NAME); err == nil {
 		return string(bytes), nil
@@ -372,14 +386,13 @@ func GetStates(p Proxy, wId uint32) WindowStateMask {
 
 func GetPid(p Proxy, wId uint32) (uint32, error) {
 	if pidList, err := getUint32s(p.disp, C.ulong(wId), _NET_WM_PID); err != nil {
-		return 0, err 
+		return 0, err
 	} else if len(pidList) != 1 {
 		return 0, errors.New("Ambigous pid for window")
 	} else {
-		return pidList[0], nil 
+		return pidList[0], nil
 	}
 }
-
 
 func AddStates(p Proxy, wId uint32, states WindowStateMask) {
 	updateState(p.disp, p.rootWindow, C.Window(wId), states, 1)

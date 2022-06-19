@@ -9,6 +9,7 @@ package windows
 import (
 	"encoding/json"
 	"net/http"
+	"sync"
 
 	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/link"
@@ -71,7 +72,6 @@ func (w XWin) MarshalJSON() ([]byte, error) {
 	return json.Marshal(data)
 }
 
-var Windows = resource.MakeCollection[uint32, XWin]("/window/")
 
 type windowData struct {
 	WindowId uint32
@@ -160,3 +160,31 @@ func GetIconName(p x11.Proxy, wId uint32) (string, error) {
 		return icons.AddX11Icon(pixelArray)
 	}
 }
+
+var Windows = resource.MakeCollection[uint32, XWin]("/window/")
+
+type recentWindowList struct {
+	sync.Mutex
+	list [8]XWin
+	pos int 
+}
+
+func (recent *recentWindowList) add(xWin XWin) {
+	recent.Lock()
+	defer recent.Unlock()
+	recent.list[recent.pos] = xWin
+	recent.pos = (recent.pos + 1) % 8
+}
+
+func (recent *recentWindowList) find(xWin XWin) int {
+	for i := 0; i < 8; i++ {
+		if recent.list[(recent.pos + 8 - i) % 8] == xWin {
+			return i
+		}
+	}
+	return 9
+}
+
+
+
+var recentlyFocusedWindows =  &recentWindowList{}

@@ -12,16 +12,20 @@ func Run() {
 		event, _ := x11.NextEvent(proxy)
 		if event == x11.DesktopStacking {
 			updateWindowList(proxy)
+		} else if event == x11.ActiveWindow {
+			if activeWindow, err := x11.GetActiveWindow(proxy); err == nil {
+				recentlyFocusedWindows.add(XWin(activeWindow))	
+			}
 		}
 	}
 }
 
 func updateWindowList(p x11.Proxy) {
-       var wIds = x11.GetStack(p)
-	   var xWins = make([]XWin, len(wIds), len(wIds))
-	   for i := 0; i < len(wIds); i++ {
-		   xWins[i] = XWin(wIds[i])
-	   }
-	   Windows.ReplaceWith(xWins)
+	var wIds = x11.GetStack(p)
+	var xWins = make([]XWin, len(wIds), len(wIds))
+	for i := 0; i < len(wIds); i++ {
+		xWins[i] = XWin(wIds[i])
+	}
+	Windows.ReplaceWith(xWins)
 }
 
