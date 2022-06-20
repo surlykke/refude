@@ -21,10 +21,11 @@ func Search(term string) link.List {
 		var state = x11.GetStates(synchronizedProxy, uint32(xWin))
 		proxyMutex.Unlock()
 		if name != "org.refude.panel" && state&(x11.SKIP_TASKBAR|x11.SKIP_PAGER|x11.ABOVE) == 0 {
-			return recentlyFocusedWindows.find(xWin) + searchutils.Match(term, name)
-		} else {
-			return -1
-		}
+			if rnk := searchutils.Match(term, name); rnk > -1 {
+				return recentlyFocusedWindows.find(xWin) + rnk
+			}
+		} 
+		return -1
 	})
 }
 
