@@ -1,2 +1,8 @@
 This is the RefudeServices project.
 The project is licensed under the GPL v2 license. See the file ./GPL2
+
+The project includes a copy of the files react-dom.production.min.js and react.production.min.js, which are from the react project and licensed under a MIT license.
+See the files (./client/html/react/) for copyright information. The license file can be found at https://github.com/facebook/react/blob/main/LICENSE
+
+The file lib/image/NamedColors.go contains color names for the xpm2 format. I assume that information is in the public domain. 
+
