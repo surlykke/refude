@@ -23,7 +23,7 @@ import (
 func collectPaths(prefix string) []string {
 	var paths = make([]string, 0, 1000)
 	paths = append(paths, "/icon?name=", "/start?search=", "/complete?prefix=", "/watch", "/doc")
-	paths = append(paths, windows.Windows.GetPaths()...)
+	paths = append(paths, windows.WM.GetPaths()...)
 	paths = append(paths, applications.Applications.GetPaths()...)
 	paths = append(paths, applications.Mimetypes.GetPaths()...)
 	paths = append(paths, statusnotifications.Items.GetPaths()...)

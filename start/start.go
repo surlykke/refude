@@ -44,7 +44,7 @@ func doDesktopSearch(term string) link.List {
 	term = strings.ToLower(term)
 
 	links = append(links, notifications.Search(term)...)
-	links = append(links, windows.Search(term)...)
+	links = append(links, windows.WM.Search(term)...)
 
 	if len(term) > 0 {
 		links = append(links, windows.SearchTmuxPanes(term)...)

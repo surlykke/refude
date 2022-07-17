@@ -25,6 +25,7 @@ var DataDirs []string
 var RuntimeDir string
 var CurrentDesktop []string
 var Locale string
+var SessionType string
 
 var DesktopDir string
 var DownloadDir string
@@ -50,6 +51,7 @@ func init() {
 	if index := strings.Index(Locale, "."); index > -1 {
 		Locale = Locale[0:index]
 	}
+	SessionType = notEmptyOr(os.Getenv("XDG_SESSION_TYPE"), "")
 
 	// User dirs. Defaults taken from my /etc/xdg/user-dirs.defaults. We probably should re-read that file on startup,
 	// but given that so many apps use these, I find it unlikely that they will change. (The defaults, that is)

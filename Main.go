@@ -27,7 +27,7 @@ import (
 )
 
 func main() {
-	go windows.Run()
+	go windows.WM.Run()
 	go applications.Run()
 	go notifications.Run()
 	go power.Run()
@@ -41,7 +41,7 @@ func main() {
 	http.HandleFunc("/doc", doc.ServeHTTP)
 	http.HandleFunc("/file/", file.ServeHTTP)
 	http.HandleFunc("/tmux/", windows.ServeHTTP)
-	http.Handle("/window/", windows.Windows)
+	http.Handle("/window/", windows.WM)
 	http.Handle("/notification/", notifications.Notifications)
 	http.Handle("/icontheme/", icons.IconThemes)
 	http.Handle("/item/", statusnotifications.Items)

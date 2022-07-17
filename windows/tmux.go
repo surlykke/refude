@@ -1,7 +1,6 @@
 package windows
 
 import (
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os/exec"
@@ -14,7 +13,6 @@ import (
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
-	"github.com/surlykke/RefudeServices/windows/x11"
 )
 
 /*func ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -53,14 +51,15 @@ func (t *TmuxPane) Links(self, term string) link.List {
 func (t *TmuxPane) DoPost(w http.ResponseWriter, r *http.Request) {
 	var action = requests.GetSingleQueryParameter(r, "action", "")
 	if action == "" {
-		if err := exec.Command("tmux", "select-pane", "-t", "%" + t.PaneId).Run(); err != nil {
+		if err := exec.Command("tmux", "select-pane", "-t", "%"+t.PaneId).Run(); err != nil {
 			respond.ServerError(w, err)
 		} else if err = exec.Command("tmux", "select-window", "-t", t.WindowId).Run(); err != nil {
 			respond.ServerError(w, err)
 		} else {
-			proxyMutex.Lock()
-			x11.RaiseAndFocusWindow(synchronizedProxy, t.XWinId)
-			proxyMutex.Unlock()
+			// FIXME
+			/*x11.ProxyMutex.Lock()
+			x11.RaiseAndFocusWindow(x11.SynchronizedProxy, t.XWinId)
+			x11.ProxyMutex.Unlock()*/
 			respond.Accepted(w)
 		}
 
@@ -119,21 +118,6 @@ func collectClientPidMap() map[string]string {
 
 }
 
-func collectPidWindowMap() map[string]uint32 {
-	var xWinIds = Windows.GetAll()
-	var result = make(map[string]uint32, len(xWinIds))
-	proxyMutex.Lock()
-	defer proxyMutex.Unlock()
-
-	for _, xWinId := range xWinIds {
-		if pid, err := x11.GetPid(synchronizedProxy, uint32(xWinId)); err == nil {
-			result[fmt.Sprintf("%d", pid)] = uint32(xWinId)
-		}
-	}
-
-	return result
-}
-
 func getParentPid(pid string) string {
 	var procfile = "/proc/" + pid + "/status"
 	if bytes, err := ioutil.ReadFile(procfile); err != nil {
@@ -163,7 +147,6 @@ func collectPanes() map[string]*TmuxPane {
 	var windowSessionMap = collectWindowSessionMap()
 	var sessionClientMap = collectSessionClientMap()
 	var clientPidMap = collectClientPidMap()
-	var pidWindowMap = collectPidWindowMap()
 
 	var panes = make(map[string]*TmuxPane, len(shortPanesMap))
 
@@ -172,17 +155,13 @@ func collectPanes() map[string]*TmuxPane {
 			if clientId, ok := sessionClientMap[sessionId]; ok {
 				if clientPid, ok := clientPidMap[clientId]; ok {
 					for pid := clientPid; pid != ""; pid = getParentPid(pid) {
-						if xWinId, ok := pidWindowMap[pid]; ok {
-							panes[shortPane.PaneId] = &TmuxPane{
-								PaneId:           shortPane.PaneId,
-								CurrentCommand:   shortPane.CurrentCommand,
-								CurrentDirectory: shortPane.CurrentDirectory,
-								WindowId:         shortPane.WindowId,
-								XWinId:           xWinId,
-							}
-							break
+						panes[shortPane.PaneId] = &TmuxPane{
+							PaneId:           shortPane.PaneId,
+							CurrentCommand:   shortPane.CurrentCommand,
+							CurrentDirectory: shortPane.CurrentDirectory,
+							WindowId:         shortPane.WindowId,
 						}
-
+						break
 					}
 				}
 			}

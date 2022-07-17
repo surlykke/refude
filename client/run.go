@@ -42,7 +42,7 @@ var events = make(chan string)
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == "/refude/openBrowser" {
-		if !windows.RaiseAndFocusNamedWindow("org.refude.panel") {
+		if !windows.WM.RaiseAndFocusNamedWindow("org.refude.panel") {
 			respond.NotFound(w)
 		} else {
 			watch.SomethingChanged("/refude/openBrowser")
@@ -54,7 +54,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				respond.UnprocessableEntity(w, err)
 			} else if height, err := strconv.ParseUint(requests.GetSingleQueryParameter(r, "height", ""), 10, 32); err != nil {
 				respond.UnprocessableEntity(w, err)
-			} else if !windows.ResizeNamedWindow("org.refude.panel", uint32(width), uint32(height)) {
+			} else if !windows.WM.ResizePanel(uint32(width), uint32(height)) {
 				respond.NotFound(w)
 			} else {
 				respond.Accepted(w)

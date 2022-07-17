@@ -48,7 +48,7 @@ type DesktopApplication struct {
 	DesktopActions  []DesktopAction
 	DesktopId       string
 	Mimetypes       []string
-	path            string `json:"-"`
+	DesktopFile     string 
 }
 
 func (d *DesktopApplication) Id() string {

@@ -84,16 +84,17 @@ func (l *Collection[ID, T]) Delete(id ID) bool {
 	}
 }
 
-func (l *Collection[ID, T]) FindFirst(test func(t T) bool) interface{} {
+func (l *Collection[ID, T]) FindFirst(test func(t T) bool) (T, bool) {
 	l.Lock()
 	defer l.Unlock()
 
 	for _, res := range l.resources {
 		if test(res) {
-			return res
+			return res, true
 		}
 	}
-	return nil
+	var t T
+	return t, false
 }
 
 func (l *Collection[ID, T]) ServeHTTP(w http.ResponseWriter, r *http.Request) {

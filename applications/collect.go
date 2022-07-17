@@ -324,6 +324,7 @@ func readDesktopFile(path string, id string) (*DesktopApplication, error) {
 		da.StartupWmClass = group.Entries["StartupWMClass"]
 		da.Url = group.Entries["URL"]
 		da.Mimetypes = slice.Split(group.Entries["MimeType"], ";")
+		da.DesktopFile = path
 
 		for _, actionGroup := range iniFile[1:] {
 			if !strings.HasPrefix(actionGroup.Name, "Desktop Action ") {

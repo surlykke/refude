@@ -92,6 +92,7 @@ import (
 	"image"
 	"image/color"
 	"image/png"
+	"sync"
 	"time"
 	"unsafe"
 
@@ -199,6 +200,7 @@ func (wsm WindowStateMask) MarshalJSON() ([]byte, error) {
 }
 
 type Proxy struct {
+	*sync.Mutex
 	disp       *C.Display
 	rootWindow C.Window
 }
@@ -208,6 +210,7 @@ func MakeProxy() Proxy {
 	var defaultScreen = C.ds(disp)
 	var rootWindow = C.rw(disp, defaultScreen)
 	return Proxy{
+		Mutex: &sync.Mutex{},
 		disp:       disp,
 		rootWindow: rootWindow,
 	}
@@ -429,12 +432,6 @@ func CloseWindow(p Proxy, wId uint32) {
 	C.XSendEvent(p.disp, p.rootWindow, 0, redirectAndNotifyMask, &event)
 	C.XFlush(p.disp)
 
-}
-
-func MapAndRaiseWindow(p Proxy, wId uint32) {
-	C.XMapSubwindows(p.disp, C.Window(wId))
-	C.XMapRaised(p.disp, C.Window(wId))
-	C.XFlush(p.disp)
 }
 
 func GetScreenshotAsPng(p Proxy, wId uint32, downscale uint8) ([]byte, error) {
