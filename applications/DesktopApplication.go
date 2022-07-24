@@ -145,6 +145,21 @@ func OpenFile(appId, path string) (bool, error) {
 	}
 }
 
+
+func GetIconName(appId string) string {
+	// Some special handling
+	if (appId == "Alacritty") {
+		appId = "com.alacritty.Alacritty"
+	}
+	appId += ".desktop"
+	if app := Applications.Get(appId); app != nil {
+		return app.Icon
+	} else {
+		return ""
+	}
+}
+
+
 var argPlaceholders = regexp.MustCompile("%[uUfF]")
 
 func run(exec string, arg string, inTerminal bool) error {

@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"sync"
 
+	"github.com/surlykke/RefudeServices/applications"
 	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/relation"
@@ -74,8 +75,9 @@ func (this *WaylandWindow) Id() uint64 {
 	return this.Wid
 }
 
-func (this *WaylandWindow) Presentation() (title string, comment string, iconUrl link.Href, profile string) {
-	return this.Title, "", link.IconUrl(this.IconName), "window"
+func (this *WaylandWindow) Presentation() (string, string, link.Href, string) {
+	var iconUrl = link.IconUrl(applications.GetIconName(this.AppId))
+	return this.Title, "", iconUrl, "window"
 }
 
 func (this *WaylandWindow) Links(self, term string) link.List {
