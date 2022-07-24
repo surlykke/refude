@@ -229,6 +229,12 @@ func collectApplications(appdir string, apps map[string]*DesktopApplication) {
 			return nil
 		}
 
+		var executableName = app.Exec
+		if lastSlash := strings.LastIndex(executableName, "/"); lastSlash > -1 {
+			executableName = executableName[lastSlash:]
+		}
+		app.Keywords = append(app.Keywords, executableName)
+
 		apps[app.DesktopId] = app
 
 		return nil
