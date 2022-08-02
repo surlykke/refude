@@ -105,7 +105,7 @@ func clean(dir string) string {
 func cleanS(dirs []string) []string {
 	var cleaned = make([]string, 0, len(dirs))
 	for _, dir := range dirs {
-		cleaned = append(cleaned, dir)
+		cleaned = append(cleaned, path.Clean(dir))
 	}
 	return cleaned
 }

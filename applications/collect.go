@@ -216,7 +216,7 @@ func collectApplications(appdir string, apps map[string]*DesktopApplication) {
 			return nil
 		}
 
-		var id = strings.Replace(path[len(appdir):], "/", "-", -1)
+		var id = strings.Replace(path[len(appdir) + 1:], "/", "-", -1)
 		app, err := readDesktopFile(path, id)
 		if err != nil {
 			log.Warn("Error processing ", path, ":\n\t", err)
