@@ -1,0 +1,70 @@
+<!doctype html>
+<html dir="ltr" lang="da">
+
+<head>
+  <meta charset="utf-8">
+  <title>org.refude.panel</title>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+  <script>
+	let currentLink
+	$(document).ready(() => {
+		$('a').contextmenu(e => {
+			e.preventDefault()
+			console.log("x,y:", e.screenX, e.screenY)
+			console.log(e.offsetX, e.offsetY)
+			let bodyOffset = $('body').offset()
+			currentLink = e.target.href
+			console.log("currentLink", currentLink)
+			$('#context-menu').css({left: `${bodyOffset.top + e.offsetX}px`, top: `${bodyOffset.left + e.offsetY}px`})
+			$('#context-menu').show()
+		})
+		$(document).click(e => {
+			$('#context-menu').hide()
+		})
+	})
+	let post = e => {
+		fetch(currentLink, {method: "post"})
+	}
+	let get = e => {
+		document.location = currentLink
+	}
+  </script>
+  <style>
+	#context-menu {
+		background-color: rgba(255, 255, 255, 190);
+		border: solid black 1px;
+		position: absolute;
+		display: none; 
+		z-index: 10;
+        width: min-content;
+		cursor: pointer;
+	}
+	#context-menu * {
+		padding: 0px;
+		margin: 0px;
+	}
+	#context-menu p {
+		padding: 4px 8px 4px 8px;
+	}
+	#context-menu p:hover {
+		font-size: 1.1em;
+		font-weight: bold;
+	}
+    ul {
+		list-style: none;
+    }
+  </style>
+</head>
+
+<body>
+	<div id="context-menu">
+		<ul>
+			<li><p onclick="get()">Get</p></li>
+			<li><p onclick="post()">Post</p></li>
+		</ul>
+	</div>
+    <pre>
+@@@@
+    </pre>
+</body>
+</htm>

@@ -3,7 +3,6 @@
 // This file is part of the RefudeServices project.
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
-//
 package main
 
 import (
@@ -15,6 +14,7 @@ import (
 	"github.com/surlykke/RefudeServices/doc"
 	"github.com/surlykke/RefudeServices/file"
 	"github.com/surlykke/RefudeServices/icons"
+	"github.com/surlykke/RefudeServices/jsonview"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/notifications"
 	"github.com/surlykke/RefudeServices/power"
@@ -41,6 +41,7 @@ func main() {
 	http.HandleFunc("/doc", doc.ServeHTTP)
 	http.HandleFunc("/file/", file.ServeHTTP)
 	http.HandleFunc("/tmux/", windows.ServeHTTP)
+	http.Handle("/jsonview/", jsonview.Handler)
 	http.Handle("/window/", windows.WM)
 	http.Handle("/notification/", notifications.Notifications)
 	http.Handle("/icontheme/", icons.IconThemes)

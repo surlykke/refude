@@ -3,7 +3,7 @@
 
 self.addEventListener('install', event => event.waitUntil(
   caches.open("v1") .then(v1 => {
-    v1.addAll(["https://unpkg.com/react@18/umd/react.production.min.js", "https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"])
+    v1.addAll(["https://unpkg.com/react@18.2.0/umd/react.development.js", "https://unpkg.com/react-dom@18.2.0/umd/react-dom.development.js"])
   })
 ))
 

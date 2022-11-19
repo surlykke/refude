@@ -63,7 +63,7 @@ const follow = (path, retriever, errorHandler) => {
     evtSource.onerror = () => {
         errorHandler()
         if (evtSource.readyState === 2) {
-            setTimeout(followResource, 5000, path, handler, errorHandler)
+            setTimeout(follow, 5000, path, retriever, errorHandler)
         }
     } 
 }
