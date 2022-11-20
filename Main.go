@@ -6,15 +6,17 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/surlykke/RefudeServices/applications"
+	"github.com/surlykke/RefudeServices/bookmarks"
+	"github.com/surlykke/RefudeServices/browse"
 	"github.com/surlykke/RefudeServices/client"
 	"github.com/surlykke/RefudeServices/complete"
 	"github.com/surlykke/RefudeServices/doc"
 	"github.com/surlykke/RefudeServices/file"
 	"github.com/surlykke/RefudeServices/icons"
-	"github.com/surlykke/RefudeServices/jsonview"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/notifications"
 	"github.com/surlykke/RefudeServices/power"
@@ -27,6 +29,8 @@ import (
 )
 
 func main() {
+	fmt.Println("Running")
+
 	go windows.WM.Run()
 	go applications.Run()
 	go notifications.Run()
@@ -41,7 +45,10 @@ func main() {
 	http.HandleFunc("/doc", doc.ServeHTTP)
 	http.HandleFunc("/file/", file.ServeHTTP)
 	http.HandleFunc("/tmux/", windows.ServeHTTP)
-	http.Handle("/jsonview/", jsonview.Handler)
+	http.HandleFunc("/bookmarks", bookmarks.ServeHTTP)
+	http.HandleFunc("/bookmarks/", bookmarks.ServeHTTP)
+	http.Handle("/browse", browse.Handler)
+	http.Handle("/browse/", browse.Handler)
 	http.Handle("/window/", windows.WM)
 	http.Handle("/notification/", notifications.Notifications)
 	http.Handle("/icontheme/", icons.IconThemes)

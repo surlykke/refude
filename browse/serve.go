@@ -1,4 +1,4 @@
-package jsonview
+package browse 
 
 import (
 	"bytes"
@@ -16,18 +16,27 @@ import (
 //go:embed template.html
 var	template []byte
 
+func init() {
+	fmt.Println("template:", string(template))
+}
+
 var reg = regexp.MustCompile(`"(self|href)"\s*:\s*"http://localhost:7938([^"]*)"`)
 var reg2 = regexp.MustCompile(`"(icon)"\s*:\s*"http://localhost:7938([^"]*)"`)
 
-var repl1 = []byte(`"$1": <a href="/jsonview$2">"$2"</a>`)
+var repl1 = []byte(`"$1": <a href="/browse$2">"$2"</a>`)
 var repl2 = []byte(`"icon": <a href="$2">"$2"</a>`)
 
 var Handler = &httputil.ReverseProxy{
 	Director: func(req *http.Request) {
-		fmt.Println("jsonview: req.URL.Host", req.URL.Host, "req.Host:", req.Host )
+		fmt.Println("browse: req.URL.Host", req.URL.Host, "req.Host:", req.Host )
 		req.URL.Scheme = "http"
 		req.URL.Host = req.Host
-		req.URL.Path = req.URL.Path[len("/jsonview"):]
+		fmt.Print("Rewrite Path: ", req.URL.Path)
+		if req.URL.Path == "/browse" || req.URL.Path == "/browse/" {
+			req.URL.Path = "/bookmarks"
+		} else {
+			req.URL.Path = req.URL.Path[len("/browse"):]
+		}
 	},
 	ModifyResponse: func(resp *http.Response) error {
 		if resp.Header.Get("Content-Type") == "application/vnd.refude+json" {

@@ -1,5 +1,7 @@
 #!/bin/bash
 cd `dirname $0`
+set -x
+set -e 
 
 export GOBIN=${HOME}/.local/bin
 BASH_COMPLETION_DIR=${XDG_DATA_HOME:-${HOME}/.local/share}/bash/completions
@@ -9,9 +11,11 @@ DESKTOP_FILE_DIR=${XDG_DATA_HOME:-${HOME}/.local/share}/applications
 ASSETS_DIR=${XDG_DATA_HOME:-${HOME}/.local/share}/RefudeServices
 mkdir -p $GOBIN $BASH_COMPLETION_DIR $FISH_COMPLETION_DIR $HICOLOR_ICON_DIR $ASSETS_DIR
 
-
-go install || exit 1
-(cd refuc && go install ) || exit 1
+pwd
+go install 
+cd refuc 
+go install 
+cd ..
 cp README.md $ASSETS_DIR
 cp -R ./icons/* $HICOLOR_ICON_DIR 
 cp resources/bin/* $GOBIN
