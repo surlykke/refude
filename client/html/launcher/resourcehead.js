@@ -4,7 +4,7 @@
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
 //
-import { div, img, table, tbody, tr, td } from "./elements.js"
+import { div, img, table, tbody, tr, td } from "../common/elements.js"
 
 let heading = (title, comment, icon, iconClassName) =>
     div({ className: "resource-header" },

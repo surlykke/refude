@@ -1,4 +1,4 @@
-// Simple serviceworker to cache react.production.min.js and react-dom.production.min.js.
+// Simple serviceworker to cache react.
 // This to be able to run after pc-boot, before wifi-connection is established.
 
 self.addEventListener('install', event => event.waitUntil(

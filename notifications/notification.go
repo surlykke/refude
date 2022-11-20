@@ -3,7 +3,6 @@
 // This file is part of the RefudeServices project.
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
-//
 package notifications
 
 import (
@@ -16,7 +15,6 @@ import (
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
-	"github.com/surlykke/RefudeServices/watch"
 )
 
 type Urgency uint8
@@ -94,9 +92,6 @@ func (n *Notification) DoDelete(w http.ResponseWriter, r *http.Request) {
 
 var Notifications = resource.MakeCollection[uint32, *Notification]("/notification/")
 
-func somethingChanged() {
-	watch.SomethingChanged("/notification/")
-}
 
 func Search(term string) link.List {
 	var rank = func(n *Notification) int {

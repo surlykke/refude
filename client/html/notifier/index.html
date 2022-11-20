@@ -3,18 +3,18 @@
 
 <head>
   <meta charset="utf-8">
-  <title>org.refude.panel</title>
+  <title>Refude notifier</title>
   <link rel="shortcut icon" href="favicon.ico" />
   <link rel="stylesheet" href="./style.css">
   <script>
-    navigator.serviceWorker.register( '/refude/html/sw.js');
+    navigator.serviceWorker.register( '/refude/html/common/sw.js');
   </script> 
   <script crossorigin src="https://unpkg.com/react@18.2.0/umd/react.development.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.development.js"></script>
 </head>
 
 <body>
-  <div id="panel" class="mainDiv" tabindex="-1"></div>
+  <div id="main" class="mainDiv" tabindex="-1"></div>
 </body>
 <script type='module' src='./main.js'></script>
 </html>

@@ -4,8 +4,8 @@
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
 //
-import {doDelete, doPost, iconClassName} from "./utils.js"
-import { img, a, span } from "./elements.js"
+import {doDelete, doPost, iconClassName} from "../common/utils.js"
+import { img, a, span } from "../common/elements.js"
 
 export let link = (link, comment, dismiss, move) => {
     

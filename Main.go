@@ -35,7 +35,7 @@ func main() {
 	go applications.Run()
 	go notifications.Run()
 	go power.Run()
-	go statusnotifications.Run()
+	//go statusnotifications.Run()
 
 	http.HandleFunc("/start", start.ServeHTTP)
 	http.HandleFunc("/refude/", client.ServeHTTP)

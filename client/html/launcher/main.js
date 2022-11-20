@@ -4,15 +4,10 @@
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
 //
-import { div, frag, input, p, span } from "./elements.js"
-import { clock } from './clock.js'
-import { notifierItem } from './notifieritem.js'
-import { battery } from './battery.js'
-import { doPost, followCollection, followResource, watchResource } from "./utils.js"
-import { flash } from "./flash.js"
+import { div, frag, span } from "../common/elements.js"
 import { resourceHead } from "./resourcehead.js"
 import { link } from "./link.js"
-import { menu } from "./menu.js"
+import { restorePosition, savePositionAndClose } from "../common/utils.js"
 
 const browserStartUrl = "http://localhost:7938/start"
 
@@ -21,56 +16,21 @@ export class Main extends React.Component {
 
     constructor(props) {
         super(props)
-        this.state = { itemlist: [], term: "" }
+        this.state = { term: "" }
+        this.browserUrl = browserStartUrl
         this.browserHistory = []
-        followCollection("/notification/", this.updateFlash, () => this.setState({flash: undefined}))
-        followCollection("/item/", 
-            itemlist => this.setState({itemlist: itemlist}), 
-            error => {
-                console.warn(error)
-                this.setState({itemlist: []})
-            })
-        followResource("/device/DisplayDevice", 
-                       displayDevice => this.setState({displayDevice: displayDevice?.data}), 
-                       () => this.setState({displayDevice: undefined}))
-        watchResource("/refude/openBrowser", this.openBrowser)
+        this.getResource()
     }
 
     componentDidMount = () => {
+        restorePosition("launch")
         document.addEventListener("keydown", this.onKeyDown)
-        document.getElementById('panel').addEventListener('focusout', () => this.setState({ menuObject: undefined }))
     };
 
     componentDidUpdate = () => {
         let links = Array.from(document.querySelectorAll("a.link"))
         let link = links.find(l => l.href == this.preferred) || links[0]
         link?.focus()
-    }
-
-    updateFlash = notifications => {
-        notifications.reverse() 
-        let now = Date.now()
-        let flashNotification = notifications.find(n => n.data.Urgency === 2) || // Critical
-                                notifications.find(n => n.data.Urgency === 1 && n.data.Created + 6000 > now) || // Normal
-                                notifications.find(n => n.data.Urgency === 0 && n.data.Created + 2000 > now);
-        
-
-        if (flashNotification) {
-            this.setState({flashNotification: flashNotification})
-            if (flashNotification.data.Urgency < 2) {
-                let timeout = flashNotification.data.Urgency === 1 ? 6050 : 2050
-                setTimeout(this.removeFlash, timeout)
-            }
-        }
-    }
-
-    removeFlash = () => {
-        let {flashNotification: fn} = this.state
-        if (fn && fn.data.Urgency < 2) {
-            if (fn.data.Created + (fn.data.Urgency == 1 ? 6000 : 2000) < Date.now()) {
-                this.setState({flashNotification: undefined})
-            }
-        }
     }
 
     getResource = () => {
@@ -96,22 +56,8 @@ export class Main extends React.Component {
             )
     }
 
-    setMenuObject = menuObject => this.setState({ menuObject: menuObject })
-
-    openBrowser = () => {
-        if (this.state.resource) {
-            this.move("down")
-        } else {
-            this.browserUrl = browserStartUrl
-            this.getResource()
-        }
-    }
-
     closeBrowser = () => {
-        this.browserUrl = undefined
-        this.preferred = undefined
-        this.browserHistory = []
-        this.setState({ term: "", resource: undefined, links: undefined })
+        savePositionAndClose("launch")
     }
 
     handleInput = e => {
@@ -162,16 +108,8 @@ export class Main extends React.Component {
     }
 
     render = () => {
-        let { itemlist, displayDevice, resource, term, menuObject, flashNotification } = this.state
+        let { resource, term } = this.state
         let fraqs = []
-        fraqs.push(
-            div(
-                { className: "panel", onClick: () => this.setMenuObject() },
-                clock(),
-                itemlist.map(item => { return notifierItem(item, this.setMenuObject) }),
-                battery(displayDevice)
-            )
-        )
         if (resource) {
             fraqs.push(
                 resourceHead(resource),
@@ -182,36 +120,24 @@ export class Main extends React.Component {
             if (term && resource.links.length === 0) {
                 fraqs.push(div({className: 'linkHeading'}, "No match"))
             }
-            let links = resource.links.map(l => link(l, l.profile, this.closeBrowser, this.move))
+            let links = resource.links
+                            .filter(l => l.title !== "Refude launcher++")
+                            .map(l => link(l, l.profile, this.closeBrowser, this.move))
             let firstRel = links.findIndex(l => l.props.rel === 'related')
             if (firstRel > 0) {
                 links[firstRel - 1].props.className +=" last-action"
             }
             fraqs.push(div({ className: 'links' }, ...links))
-        } else if (menuObject) {
-            fraqs.push(menu(menuObject, () => this.setState({ menuObject: undefined })))
-        } else if (flashNotification) {
-            fraqs.push(flash(flashNotification))
         }
 
         return frag(fraqs)
     }
 }
 
-ReactDOM.render(React.createElement(Main), document.getElementById('panel'))
-
-let resizeToContent = div => {
-    let { width, height } = div.getBoundingClientRect()
-
-    width = Math.round((width) * window.devicePixelRatio)
-    height = Math.round((height) * window.devicePixelRatio)
-    doPost("/refude/resizePanel", { width: width, height: height })
+let resizeToContent = () => {
+    let { width, height } = document.getElementById('main').getBoundingClientRect()
+    window.resizeTo(width + 100, Math.min(600, Math.max(300, height)))
 }
+new ResizeObserver((observed) => observed && observed[0] && resizeToContent()).observe(document.getElementById('main'))
 
-new ResizeObserver((observed) => {
-    if (observed && observed[0]) { // shouldn't be nessecary 
-        resizeToContent(observed[0].target)
-    }
-}).observe(document.getElementById('panel'))
-
-setTimeout(() => resizeToContent(document.getElementById('panel')), 3000)
+ReactDOM.createRoot(document.getElementById('main')).render(React.createElement(Main))

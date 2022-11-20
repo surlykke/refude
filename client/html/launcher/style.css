@@ -1,5 +1,7 @@
 @charset "UTF-8";
 
+@charset "UTF-8";
+
 html, body {
     width: 100%;
     height: 100%;
@@ -20,28 +22,6 @@ html, body {
     padding: 2px 6px 5px 6px;
 }
 
-/* ---------- Panel ------------- */
-.panel {
-    width: min-content;
-    height: min-content;
-    /*padding: 2px 4px 4px 4px;*/
-    flex-shrink: 0;
-    display: flex;
-    margin: 0px; 
-    white-space: nowrap;
-    /*border-bottom: solid 1px lightgrey;*/
-    gap: 6px;
-}
-
-.panel>div {
-    height: 16px;
-    cursor: default;
-}
-
-.panel>div:first-child {
-    margin-right: 6px;
-}
-/* ------------------ Browser --------------- */
 
 .resource-header {
     display: flex;
@@ -167,83 +147,3 @@ html, body {
     margin-bottom: 8px;
 }
 
-/* ------------------ Menu ------------------ */
-.menu {
-    padding: 0 0 16px 16px
-}
-
-.menu ul {
-    margin: 0;
-    padding: 0;
-    width: min-content;
-}
-
-.menu hr {
-    margin: 2px;
-}
-
-
-.menu li {
-    position: relative;
-    padding: 2px 20px 2px 16px;
-    list-style-type: none;
-    white-space: nowrap;
-    width: min-content;
-    cursor: default;
-}
-
-.menu li>span:hover {
-    background-color: lightgrey;
-}
-
-li:not(.open) ul {
-    display: none;
-}
-
-li::before {
-    position: absolute;
-    left: 0px;
-}
-
-li.submenu.open::before {
-    font-size: 0.8em;
-    content: "\25BC";
-}
-li.submenu:not(.open)::before {
-    font-size: 0.8em;
-    content: "\25B8";
-}
-li.marked::before {
-    content: "\2713";
-}
-
-/* ---------------- Flash -------------------------- */
-.flash {
-    display: flex;
-    background-color: white;
-}
-
-.flash-icon {
-    /*width: 3em;*/
-    padding: 0.5em;
-}
-
-.flash-message {
-    overflow: hidden;
-    padding: 0.5em 0.5em 0.5em 0em;
-}
-
-.flash-title {
-    font-size: 1.2em;
-    white-space: nowrap;
-}
-
-.flash-body {
-    font-size: 1em;
-    padding-top: 0.2em;
-    padding-bottom: 0.2em;
-    word-wrap: break-word;
-    width: max-content;
-    max-width: 400px;
-    overflow: hidden;
-}

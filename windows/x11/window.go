@@ -142,7 +142,7 @@ func (this *X11WindowManager) Search(term string) link.List {
 	return this.windows.ExtractLinks(func(xWin X11Window) int {
 		var name = this.getName(xWin)
 		var state = this.getStates(xWin)
-		if name != "org.refude.panel" && state&(SKIP_TASKBAR|SKIP_PAGER|ABOVE) == 0 {
+		if state&(SKIP_TASKBAR|SKIP_PAGER|ABOVE) == 0 {
 			if rnk := searchutils.Match(term, name); rnk > -1 {
 				this.recentMapLock.Lock()
 				defer this.recentMapLock.Unlock()

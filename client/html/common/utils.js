@@ -41,18 +41,18 @@ export const followResource = (path, handler, errorHandler) => {
 	follow(path, retrieveResource, errorHandler)
 }
 
+export const retrieveCollection = (path, handler, errorHandler) => {
+    fetch("http://localhost:7938" + path)
+        .then(resp => resp.json())
+        .then(json => Promise.allSettled(json.map(link => fetch(link.href))))
+        .then(results => Promise.allSettled(results.filter(result => result.status === "fulfilled").map(result => result.value.json())))
+        .then(results => handler(results.filter(r => r.status == "fulfilled").map(r => r.value)))
+        .catch(error => errorHandler && errorHandler(error))
+}
+
 export const followCollection = (path, handler, errorHandler) => {
-	let retrieveCollection = () => {
-		fetch("http://localhost:7938" + path)
-			.then(resp => resp.json())
-			.then(json => Promise.allSettled(json.map(link => fetch(link.href))))
-			.then(results => Promise.allSettled(results.filter(result => result.status === "fulfilled").map(result => result.value.json())))
-			.then(results => handler(results.filter(r => r.status == "fulfilled").map(r => r.value)))
-            .catch(error => errorHandler && errorHandler(error))
-	}
-
-
-	follow(path, retrieveCollection, errorHandler)
+    let retrieveCollectionCurried = () => retrieveCollection(path, handler, errorHandler)
+	follow(path, retrieveCollectionCurried, errorHandler)
 }
 
 const follow = (path, retriever, errorHandler) => {
@@ -68,3 +68,15 @@ const follow = (path, retriever, errorHandler) => {
     } 
 }
 
+export const restorePosition = (prefix) => {
+    let screenX = parseInt(localStorage.getItem(prefix + '-screenX'))
+    let screenY = parseInt(localStorage.getItem(prefix + '-screenY'))
+    console.log("screenX screenY:", screenX, screenY, typeof(screenX), typeof(screenY))
+    isNaN(screenX) || isNaN(screenY) || window.moveTo(Math.max(0,screenX), Math.max(0,screenY))
+}
+
+export const savePositionAndClose = prefix => {
+    localStorage.setItem(prefix + '-screenX', window.screenX)
+    localStorage.setItem(prefix + '-screenY', window.screenY)
+    window.close()
+}

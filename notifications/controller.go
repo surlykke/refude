@@ -3,7 +3,6 @@
 // This file is part of the RefudeServices project.
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
-//
 package notifications
 
 import (
@@ -17,6 +16,7 @@ import (
 	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/image"
 	"github.com/surlykke/RefudeServices/lib/log"
+	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
 const NOTIFICATIONS_SERVICE = "org.freedesktop.Notifications"
@@ -218,7 +218,8 @@ func Notify(app_name string,
 	notification.Expires = notification.Created + int64(expire_timeout)
 
 	Notifications.Put(&notification)
-	somethingChanged()
+	
+	go xdg.RunCmd("google-chrome", "--app=http://localhost:7938/refude/html/notifier/")
 
 	return id, nil
 }
@@ -329,7 +330,7 @@ func DoDBus() {
 	} else if reply, err := conn.RequestName(NOTIFICATIONS_SERVICE, dbus.NameFlagDoNotQueue); err != nil {
 		panic(err)
 	} else if reply != dbus.RequestNameReplyPrimaryOwner {
-		panic(errors.New(NOTIFICATIONS_SERVICE + " taken"))
+		log.Warn(NOTIFICATIONS_SERVICE + " taken")
 	}
 
 	go generate(ids)
