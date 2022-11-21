@@ -7,7 +7,7 @@
 import { div, frag, span } from "../common/elements.js"
 import { resourceHead } from "./resourcehead.js"
 import { link } from "./link.js"
-import { restorePosition, savePositionAndClose } from "../common/utils.js"
+import { doPost, restorePosition } from "../common/utils.js"
 
 const browserStartUrl = "http://localhost:7938/start"
 
@@ -23,7 +23,6 @@ export class Main extends React.Component {
     }
 
     componentDidMount = () => {
-        restorePosition("launch")
         document.addEventListener("keydown", this.onKeyDown)
     };
 
@@ -57,7 +56,7 @@ export class Main extends React.Component {
     }
 
     closeBrowser = () => {
-        savePositionAndClose("launch")
+        doPost("http://localhost:7938/refude/hideLauncher")
     }
 
     handleInput = e => {
@@ -93,8 +92,6 @@ export class Main extends React.Component {
         let { key, ctrlKey, altKey } = event;
         if (key === "Escape") {
             this.closeBrowser();
-            this.setMenuObject();
-            this.setState({ flashNotification: undefined })
         } else if (key === "ArrowLeft" || key === "h" && ctrlKey) {
             this.move("left")
         } else if (key.length === 1 && !ctrlKey && !altKey) {

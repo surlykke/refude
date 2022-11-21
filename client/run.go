@@ -12,6 +12,8 @@ import (
 	"os"
 
 	"github.com/surlykke/RefudeServices/lib/log"
+	"github.com/surlykke/RefudeServices/lib/respond"
+	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
 //go:embed html
@@ -32,7 +34,13 @@ func init() {
 	StaticServer = http.StripPrefix("/refude/html", tmp)
 }
 
-
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "POST" {
+		if r.URL.Path == "/refude/hideLauncher" {
+			xdg.RunCmd("hideLauncher")
+			respond.Accepted(w)
+			return
+		}
+	}
 	StaticServer.ServeHTTP(w, r)
 }

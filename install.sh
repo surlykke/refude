@@ -19,6 +19,8 @@ cd ..
 cp README.md $ASSETS_DIR
 cp -R ./icons/* $HICOLOR_ICON_DIR 
 cp resources/bin/* $GOBIN
+ln -s $GOBIN/hideLauncherI3 $GOBIN/hideLauncher 2>/dev/null || :
+ln -s $GOBIN/showLauncherI3 $GOBIN/showLauncher 2>/dev/null || :
 cp resources/completions/bash/* ${BASH_COMPLETION_DIR}
 cp resources/completions/fish/* ${FISH_COMPLETION_DIR}
 cp resources/desktop/*.desktop ${DESKTOP_FILE_DIR}
