@@ -3,14 +3,10 @@
 // This file is part of the RefudeServices project.
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
-//
 package statusnotifications
 
 import (
-	"fmt"
-
 	"github.com/surlykke/RefudeServices/icons"
-	"github.com/surlykke/RefudeServices/watch"
 
 	"github.com/surlykke/RefudeServices/lib/resource"
 )
@@ -80,13 +76,11 @@ func Run() {
 					continue
 				}
 				Items.Put(&itemCopy)
-				watch.SomethingChanged(fmt.Sprint("/item/", itemCopy.Id()))
 			} else {
 				continue
 			}
 
 		}
-		watch.SomethingChanged("/item/")
 	}
 }
 

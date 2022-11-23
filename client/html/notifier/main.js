@@ -75,6 +75,9 @@ export class Main extends React.Component {
 
 let resizeToContent = () => {
     let { width, height } = document.getElementById('main').getBoundingClientRect()
+    width = Math.round(window.devicePixelRatio*width)
+    height = Math.round(window.devicePixelRatio*height)
+
     window.resizeTo(Math.max(width, 180), Math.max(40, height))
 }
 new ResizeObserver((observed) => observed && observed[0] && resizeToContent()).observe(document.getElementById('main'))

@@ -16,10 +16,6 @@ import (
 //go:embed template.html
 var	template []byte
 
-func init() {
-	fmt.Println("template:", string(template))
-}
-
 var reg = regexp.MustCompile(`"(self|href)"\s*:\s*"http://localhost:7938([^"]*)"`)
 var reg2 = regexp.MustCompile(`"(icon)"\s*:\s*"http://localhost:7938([^"]*)"`)
 

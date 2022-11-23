@@ -7,7 +7,7 @@
 import { div, frag, span } from "../common/elements.js"
 import { resourceHead } from "./resourcehead.js"
 import { link } from "./link.js"
-import { doPost, restorePosition } from "../common/utils.js"
+import { doPost, restorePosition, watchResource } from "../common/utils.js"
 
 const browserStartUrl = "http://localhost:7938/start"
 
@@ -20,6 +20,7 @@ export class Main extends React.Component {
         this.browserUrl = browserStartUrl
         this.browserHistory = []
         this.getResource()
+        watchResource("/search", this.getResource)
     }
 
     componentDidMount = () => {
@@ -56,6 +57,9 @@ export class Main extends React.Component {
     }
 
     closeBrowser = () => {
+        this.browserUrl = browserStartUrl;
+        this.setState({term: ''})
+        this.getResource()
         doPost("http://localhost:7938/refude/hideLauncher")
     }
 

@@ -90,7 +90,7 @@ func (n *Notification) DoDelete(w http.ResponseWriter, r *http.Request) {
 	respond.Accepted(w)
 }
 
-var Notifications = resource.MakeCollection[uint32, *Notification]("/notification/")
+var Notifications = resource.MakePublishingCollection[uint32, *Notification]("/notification/", "/search")
 
 
 func Search(term string) link.List {

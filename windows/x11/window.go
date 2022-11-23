@@ -3,7 +3,6 @@
 // This file is part of the RefudeServices project.
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
-//
 package x11
 
 import (
@@ -121,7 +120,7 @@ type X11WindowManager struct {
 
 func makeX11WindowManager() *X11WindowManager {
 	return &X11WindowManager{
-		windows:   resource.MakeCollection[uint32, X11Window]("/window/"),
+		windows:   resource.MakePublishingCollection[uint32, X11Window]("/window/", "/search"),
 		proxy:     MakeProxy(),
 		recentMap: make(map[uint32]uint32),
 	}

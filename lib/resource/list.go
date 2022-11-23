@@ -3,7 +3,6 @@
 // This file is part of the RefudeServices project.
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
-//
 package resource
 
 import (
@@ -15,6 +14,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/respond"
+	"github.com/surlykke/RefudeServices/watch"
 	"golang.org/x/exp/constraints"
 	"golang.org/x/exp/slices"
 )
@@ -26,12 +26,18 @@ type Collection[ID constraints.Ordered, T Resource[ID]] struct {
 	sync.Mutex
 	Prefix    string // Immutable
 	resources map[ID]T
+	publish   string
 }
 
 func MakeCollection[ID constraints.Ordered, T Resource[ID]](prefix string) *Collection[ID, T] {
+	return MakePublishingCollection[ID, T](prefix, "")
+}
+
+func MakePublishingCollection[ID constraints.Ordered, T Resource[ID]](prefix string, publishOnChange string) *Collection[ID, T] {
 	return &Collection[ID, T]{
 		Prefix:    prefix,
 		resources: make(map[ID]T),
+		publish:   publishOnChange,
 	}
 }
 
@@ -43,6 +49,9 @@ func (l *Collection[ID, T]) Get(id ID) T {
 
 func (l *Collection[ID, T]) Put(res T) {
 	l.Lock()
+	if l.publish != "" {
+		defer watch.SomethingChanged(l.publish)
+	}
 	defer l.Unlock()
 
 	l.resources[res.Id()] = res
@@ -64,6 +73,9 @@ func (l *Collection[ID, T]) GetAll() []T {
 
 func (l *Collection[ID, T]) ReplaceWith(resources []T) {
 	l.Lock()
+	if l.publish != "" {
+		defer watch.SomethingChanged(l.publish)
+	}
 	defer l.Unlock()
 
 	l.resources = make(map[ID]T, len(resources))
@@ -74,6 +86,9 @@ func (l *Collection[ID, T]) ReplaceWith(resources []T) {
 
 func (l *Collection[ID, T]) Delete(id ID) bool {
 	l.Lock()
+	if l.publish != "" {
+		defer watch.SomethingChanged(l.publish)
+	}
 	defer l.Unlock()
 
 	if _, ok := l.resources[id]; ok {
@@ -143,7 +158,6 @@ func (c *Collection[ID, T]) ExtractLinks(rank func(t T) int) link.List {
 func (l *Collection[ID, T]) Self(id ID) string {
 	return fmt.Sprint(l.Prefix, id)
 }
-
 
 func ServeResource[ID constraints.Ordered, T Resource[ID]](w http.ResponseWriter, r *http.Request, self string, res T) {
 	var linkSearchTerm = requests.GetSingleQueryParameter(r, "search", "")
