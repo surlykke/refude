@@ -1,2 +1,0 @@
-#!/usr/bin/env bash
-i3-msg '[title="Refude launcher++"] focus' || google-chrome --app='http://localhost:7938/refude/html/launcher/'

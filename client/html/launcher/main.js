@@ -57,10 +57,7 @@ export class Main extends React.Component {
     }
 
     closeBrowser = () => {
-        this.browserUrl = browserStartUrl;
-        this.setState({term: ''})
-        this.getResource()
-        doPost("http://localhost:7938/refude/hideLauncher")
+        window.close()
     }
 
     handleInput = e => {

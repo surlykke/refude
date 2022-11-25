@@ -14,6 +14,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/xdg"
+	"github.com/surlykke/RefudeServices/windows"
 )
 
 //go:embed html
@@ -36,11 +37,11 @@ func init() {
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
-		if r.URL.Path == "/refude/hideLauncher" {
-			xdg.RunCmd("hideLauncher")
-			respond.Accepted(w)
-			return
+		if ! windows.WM.RaiseAndFocusNamedWindow("Refude launcher++") {
+			xdg.RunCmd("google-chrome", "--app=http://localhost:7938/refude/html/launcher")
 		}
+		respond.Accepted(w)
+		return
 	}
 	StaticServer.ServeHTTP(w, r)
 }
