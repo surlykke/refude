@@ -70,7 +70,7 @@ const follow = (path, retriever, errorHandler) => {
 
 export const restorePosition = (prefix) => {
     fetch("http://localhost:7938/window/screenlayout") 
-        .then(resp => resp.json)
+        .then(resp => resp.json())
         .then(fingerprint => {
             let screenX = parseInt(localStorage.getItem(prefix + ":" + fingerprint + '-screenX'))
             let screenY = parseInt(localStorage.getItem(prefix + ":" + fingerprint + '-screenY'))
@@ -81,7 +81,7 @@ export const restorePosition = (prefix) => {
 
 export const savePositionAndClose = prefix => {
     fetch("http://localhost:7938/window/screenlayout")
-        .then(resp => resp.json)
+        .then(resp => resp.json())
         .then(fingerprint => {
             
             localStorage.setItem(prefix + ":" + fingerprint + '-screenX', window.screenX)
