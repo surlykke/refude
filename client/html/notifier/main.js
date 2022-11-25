@@ -38,7 +38,7 @@ export class Main extends React.Component {
         notifications.reverse() 
         let now = Date.now()
         let notification = notifications.find(n => n.data.Urgency === 2) || // Critical
-                                notifications.find(n => n.data.Urgency === 1 && n.data.Created + 6000 > now) || // Normal
+                                notifications.find(n => n.data.Urgency === 1 && n.data.Created + 20000 > now && n.data.Expires > now) || // Normal
                                 notifications.find(n => n.data.Urgency === 0 && n.data.Created + 2000 > now);
         
         if (notification) {

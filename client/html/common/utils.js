@@ -69,14 +69,24 @@ const follow = (path, retriever, errorHandler) => {
 }
 
 export const restorePosition = (prefix) => {
-    let screenX = parseInt(localStorage.getItem(prefix + '-screenX'))
-    let screenY = parseInt(localStorage.getItem(prefix + '-screenY'))
-    console.log("screenX screenY:", screenX, screenY, typeof(screenX), typeof(screenY))
-    isNaN(screenX) || isNaN(screenY) || window.moveTo(Math.max(0,screenX), Math.max(0,screenY))
+    fetch("http://localhost:7938/window/screenlayout") 
+        .then(resp => resp.json)
+        .then(fingerprint => {
+            let screenX = parseInt(localStorage.getItem(prefix + ":" + fingerprint + '-screenX'))
+            let screenY = parseInt(localStorage.getItem(prefix + ":" + fingerprint + '-screenY'))
+            console.log("screenX screenY:", screenX, screenY, typeof(screenX), typeof(screenY))
+            isNaN(screenX) || isNaN(screenY) || window.moveTo(Math.max(0,screenX), Math.max(0,screenY))
+        })
 }
 
 export const savePositionAndClose = prefix => {
-    localStorage.setItem(prefix + '-screenX', window.screenX)
-    localStorage.setItem(prefix + '-screenY', window.screenY)
-    window.close()
+    fetch("http://localhost:7938/window/screenlayout")
+        .then(resp => resp.json)
+        .then(fingerprint => {
+            
+            localStorage.setItem(prefix + ":" + fingerprint + '-screenX', window.screenX)
+            localStorage.setItem(prefix + ":" + fingerprint + '-screenY', window.screenY)
+ 
+        })
+        .finally(window.close)
 }

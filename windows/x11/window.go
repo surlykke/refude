@@ -6,8 +6,12 @@
 package x11
 
 import (
+	"crypto/sha1"
+	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"sort"
 	"sync"
 
 	"github.com/surlykke/RefudeServices/icons"
@@ -154,7 +158,11 @@ func (this *X11WindowManager) Search(term string) link.List {
 }
 
 func (this *X11WindowManager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	this.windows.ServeHTTP(w, r)
+	if r.Method == "GET" && r.URL.Path == "/window/screenlayout" {
+		respond.AsJson(w, this.GetScreenLayoutFingerprint()) 
+	} else {
+		this.windows.ServeHTTP(w, r)
+	}
 }
 
 func (this *X11WindowManager) GetPaths() []string {
@@ -258,6 +266,21 @@ func (this *X11WindowManager) getStates(wId X11Window) WindowStateMask {
 	defer this.Unlock()
 	return GetStates(this.proxy, uint32(wId))
 }
+
+func (this *X11WindowManager) GetScreenLayoutFingerprint() string {
+
+	this.Lock()
+	defer this.Unlock() 
+	var monitors = GetMonitorDataList(this.proxy)
+
+	sort.Slice(monitors, func(i, j int) bool { return monitors[i].X < monitors[j].X })
+	var fp = sha1.New()	
+	for _,m := range monitors {
+		fp.Write([]byte(fmt.Sprintf(":%s:%d:%d:%d:%d", m.Name, m.X, m.Y, m.W, m.H)))
+	}
+	return hex.EncodeToString(fp.Sum(nil))
+}
+
 
 var WM *X11WindowManager
 

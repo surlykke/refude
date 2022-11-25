@@ -7,7 +7,7 @@
 import { div, frag, span } from "../common/elements.js"
 import { resourceHead } from "./resourcehead.js"
 import { link } from "./link.js"
-import { doPost, restorePosition, watchResource } from "../common/utils.js"
+import { doPost, restorePosition, savePositionAndClose, watchResource } from "../common/utils.js"
 
 const browserStartUrl = "http://localhost:7938/start"
 
@@ -24,6 +24,8 @@ export class Main extends React.Component {
     }
 
     componentDidMount = () => {
+        restorePosition("launch")
+
         document.addEventListener("keydown", this.onKeyDown)
     };
 
@@ -57,7 +59,7 @@ export class Main extends React.Component {
     }
 
     closeBrowser = () => {
-        window.close()
+        savePositionAndClose("launch")
     }
 
     handleInput = e => {
