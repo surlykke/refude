@@ -13,11 +13,12 @@ mkdir -p $GOBIN $BASH_COMPLETION_DIR $FISH_COMPLETION_DIR $HICOLOR_ICON_DIR $ASS
 
 pwd
 go install 
-cd refuc 
+cd tools/refuc 
 go install 
-cd ..
+cd ../..
+
 cp README.md $ASSETS_DIR
-cp -R ./icons/* $HICOLOR_ICON_DIR 
+cp -R ./refudeicons/* $HICOLOR_ICON_DIR 
 cp resources/bin/* $GOBIN
 ln -s $GOBIN/hideLauncherI3 $GOBIN/hideLauncher 2>/dev/null || :
 ln -s $GOBIN/showLauncherI3 $GOBIN/showLauncher 2>/dev/null || :

@@ -24,7 +24,7 @@ let device = resource => [
         tbody({},
             tr({}, td({}, "State"),          td({}, resource.data.State)),
             tr({}, td({}, "Energy, design"), td({}, resource.data.EnergyFullDesign)),
-            tr({}, td({}, "Energry, full"),  td({}, resource.data.EnergyFull)),
+            tr({}, td({}, "Energy, full"),   td({}, resource.data.EnergyFull)),
             tr({}, td({}, "Energy, now"),    td({}, resource.data.Energy)),
             tr({}, td({}, "Percentage"),     td({}, resource.data.Percentage)),
         )

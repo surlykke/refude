@@ -52,7 +52,7 @@ func doDesktopSearch(term string) link.List {
 		links = append(links, applications.Search(term)...)
 	}
 
-	if len(term) > 3 {
+	if len(term) >= 3 {
 		links = append(links, power.Search(term)...)
 
 	}
