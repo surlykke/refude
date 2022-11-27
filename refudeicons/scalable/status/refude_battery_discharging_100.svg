@@ -1,5 +1,8 @@
-<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-  <g stroke="black" stroke-width="6">
-    <circle cx="50" cy="50" fill="darkgray" r="40"/>
+<svg viewBox="-100 -100 200 200" xmlns="http://www.w3.org/2000/svg">
+  <g stroke="black">
+    <circle fill="white" r="80" stroke="none"/>
+    <circle fill="darkgray" r="80" stroke="none"/>
+    <circle fill="none" r="80" stroke-width="10"/>
+    <circle fill="none" r="89" stroke="white" stroke-width="8"/>
   </g>
 </svg>

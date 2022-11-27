@@ -1,6 +1,8 @@
-<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-  <g stroke="black" stroke-width="12">
-    <path d="M 15 69  A 40 40 0 0 0 85 69" fill="darkgray" stroke="none"/>
-    <circle cx="50" cy="50" fill="none" r="40"/>
+<svg viewBox="-100 -100 200 200" xmlns="http://www.w3.org/2000/svg">
+  <g stroke="black">
+    <circle fill="white" r="80" stroke="none"/>
+    <path d="M -70 38  A 80 80 0 0 0 70 38" fill="darkgray" stroke="none"/>
+    <circle fill="none" r="80" stroke-width="20"/>
+    <circle fill="none" r="94" stroke="white" stroke-width="8"/>
   </g>
 </svg>
