@@ -7,11 +7,16 @@ package notifications
 
 import (
 	"time"
+
+	"github.com/surlykke/RefudeServices/config"
 )
 
 var notificationExpireryHints = make(chan struct{})
 
 func Run() {
+	if config.NoNotificationServer() {
+		return 
+	}
 	go DoDBus()
 	for range time.NewTicker(30 * time.Minute).C {
 		removeExpired()

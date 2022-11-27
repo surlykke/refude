@@ -14,6 +14,7 @@ type WindowManager interface {
 	GetPaths() []string
 	RaiseAndFocusNamedWindow(name string) bool
 	ResizePanel(newWidth, newHeight uint32) bool
+	HaveNamedWindow(name string) bool
 	Run()
 }
 

@@ -18,7 +18,7 @@ import (
 
 var commentLine = regexp.MustCompile(`^\s*(#.*)?$`)
 var headerLine = regexp.MustCompile(`^\s*\[(.+?)\]\s*`)
-var keyValueLine = regexp.MustCompile(`^\s*(..+?)(\[(..+)\])?=(.+)`)
+var keyValueLine = regexp.MustCompile(`^\s*(..+?)(\[(..+)\])?=(.*)`)
 var userDirsLine = regexp.MustCompile(`^\s*(XDG_\w+_DIR)="(.*)"`)
 
 var lcMessage = func() string {
@@ -107,7 +107,7 @@ func ReadIniFile(path string) (IniFile, error) {
 				currentGroup.Entries[m[1]] = m[4]
 			}
 		} else {
-			log.Warn(scanner.Text(), " - not recognized")
+			log.Warn(path, ":", scanner.Text(), " - not recognized")
 		}
 	}
 

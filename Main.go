@@ -14,6 +14,7 @@ import (
 	"github.com/surlykke/RefudeServices/browse"
 	"github.com/surlykke/RefudeServices/client"
 	"github.com/surlykke/RefudeServices/complete"
+	"github.com/surlykke/RefudeServices/config"
 	"github.com/surlykke/RefudeServices/doc"
 	"github.com/surlykke/RefudeServices/file"
 	"github.com/surlykke/RefudeServices/icons"
@@ -30,6 +31,7 @@ import (
 
 func main() {
 	fmt.Println("Running")
+	config.Read()
 
 	go windows.WM.Run()
 	go applications.Run()

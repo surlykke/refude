@@ -281,6 +281,14 @@ func (this *X11WindowManager) GetScreenLayoutFingerprint() string {
 	return hex.EncodeToString(fp.Sum(nil))
 }
 
+func (this *X11WindowManager) HaveNamedWindow(name string) bool {
+	this.Lock()
+	defer this.Unlock()
+	_, found := findNamedWindow(this.proxy, name)
+	return found
+}
+		
+
 
 var WM *X11WindowManager
 

@@ -212,6 +212,13 @@ func (this *WaylandWindowManager) RaiseAndFocusNamedWindow(name string) bool {
 
 }
 
+func (this *WaylandWindowManager) HaveNamedWindow(name string) bool {
+	_, found := this.windows.FindFirst(func(ww *WaylandWindow) bool { return ww.Title == name })
+	return found
+}
+
+
+
 func (this *WaylandWindowManager) ResizePanel(newWidth, newHeight uint32) bool{
 	// Can't figure out how to use foreign protocol set_rectangle
 	var cmd = fmt.Sprintf("[title=org.refude.panel] resize set width %d;", newWidth) +

@@ -16,8 +16,10 @@ import (
 
 func Run() {
 	var signals = subscribe()
-
+	
 	Devices.Put(retrieveDevice(displayDeviceDbusPath))
+	showOnDesktop()
+
 	for _, dbusPath := range retrieveDevicePaths() {
 		Devices.Put(retrieveDevice(dbusPath))
 	}
@@ -27,6 +29,9 @@ func Run() {
 		if signal.Name == "org.freedesktop.DBus.Properties.PropertiesChanged" {
 			if res := Devices.Get(path); res != nil {
 				Devices.Put(retrieveDevice(signal.Path))
+			}
+			if (displayDeviceDbusPath == signal.Path) {
+				showOnDesktop()
 			}
 		} else if signal.Name == "org.freedesktop.UPower.DeviceAdded" {
 			if path, ok := getAddedRemovedPath(signal); ok {

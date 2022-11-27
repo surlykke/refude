@@ -3,12 +3,15 @@
 // This file is part of the RefudeServices project.
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
-//
 package power
 
 import (
+	"fmt"
+
 	"github.com/godbus/dbus/v5"
+	"github.com/surlykke/RefudeServices/config"
 	dbuscall "github.com/surlykke/RefudeServices/lib/dbusutils"
+	"github.com/surlykke/RefudeServices/notifications"
 )
 
 const upowerService = "org.freedesktop.UPower"
@@ -17,7 +20,6 @@ const upowerInterface = "org.freedesktop.UPower"
 const devicePrefix = "/org/freedesktop/UPower/devices/"
 const displayDeviceDbusPath = dbus.ObjectPath(devicePrefix + "DisplayDevice")
 const upowerDeviceInterface = "org.freedesktop.UPower.Device"
-const displayDevicePath = "DisplayDevice"
 
 func subscribe() chan *dbus.Signal {
 	var signals = make(chan *dbus.Signal, 100)
@@ -116,6 +118,44 @@ func retrieveDevice(path dbus.ObjectPath) *Device {
 	}
 	device.title = deviceTitle(device.Type, device.Model)
 	return &device
+}
+
+var previousPercentage = 101
+const notificationId uint32 = 1152165262 
+
+func showOnDesktop() {
+	if ! config.NoBatteryNotifications() {
+		updateTrayIcon()
+	}
+
+	if ! config.NoBatteryNotifications() {
+		notifyOnLow()
+	}
+
+}
+
+func updateTrayIcon() {
+	// TODO
+}
+
+func notifyOnLow() {
+	var displayDevice = Devices.Get(path2id(displayDeviceDbusPath))
+	var percentage = int(displayDevice.Percentage)
+	if (displayDevice.State == "Discharging") {
+		if percentage <= 5 {
+			notifications.Notify("refude", notificationId, "dialog-warning", "Battery critical", fmt.Sprintf("At %d%%", percentage), []string{}, map[string]dbus.Variant{"urgency": dbus.MakeVariant(uint8(2))}, -1)
+		} else if percentage <= 10 && previousPercentage > 10 {
+			notifications.Notify("refude", notificationId, "dialog-information", "Battery", fmt.Sprintf("At %d%%", percentage), []string{}, map[string]dbus.Variant{}, 10000)
+		} else if percentage <= 15 && previousPercentage > 15 {
+			notifications.Notify("refude", notificationId, "dialog-information", "Battery", fmt.Sprintf("At %d%%", percentage), []string{}, map[string]dbus.Variant{}, 10000)
+		}
+		previousPercentage = percentage
+	} else {
+		if (percentage <= 15) {
+			notifications.CloseNotification(notificationId)
+		}
+		previousPercentage = 101 // So when unplugging, and battery low, we get the relevant notification
+	}
 }
 
 var dbusConn = func() *dbus.Conn {

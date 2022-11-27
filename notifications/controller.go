@@ -17,6 +17,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/image"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/xdg"
+	"github.com/surlykke/RefudeServices/windows/x11"
 )
 
 const NOTIFICATIONS_SERVICE = "org.freedesktop.Notifications"
@@ -146,11 +147,7 @@ func Notify(app_name string,
 
 	var id uint32
 	if replaces_id != 0 {
-		if Notifications.Get(replaces_id) == nil {
-			return 0, nil
-		} else {
-			id = replaces_id
-		}
+		id = replaces_id
 	} else {
 		id = <-ids
 	}
@@ -218,8 +215,10 @@ func Notify(app_name string,
 	notification.Expires = notification.Created + int64(expire_timeout)
 
 	Notifications.Put(&notification)
-	
-	go xdg.RunCmd("google-chrome", "--app=http://localhost:7938/refude/html/notifier/")
+
+	if !x11.WM.HaveNamedWindow("Refude notifier") {
+		go xdg.RunCmd("google-chrome", "--app=http://localhost:7938/refude/html/notifier/")
+	}
 
 	return id, nil
 }
@@ -277,7 +276,7 @@ func installFileIcon(hints map[string]dbus.Variant, key string) (string, bool) {
 	}
 }
 
-func closeNotification(id uint32) {
+func CloseNotification(id uint32) {
 	removeNotification(id, Closed)
 }
 
@@ -340,7 +339,7 @@ func DoDBus() {
 		map[string]interface{}{
 			"GetCapabilities":      GetCapabilities,
 			"Notify":               Notify,
-			"CloseNotification":    closeNotification,
+			"CloseNotification":    CloseNotification,
 			"GetServerInformation": GetServerInformation,
 		},
 		NOTIFICATIONS_PATH,
