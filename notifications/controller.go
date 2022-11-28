@@ -217,7 +217,7 @@ func Notify(app_name string,
 	Notifications.Put(&notification)
 
 	if !x11.WM.HaveNamedWindow("Refude notifier") {
-		go xdg.RunCmd("google-chrome", "--app=http://localhost:7938/refude/html/notifier/")
+		go xdg.RunCmd("showNotifier")
 	}
 
 	return id, nil

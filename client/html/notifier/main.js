@@ -17,7 +17,7 @@ export class Main extends React.Component {
 
     componentDidMount = () => {
         restorePosition("notify")
-
+        window.blur()
         document.addEventListener("dblclick", () => {
             this.pinned = !this.pinned
             console.log("pinned:", this.pinned)
@@ -28,7 +28,7 @@ export class Main extends React.Component {
 
     getFlash = () => {
         if (!this.pinned) {
-            retrieveCollection("/notification/", this.updateFlash)
+            retrieveCollection("/notification/", this.updateFlash, () => this.updateFlash([]))
         }
         setTimeout(this.getFlash, 500)
     }

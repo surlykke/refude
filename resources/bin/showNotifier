@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+if [[ "i3" == "$XDG_CURRENT_DESKTOP" ]]; then 
+	WSNUM=$(i3-msg -t get_workspaces | jq '.[] | select(.focused==true)'.num)
+	google-chrome --app=http://localhost:7938/refude/html/notifier/
+	sleep 0.1
+	i3-msg "workspace number $WSNUM"
+	i3-msg "focus tiling"
+else 
+	echo "FIXME (patches welcome)"
+fi
+

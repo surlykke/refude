@@ -147,7 +147,7 @@ func notifyOnLow() {
 		} else if percentage <= 10 && previousPercentage > 10 {
 			notifications.Notify("refude", notificationId, "dialog-information", "Battery", fmt.Sprintf("At %d%%", percentage), []string{}, map[string]dbus.Variant{}, 10000)
 		} else if percentage <= 15 && previousPercentage > 15 {
-			notifications.Notify("refude", notificationId, "dialog-information", "Battery", fmt.Sprintf("At %d%%", percentage), []string{}, map[string]dbus.Variant{}, 10000)
+			notifications.Notify("refude", notificationId, "dialog-information", "Battery", fmt.Sprintf("At %d%%", percentage), []string{}, map[string]dbus.Variant{}, 5000)
 		}
 		previousPercentage = percentage
 	} else {
