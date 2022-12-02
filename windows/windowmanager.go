@@ -13,7 +13,7 @@ type WindowManager interface {
 	ServeHTTP(w http.ResponseWriter, r *http.Request)
 	GetPaths() []string
 	RaiseAndFocusNamedWindow(name string) bool
-	ResizePanel(newWidth, newHeight uint32) bool
+	ResizeNamedWindow(name string, newWidth, newHeight uint32) bool
 	HaveNamedWindow(name string) bool
 	Run()
 }

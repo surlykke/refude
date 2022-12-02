@@ -23,6 +23,7 @@ html, body {
 .flash {
     display: flex;
     background-color: white;
+    min-width: 120px;
 }
 
 .flash-icon {
@@ -48,4 +49,11 @@ html, body {
     width: max-content;
     max-width: 400px;
     overflow: hidden;
+}
+
+.placeholder {
+    white-space: nowrap;
+    font-size: 0.9em;
+    font-style: italic;
+    color: #606060;
 }

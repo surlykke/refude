@@ -55,10 +55,13 @@ export const followCollection = (path, handler, errorHandler) => {
 	follow(path, retrieveCollectionCurried, errorHandler)
 }
 
-const follow = (path, retriever, errorHandler) => {
+export const follow = (path, retriever, errorHandler) => {
    let evtSource = new EventSource("http://localhost:7938/watch")
     evtSource.onopen = () => retriever()
-    evtSource.onmessage = ({data}) => data === path && retriever()
+    evtSource.onmessage = ({data}) => {
+        console.log("got", data)
+        data === path && retriever()
+    }
 
     evtSource.onerror = () => {
         errorHandler()

@@ -5,48 +5,61 @@
 // Please refer to the GPL2 file for a copy of the license.
 //
 import { div, img} from "../common/elements.js"
-import { retrieveCollection, restorePosition, savePositionAndClose } from "../common/utils.js"
+import { retrieveCollection, restorePosition, savePositionAndClose, doPost, followCollection, follow } from "../common/utils.js"
+
+const lowDuration = 4000
+const normalDuration = 10000 
 
 export class Main extends React.Component {
 
     constructor(props) {
         super(props)
         this.state = {}
-        this.getFlash()
+        followCollection("/notification/", this.updateFlash, this.errorHandler)
     }
 
     componentDidMount = () => {
         restorePosition("notify")
-        window.blur()
-        document.addEventListener("dblclick", () => {
-            this.pinned = !this.pinned
-            console.log("pinned:", this.pinned)
-        })
+        setTimeout(resizeToContent, 750)
     };
 
-    
+    updateFlash = () => {
+        console.log("Into updateFlash")
+        retrieveCollection(
+            "/notification/",
+            notifications => {
+                notifications.reverse() 
+                let now = Date.now()
+                let notification = notifications.find(n => n.data.Urgency === 2) || // Critical
+                                        notifications.find(n => n.data.Urgency === 1 && n.data.Created + normalDuration > now) || // Normal
+                                        notifications.find(n => n.data.Urgency === 0 && n.data.Created + lowDuration > now);
 
-    getFlash = () => {
-        if (!this.pinned) {
-            retrieveCollection("/notification/", this.updateFlash, () => this.updateFlash([]))
-        }
-        setTimeout(this.getFlash, 500)
+                console.log("notification:", notification)
+                console.log("now:", now)
+                console.log("Created: ", notification.data.Created, " - ", notification.data.Created - now)
+                console.log("Expires: ", notification.data.Expires, " - ", notification.data.Expires - now)
+                this.setState({notification: notification})
+                
+                if (notification?.data?.Urgency === 0) {
+                    this.deadline = notification.data.Created + lowDuration
+                } else if (notification?.data?.Urgency == 1) { 
+                    this.deadline = notification.data.Created + normalDuration
+                } else {
+                    this.deadline = notification.data.Expires     
+                }
+                console.log("deadline:", this.deadline, " - ", this.deadline - now)
+                if (this.deadline){
+                    let timeout =  Math.max(10, this.deadline - now)
+                    console.log("Timeout:", timeout)
+                    setTimeout(this.updateFlash, timeout)
+                }
+            },
+            this.errorHandler
+        )
     }
 
-    updateFlash = notifications => {
-        console.log("updateFlash, notifications:", notifications)
-        notifications.reverse() 
-        let now = Date.now()
-        let notification = notifications.find(n => n.data.Urgency === 2) || // Critical
-                                notifications.find(n => n.data.Urgency === 1 && n.data.Created + 20000 > now && n.data.Expires > now) || // Normal
-                                notifications.find(n => n.data.Urgency === 0 && n.data.Created + 2000 > now);
-        
-        if (notification) {
-            this.setState({notification: notification})
-        } else {
-            savePositionAndClose("notify")
-        }
-    }
+    errorHandler = e => this.setState({notification: undefined})
+
 
     render = () => {
         let {notification } = this.state
@@ -68,7 +81,7 @@ export class Main extends React.Component {
             )
 
         } else {
-            return div({}) 
+            return div({className: "placeholder"}, "-") 
         }
     }
 }
@@ -78,7 +91,9 @@ let resizeToContent = () => {
     width = Math.round(window.devicePixelRatio*width)
     height = Math.round(window.devicePixelRatio*height)
 
-    window.resizeTo(Math.max(width, 180), Math.max(40, height))
+    // Java script call window.resizeTo will not make height or width smaller than 50 px (or so),
+    // so we ask server to resize us
+    doPost("/refude/html/resizeNotifier", {width: width, height: height})
 }
 new ResizeObserver((observed) => observed && observed[0] && resizeToContent()).observe(document.getElementById('main'))
 

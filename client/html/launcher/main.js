@@ -121,7 +121,7 @@ export class Main extends React.Component {
                 fraqs.push(div({className: 'linkHeading'}, "No match"))
             }
             let links = resource.links
-                            .filter(l => l.title !== "Refude launcher++")
+                            .filter(l => l.title !== "Refude launcher++" && l.title != "Refude notifier")
                             .map(l => link(l, l.profile, this.closeBrowser, this.move))
             let firstRel = links.findIndex(l => l.props.rel === 'related')
             if (firstRel > 0) {

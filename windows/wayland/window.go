@@ -2,9 +2,7 @@ package wayland
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
-	"os/exec"
 	"strconv"
 	"sync"
 
@@ -35,8 +33,8 @@ type WindowStateMask uint8
 
 const (
 	MAXIMIZED = 1 << iota
-	MINIMIZED	
-	ACTIVATED	
+	MINIMIZED
+	ACTIVATED
 	FULLSCREEN
 )
 
@@ -60,8 +58,6 @@ func (wsm WindowStateMask) MarshalJSON() ([]byte, error) {
 	}
 	return json.Marshal(list)
 }
-
-
 
 type WaylandWindow struct {
 	Wid      uint64 `json:"id"`
@@ -101,25 +97,22 @@ func (this *WaylandWindow) DoPost(w http.ResponseWriter, r *http.Request) {
 		activate(this.Wid)
 		respond.Accepted(w)
 	} else if "resize" == action {
-			if width, err := strconv.ParseUint(requests.GetSingleQueryParameter(r, "width", ""), 10, 32); err != nil {
-				respond.UnprocessableEntity(w, err)
-			} else if height, err := strconv.ParseUint(requests.GetSingleQueryParameter(r, "height", ""), 10, 32); err != nil {
-				respond.UnprocessableEntity(w, err)
-			} else {
-				setRectangle(this.Wid, 0, 0, uint32(width), uint32(height))
-				respond.Accepted(w)
-			}
-
+		if width, err := strconv.ParseUint(requests.GetSingleQueryParameter(r, "width", ""), 10, 32); err != nil {
+			respond.UnprocessableEntity(w, err)
+		} else if height, err := strconv.ParseUint(requests.GetSingleQueryParameter(r, "height", ""), 10, 32); err != nil {
+			respond.UnprocessableEntity(w, err)
+		} else {
+			setRectangle(this.Wid, 0, 0, uint32(width), uint32(height))
+			respond.Accepted(w)
+		}
 
 	} else {
 		respond.NotFound(w)
 	}
 }
 
-
-
-type WaylandWindowManager struct{
-	windows *resource.Collection[uint64, *WaylandWindow]
+type WaylandWindowManager struct {
+	windows       *resource.Collection[uint64, *WaylandWindow]
 	recentMap     map[uint64]uint32
 	recentCount   uint32
 	recentMapLock sync.Mutex
@@ -132,12 +125,11 @@ func MakeWaylandWindowManager() *WaylandWindowManager {
 	return &wwm
 }
 
-
 var WM *WaylandWindowManager
 
 func (this *WaylandWindowManager) Search(term string) link.List {
 	return this.windows.ExtractLinks(func(wWin *WaylandWindow) int {
-		if wWin.Title != "org.refude.panel"  {
+		if wWin.Title != "org.refude.panel" {
 			if rnk := searchutils.Match(term, wWin.Title); rnk > -1 {
 				this.recentMapLock.Lock()
 				defer this.recentMapLock.Unlock()
@@ -162,7 +154,6 @@ func (this *WaylandWindowManager) handle_title(wId uint64, title string) {
 	ww.Title = title
 	this.windows.Put(&ww)
 }
-
 
 func (this *WaylandWindowManager) handle_app_id(wId uint64, app_id string) {
 	var ww = this.getCopy(wId)
@@ -189,7 +180,7 @@ func (this *WaylandWindowManager) handle_parent(wId uint64, parent uint64) {
 }
 
 func (this *WaylandWindowManager) handle_closed(wId uint64) {
-	this.windows.Delete(wId)	
+	this.windows.Delete(wId)
 }
 
 func (this *WaylandWindowManager) getCopy(wId uint64) WaylandWindow {
@@ -217,19 +208,9 @@ func (this *WaylandWindowManager) HaveNamedWindow(name string) bool {
 	return found
 }
 
-
-
-func (this *WaylandWindowManager) ResizePanel(newWidth, newHeight uint32) bool{
-	// Can't figure out how to use foreign protocol set_rectangle
-	var cmd = fmt.Sprintf("[title=org.refude.panel] resize set width %d;", newWidth) +
-	          fmt.Sprintf("[title=org.refude.panel] resize set height %d;", newHeight) +
-	          "[title=org.refude.panel] move absolute position 0 0"
-	if err := exec.Command("swaymsg", cmd).Run(); err != nil {
-		log.Warn(err)
-		return false
-	} else {
-		return true
-	}
+func (this *WaylandWindowManager) ResizeNamedWindow(name string, newWidth, newHeight uint32) bool {
+	log.Warn("Not immplemented")
+	return false
 }
 
 func (this *WaylandWindowManager) Run() {

@@ -16,8 +16,7 @@ import (
 	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/image"
 	"github.com/surlykke/RefudeServices/lib/log"
-	"github.com/surlykke/RefudeServices/lib/xdg"
-	"github.com/surlykke/RefudeServices/windows/x11"
+	"github.com/surlykke/RefudeServices/watch"
 )
 
 const NOTIFICATIONS_SERVICE = "org.freedesktop.Notifications"
@@ -216,9 +215,7 @@ func Notify(app_name string,
 
 	Notifications.Put(&notification)
 
-	if !x11.WM.HaveNamedWindow("Refude notifier") {
-		go xdg.RunCmd("showNotifier")
-	}
+	watch.SomethingChanged("/notification/")
 
 	return id, nil
 }

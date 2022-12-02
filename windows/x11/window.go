@@ -195,11 +195,11 @@ func (this *X11WindowManager) RaiseAndFocusNamedWindow(name string) bool {
 	}
 }
 
-func (this *X11WindowManager) ResizePanel(newWidth, newHeight uint32) bool {
+func (this *X11WindowManager) ResizeNamedWindow(name string, newWidth, newHeight uint32) bool {
 	this.Lock()
 	defer this.Unlock()
 
-	if wId, found := findNamedWindow(this.proxy, "org.refude.panel"); found {
+	if wId, found := findNamedWindow(this.proxy, name); found {
 		Resize(this.proxy, wId, newWidth, newHeight)
 		return true
 	} else {

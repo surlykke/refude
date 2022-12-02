@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/surlykke/RefudeServices/config"
+	"github.com/surlykke/RefudeServices/watch"
 )
 
 var notificationExpireryHints = make(chan struct{})
@@ -25,18 +26,24 @@ func Run() {
 }
 
 func removeExpired() {
+	var count = 0
 	for _, notification := range Notifications.GetAll() {
 		if notification.Urgency < Critical {
 			if notification.Expires < time.Now().UnixMilli() {
 				Notifications.Delete(notification.NotificationId)
 				conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", notification.NotificationId, Expired)
+				count++	
 			}
 		}
+	}
+	if count > 0 {
+		watch.SomethingChanged("/notification/")
 	}
 }
 
 func removeNotification(id uint32, reason uint32) {
 	if deleted := Notifications.Delete(id); deleted {
 		conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", id, reason)
+		watch.SomethingChanged("/notification/")
 	}
 }
