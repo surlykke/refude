@@ -9,6 +9,7 @@ import { retrieveCollection, restorePosition, savePositionAndClose, doPost, foll
 
 const lowDuration = 4000
 const normalDuration = 10000 
+const criticalDuration = 3600000
 
 export class Main extends React.Component {
 
@@ -20,7 +21,6 @@ export class Main extends React.Component {
 
     componentDidMount = () => {
         restorePosition("notify")
-        setTimeout(resizeToContent, 750)
     };
 
     updateFlash = () => {
@@ -29,29 +29,21 @@ export class Main extends React.Component {
             "/notification/",
             notifications => {
                 notifications.reverse() 
+                // We don't really care about Expires, but show notifications with low urgency for 4 secs, 
+                // normal 10 secs, and critical for an hour (or until dismissed)
+                // We show the last critical, or if not found, last normal or if not found last low
                 let now = Date.now()
-                let notification = notifications.find(n => n.data.Urgency === 2) || // Critical
-                                        notifications.find(n => n.data.Urgency === 1 && n.data.Created + normalDuration > now) || // Normal
-                                        notifications.find(n => n.data.Urgency === 0 && n.data.Created + lowDuration > now);
+                let notification = 
+                    notifications.find(n => n.data.Urgency === 2) || // Critical 
+                    notifications.find(n => n.data.Urgency === 1 && n.data.Created + normalDuration > now) || // Normal 
+                    notifications.find(n => n.data.Urgency === 0 && n.data.Created + lowDuration > now);
 
-                console.log("notification:", notification)
-                console.log("now:", now)
-                console.log("Created: ", notification.data.Created, " - ", notification.data.Created - now)
-                console.log("Expires: ", notification.data.Expires, " - ", notification.data.Expires - now)
                 this.setState({notification: notification})
-                
-                if (notification?.data?.Urgency === 0) {
-                    this.deadline = notification.data.Created + lowDuration
-                } else if (notification?.data?.Urgency == 1) { 
-                    this.deadline = notification.data.Created + normalDuration
-                } else {
-                    this.deadline = notification.data.Expires     
-                }
-                console.log("deadline:", this.deadline, " - ", this.deadline - now)
-                if (this.deadline){
-                    let timeout =  Math.max(10, this.deadline - now)
-                    console.log("Timeout:", timeout)
-                    setTimeout(this.updateFlash, timeout)
+                let urgency = notification?.data?.Urgency 
+                let duration = urgency === 0 ? lowDuration : urgency === 1 ? normalDuration : criticalDuration
+                let timeout = notification?.data?.Created + duration - now
+                if (timeout){
+                    setTimeout(this.updateFlash, Math.max(10, timeout))
                 }
             },
             this.errorHandler

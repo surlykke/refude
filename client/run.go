@@ -52,12 +52,12 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			var heightS = requests.GetSingleQueryParameter(r, "height", "10")
 			if width, err := strconv.Atoi(widthS); err != nil {
 				respond.UnprocessableEntity(w, err)
-			} else if width < 10 {
-				respond.UnprocessableEntity(w, errors.New("width and height must each be > 10")) 
+			} else if width < 2 {
+				respond.UnprocessableEntity(w, errors.New("width and height must each be > 2")) 
 			} else if height, err := strconv.Atoi(heightS); err != nil {
 				respond.UnprocessableEntity(w, err)
-			} else if height < 10 {
-				respond.UnprocessableEntity(w, errors.New("width and height must each be > 10")) 
+			} else if height < 2 {
+				respond.UnprocessableEntity(w, errors.New("width and height must each be > 2")) 
 			} else if ! windows.WM.ResizeNamedWindow("Refude notifier", uint32(width), uint32(height)) {
 				respond.NotFound(w)
 			} else {
