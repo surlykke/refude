@@ -66,17 +66,19 @@ func (this X11Window) Links(self, searchTerm string) link.List {
 
 func (this X11Window) MarshalJSON() ([]byte, error) {
 	var jsonData struct {
-		WindowId uint32
-		Name     string
-		IconName string `json:",omitempty"`
-		State    WindowStateMask
+		WindowId         uint32
+		Name             string
+		IconName         string `json:",omitempty"`
+		State            WindowStateMask
+		ApplicationName  string
+		ApplicationClass string
 	}
 
 	jsonData.WindowId = uint32(this)
 	jsonData.Name = WM.getName(this)
 	jsonData.IconName = WM.getIconName(this)
 	jsonData.State = WM.getStates(this)
-
+	jsonData.ApplicationName, jsonData.ApplicationClass = WM.getApplicationAndClass(this)
 	return json.Marshal(jsonData)
 }
 
@@ -130,7 +132,6 @@ func makeX11WindowManager() *X11WindowManager {
 	}
 }
 
-
 func (this *X11WindowManager) Lock() {
 	this.proxy.Lock()
 }
@@ -138,8 +139,6 @@ func (this *X11WindowManager) Lock() {
 func (this *X11WindowManager) Unlock() {
 	this.proxy.Unlock()
 }
-
-
 
 func (this *X11WindowManager) Search(term string) link.List {
 	return this.windows.ExtractLinks(func(xWin X11Window) int {
@@ -159,7 +158,7 @@ func (this *X11WindowManager) Search(term string) link.List {
 
 func (this *X11WindowManager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" && r.URL.Path == "/window/screenlayout" {
-		respond.AsJson(w, this.GetScreenLayoutFingerprint()) 
+		respond.AsJson(w, this.GetScreenLayoutFingerprint())
 	} else {
 		this.windows.ServeHTTP(w, r)
 	}
@@ -270,12 +269,12 @@ func (this *X11WindowManager) getStates(wId X11Window) WindowStateMask {
 func (this *X11WindowManager) GetScreenLayoutFingerprint() string {
 
 	this.Lock()
-	defer this.Unlock() 
+	defer this.Unlock()
 	var monitors = GetMonitorDataList(this.proxy)
 
 	sort.Slice(monitors, func(i, j int) bool { return monitors[i].X < monitors[j].X })
-	var fp = sha1.New()	
-	for _,m := range monitors {
+	var fp = sha1.New()
+	for _, m := range monitors {
 		fp.Write([]byte(fmt.Sprintf(":%s:%d:%d:%d:%d", m.Name, m.X, m.Y, m.W, m.H)))
 	}
 	return hex.EncodeToString(fp.Sum(nil))
@@ -287,8 +286,12 @@ func (this *X11WindowManager) HaveNamedWindow(name string) bool {
 	_, found := findNamedWindow(this.proxy, name)
 	return found
 }
-		
 
+func (this *X11WindowManager) getApplicationAndClass(wId X11Window) (string, string) {
+	this.Lock()
+	defer this.Unlock()
+	return GetApplicationAndClass(this.proxy, uint32(wId))
+}
 
 var WM *X11WindowManager
 
@@ -297,5 +300,3 @@ func init() {
 		WM = makeX11WindowManager()
 	}
 }
-
-

@@ -387,6 +387,20 @@ func GetStates(p Proxy, wId uint32) WindowStateMask {
 	}
 }
 
+func GetApplicationAndClass(p Proxy, wId uint32) (string, string) {
+	var classHint C.XClassHint
+	if C.XGetClassHint(p.disp, C.Window(wId), &classHint) == 0 {
+		return "", ""
+	} else {
+		var app = C.GoString(classHint.res_name)
+		var class = C.GoString(classHint.res_class)
+		C.XFree(unsafe.Pointer(classHint.res_name))
+		C.XFree(unsafe.Pointer(classHint.res_class))
+		return app, class
+	}
+
+}
+
 func GetPid(p Proxy, wId uint32) (uint32, error) {
 	if pidList, err := getUint32s(p.disp, C.ulong(wId), _NET_WM_PID); err != nil {
 		return 0, err
