@@ -93,15 +93,14 @@ func (n *Notification) DoDelete(w http.ResponseWriter, r *http.Request) {
 var Notifications = resource.MakePublishingCollection[uint32, *Notification]("/notification/", "/search")
 
 
-func Search(term string) link.List {
-	var rank = func(n *Notification) int {
+func Search(sink chan link.Link, term string) {
+	Notifications.Search(sink, func(n *Notification) int {
 		if n.Urgency == Critical || (len(n.NActions) > 0 && n.Urgency == Normal && n.Created+60000 > time.Now().UnixMilli()) {
 			return searchutils.Match(term, n.Subject)
 		} else {
 			return -1
 		}
-	}
-	return Notifications.ExtractLinks(rank) 
+	})
 }
 
 

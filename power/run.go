@@ -62,8 +62,8 @@ func getAddedRemovedPath(signal *dbus.Signal) (dbus.ObjectPath, bool) {
 
 var Devices = resource.MakeCollection[string, *Device]("/device/")
 
-func Search(term string) link.List {
-	return Devices.ExtractLinks(func(d *Device) int {
+func Search(sink chan link.Link, term string) {
+	Devices.Search(sink, func(d *Device) int {
 		return searchutils.Match(term, d.title, "battery", "charge")
 	})
 }

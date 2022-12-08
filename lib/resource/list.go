@@ -57,17 +57,19 @@ func (l *Collection[ID, T]) Put(res T) {
 	l.resources[res.Id()] = res
 }
 
-func (l *Collection[ID, T]) GetAll() []T {
+func (l *Collection[ID, T]) getAll() []T {
 	l.Lock()
 	defer l.Unlock()
-
 	var all = make([]T, 0, len(l.resources))
 	for _, res := range l.resources {
 		all = append(all, res)
 	}
+	return all
+}
 
+func (l *Collection[ID, T]) GetAll() []T {
+	var all = l.getAll()
 	slices.SortFunc(all, func(t1, t2 T) bool { return t1.Id() < t2.Id() })
-
 	return all
 }
 
@@ -145,15 +147,23 @@ func (l *Collection[ID, T]) GetPaths() []string {
 	return res
 }
 
-func (c *Collection[ID, T]) ExtractLinks(rank func(t T) int) link.List {
-	var links = make(link.List, 0, len(c.resources))
-	for _, t := range c.GetAll() {
+func (c *Collection[ID, T]) Search(sink chan link.Link, rank func(t T) int) {
+	var all = c.getAll()
+	var filtered = make(link.List,0, len(all))
+	for _, t  := range all {
 		if rnk := rank(t); rnk > -1 {
-			links = append(links, LinkTo[ID](t, c.Prefix, rnk))
+			filtered = append(filtered, LinkTo[ID](t, c.Prefix, rnk))
 		}
 	}
-	return links
+
+	filtered.SortByRank()	
+
+	for _, l := range filtered {
+		sink <- l
+	}
+	close(sink)
 }
+
 
 func (l *Collection[ID, T]) Self(id ID) string {
 	return fmt.Sprint(l.Prefix, id)

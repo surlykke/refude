@@ -86,6 +86,14 @@ func (f *File) Links(self, term string) link.List {
 	return ll
 }
 
+
+func Search(sink chan link.Link, term string) {
+	for _, l := range SearchFrom(xdg.Home, term, "~/") {
+		sink <- l 
+	}
+	close(sink)
+}
+
 // Assumes dir is a directory
 func SearchFrom(dir, term, context string) link.List {
 	var depth = len(term) / 3

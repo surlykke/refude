@@ -9,7 +9,7 @@ import (
 )
 
 type WindowManager interface {
-	Search(term string) link.List
+	Search(sink chan link.Link, term string)
 	ServeHTTP(w http.ResponseWriter, r *http.Request)
 	GetPaths() []string
 	RaiseAndFocusNamedWindow(name string) bool

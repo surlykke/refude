@@ -106,8 +106,8 @@ func (d *DesktopApplication) DoPost(w http.ResponseWriter, r *http.Request) {
 
 var Applications = resource.MakeCollection[string, *DesktopApplication]("/application/")
 
-func Search(term string) link.List {
-	return Applications.ExtractLinks(func(a *DesktopApplication) int {
+func Search(sink chan link.Link, term string) {
+	Applications.Search(sink, func(a *DesktopApplication) int {
 		if a.NoDisplay {
 			return -1
 		} else {

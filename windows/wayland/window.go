@@ -127,8 +127,8 @@ func MakeWaylandWindowManager() *WaylandWindowManager {
 
 var WM *WaylandWindowManager
 
-func (this *WaylandWindowManager) Search(term string) link.List {
-	return this.windows.ExtractLinks(func(wWin *WaylandWindow) int {
+func (this *WaylandWindowManager) Search(sink chan link.Link, term string) {
+	this.windows.Search(sink, func(wWin *WaylandWindow) int {
 		if wWin.Title != "org.refude.panel" {
 			if rnk := searchutils.Match(term, wWin.Title); rnk > -1 {
 				this.recentMapLock.Lock()

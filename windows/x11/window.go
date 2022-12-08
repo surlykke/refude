@@ -140,8 +140,8 @@ func (this *X11WindowManager) Unlock() {
 	this.proxy.Unlock()
 }
 
-func (this *X11WindowManager) Search(term string) link.List {
-	return this.windows.ExtractLinks(func(xWin X11Window) int {
+func (this *X11WindowManager) Search(sink chan link.Link, term string) {
+	this.windows.Search(sink, func(xWin X11Window) int {
 		var name = this.getName(xWin)
 		var state = this.getStates(xWin)
 		if state&(SKIP_TASKBAR|SKIP_PAGER|ABOVE) == 0 {
