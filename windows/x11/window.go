@@ -144,7 +144,10 @@ func (this *X11WindowManager) Search(sink chan link.Link, term string) {
 	this.windows.Search(sink, func(xWin X11Window) int {
 		var name = this.getName(xWin)
 		var state = this.getStates(xWin)
-		if state&(SKIP_TASKBAR|SKIP_PAGER|ABOVE) == 0 {
+		var applicationName, _ = this.getApplicationAndClass(xWin)
+		if state&(SKIP_TASKBAR|SKIP_PAGER|ABOVE) == 0 && 
+		   applicationName != "localhost__refude_html_launcher" && 
+		   applicationName != "localhost__refude_html_notifier" {
 			if rnk := searchutils.Match(term, name); rnk > -1 {
 				this.recentMapLock.Lock()
 				defer this.recentMapLock.Unlock()
@@ -266,8 +269,13 @@ func (this *X11WindowManager) getStates(wId X11Window) WindowStateMask {
 	return GetStates(this.proxy, uint32(wId))
 }
 
-func (this *X11WindowManager) GetScreenLayoutFingerprint() string {
+func (this *X11WindowManager) GetApplicationAndClass(wId X11Window) (string, string) {
+	this.Lock()
+	defer this.Unlock()
+	return GetApplicationAndClass(this.proxy, uint32(wId))
+}
 
+func (this *X11WindowManager) GetScreenLayoutFingerprint() string {
 	this.Lock()
 	defer this.Unlock()
 	var monitors = GetMonitorDataList(this.proxy)

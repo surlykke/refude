@@ -4,7 +4,7 @@
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
 //
-import { div, frag, img} from "../common/elements.js"
+import { div, frag, img, span} from "../common/elements.js"
 import { retrieveCollection, restorePosition, savePositionAndClose, doPost, followCollection, follow } from "../common/utils.js"
 
 const lowDuration = 4000
@@ -15,22 +15,13 @@ export class Main extends React.Component {
 
     constructor(props) {
         super(props)
-        this.state = {date: "........"}
-        setTimeout(this.keepTime, 10000)
         followCollection("/notification/", this.updateFlash, this.errorHandler)
-    }
-
-    keepTime = () => {
-        let date = new Date()
-        let seconds = date.getSeconds()
-        date.setMinutes(date.getMinutes() - date.getTimezoneOffset()) 
-        let str = date.toJSON().replace('T', ' ').slice(0, -8)
-        this.setState({date: str})
-        setTimeout(this.keepTime, (60-seconds)*1000 + 10)
+        this.state = {placeholder: ' '}
     }
 
     componentDidMount = () => {
         restorePosition("notify")
+        setTimeout(() => this.setState({placeholder: '◯'}), 1000)
     };
 
     updateFlash = () => {
@@ -64,26 +55,28 @@ export class Main extends React.Component {
 
 
     render = () => {
-        let {notification , date} = this.state
+        let {notification, placeholder} = this.state
         let size 
         if (notification) {
             size = 48
             if (notification?.data.IconSize > 48) {
                 size = Math.min(notification.data.IconSize, 256)
             }
-        }
-        return div({}, 
-            div({className: "date"}, date),
-            notification && div({ className: "flash" },
-                                div({ className: "flash-icon" },
-                                    img({ height: `${size}px`, src: notification.icon, alt: "" })
-                                ),
-                                div({ className: "flash-message" },
-                                    div({ className: "flash-title" }, notification.title),
-                                    div({ className: "flash-body" }, notification.comment)
+            return div({}, 
+                notification && div({ className: "flash" },
+                                    div({ className: "flash-icon" },
+                                        img({ height: `${size}px`, src: notification.icon, alt: "" })
+                                    ),
+                                    div({ className: "flash-message" },
+                                        div({ className: "flash-title" }, notification.title),
+                                        div({ className: "flash-body" }, notification.comment)
+                                    )
                                 )
-                            )
-        )
+            )
+        } else {
+            return span({className: 'placeholder'}, placeholder)
+        }
+        
     }
 }
 

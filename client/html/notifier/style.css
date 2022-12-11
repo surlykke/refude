@@ -5,6 +5,9 @@ html, body {
     height: 100%;
     margin: 0;
     overflow: hidden;
+    background-color:#002b36;
+    color:   #fdf6e3;
+    font-size: 1.1em;
 }
 
 *,*:focus,*:hover{
@@ -26,7 +29,6 @@ html, body {
 
 .flash {
     display: flex;
-    background-color: white;
     min-width: 120px;
 }
 
@@ -56,8 +58,6 @@ html, body {
 }
 
 .placeholder {
-    white-space: nowrap;
-    font-size: 0.9em;
-    font-style: italic;
-    color: #606060;
+    color: gray;
+    font-size: 0.7em;
 }

@@ -38,7 +38,7 @@ export let link = (link, comment, dismiss, move) => {
                 href: link.href,
                 tabIndex: -1,
              }, 
-        link.icon && img({className: iconClassName(link.profile), src:link.icon, height:"20", width:"20"}), 
+        link.icon && img({className: "icon", src:link.icon, height:"20", width:"20"}), 
         span({className:"title"}, link.title),
         span({className:"comment"}, comment)
     )
