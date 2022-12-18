@@ -67,6 +67,14 @@ func (l *Collection[ID, T]) getAll() []T {
 	return all
 }
 
+func (l *Collection[ID, T]) getAllWrapped() []Wrapper {
+	var wrapped = make([]Wrapper, 0, 20)
+	for _, res := range l.getAll() {
+		wrapped = append(wrapped, MakeWrapper[ID](l.Self(res.Id()), res, ""))
+	}
+	return wrapped 
+}
+
 func (l *Collection[ID, T]) GetAll() []T {
 	var all = l.getAll()
 	slices.SortFunc(all, func(t1, t2 T) bool { return t1.Id() < t2.Id() })
@@ -116,13 +124,7 @@ func (l *Collection[ID, T]) FindFirst(test func(t T) bool) (T, bool) {
 
 func (l *Collection[ID, T]) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == l.Prefix {
-		l.Lock()
-		var links = make([]link.Link, 0, len(l.resources))
-		for _, res := range l.resources {
-			links = append(links, LinkTo[ID](res, l.Prefix, 0))
-		}
-		l.Unlock()
-		respond.AsJson(w, links)
+		respond.AsJson(w, l.getAllWrapped())
 	} else if strings.HasPrefix(r.URL.Path, l.Prefix) {
 		l.Lock()
 
@@ -135,8 +137,8 @@ func (l *Collection[ID, T]) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		l.Unlock()
-		respond.NotFound(w)
 	}
+	respond.NotFound(w)
 }
 
 func (l *Collection[ID, T]) GetPaths() []string {
@@ -145,6 +147,18 @@ func (l *Collection[ID, T]) GetPaths() []string {
 		res = append(res, fmt.Sprint(l.Prefix, r.Id()))
 	}
 	return res
+}
+
+func (c *Collection[ID, T]) Filter(rank func(t T) int) []T {
+	c.Lock()
+	defer c.Unlock()
+	var filtered = make([]T, 0, len(c.resources)) 
+	for _, res := range c.resources {
+		if rnk := rank(res); rnk > -1 {
+			filtered = append(filtered, res)
+		}
+	}
+	return filtered
 }
 
 func (c *Collection[ID, T]) Search(sink chan link.Link, rank func(t T) int) {
@@ -165,6 +179,10 @@ func (c *Collection[ID, T]) Search(sink chan link.Link, rank func(t T) int) {
 }
 
 
+
+
+
+
 func (l *Collection[ID, T]) Self(id ID) string {
 	return fmt.Sprint(l.Prefix, id)
 }
@@ -177,6 +195,7 @@ func ServeResource[ID constraints.Ordered, T Resource[ID]](w http.ResponseWriter
 		var resI Resource[ID] = res
 		if postable, ok := resI.(Postable); ok && r.Method == "POST" {
 			postable.DoPost(w, r)
+
 		} else if deletable, ok := resI.(Deleteable); ok && r.Method == "DELETE" {
 			deletable.DoDelete(w, r)
 		} else {

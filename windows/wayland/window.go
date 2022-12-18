@@ -8,7 +8,6 @@ import (
 
 	"github.com/surlykke/RefudeServices/applications"
 	"github.com/surlykke/RefudeServices/lib/link"
-	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
@@ -209,7 +208,10 @@ func (this *WaylandWindowManager) HaveNamedWindow(name string) bool {
 }
 
 func (this *WaylandWindowManager) ResizeNamedWindow(name string, newWidth, newHeight uint32) bool {
-	log.Warn("Not immplemented")
+	if ww, found := this.windows.FindFirst( func(ww *WaylandWindow) bool { return ww.Title == name }); found {
+		setRectangle(ww.Id(), 0, 0, newWidth, newHeight)
+		return true
+	}
 	return false
 }
 

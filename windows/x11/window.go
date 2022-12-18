@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
+	"strings"
 	"sync"
 
 	"github.com/surlykke/RefudeServices/icons"
@@ -49,37 +50,36 @@ func (this X11Window) Links(self, searchTerm string) link.List {
 			links = append(links, link.Make(self, "Raise and focus", iconName, relation.DefaultAction))
 			links = append(links, link.Make(self, "Close", iconName, relation.Delete))
 		}
-		/*var panes = collectPanes()
-		for _, pane := range panes {
-			if pane.XWinId == this.Id() {
-				var title = pane.CurrentCommand + ":" + pane.CurrentDirectory
-				if rnk := searchutils.Match(searchTerm, title, "pane", "tmux"); rnk > -1 {
-					links = append(links, link.MakeRanked("/tmux/"+pane.PaneId, title, "", "tmux", rnk))
-				}
-			}
-		}*/
 		return links
 	}
 
 	return link.List{}
 }
 
-func (this X11Window) MarshalJSON() ([]byte, error) {
-	var jsonData struct {
-		WindowId         uint32
-		Name             string
-		IconName         string `json:",omitempty"`
-		State            WindowStateMask
-		ApplicationName  string
-		ApplicationClass string
-	}
+type windowData struct {
+	WindowId         uint32
+	Name             string
+	IconName         string `json:",omitempty"`
+	State            WindowStateMask
+	ApplicationName  string
+	ApplicationClass string
+	rnk              int
+}
 
-	jsonData.WindowId = uint32(this)
-	jsonData.Name = WM.getName(this)
-	jsonData.IconName = WM.getIconName(this)
-	jsonData.State = WM.getStates(this)
-	jsonData.ApplicationName, jsonData.ApplicationClass = WM.getApplicationAndClass(this)
-	return json.Marshal(jsonData)
+func (this X11Window) buildWindowData() windowData {
+	var wd = windowData {
+		WindowId: uint32(this),
+		Name: WM.getName(this),
+		IconName: WM.getIconName(this),
+		State: WM.getStates(this),
+	}
+	wd.ApplicationName, wd.ApplicationClass = WM.getApplicationAndClass(this)
+	return wd 
+}
+
+
+func (this X11Window) MarshalJSON() ([]byte, error) {
+	return json.Marshal(this.buildWindowData())
 }
 
 func (this X11Window) DoDelete(w http.ResponseWriter, r *http.Request) {
@@ -95,6 +95,34 @@ func (this X11Window) DoPost(w http.ResponseWriter, r *http.Request) {
 	} else {
 		respond.NotFound(w)
 	}
+}
+
+type WindowGroup struct {
+	Name    string
+	Windows []uint32
+}
+
+func (this *WindowGroup) Id() string {
+	return this.Name
+}
+
+func (this *WindowGroup) Presentation() (title string, comment string, icon link.Href, profile string) {
+	var name = this.Name
+	var iconName = ""
+	if len(this.Windows) > 0 {
+		iconName = WM.getIconName(X11Window(this.Windows[0]))
+	}
+
+	return name, "", link.IconUrl(iconName), "window"
+}
+
+func (this *WindowGroup) Links(self, searchTerm string) link.List {
+	var links = make(link.List, 0, 20)
+	for _, wId := range this.Windows {
+		links = append(links, resource.LinkTo[uint32](X11Window(wId), "/window/", 0))
+	}
+
+	return links
 }
 
 func findNamedWindow(proxy Proxy, name string) (uint32, bool) {
@@ -141,27 +169,48 @@ func (this *X11WindowManager) Unlock() {
 }
 
 func (this *X11WindowManager) Search(sink chan link.Link, term string) {
-	this.windows.Search(sink, func(xWin X11Window) int {
-		var name = this.getName(xWin)
-		var state = this.getStates(xWin)
-		var applicationName, _ = this.getApplicationAndClass(xWin)
-		if state&(SKIP_TASKBAR|SKIP_PAGER|ABOVE) == 0 && 
-		   applicationName != "localhost__refude_html_launcher" && 
-		   applicationName != "localhost__refude_html_notifier" {
-			if rnk := searchutils.Match(term, name); rnk > -1 {
-				this.recentMapLock.Lock()
-				defer this.recentMapLock.Unlock()
-				var recentNess = this.recentCount - this.recentMap[uint32(xWin)]
-				return int(recentNess) + rnk
-			}
+	fmt.Println("X11WindowManager.Search")
+	var filtered = make([]windowData, 0, 20)
+	var groupCount = make(map[string]int, 20)
+	for _, wId := range this.windows.GetAll() {
+		var wData = wId.buildWindowData()
+		
+		if wData.State&(SKIP_TASKBAR|SKIP_PAGER|ABOVE) != 0 || 
+		   wData.ApplicationName == "localhost__refude_html_launcher" || 
+		   wData.ApplicationName == "localhost__refude_html_notifier" {
+			continue 
 		}
-		return -1
-	})
+
+		if wData.rnk = searchutils.Match(term, wData.Name); wData.rnk > -1 {
+			filtered = append(filtered, wData)
+			groupCount[wData.ApplicationName] = groupCount[wData.ApplicationName] + 1
+		}
+	}
+	for _, wd := range filtered {
+		if groupCount[wd.ApplicationName] > 1 {
+			sink <- link.MakeRanked("/window/group/" + wd.ApplicationName, wd.ApplicationName, wd.IconName, "windowgroup", wd.rnk)
+			groupCount[wd.ApplicationName] = -1
+		} else if groupCount[wd.ApplicationName] == 1 {
+			sink <- link.MakeRanked(fmt.Sprintf("/window/%d", wd.WindowId), wd.Name, wd.IconName, "window", wd.rnk)
+		} 
+	}
+	close(sink)		
 }
 
 func (this *X11WindowManager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "GET" && r.URL.Path == "/window/screenlayout" {
-		respond.AsJson(w, this.GetScreenLayoutFingerprint())
+	if strings.HasPrefix(r.URL.Path, "/window/group/") && len(r.URL.Path) > 14 {
+		var groupName = r.URL.Path[14:]
+		if group, found := this.buildGroup(groupName); !found {
+			respond.NotFound(w)
+		} else {
+			respond.AsJson(w, resource.MakeWrapper[string](r.URL.Path, &group, ""))
+		}
+	} else if r.URL.Path == "/window/screenlayout" {
+		if r.Method == "GET" {
+			respond.AsJson(w, this.GetScreenLayoutFingerprint())
+		} else {
+			respond.NotAllowed(w)
+		}
 	} else {
 		this.windows.ServeHTTP(w, r)
 	}
@@ -299,6 +348,20 @@ func (this *X11WindowManager) getApplicationAndClass(wId X11Window) (string, str
 	this.Lock()
 	defer this.Unlock()
 	return GetApplicationAndClass(this.proxy, uint32(wId))
+}
+
+func (this *X11WindowManager) buildGroup(name string) (WindowGroup, bool) {
+	var windowList = make([]uint32, 0, 20)
+	for _, wId := range this.windows.GetAll() {
+		if applicationName, _ := this.getApplicationAndClass(wId); applicationName == name {
+			windowList = append(windowList, uint32(wId))
+		}
+	}
+	if len(windowList) == 0 {
+		return WindowGroup{}, false
+	} else {
+		return WindowGroup{name, windowList}, true
+	}
 }
 
 var WM *X11WindowManager
