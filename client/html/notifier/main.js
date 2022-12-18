@@ -5,7 +5,7 @@
 // Please refer to the GPL2 file for a copy of the license.
 //
 import { div, frag, img, span} from "../common/elements.js"
-import { retrieveCollection, restorePosition, savePositionAndClose, doPost, followCollection, follow } from "../common/utils.js"
+import { retrieveCollection, restorePosition, savePositionAndClose, doPost, followCollection, follow, followResource } from "../common/utils.js"
 
 const lowDuration = 4000
 const normalDuration = 10000 
@@ -15,47 +15,50 @@ export class Main extends React.Component {
 
     constructor(props) {
         super(props)
-        followCollection("/notification/", this.updateFlash, this.errorHandler)
-        this.state = {placeholder: ' '}
+        this.notifications = []
+        this.state = {}
+        followResource("/notification/", this.notificationsChanged, this.errorHandler)
     }
 
     componentDidMount = () => {
         restorePosition("notify")
-        setTimeout(() => this.setState({placeholder: '◯'}), 1000)
     };
+
+    notificationsChanged= notifications => {
+        this.notifications = notifications || [] 
+        this.notifications.reverse()
+        this.updateFlash()
+    }
 
     updateFlash = () => {
         console.log("Into updateFlash")
-        retrieveCollection(
-            "/notification/",
-            notifications => {
-                notifications.reverse() 
-                // We don't really care about Expires, but show notifications with low urgency for 4 secs, 
-                // normal 10 secs, and critical for an hour (or until dismissed)
-                // We show the last critical, or if not found, last normal or if not found last low
-                let now = Date.now()
-                let notification = 
-                    notifications.find(n => n.data.Urgency === 2) || // Critical 
-                    notifications.find(n => n.data.Urgency === 1 && n.data.Created + normalDuration > now) || // Normal 
-                    notifications.find(n => n.data.Urgency === 0 && n.data.Created + lowDuration > now);
+        
+        // We don't really care about Expires, but show notifications with low urgency for 4 secs, 
+        // normal 10 secs, and critical for an hour (or until dismissed)
+        // We show the last critical, or if not found, last normal or if not found last low
+        let now = Date.now()
+        let notification = 
+            this.notifications.find(n => n.data.Urgency === 2) || // Critical 
+            this.notifications.find(n => n.data.Urgency === 1 && n.data.Created + normalDuration > now) || // Normal 
+            this.notifications.find(n => n.data.Urgency === 0 && n.data.Created + lowDuration > now);
 
-                this.setState({notification: notification})
-                let urgency = notification?.data?.Urgency 
-                let duration = urgency === 0 ? lowDuration : urgency === 1 ? normalDuration : criticalDuration
-                let timeout = notification?.data?.Created + duration - now
-                if (timeout){
-                    setTimeout(this.updateFlash, Math.max(10, timeout))
-                }
-            },
-            this.errorHandler
-        )
+        this.setState({notification: notification})
+        let urgency = notification?.data?.Urgency 
+        let duration = urgency === 0 ? lowDuration : urgency === 1 ? normalDuration : criticalDuration
+        let timeout = notification?.data?.Created + duration - now
+        if (timeout){
+            setTimeout(this.updateFlash, Math.max(10, timeout))
+        }
     }
 
-    errorHandler = e => this.setState({notification: undefined})
+    errorHandler = e => {
+        this.notifications = []
+        this.updateFlash()
+    }
 
 
     render = () => {
-        let {notification, placeholder} = this.state
+        let {notification} = this.state
         let size 
         if (notification) {
             size = 48
@@ -74,7 +77,7 @@ export class Main extends React.Component {
                                 )
             )
         } else {
-            return span({className: 'placeholder'}, placeholder)
+            return span({className: 'placeholder'}, '◯')
         }
         
     }
