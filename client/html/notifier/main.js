@@ -4,25 +4,37 @@
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
 //
-import { div, frag, img, span} from "../common/elements.js"
-import { retrieveCollection, restorePosition, savePositionAndClose, doPost, followCollection, follow, followResource } from "../common/utils.js"
+import { div, frag, img} from "../common/elements.js"
+import { restorePosition, doPost, followResource } from "../common/utils.js"
 
 const lowDuration = 4000
 const normalDuration = 10000 
 const criticalDuration = 3600000
+
+const leftPad = num => num < 10 ? "0" + num : "" + num
 
 export class Main extends React.Component {
 
     constructor(props) {
         super(props)
         this.notifications = []
-        this.state = {}
+        this.state = {date: '...', time: '...'}
         followResource("/notification/", this.notificationsChanged, this.errorHandler)
+        setTimeout(() => this.keepTime(true), 2000)
     }
 
-    componentDidMount = () => {
-        restorePosition("notify")
-    };
+    keepTime = firstCall => {
+        let now = new Date()
+        if (firstCall) {
+            console.log("leftPad:", leftPad(8))
+        }
+        this.setState({time: `${leftPad(now.getHours())}:${leftPad(now.getMinutes())}:${leftPad(now.getSeconds())}`})
+        if (firstCall || now.getSeconds < 1) {
+            this.setState({date: `${now.getFullYear()}-${leftPad(now.getMonth() + 1)}-${leftPad(now.getDay())}`})
+        }
+        
+        setTimeout(this.keepTime, 1010 + 10 - now.getMilliseconds())
+    }
 
     notificationsChanged= notifications => {
         this.notifications = notifications || [] 
@@ -58,28 +70,25 @@ export class Main extends React.Component {
 
 
     render = () => {
-        let {notification} = this.state
-        let size 
-        if (notification) {
-            size = 48
-            if (notification?.data.IconSize > 48) {
-                size = Math.min(notification.data.IconSize, 256)
-            }
-            return div({}, 
-                notification && div({ className: "flash" },
-                                    div({ className: "flash-icon" },
-                                        img({ height: `${size}px`, src: notification.icon, alt: "" })
-                                    ),
-                                    div({ className: "flash-message" },
-                                        div({ className: "flash-title" }, notification.title),
-                                        div({ className: "flash-body" }, notification.comment)
-                                    )
-                                )
-            )
-        } else {
-            return span({className: 'placeholder'}, '◯')
+        let {date, time, notification} = this.state
+        let size = 48
+        if (notification?.data.IconSize > 48) {
+            size = Math.min(notification.data.IconSize, 256)
         }
-        
+        return frag(
+            div({className: "date"}, date + " " + time),
+            div({}, 
+            notification && div({ className: "flash" },
+                                div({ className: "flash-icon" },
+                                    img({ height: `${size}px`, src: notification.icon, alt: "" })
+                                ),
+                                div({ className: "flash-message" },
+                                    div({ className: "flash-title" }, notification.title),
+                                    div({ className: "flash-body" }, notification.comment)
+                                )
+                            )
+            )
+        )
     }
 }
 

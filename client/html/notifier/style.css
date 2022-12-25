@@ -25,6 +25,7 @@ html, body {
 
 .date {
     white-space: nowrap;
+    font-size: 1.05em;
 }
 
 .flash {
