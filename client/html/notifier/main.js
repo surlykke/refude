@@ -5,11 +5,7 @@
 // Please refer to the GPL2 file for a copy of the license.
 //
 import { div, frag, img} from "../common/elements.js"
-import { restorePosition, doPost, followResource } from "../common/utils.js"
-
-const lowDuration = 4000
-const normalDuration = 10000 
-const criticalDuration = 3600000
+import { doPost, retrieveResource, follow } from "../common/utils.js"
 
 const leftPad = num => num < 10 ? "0" + num : "" + num
 
@@ -18,73 +14,49 @@ export class Main extends React.Component {
     constructor(props) {
         super(props)
         this.notifications = []
-        this.state = {date: '...', time: '...'}
-        followResource("/notification/", this.notificationsChanged, this.errorHandler)
-        setTimeout(() => this.keepTime(true), 2000)
+        this.state = {time: '...'}
+        follow("/notification/", this.updateFlash, this.clearFlash)
+        setTimeout(this.keepTime, 2000)
     }
 
-    keepTime = firstCall => {
+    keepTime = () => {
         let now = new Date()
-        if (firstCall) {
-            console.log("leftPad:", leftPad(8))
-        }
-        this.setState({time: `${leftPad(now.getHours())}:${leftPad(now.getMinutes())}:${leftPad(now.getSeconds())}`})
-        if (firstCall || now.getSeconds < 1) {
-            this.setState({date: `${now.getFullYear()}-${leftPad(now.getMonth() + 1)}-${leftPad(now.getDay())}`})
-        }
-        
+        let timeStr =
+            `${now.getFullYear()}-${leftPad(now.getMonth() + 1)}-${leftPad(now.getDate())} ` +
+            `${leftPad(now.getHours())}:${leftPad(now.getMinutes())}:${leftPad(now.getSeconds())}`
+        this.setState({time: timeStr})
         setTimeout(this.keepTime, 1010 + 10 - now.getMilliseconds())
     }
 
-    notificationsChanged= notifications => {
-        this.notifications = notifications || [] 
-        this.notifications.reverse()
-        this.updateFlash()
-    }
-
     updateFlash = () => {
-        console.log("Into updateFlash")
-        
-        // We don't really care about Expires, but show notifications with low urgency for 4 secs, 
-        // normal 10 secs, and critical for an hour (or until dismissed)
-        // We show the last critical, or if not found, last normal or if not found last low
-        let now = Date.now()
-        let notification = 
-            this.notifications.find(n => n.data.Urgency === 2) || // Critical 
-            this.notifications.find(n => n.data.Urgency === 1 && n.data.Created + normalDuration > now) || // Normal 
-            this.notifications.find(n => n.data.Urgency === 0 && n.data.Created + lowDuration > now);
-
-        this.setState({notification: notification})
-        let urgency = notification?.data?.Urgency 
-        let duration = urgency === 0 ? lowDuration : urgency === 1 ? normalDuration : criticalDuration
-        let timeout = notification?.data?.Created + duration - now
-        if (timeout){
-            setTimeout(this.updateFlash, Math.max(10, timeout))
-        }
+        retrieveResource("/notification/flash", 
+        flash => {
+            this.setState({flash: flash})
+            let {Created, Urgency} = flash.data
+            let expires = Created + (Urgency === "2" ? 3600000 : Urgency === 1 ? 10000 : 4000)
+            setTimeout(this.updateFlash, expires - new Date().getTime() + 10)
+        }, 
+        this.clearFlash)
     }
 
-    errorHandler = e => {
-        this.notifications = []
-        this.updateFlash()
-    }
-
+    clearFlash = () => this.setState({flash: undefined})
 
     render = () => {
-        let {date, time, notification} = this.state
+        let {time, flash} = this.state
         let size = 48
-        if (notification?.data.IconSize > 48) {
-            size = Math.min(notification.data.IconSize, 256)
+        if (flash?.data.IconSize > 48) {
+            size = Math.min(flash.data.IconSize, 256)
         }
         return frag(
-            div({className: "date"}, date + " " + time),
+            div({className: "date"}, time),
             div({}, 
-            notification && div({ className: "flash" },
+            flash && div({ className: "flash" },
                                 div({ className: "flash-icon" },
-                                    img({ height: `${size}px`, src: notification.icon, alt: "" })
+                                    img({ height: `${size}px`, src: flash.icon, alt: "" })
                                 ),
                                 div({ className: "flash-message" },
-                                    div({ className: "flash-title" }, notification.title),
-                                    div({ className: "flash-body" }, notification.comment)
+                                    div({ className: "flash-title" }, flash.title),
+                                    div({ className: "flash-body" }, flash.comment)
                                 )
                             )
             )

@@ -6,9 +6,12 @@
 package notifications
 
 import (
+	"net/http"
 	"time"
 
 	"github.com/surlykke/RefudeServices/config"
+	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/watch"
 )
 
@@ -47,3 +50,47 @@ func removeNotification(id uint32, reason uint32) {
 		watch.SomethingChanged("/notification/")
 	}
 }
+
+
+func ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path == "/notification/flash" {
+		if r.Method == "GET" {
+			if flash := getFlash(); flash != nil {
+				respond.AsJson(w, resource.MakeWrapper[uint32]("/notification/self", flash, ""))
+			} else {
+				respond.NotFound(w)
+			}
+		} else {
+			respond.NotAllowed(w)
+		}
+	} else {
+		Notifications.ServeHTTP(w, r)
+	}
+}
+
+func getFlash() *Notification{
+	var notifications = Notifications.GetAll()
+	for i,j := 0, len(notifications) - 1; i < j; i, j = i+1, j-1 {
+		notifications[i],notifications[j] = notifications[j],notifications[i]
+	}
+	var now = time.Now().UnixMilli()
+	for _, n := range notifications {
+		if n.Urgency == Critical && now < n.Created + 3600000 {
+			return n
+		}
+	} 
+	for _, n := range notifications {
+		if n.Urgency == Normal && now < n.Created + 10000 {
+			return n
+		}
+	} 
+	for _, n := range notifications {
+		if n.Urgency == Low && now < n.Created + 4000 {
+			return n
+		}
+	}
+	return nil
+}
+
+
+

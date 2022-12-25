@@ -30,15 +30,17 @@ export const watchResource = (path, handler) => {
     }
 }
 
-export const followResource = (path, handler, errorHandler) => {
-    let retrieveResource = () => {
-        fetch("http://localhost:7938" + path) 
-            .then(resp => resp.json())
-            .then(o => handler(o))
-            .catch(error => errorHandler && errorHandler(error))
-    }
 
-	follow(path, retrieveResource, errorHandler)
+export const retrieveResource = (path, handler, errorHandler) => {
+    fetch("http://localhost:7938" + path) 
+        .then(resp => resp.json())
+        .then(o => handler(o))
+        .catch(error => errorHandler && errorHandler(error))
+}
+
+
+export const followResource = (path, handler, errorHandler) => {
+	follow(path, () => retrieveResource(path, handler, errorHandler), errorHandler)
 }
 
 export const retrieveCollection = (path, handler, errorHandler) => {
@@ -55,18 +57,18 @@ export const followCollection = (path, handler, errorHandler) => {
 	follow(path, retrieveCollectionCurried, errorHandler)
 }
 
-export const follow = (path, retriever, errorHandler) => {
+export const follow = (path, handler, errorHandler) => {
    let evtSource = new EventSource("http://localhost:7938/watch")
-    evtSource.onopen = () => retriever()
+    evtSource.onopen = () => handler()
     evtSource.onmessage = ({data}) => {
         console.log("got", data)
-        data === path && retriever()
+        data === path && handler()
     }
 
     evtSource.onerror = () => {
         errorHandler()
         if (evtSource.readyState === 2) {
-            setTimeout(follow, 5000, path, retriever, errorHandler)
+            setTimeout(follow, 5000, path, handler, errorHandler)
         }
     } 
 }
