@@ -168,7 +168,30 @@ func (this *X11WindowManager) Unlock() {
 	this.proxy.Unlock()
 }
 
+
 func (this *X11WindowManager) Search(sink chan link.Link, term string) {
+	this.windows.Search(sink, func(xWin X11Window) int {
+		var name = this.getName(xWin)
+		var state = this.getStates(xWin)
+		var appName, _ = this.getApplicationAndClass(xWin)
+		if appName != "localhost__refude_html_launcher" &&
+		   appName != "localhost__refude_html_notifier" && 
+		   state&(SKIP_TASKBAR|SKIP_PAGER|ABOVE) == 0 {
+			if rnk := searchutils.Match(term, name); rnk > -1 {
+				this.recentMapLock.Lock()
+				defer this.recentMapLock.Unlock()
+				var recentNess = this.recentCount - this.recentMap[uint32(xWin)]
+				return int(recentNess) + rnk
+			}
+		}
+		return -1
+	})
+}
+
+
+
+
+/*func (this *X11WindowManager) Search(sink chan link.Link, term string) {
 	fmt.Println("X11WindowManager.Search")
 	var filtered = make([]windowData, 0, 20)
 	var groupCount = make(map[string]int, 20)
@@ -196,7 +219,7 @@ func (this *X11WindowManager) Search(sink chan link.Link, term string) {
 	}
 	close(sink)		
 }
-
+*/
 func (this *X11WindowManager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if strings.HasPrefix(r.URL.Path, "/window/group/") && len(r.URL.Path) > 14 {
 		var groupName = r.URL.Path[14:]

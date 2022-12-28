@@ -43,7 +43,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		
 		if r.URL.Path == "/refude/html/showLauncher" {
 			if !windows.WM.RaiseAndFocusNamedWindow("Refude launcher++") {
-				xdg.RunCmd("google-chrome", "--app=http://localhost:7938/refude/html/launcher")
+				xdg.RunCmd("brave-browser", "--app=http://localhost:7938/refude/html/launcher")
 			}
 			respond.Accepted(w)
 			return

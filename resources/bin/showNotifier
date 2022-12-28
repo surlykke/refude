@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
-nohup google-chrome --app=http://localhost:7938/refude/html/notifier/ >/dev/null 2>/dev/null &
+nohup brave-browser --app=http://localhost:7938/refude/html/notifier/ >/dev/null 2>/dev/null &
 sleep 1
 curl -X POST http://localhost:7938/refude/html/resizeNotifier?width=26&height=26
