@@ -216,6 +216,7 @@ func Notify(app_name string,
 	Notifications.Put(&notification)
 
 	watch.SomethingChanged("/notification/")
+	updateFlash()
 
 	return id, nil
 }

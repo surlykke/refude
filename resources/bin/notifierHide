@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+for wid in $(xdotool search --classname localhost__refude_html_notifier); do
+	echo xdotool windowunmap $wid
+	xdotool windowunmap $wid
+done

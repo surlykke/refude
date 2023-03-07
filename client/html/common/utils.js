@@ -61,7 +61,6 @@ export const follow = (path, handler, errorHandler) => {
    let evtSource = new EventSource("http://localhost:7938/watch")
     evtSource.onopen = () => handler()
     evtSource.onmessage = ({data}) => {
-        console.log("got", data)
         data === path && handler()
     }
 

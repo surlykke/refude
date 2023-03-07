@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Requires xdotool in path
+
+prevFocus=$(xdotool getwindowfocus)
+
+for wid in $(xdotool search --classname localhost__refude_html_notifier); do
+	if [[ -n "$found" ]]; then 
+		xdotool windowclose $wid 
+	else 
+		xdotool windowmap $wid
+		found=found
+	fi
+done
+
+if [[ -z "$found" ]]; then 
+	nohup brave-browser --app=http://localhost:7938/refude/html/notifier/ >/dev/null 2>/dev/null &
+	sleep 1 # Allow the window to open before we give focus back to previously focused window
+fi
+	
+xdotool windowfocus $prevFocus
+

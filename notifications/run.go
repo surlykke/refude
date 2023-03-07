@@ -6,12 +6,15 @@
 package notifications
 
 import (
+	"fmt"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/surlykke/RefudeServices/config"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
+	"github.com/surlykke/RefudeServices/lib/xdg"
 	"github.com/surlykke/RefudeServices/watch"
 )
 
@@ -19,7 +22,7 @@ var notificationExpireryHints = make(chan struct{})
 
 func Run() {
 	if config.NoNotificationServer() {
-		return 
+		return
 	}
 	go DoDBus()
 	for range time.NewTicker(30 * time.Minute).C {
@@ -35,11 +38,12 @@ func removeExpired() {
 			if notification.Expires < time.Now().UnixMilli() {
 				Notifications.Delete(notification.NotificationId)
 				conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", notification.NotificationId, Expired)
-				count++	
+				count++
 			}
 		}
 	}
 	if count > 0 {
+		updateFlash()
 		watch.SomethingChanged("/notification/")
 	}
 }
@@ -47,16 +51,20 @@ func removeExpired() {
 func removeNotification(id uint32, reason uint32) {
 	if deleted := Notifications.Delete(id); deleted {
 		conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", id, reason)
+		updateFlash()
 		watch.SomethingChanged("/notification/")
 	}
 }
 
-
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == "/notification/flash" {
 		if r.Method == "GET" {
-			if flash := getFlash(); flash != nil {
-				respond.AsJson(w, resource.MakeWrapper[uint32]("/notification/self", flash, ""))
+			flashMutex.Lock()
+			var flashCopy = flash
+			flashMutex.Unlock()
+
+			if flashCopy != nil {
+				respond.AsJson(w, resource.MakeWrapper[uint32](fmt.Sprintf("/notification/%d", flashCopy.Id()), flashCopy, ""))
 			} else {
 				respond.NotFound(w)
 			}
@@ -68,29 +76,75 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func getFlash() *Notification{
-	var notifications = Notifications.GetAll()
-	for i,j := 0, len(notifications) - 1; i < j; i, j = i+1, j-1 {
-		notifications[i],notifications[j] = notifications[j],notifications[i]
+var flash *Notification = nil
+var flashMutex sync.Mutex
+
+func updateFlash() {
+	flashMutex.Lock()
+	defer flashMutex.Unlock()
+
+	var newFlash = getFlash()
+
+	if newFlash == nil && flash != nil {
+		notifierHide()
+	} else if newFlash != nil && flash == nil {
+		notifierShow()
 	}
-	var now = time.Now().UnixMilli()
-	for _, n := range notifications {
-		if n.Urgency == Critical && now < n.Created + 3600000 {
-			return n
+
+	if newFlash != nil && newFlash != flash {
+		var timeout time.Time
+		var created = time.UnixMilli(newFlash.Created)
+		switch newFlash.Urgency {
+		case Critical:
+			timeout = created.Add(1 * time.Hour)
+		case Normal:
+			timeout = created.Add(10 * time.Second)
+		case Low:
+			timeout = created.Add(4 * time.Second)
+		default:
+			timeout = time.Now()
 		}
-	} 
-	for _, n := range notifications {
-		if n.Urgency == Normal && now < n.Created + 10000 {
-			return n
-		}
-	} 
-	for _, n := range notifications {
-		if n.Urgency == Low && now < n.Created + 4000 {
-			return n
-		}
+		timeout = timeout.Add(50 * time.Millisecond)
+
+		time.AfterFunc(timeout.Sub(time.Now()), updateFlash)
 	}
-	return nil
+
+	flash = newFlash
+
+	watch.SomethingChanged("/notification/flash")
 }
 
+func getFlash() *Notification {
+	var newFlash *Notification = nil
 
+	var now = time.Now().UnixMilli()
+	for _, n := range Notifications.GetAll() {
+		if !timedOut(n, now) && !shadedBy(n, newFlash) {
+			newFlash = n
+		}
+	}
 
+	return newFlash
+}
+
+func timedOut(flash *Notification, now int64) bool {
+	if flash.Urgency == Critical {
+		return now > flash.Created+3600000
+	} else if flash.Urgency == Normal {
+		return now > flash.Created+10000
+	} else { // Low
+		return now > flash.Created+4000
+	}
+}
+
+func shadedBy(flash, other *Notification) bool {
+	return other != nil && other.Urgency > flash.Urgency
+}
+
+func notifierShow() {
+	xdg.RunCmd("notifierShow")
+}
+
+func notifierHide() {
+	xdg.RunCmd("notifierHide")
+}

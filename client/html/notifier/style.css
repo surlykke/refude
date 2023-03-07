@@ -5,7 +5,7 @@ html, body {
     height: 100%;
     margin: 0;
     overflow: hidden;
-    background-color: black;
+    background-color: gray;
     color:   #fdf6e3;
     font-size: 1.1em;
 }
@@ -20,7 +20,7 @@ html, body {
     margin: 0;
     height: min-content;
     width: min-content;
-    padding: 2px 6px 5px 6px;
+    padding: 2px ;
 }
 
 .date {
@@ -29,9 +29,9 @@ html, body {
 }
 
 .flash {
-    background-color:#002b36;
     display: flex;
     min-width: 120px;
+    background-color:#002b36;
 }
 
 .flash-icon {

@@ -1,4 +1,4 @@
-package browse 
+package browse
 
 import (
 	"bytes"
@@ -27,12 +27,8 @@ var Handler = &httputil.ReverseProxy{
 		fmt.Println("browse: req.URL.Host", req.URL.Host, "req.Host:", req.Host )
 		req.URL.Scheme = "http"
 		req.URL.Host = req.Host
-		fmt.Print("Rewrite Path: ", req.URL.Path)
-		if req.URL.Path == "/browse" || req.URL.Path == "/browse/" {
-			req.URL.Path = "/bookmarks"
-		} else {
-			req.URL.Path = req.URL.Path[len("/browse"):]
-		}
+		req.URL.Path = req.URL.Path[len("/browse"):]
+	
 	},
 	ModifyResponse: func(resp *http.Response) error {
 		if resp.Header.Get("Content-Type") == "application/vnd.refude+json" {

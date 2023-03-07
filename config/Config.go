@@ -47,7 +47,6 @@ func Read() {
 		conf.noNotificationServer = "true" == general.Entries["noNotificationServer"]
 		conf.noBatteryIcon = "true" == general.Entries["noBatteryIcon"]
 		conf.noBatteryNotifications = "true" == general.Entries["noBatteryNotifications"]
-		fmt.Println("config:", conf)
 	}
 }
 

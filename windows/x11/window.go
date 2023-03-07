@@ -188,38 +188,6 @@ func (this *X11WindowManager) Search(sink chan link.Link, term string) {
 	})
 }
 
-
-
-
-/*func (this *X11WindowManager) Search(sink chan link.Link, term string) {
-	fmt.Println("X11WindowManager.Search")
-	var filtered = make([]windowData, 0, 20)
-	var groupCount = make(map[string]int, 20)
-	for _, wId := range this.windows.GetAll() {
-		var wData = wId.buildWindowData()
-		
-		if wData.State&(SKIP_TASKBAR|SKIP_PAGER|ABOVE) != 0 || 
-		   wData.ApplicationName == "localhost__refude_html_launcher" || 
-		   wData.ApplicationName == "localhost__refude_html_notifier" {
-			continue 
-		}
-
-		if wData.rnk = searchutils.Match(term, wData.Name); wData.rnk > -1 {
-			filtered = append(filtered, wData)
-			groupCount[wData.ApplicationName] = groupCount[wData.ApplicationName] + 1
-		}
-	}
-	for _, wd := range filtered {
-		if groupCount[wd.ApplicationName] > 1 {
-			sink <- link.MakeRanked("/window/group/" + wd.ApplicationName, wd.ApplicationName, wd.IconName, "windowgroup", wd.rnk)
-			groupCount[wd.ApplicationName] = -1
-		} else if groupCount[wd.ApplicationName] == 1 {
-			sink <- link.MakeRanked(fmt.Sprintf("/window/%d", wd.WindowId), wd.Name, wd.IconName, "window", wd.rnk)
-		} 
-	}
-	close(sink)		
-}
-*/
 func (this *X11WindowManager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if strings.HasPrefix(r.URL.Path, "/window/group/") && len(r.URL.Path) > 14 {
 		var groupName = r.URL.Path[14:]

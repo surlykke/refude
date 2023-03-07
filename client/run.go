@@ -11,7 +11,6 @@ import (
 	"io/fs"
 	"net/http"
 	"os"
-	"strconv"
 
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/requests"
@@ -48,24 +47,18 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			respond.Accepted(w)
 			return
 		} else if r.URL.Path == "/refude/html/resizeNotifier" {
-			var widthS = requests.GetSingleQueryParameter(r, "width", "10")
-			var heightS = requests.GetSingleQueryParameter(r, "height", "10")
-			if width, err := strconv.Atoi(widthS); err != nil {
-				respond.UnprocessableEntity(w, err)
-			} else if width < 2 {
-				respond.UnprocessableEntity(w, errors.New("width and height must each be > 2")) 
-			} else if height, err := strconv.Atoi(heightS); err != nil {
-				respond.UnprocessableEntity(w, err)
-			} else if height < 2 {
-				respond.UnprocessableEntity(w, errors.New("width and height must each be > 2")) 
-			} else if ! windows.WM.ResizeNamedWindow("Refude notifier", uint32(width), uint32(height)) {
-				respond.NotFound(w)
+			var widthS = requests.GetSingleQueryParameter(r, "width", "")
+			var heightS = requests.GetSingleQueryParameter(r, "height", "")
+			if len(widthS) == 0 || len(heightS) == 0 {
+				respond.UnprocessableEntity(w, errors.New("Both width and height must be given"))
 			} else {
+				var x, y = "26", "2" // TODO
+				xdg.RunCmd("notifierMove", x, y, widthS, heightS)
 				respond.Accepted(w)
 			}
-			return  
+			return
+			
 		}
-
 	}
 	StaticServer.ServeHTTP(w, r)
 }

@@ -20,16 +20,24 @@ import (
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
 		respond.NotAllowed(w)
-	} else if name := requests.GetSingleQueryParameter(r, "name", ""); name == "" {
-		respond.UnprocessableEntity(w, fmt.Errorf("Query parameter 'name' must be given, and not empty"))
-	} else if strings.HasPrefix(name, "/") {
-		http.ServeFile(w, r, name)
-	} else if size, err := extractSize(r); err != nil {
-		respond.UnprocessableEntity(w, err)
-	} else if iconFilePath := findIconPath(name, size); iconFilePath == "" {
-		respond.NotFound(w)
+	} else if r.URL.Path == "/iconthemes" {
+		respond.AsJson(w, themeSearchList)
+	} else if strings.HasPrefix(r.URL.Path, "/icontheme/") {
+		IconThemes.ServeHTTP(w, r)
+	} else if r.URL.Path == "/icon" {
+		if name := requests.GetSingleQueryParameter(r, "name", ""); name == "" {
+			respond.UnprocessableEntity(w, fmt.Errorf("Query parameter 'name' must be given, and not empty"))
+		} else if strings.HasPrefix(name, "/") {
+			http.ServeFile(w, r, name)
+		} else if size, err := extractSize(r); err != nil {
+			respond.UnprocessableEntity(w, err)
+		} else if iconFilePath := findIconPath(name, size); iconFilePath == "" {
+			respond.NotFound(w)
+		} else {
+			http.ServeFile(w, r, iconFilePath)
+		}
 	} else {
-		http.ServeFile(w, r, iconFilePath)
+		respond.NotFound(w)
 	}
 }
 
