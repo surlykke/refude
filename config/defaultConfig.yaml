@@ -1,0 +1,16 @@
+---
+notifications:
+  # Set to false if you don't want to run notification service. (As you might not if another application is doing that)
+  enabled: true
+  # Set to false if you don't want battery-low notifications (from RefudeServices)
+  batterynotifications: true
+  placement: # A list of placements. Will be tried in order, and the first one with 'screen' matching 
+             # then name of a connected monitor is used 
+    - screen: dP1 # If this is the name of an external monitor, it will be used, else search procedes to next
+      corner: 0
+      cornerdistx: 0
+      cornerdisty: 0
+    - screen: "" # if this value is the empty string, primary screen is assumed
+      corner: 0
+      cornerdistx: 0
+      cornerdisty: 0

@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/surlykke/RefudeServices/lib/link"
+	"github.com/surlykke/RefudeServices/windows/monitor"
 	"github.com/surlykke/RefudeServices/windows/wayland"
 	"github.com/surlykke/RefudeServices/windows/x11"
 )
@@ -13,8 +14,7 @@ type WindowManager interface {
 	ServeHTTP(w http.ResponseWriter, r *http.Request)
 	GetPaths() []string
 	RaiseAndFocusNamedWindow(name string) bool
-	ResizeNamedWindow(name string, newWidth, newHeight uint32) bool
-	HaveNamedWindow(name string) bool
+	GetMonitors() []*monitor.MonitorData
 	Run()
 }
 
@@ -26,6 +26,6 @@ func init() {
 	} else if wayland.WM != nil {
 		WM = wayland.WM
 	} else {
-		panic("Ingen wm")
+		panic("No wm")
 	}
 }

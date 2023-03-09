@@ -24,6 +24,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
 	"github.com/surlykke/RefudeServices/lib/xdg"
+	"github.com/surlykke/RefudeServices/windows/monitor"
 )
 
 type X11Window uint32
@@ -67,16 +68,15 @@ type windowData struct {
 }
 
 func (this X11Window) buildWindowData() windowData {
-	var wd = windowData {
+	var wd = windowData{
 		WindowId: uint32(this),
-		Name: WM.getName(this),
+		Name:     WM.getName(this),
 		IconName: WM.getIconName(this),
-		State: WM.getStates(this),
+		State:    WM.getStates(this),
 	}
 	wd.ApplicationName, wd.ApplicationClass = WM.getApplicationAndClass(this)
-	return wd 
+	return wd
 }
-
 
 func (this X11Window) MarshalJSON() ([]byte, error) {
 	return json.Marshal(this.buildWindowData())
@@ -168,15 +168,14 @@ func (this *X11WindowManager) Unlock() {
 	this.proxy.Unlock()
 }
 
-
 func (this *X11WindowManager) Search(sink chan link.Link, term string) {
 	this.windows.Search(sink, func(xWin X11Window) int {
 		var name = this.getName(xWin)
 		var state = this.getStates(xWin)
 		var appName, _ = this.getApplicationAndClass(xWin)
 		if appName != "localhost__refude_html_launcher" &&
-		   appName != "localhost__refude_html_notifier" && 
-		   state&(SKIP_TASKBAR|SKIP_PAGER|ABOVE) == 0 {
+			appName != "localhost__refude_html_notifier" &&
+			state&(SKIP_TASKBAR|SKIP_PAGER|ABOVE) == 0 {
 			if rnk := searchutils.Match(term, name); rnk > -1 {
 				this.recentMapLock.Lock()
 				defer this.recentMapLock.Unlock()
@@ -201,6 +200,22 @@ func (this *X11WindowManager) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 			respond.AsJson(w, this.GetScreenLayoutFingerprint())
 		} else {
 			respond.NotAllowed(w)
+		}
+	} else if r.URL.Path == "/window/screen/" {
+		if r.Method == "GET" {
+			var wrappers []resource.Wrapper = make([]resource.Wrapper, 0, 4)
+			for _, m := range this.GetMonitors() {
+				wrappers = append(wrappers, monitor.MakeMonitorWrapper(m))
+			}
+			respond.AsJson(w, wrappers) 
+		} else {
+			respond.NotAllowed(w)
+		}
+	} else if strings.HasPrefix(r.URL.Path, "/window/screen/") {
+		if m := this.GetMonitor(r.URL.Path[15:]); m != nil {
+			respond.AsJson(w, monitor.MakeMonitorWrapper(m))
+		} else {
+			respond.NotFound(w)
 		}
 	} else {
 		this.windows.ServeHTTP(w, r)
@@ -231,18 +246,6 @@ func (this *X11WindowManager) RaiseAndFocusNamedWindow(name string) bool {
 
 	if wId, found := findNamedWindow(this.proxy, name); found {
 		RaiseAndFocusWindow(this.proxy, wId)
-		return true
-	} else {
-		return false
-	}
-}
-
-func (this *X11WindowManager) ResizeNamedWindow(name string, newWidth, newHeight uint32) bool {
-	this.Lock()
-	defer this.Unlock()
-
-	if wId, found := findNamedWindow(this.proxy, name); found {
-		Resize(this.proxy, wId, newWidth, newHeight)
 		return true
 	} else {
 		return false
@@ -328,12 +331,22 @@ func (this *X11WindowManager) GetScreenLayoutFingerprint() string {
 	return hex.EncodeToString(fp.Sum(nil))
 }
 
-func (this *X11WindowManager) HaveNamedWindow(name string) bool {
+func (this *X11WindowManager) GetMonitors() []*monitor.MonitorData {
 	this.Lock()
 	defer this.Unlock()
-	_, found := findNamedWindow(this.proxy, name)
-	return found
+	return GetMonitorDataList(this.proxy)
 }
+
+func (this *X11WindowManager) GetMonitor(name string) *monitor.MonitorData {
+	for _, m := range GetMonitorDataList(this.proxy) {
+		if name == m.Name {
+			return m 
+		}
+	}
+	return nil
+}
+
+
 
 func (this *X11WindowManager) getApplicationAndClass(wId X11Window) (string, string) {
 	this.Lock()
@@ -354,6 +367,7 @@ func (this *X11WindowManager) buildGroup(name string) (WindowGroup, bool) {
 		return WindowGroup{name, windowList}, true
 	}
 }
+
 
 var WM *X11WindowManager
 

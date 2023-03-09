@@ -14,6 +14,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
 	"github.com/surlykke/RefudeServices/lib/xdg"
+	"github.com/surlykke/RefudeServices/windows/monitor"
 )
 
 // Get current rect
@@ -202,17 +203,9 @@ func (this *WaylandWindowManager) RaiseAndFocusNamedWindow(name string) bool {
 
 }
 
-func (this *WaylandWindowManager) HaveNamedWindow(name string) bool {
-	_, found := this.windows.FindFirst(func(ww *WaylandWindow) bool { return ww.Title == name })
-	return found
-}
-
-func (this *WaylandWindowManager) ResizeNamedWindow(name string, newWidth, newHeight uint32) bool {
-	if ww, found := this.windows.FindFirst( func(ww *WaylandWindow) bool { return ww.Title == name }); found {
-		setRectangle(ww.Id(), 0, 0, newWidth, newHeight)
-		return true
-	}
-	return false
+func (this *WaylandWindowManager) GetMonitors() []*monitor.MonitorData {
+	// TODO
+	return []*monitor.MonitorData{}
 }
 
 func (this *WaylandWindowManager) Run() {

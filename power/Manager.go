@@ -124,14 +124,13 @@ var previousPercentage = 101
 const notificationId uint32 = 1152165262 
 
 func showOnDesktop() {
-	if ! config.NoBatteryNotifications() {
-		updateTrayIcon()
-	}
-
-	if ! config.NoBatteryNotifications() {
+	if config.Notifications.BatteryNotifications {
 		notifyOnLow()
 	}
 
+	/* if ! config.Notifications.BatteryDisabled {
+		updateTrayIcon()
+	}*/
 }
 
 func updateTrayIcon() {

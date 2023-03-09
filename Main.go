@@ -6,7 +6,6 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/surlykke/RefudeServices/applications"
@@ -30,12 +29,13 @@ import (
 )
 
 func main() {
-	fmt.Println("Running")
-	config.Read()
+	log.Info("Running")
 
 	go windows.WM.Run()
 	go applications.Run()
-	go notifications.Run()
+	if config.Notifications.Enabled {
+		go notifications.Run()
+	}
 	go power.Run()
 	//go statusnotifications.Run()
 
@@ -51,7 +51,9 @@ func main() {
 	http.HandleFunc("/tmux/", windows.ServeHTTP)
 	http.HandleFunc("/bookmarks", bookmarks.ServeHTTP)
 	http.HandleFunc("/bookmarks/", bookmarks.ServeHTTP)
-	http.HandleFunc("/notification/", notifications.ServeHTTP)
+	if config.Notifications.Enabled {
+		http.HandleFunc("/notification/", notifications.ServeHTTP)
+	}
 	http.Handle("/browse", browse.Handler)
 	http.Handle("/browse/", browse.Handler)
 	http.Handle("/window/", windows.WM)
@@ -65,4 +67,3 @@ func main() {
 		log.Warn("http.ListenAndServe failed:", err)
 	}
 }
-

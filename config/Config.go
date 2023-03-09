@@ -3,61 +3,53 @@ package config
 import (
 	_ "embed"
 	"fmt"
-	"io/ioutil"
 	"os"
 
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/xdg"
+	"gopkg.in/yaml.v2"
 )
 
-//go:embed defaultConfig.ini
+//go:embed defaultConfig.yaml
 var defaultConfig string
 
 var configDir = xdg.ConfigHome + "/refude"
-var configFile = configDir + "/config"
+var configFile = configDir + "/config.yaml"
 
-type Config  struct {
-	noNotificationServer bool 
-	noBatteryIcon bool 
-	noBatteryNotifications bool 
+type NotificationConf struct {
+	Enabled             bool
+	BatteryNotifications bool
+	Placement            []struct {
+		Screen      string
+		Corner      uint8
+		CornerDistX int
+		CornerDistY int
+	}
 }
 
+type Conf struct {
+	Notifications NotificationConf 
+}
 
-var conf Config
+var Notifications = NotificationConf{
+	Enabled: true,
+	BatteryNotifications: true,
+}
 
-func Read() {
-	fmt.Println("Read...")
-	os.MkdirAll(configDir, 0770)
-	if _, err := os.Stat(configFile); err != nil {
-		fmt.Println("stat err:", err)
-		if os.IsNotExist(err) {
-			ioutil.WriteFile(configFile, []byte(defaultConfig), 0660)
-		} else {
-			log.Warn("Could not stat", configFile, err)
-			return
-		}
-	}
-	
-	if iniFile, err := xdg.ReadIniFile(configFile); err != nil {
-		log.Warn("Could not read", configFile, err)
-	} else if general := iniFile.FindGroup("General"); general == nil {
-		log.Warn("Found no group 'General' in", configFile)
-		return 
+func init() {
+	var tmp Conf 
+	var bytes []byte
+	var err error
+
+	if _, err = os.Stat(configFile); err != nil && os.IsNotExist(err) {
+		log.Info(configFile, "not found")
+	} else if bytes, err = os.ReadFile(configFile); err != nil {
+		log.Warn("Unable to read", configFile, err)
+	} else if err = yaml.UnmarshalStrict(bytes, &tmp); err != nil {
+		log.Warn("Unable to parse", configFile, err)
 	} else {
-		conf.noNotificationServer = "true" == general.Entries["noNotificationServer"]
-		conf.noBatteryIcon = "true" == general.Entries["noBatteryIcon"]
-		conf.noBatteryNotifications = "true" == general.Entries["noBatteryNotifications"]
+		Notifications = tmp.Notifications
 	}
-}
 
-func NoNotificationServer() bool {
-	return conf.noNotificationServer
-}
-
-func NoBatteryIcon() bool {
-	return conf.noBatteryIcon
-}
-
-func NoBatteryNotifications() bool {
-	return conf.noBatteryNotifications
+	fmt.Println("After config init, Notifications:", Notifications, ", yaml file was:", string(bytes))
 }

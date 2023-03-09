@@ -97,14 +97,9 @@ import (
 	"unsafe"
 
 	"github.com/surlykke/RefudeServices/lib/log"
+	"github.com/surlykke/RefudeServices/windows/monitor"
 )
 
-type MonitorData struct {
-	X, Y     int32
-	W, H     uint32
-	Wmm, Hmm uint32
-	Name     string
-}
 
 type Event uint8
 
@@ -210,7 +205,7 @@ func MakeProxy() Proxy {
 	var defaultScreen = C.ds(disp)
 	var rootWindow = C.rw(disp, defaultScreen)
 	return Proxy{
-		Mutex: &sync.Mutex{},
+		Mutex:      &sync.Mutex{},
 		disp:       disp,
 		rootWindow: rootWindow,
 	}
@@ -257,21 +252,22 @@ func NextEvent(p Proxy) (Event, uint32) {
 	}
 }
 
-func GetMonitorDataList(p Proxy) []*MonitorData {
+func GetMonitorDataList(p Proxy) []*monitor.MonitorData {
 	var num C.int
 	xrrmonitorsPtr := C.XRRGetMonitors(p.disp, p.rootWindow, 1, &num)
 	xrrmonitorsArr := (*[1 << 30]C.XRRMonitorInfo)(unsafe.Pointer(xrrmonitorsPtr))
-	var monitors = make([]*MonitorData, num, num)
+	var monitors = make([]*monitor.MonitorData, num, num)
 	var bound int = int(num)
 	for i := 0; i < bound; i++ {
-		monitors[i] = &MonitorData{
-			X:    int32(xrrmonitorsArr[i].x),
-			Y:    int32(xrrmonitorsArr[i].y),
-			W:    uint32(xrrmonitorsArr[i].width),
-			H:    uint32(xrrmonitorsArr[i].height),
-			Wmm:  uint32(xrrmonitorsArr[i].mwidth),
-			Hmm:  uint32(xrrmonitorsArr[i].mheight),
-			Name: getAtomName(p.disp, xrrmonitorsArr[i].name),
+		monitors[i] = &monitor.MonitorData{
+			X:       int(xrrmonitorsArr[i].x),
+			Y:       int(xrrmonitorsArr[i].y),
+			W:       int(xrrmonitorsArr[i].width),
+			H:       int(xrrmonitorsArr[i].height),
+			Wmm:     int(xrrmonitorsArr[i].mwidth),
+			Hmm:     int(xrrmonitorsArr[i].mheight),
+			Name:    getAtomName(p.disp, xrrmonitorsArr[i].name),
+			Primary: xrrmonitorsArr[i].primary != 0,
 		}
 	}
 	C.XRRFreeMonitors(xrrmonitorsPtr)
@@ -329,7 +325,7 @@ func GetActiveWindow(p Proxy) (uint32, error) {
 	} else if len(activeWindowList) != 1 {
 		return 0, errors.New("Len of activeWindowList <> 1")
 	} else {
-		return activeWindowList[0], nil 
+		return activeWindowList[0], nil
 	}
 }
 

@@ -11,7 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/surlykke/RefudeServices/config"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/xdg"
@@ -21,9 +20,6 @@ import (
 var notificationExpireryHints = make(chan struct{})
 
 func Run() {
-	if config.NoNotificationServer() {
-		return
-	}
 	go DoDBus()
 	for range time.NewTicker(30 * time.Minute).C {
 		removeExpired()
