@@ -146,6 +146,7 @@ func GetIconName(p Proxy, wId uint32) (string, error) {
 
 type X11WindowManager struct {
 	windows       *resource.Collection[uint32, X11Window]
+	monitors      *resource.Collection[string, *monitor.MonitorData]
 	proxy         Proxy
 	recentMap     map[uint32]uint32
 	recentCount   uint32
@@ -155,6 +156,7 @@ type X11WindowManager struct {
 func makeX11WindowManager() *X11WindowManager {
 	return &X11WindowManager{
 		windows:   resource.MakePublishingCollection[uint32, X11Window]("/window/", "/search"),
+		monitors:  resource.MakeCollection[string, *monitor.MonitorData]("/screen/"),
 		proxy:     MakeProxy(),
 		recentMap: make(map[uint32]uint32),
 	}
@@ -204,15 +206,15 @@ func (this *X11WindowManager) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	} else if r.URL.Path == "/window/screen/" {
 		if r.Method == "GET" {
 			var wrappers []resource.Wrapper = make([]resource.Wrapper, 0, 4)
-			for _, m := range this.GetMonitors() {
+			for _, m := range this.monitors.GetAll() {
 				wrappers = append(wrappers, monitor.MakeMonitorWrapper(m))
 			}
-			respond.AsJson(w, wrappers) 
+			respond.AsJson(w, wrappers)
 		} else {
 			respond.NotAllowed(w)
 		}
 	} else if strings.HasPrefix(r.URL.Path, "/window/screen/") {
-		if m := this.GetMonitor(r.URL.Path[15:]); m != nil {
+		if m := this.monitors.Get(r.URL.Path[15:]); m != nil {
 			respond.AsJson(w, monitor.MakeMonitorWrapper(m))
 		} else {
 			respond.NotFound(w)
@@ -263,9 +265,12 @@ func (this *X11WindowManager) Run() {
 		this.windows.ReplaceWith(xWins)
 	}
 
+
 	var proxy = MakeProxy()
 	SubscribeToEvents(proxy)
 	updateWindowList(proxy)
+	this.monitors.ReplaceWith(GetMonitorDataList(proxy))
+	
 	for {
 		event, _ := NextEvent(proxy)
 		if event == DesktopStacking {
@@ -277,7 +282,10 @@ func (this *X11WindowManager) Run() {
 				this.recentCount += 1
 				//this.recentMapLock.Unlock()
 			}
+		} else if event == DesktopGeometry {
+			this.monitors.ReplaceWith(GetMonitorDataList(proxy))
 		}
+
 	}
 }
 
@@ -332,18 +340,7 @@ func (this *X11WindowManager) GetScreenLayoutFingerprint() string {
 }
 
 func (this *X11WindowManager) GetMonitors() []*monitor.MonitorData {
-	this.Lock()
-	defer this.Unlock()
-	return GetMonitorDataList(this.proxy)
-}
-
-func (this *X11WindowManager) GetMonitor(name string) *monitor.MonitorData {
-	for _, m := range GetMonitorDataList(this.proxy) {
-		if name == m.Name {
-			return m 
-		}
-	}
-	return nil
+	return this.monitors.GetAll()
 }
 
 
@@ -367,7 +364,6 @@ func (this *X11WindowManager) buildGroup(name string) (WindowGroup, bool) {
 		return WindowGroup{name, windowList}, true
 	}
 }
-
 
 var WM *X11WindowManager
 
