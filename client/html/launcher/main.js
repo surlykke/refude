@@ -120,11 +120,11 @@ export class Main extends React.Component {
             if (term && resource.links.length === 0) {
                 fraqs.push(div({className: 'linkHeading'}, "No match"))
             }
-            let links = resource.links.map(l => link(l, l.profile, this.closeBrowser, this.move))
-            let firstRel = links.findIndex(l => l.props.rel === 'related')
+            let links = resource.links ? resource.links.map(l => link(l, l.profile, this.closeBrowser, this.move)) : []
+            /*let firstRel = links.findIndex(l => l.props.rel === 'related')
             if (firstRel > 0) {
-                links[firstRel - 1].props.className +=" last-action"
-            }
+                links[firstRel - 1].classList.add(" last-action")
+            }*/
             fraqs.push(div({ className: 'links' }, ...links))
         }
 

@@ -32,7 +32,7 @@ func (l *Collection[T]) Get(path string) (T, bool) {
 	l.Lock()
 	defer l.Unlock()
 	for _, res := range l.resources {
-		if res.Path() == path  {
+		if res.GetPath() == path  {
 			return res, true
 		}
 	}
@@ -82,7 +82,7 @@ func (l *Collection[T]) Search(term string, threshold int) link.List {
 		if res.RelevantForSearch() {
 			var title, _, icon, profile = res.Presentation() 
 			if rnk := searchutils.Match(term, title); rnk > -1 {
-				links = append(links, link.MakeRanked2(link.Href(res.Path()), title, icon, profile, rnk))
+				links = append(links, link.MakeRanked(res.GetPath(), title, icon, profile, rnk))
 			}
 		}
 	}
@@ -93,6 +93,12 @@ func (l *Collection[T]) Search(term string, threshold int) link.List {
 func (l *Collection[T]) Put(res T) {
 	l.Lock()
 	defer l.Unlock()
+	for i := 0; i < len(l.resources); i++ {
+		if l.resources[i].GetPath() == res.GetPath() {
+			l.resources[i] = res
+			return
+		}
+	}
 	l.resources = append(l.resources, res)
 }
 
@@ -107,7 +113,7 @@ func (l *Collection[T]) Delete(path string) bool {
 	defer l.Unlock()
 
 	for i, res := range l.resources {
-		if res.Path() == path {
+		if res.GetPath() == path {
 			l.resources = append(l.resources[:i], l.resources[i+1:]...)
 			return true
 		}
@@ -133,7 +139,7 @@ func (l *Collection[T]) FindFirst(test func(t T) bool) (T, bool) {
 func (l *Collection[T]) GetPaths() []string {
 	var res = make([]string, 0, len(l.resources))
 	for _, r := range l.resources {
-		res = append(res, r.Path())
+		res = append(res, r.GetPath())
 	}
 	return res
 }

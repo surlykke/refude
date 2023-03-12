@@ -24,7 +24,15 @@ func Run() {
 			var item = buildItem(event.sender, event.path)
 			Items.Put(item)
 			if item.MenuPath != "" {
-				Menus.Put(&Menu{event.sender, item.MenuPath})
+				Menus.Put(&Menu{
+					BaseResource: resource.BaseResource{
+						Path: pathEscape(event.sender, item.MenuPath),
+						Title: "Menu",
+						Profile: "menu",
+					},
+					sender: event.sender, 
+					path: item.MenuPath,
+				})
 			}
 		case "ItemRemoved":
 			Items.Delete(id)

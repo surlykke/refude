@@ -3,7 +3,6 @@
 // This file is part of the RefudeServices project.
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
-//
 package icons
 
 import (
@@ -13,7 +12,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/slice"
@@ -21,29 +19,11 @@ import (
 )
 
 type IconTheme struct {
-	ThemeId  string
-	self     string
-	Name     string
-	Comment  string
+	resource.BaseResource
 	Inherits []string
 	Dirs     []IconDir
 }
 
-func (it *IconTheme) Path() string {
-	return it.ThemeId
-}
-
-func (it *IconTheme) Presentation() (title string, comment string, icon link.Href, profile string) {
-	return it.Name, it.Comment, "", "icontheme"
-}
-
-func (it *IconTheme) Links(self, term string) link.List {
-	return link.List{}
-}
-
-func (it *IconTheme) RelevantForSearch() bool {
-	return true
-}
 
 type IconDir struct {
 	Path    string
@@ -62,8 +42,8 @@ func readThemes() map[string]*IconTheme {
 			for _, indexFilePath := range indexFilePaths {
 				if theme, ok := readTheme(indexFilePath); !ok {
 					log.Warn("Could not read", indexFilePath)
-				} else if _, ok := themeMap[theme.ThemeId]; !ok {
-					themeMap[theme.ThemeId] = theme
+				} else if _, ok := themeMap[theme.Path]; !ok {
+					themeMap[theme.Path] = theme
 					IconThemes.Put(theme)
 				}
 			}
@@ -94,16 +74,15 @@ func readTheme(indexThemeFilePath string) (*IconTheme, bool) {
 	themeGroup := iniFile[0]
 
 	theme := IconTheme{}
-	theme.ThemeId = themeId
-	theme.self = "/icontheme/" + themeId
-	theme.Name = themeGroup.Entries["Name"]
+	theme.Path = themeId
+	theme.Title = themeGroup.Entries["Name"]
 	theme.Comment = themeGroup.Entries["Comment"]
 	theme.Inherits = slice.Split(themeGroup.Entries["Inherits"], ",")
 	theme.Dirs = make([]IconDir, 0, 50)
 	var addedDirs = make(map[string]bool)
 	directories := slice.Split(themeGroup.Entries["Directories"], ",")
 	if len(directories) == 0 {
-		log.Warn("Ignoring theme ", theme.ThemeId, " - no directories")
+		log.Warn("Ignoring theme ", theme.Path, " - no directories")
 		return nil, false
 	}
 	for _, iniGroup := range iniFile[1:] {
@@ -142,7 +121,7 @@ func readTheme(indexThemeFilePath string) (*IconTheme, bool) {
 			minSize = size - threshold
 			maxSize = size + threshold
 		} else {
-			_, _ = fmt.Fprintln(os.Stderr, "Error in ", theme.Name, ", ", iniGroup.Name, ", type must be given as 'Fixed', 'Scalable' or 'Threshold', was: ", sizeType)
+			_, _ = fmt.Fprintln(os.Stderr, "Error in ", theme.Title, ", ", iniGroup.Name, ", type must be given as 'Fixed', 'Scalable' or 'Threshold', was: ", sizeType)
 			continue
 		}
 

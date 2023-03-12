@@ -15,8 +15,8 @@ import (
 	"github.com/rakyll/magicmime"
 	"github.com/surlykke/RefudeServices/applications"
 	"github.com/surlykke/RefudeServices/lib/link"
-	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/requests"
+	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
 	"github.com/surlykke/RefudeServices/lib/xdg"
@@ -49,44 +49,30 @@ func getFileType(m os.FileMode) string {
 }
 
 type File struct {
-	self        string
-	FilePath    string
+	resource.BaseResource
 	Name        string
 	Type        string
 	Permissions string
 	Mimetype    string
-	Icon        string
 	Apps        []string
 }
 
-func (f *File) Path() string {
-	return f.FilePath[1:]
-}
-
-func (f *File) Presentation() (title string, comment string, icon link.Href, profile string) {
-	return f.Name, f.FilePath, link.IconUrl(f.Icon), "file"
-}
-
-func (f *File) Links(self, term string) link.List {
-	var ll = make(link.List, 0, 10)
-
-	var rel = relation.DefaultAction
+func (f *File) Actions() link.ActionList {
+	var actions = make(link.ActionList, 0, 10)
 	for _, app := range applications.GetApps(f.Apps...) {
-		if rnk := searchutils.Match(term, app.Name); rnk > -1 {
-			ll = append(ll, link.Make(self+"?action="+app.DesktopId, "Open with "+app.Name, app.Icon, rel))
-			rel = relation.Action
-		}
+		actions = append(actions, link.MkAction(app.DesktopId, "Open with " + app.Title, app.IconName))
 	}
+	return actions
+}
 
+func (f *File) Links(searchTerm string) link.List {
+
+	var ll = make(link.List, 0, 10)
 	if f.Type == "Directory" {
-		ll = append(ll, SearchFrom(f.FilePath, term, "")...)
+		ll = append(ll, SearchFrom(f.Path, searchTerm, "")...)
 	}
 
 	return ll
-}
-
-func (file *File) RelevantForSearch() bool {
-	return true
 }
 
 // Assumes dir is a directory
@@ -136,12 +122,15 @@ func makeFile(path string) (*File, error) {
 	} else {
 		var mimetype, _ = magicmime.TypeByFile(path)
 		var f = File{
-			FilePath:    path,
-			Name:        fileInfo.Name(),
+			BaseResource: resource.BaseResource{
+				Path:     path,
+				Title:    fileInfo.Name(),
+				Comment:  path,
+				IconName: strings.ReplaceAll(mimetype, "/", "-"),
+			},
 			Type:        getFileType(fileInfo.Mode()),
 			Permissions: fileInfo.Mode().String(),
 			Mimetype:    mimetype,
-			Icon:        strings.ReplaceAll(mimetype, "/", "-"),
 			Apps:        applications.GetAppsIds(mimetype),
 		}
 
@@ -163,7 +152,7 @@ func (f *File) DoPost(w http.ResponseWriter, r *http.Request) {
 		defaultAppId = f.Apps[0]
 	}
 	var appId = requests.GetSingleQueryParameter(r, "action", defaultAppId)
-	var ok, err = applications.OpenFile(appId, f.FilePath)
+	var ok, err = applications.OpenFile(appId, f.Path)
 	if ok {
 		if err != nil {
 			respond.ServerError(w, err)

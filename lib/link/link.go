@@ -108,9 +108,13 @@ func IconUrl(name string) Href {
 }
 
 type Action struct {
-	Name     string 
+	Name     string
 	Title    string
-	Icon     Href
-	Rank     int
+	IconName string
 }
 
+func MkAction(name, title, iconName string) Action {
+	return Action{Name: name, Title: title, IconName: iconName}
+}
+
+type ActionList []Action

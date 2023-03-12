@@ -8,6 +8,7 @@ package notifications
 import (
 	"errors"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/image"
 	"github.com/surlykke/RefudeServices/lib/log"
+	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/watch"
 )
 
@@ -172,15 +174,18 @@ func Notify(app_name string,
 	}
 
 	notification := Notification{
+		BaseResource: resource.BaseResource{
+			Path:     strconv.FormatUint(uint64(id), 10),
+			Title:    sanitize(summary, []string{}, []string{}),
+			Comment:  sanitize(body, allowedTags, allowedEscapes),
+			IconName: iconName,
+		},
 		NotificationId: id,
 		Sender:         app_name,
-		Subject:        sanitize(summary, []string{}, []string{}),
-		Body:           sanitize(body, allowedTags, allowedEscapes),
 		Created:        time.Now().UnixMilli(),
 		Urgency:        Normal,
 		NActions:       map[string]string{},
 		Hints:          map[string]interface{}{},
-		iconName:       iconName,
 		IconSize:       sizeHint,
 	}
 

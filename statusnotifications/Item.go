@@ -3,7 +3,6 @@
 // This file is part of the RefudeServices project.
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
-//
 package statusnotifications
 
 import (
@@ -18,21 +17,21 @@ import (
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/requests"
+	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
 	"github.com/surlykke/RefudeServices/lib/slice"
 )
 
 type Item struct {
+	resource.BaseResource
 	sender                  string
 	path                    dbus.ObjectPath
 	ItemId                  string
 	Category                string
 	Status                  string
-	IconName                string
 	IconAccessibleDesc      string
 	AttentionIconName       string
 	AttentionAccessibleDesc string
-	Title                   string
 	ToolTip                 string
 	MenuPath                dbus.ObjectPath
 	Menu                    link.Href
@@ -42,15 +41,7 @@ type Item struct {
 	UseOverlayIconPixmap    bool
 }
 
-func (item *Item) Path() string {
-	return pathEscape(item.sender, item.path)
-}
-
-func (item *Item) Presentation() (title string, comment string, iconUrl link.Href, profile string) {
-	return item.Title, "", link.IconUrl(item.IconName), "item"
-}
-
-func (item *Item) Links(self, term string) link.List {
+func (item *Item) Links(term string) link.List {
 	var ll = make(link.List, 0, 5)
 	if item.MenuPath != "" {
 		if searchutils.Match(term, "Menu") > -1 {
@@ -59,11 +50,6 @@ func (item *Item) Links(self, term string) link.List {
 	}
 	return ll
 }
-
-func (item *Item) RelevantForSearch() bool {
-	return true
-}
-
 
 func (item *Item) DoPost(w http.ResponseWriter, r *http.Request) {
 	action := requests.GetSingleQueryParameter(r, "action", "left")

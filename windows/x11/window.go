@@ -13,11 +13,9 @@ import (
 	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/log"
-	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
-	"github.com/surlykke/RefudeServices/lib/searchutils"
 	"github.com/surlykke/RefudeServices/windows/monitor"
 )
 
@@ -27,25 +25,25 @@ func (this X11Window) Id() uint32 {
 	return uint32(this)
 }
 
-func (this X11Window) Path() string {
+func (this X11Window) GetPath() string {
 	return strconv.Itoa(int(this))
 }
 
-func (this X11Window) Presentation() (title string, comment string, icon link.Href, profile string) {
-	return this.GetName(), "", link.IconUrl(this.GetIconName()), "window"
+func (this X11Window) Presentation() (title string, comment string, iconName string, profile string) {
+	return this.GetName(), "", this.GetIconName(), "window"
 }
 
-func (this X11Window) Links(self, searchTerm string) link.List {
-	var name, iconName string
-	name = this.GetName()
-	iconName = this.GetIconName()
+func (this X11Window) Actions() link.ActionList {
+	var iconName = this.GetIconName()
+	return link.ActionList{{Name: "activate", Title: "Raise and focus", IconName: iconName}}
+}
 
-	var links = make(link.List, 0, 10)
-	if rnk := searchutils.Match(searchTerm, name); rnk > -1 {
-		links = append(links, link.Make(self, "Raise and focus", iconName, relation.DefaultAction))
-		links = append(links, link.Make(self, "Close", iconName, relation.Delete))
-	}
-	return links
+func (this X11Window) DeleteAction() (string, bool) {
+	return "Close", true
+}
+
+func (this X11Window) Links(searchTerm string) link.List {
+	return link.List{}
 }
 
 func (this X11Window) RelevantForSearch() bool {

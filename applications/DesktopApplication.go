@@ -13,23 +13,19 @@ import (
 	"strings"
 
 	"github.com/surlykke/RefudeServices/lib/link"
-	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
-	"github.com/surlykke/RefudeServices/lib/searchutils"
 
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
 type DesktopApplication struct {
+	resource.BaseResource
 	Type            string
 	Version         string `json:",omitempty"`
-	Name            string
 	GenericName     string `json:",omitempty"`
 	NoDisplay       bool
-	Comment         string `json:",omitempty"`
-	Icon            string `json:",omitempty"`
 	Hidden          bool
 	OnlyShowIn      []string
 	NotShowIn       []string
@@ -50,20 +46,10 @@ type DesktopApplication struct {
 	DesktopFile     string
 }
 
-func (d *DesktopApplication) Path() string {
-	return d.DesktopId
-}
-
-func (d *DesktopApplication) Presentation() (title string, comment string, iconUrl link.Href, profile string) {
-	return d.Name, d.Comment, link.IconUrl(d.Icon), "application"
-}
-
-func (d *DesktopApplication) Links(self, term string) link.List {
-	var ll = link.List{link.Make(self, "Launch", d.Icon, relation.DefaultAction)}
+func (d *DesktopApplication) Actions() link.ActionList {
+	var ll = link.ActionList{link.MkAction("", "Launch", d.IconName)}
 	for _, da := range d.DesktopActions {
-		if searchutils.Match(term, da.Name) > -1 {
-			ll = append(ll, link.Make(self+"?action="+da.id, da.Name, da.Icon, relation.Action))
-		}
+		ll = append(ll, link.MkAction(da.id, da.Name, da.Icon))
 	}
 	return ll
 }
@@ -146,7 +132,7 @@ func GetIconName(appId string) string {
 	}
 	appId += ".desktop"
 	if app, ok := Applications.Get(appId); ok {
-		return app.Icon
+		return app.IconName
 	} else {
 		return ""
 	}

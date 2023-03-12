@@ -30,7 +30,7 @@ func removeExpired() {
 	for _, notification := range Notifications.GetAll() {
 		if notification.Urgency < Critical {
 			if notification.Expires < time.Now().UnixMilli() {
-				Notifications.Delete(notification.Path())
+				Notifications.Delete(notification.GetPath())
 				conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", notification.NotificationId, Expired)
 				count++
 			}

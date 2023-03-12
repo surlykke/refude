@@ -81,7 +81,7 @@ func calculateNotificationPos(width, height int) (int, int) {
 outer:
 	for _, placement := range config.Notifications.Placement {
 		for _, m := range windows.GetMonitors() {
-			if placement.Screen == "" && m.Primary || placement.Screen == m.Name {
+			if placement.Screen == "" && m.Primary || placement.Screen == m.Title {
 				mX, mY, mW, mH = m.X, m.Y, m.W, m.H
 				corner, distX, distY = placement.Corner, placement.CornerDistX, placement.CornerDistY
 				break outer

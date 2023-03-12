@@ -25,8 +25,8 @@ func Collect() {
 	// Add aliases as mimetypes
 	for _, mt := range mimetypes {
 		for _, alias := range aliasTypes(mt) {
-			if _, ok := mimetypes[alias.MimeId]; !ok {
-				mimetypes[alias.MimeId] = alias
+			if _, ok := mimetypes[alias.Path]; !ok {
+				mimetypes[alias.Path] = alias
 			}
 		}
 	}
@@ -77,7 +77,7 @@ func aliasTypes(mt *Mimetype) []*Mimetype {
 	var result = make([]*Mimetype, 0, len(mt.Aliases))
 	for _, id := range mt.Aliases {
 		var copy = *mt
-		copy.MimeId = id
+		copy.Path = id
 		copy.Aliases = []string{}
 		result = append(result, &copy)
 	}
@@ -166,7 +166,7 @@ func CollectMimeTypes() map[string]*Mimetype {
 			if tmp.Icon.Name != "" {
 				mimeType.IconName = tmp.Icon.Name
 			} else {
-				mimeType.IconName = strings.Replace(mimeType.MimeId, "/", "-", -1)
+				mimeType.IconName = strings.Replace(mimeType.Path, "/", "-", -1)
 			}
 
 			for _, aliasStruct := range tmp.Alias {
@@ -184,11 +184,11 @@ func CollectMimeTypes() map[string]*Mimetype {
 			if tmp.GenericIcon.Name != "" {
 				mimeType.GenericIcon = tmp.GenericIcon.Name
 			} else {
-				slashPos := strings.Index(mimeType.MimeId, "/")
-				mimeType.GenericIcon = mimeType.MimeId[:slashPos] + "-x-generic"
+				slashPos := strings.Index(mimeType.Path, "/")
+				mimeType.GenericIcon = mimeType.Path[:slashPos] + "-x-generic"
 			}
 
-			res[mimeType.MimeId] = mimeType
+			res[mimeType.Path] = mimeType
 		}
 	}
 
@@ -234,7 +234,7 @@ func collectApplications(appdir string, apps map[string]*DesktopApplication) {
 		}
 		app.Keywords = append(app.Keywords, executableName)
 
-		apps[app.DesktopId] = app
+		apps[app.Path] = app
 
 		return nil
 	}
@@ -296,6 +296,7 @@ func readDesktopFile(path string, id string) (*DesktopApplication, error) {
 		return nil, errors.New("file must start with '[Desktop Entry]'")
 	} else {
 		var da = DesktopApplication{ DesktopId: id}
+		da.Path = id[:len(id) - len(".desktop")] 
 		da.DesktopActions = []DesktopAction{}
 		var actionNames = []string{}
 		group := iniFile[0]
@@ -304,14 +305,14 @@ func readDesktopFile(path string, id string) (*DesktopApplication, error) {
 			return nil, errors.New("desktop file invalid, no 'Type' given")
 		}
 		da.Version = group.Entries["Version"]
-		if da.Name = group.Entries["Name"]; da.Name == "" {
+		if da.Title = group.Entries["Name"]; da.Title == "" {
 			return nil, errors.New("desktop file invalid, no 'Name' given")
 		}
 
 		da.GenericName = group.Entries["GenericName"]
 		da.NoDisplay = group.Entries["NoDisplay"] == "true"
 		da.Comment = group.Entries["Comment"]
-		da.Icon = group.Entries["Icon"]
+		da.IconName = group.Entries["Icon"]
 
 		da.Hidden = group.Entries["Hidden"] == "true"
 		da.OnlyShowIn = slice.Split(group.Entries["OnlyShowIn"], ";")

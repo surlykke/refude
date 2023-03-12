@@ -17,26 +17,19 @@ import (
 	"github.com/surlykke/RefudeServices/windows"
 )
 
-type Start struct{}
+type Start struct{
+	resource.BaseResource
+	searchTerm string
+}
 
 func Get(path string) resource.Resource {
-	return Start{}
+	return &Start{
+		BaseResource: resource.BaseResource{Path: "/start", Title: "Start", Profile: "start"},
+	}
 }
 
-func (s Start) Path() string {
-	return ""
-}
-
-func (s Start) Presentation() (title string, comment string, icon link.Href, profile string) {
-	return "Start", "", "", "start"
-}
-
-func (s Start) Links(self, term string) link.List {
+func (s *Start) Links(term string) link.List {
 	return doDesktopSearch(term)
-}
-
-func (s Start) RelevantForSearch() bool {
-	return true
 }
 
 func doDesktopSearch(term string) link.List {

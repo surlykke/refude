@@ -19,6 +19,7 @@ import (
 	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/log"
+	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
@@ -28,6 +29,7 @@ import (
 	"github.com/surlykke/RefudeServices/statusnotifications"
 	"github.com/surlykke/RefudeServices/watch"
 	"github.com/surlykke/RefudeServices/windows"
+	"github.com/surlykke/RefudeServices/windows/x11"
 
 	_ "net/http/pprof"
 )
@@ -58,7 +60,7 @@ func main() {
 	http.HandleFunc("/item/", collectionHandler("/item/", statusnotifications.Items))
 	http.HandleFunc("/itemmenu/", collectionHandler("/itemmenu/", statusnotifications.Menus))
 	http.HandleFunc("/mimetype/", collectionHandler("/mimetype/", applications.Mimetypes))
-
+	http.HandleFunc("/screen/", collectionHandler("/screen/", x11.Monitors))
 	http.HandleFunc("/start", resourceHandler("", start.Get))
 	http.HandleFunc("/bookmarks", resourceHandler("", bookmarks.Get))
 
@@ -141,14 +143,40 @@ type wrapper struct {
 	Data    interface{} `json:"data"`
 }
 
-func makeWrapper(res resource.Resource, context, linkSearchTerm string) wrapper {
+func makeWrapper(res resource.Resource, context, searchTerm string) wrapper {
 	var wrapper = wrapper{}
-	wrapper.Self = link.Href(context + res.Path())
-	wrapper.Links = res.Links(context, linkSearchTerm)
+	wrapper.Self = link.Href(context + res.GetPath())
+	wrapper.Links = buildFilterAndRewriteLinks(res, context, searchTerm) 
 	wrapper.Data = res
-	wrapper.Title, wrapper.Comment, wrapper.Icon, wrapper.Profile = res.Presentation()
+	var iconName string
+	wrapper.Title, wrapper.Comment, iconName, wrapper.Profile = res.Presentation()
+	wrapper.Icon = link.IconUrl(iconName)
 	return wrapper
 }
+
+func buildFilterAndRewriteLinks(res resource.Resource, context, searchTerm string) link.List {
+	var list = make(link.List, 0, 10)
+	for _, action := range res.Actions() {
+		var href = context + res.GetPath()
+		if action.Name != "" {
+			href += "?action=" + action.Name
+		}
+		list = append(list, link.Make(href, action.Title, action.IconName, relation.Action))
+	}
+	if deleteTitle, ok := res.DeleteAction(); ok {
+		list = append(list, link.Make(context + res.GetPath(), deleteTitle, "", relation.Delete))
+	}
+	
+	for _, lnk := range res.Links(searchTerm) {
+		if ! strings.HasPrefix(string(lnk.Href), "/") {
+			lnk.Href = link.Href(context) + lnk.Href
+		} 
+		list = append(list, lnk)
+	}
+
+	return list
+}
+
 
 func Complete(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {

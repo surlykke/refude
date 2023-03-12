@@ -6,13 +6,10 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/surlykke/RefudeServices/applications"
 	"github.com/surlykke/RefudeServices/lib/link"
-	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
-	"github.com/surlykke/RefudeServices/lib/searchutils"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 	"github.com/surlykke/RefudeServices/windows/monitor"
 )
@@ -60,34 +57,17 @@ func (wsm WindowStateMask) MarshalJSON() ([]byte, error) {
 }
 
 type WaylandWindow struct {
+	resource.BaseResource
 	Wid      uint64 `json:"id"`
-	Title    string `json:"title"`
 	AppId    string `json:"app_id"`
 	State    WindowStateMask
-	IconName string `json:",omitempty"`
 }
 
-func (this *WaylandWindow) Path() string {
-	return strconv.FormatUint(this.Wid, 10)
-}
-
-func (this *WaylandWindow) Presentation() (string, string, link.Href, string) {
-	var iconUrl = link.IconUrl(applications.GetIconName(this.AppId))
-	return this.Title, "", iconUrl, "window"
-}
-
-func (this *WaylandWindow) Links(self, term string) link.List {
-	var links = make(link.List, 0, 10)
-	if rnk := searchutils.Match(term, this.Title); rnk > -1 {
-		links = append(links, link.Make(self, "Raise and focus", this.IconName, relation.DefaultAction))
-		links = append(links, link.Make(self, "Close", this.IconName, relation.Delete))
+func (this *WaylandWindow) Actions() link.ActionList {
+	return link.ActionList {
+		{Name: "activate", Title: "Raise and focus", IconName: this.IconName},
+		{Name: "close", Title: "Close", IconName: this.IconName},
 	}
-
-	return links
-}
-
-func (this *WaylandWindow) RelevantForSearch() bool {
-	return true // FIXME
 }
 
 func (this *WaylandWindow) DoDelete(w http.ResponseWriter, r *http.Request) {

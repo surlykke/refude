@@ -3,7 +3,6 @@
 // This file is part of the RefudeServices project.
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
-//
 package x11
 
 /**
@@ -97,6 +96,7 @@ import (
 	"unsafe"
 
 	"github.com/surlykke/RefudeServices/lib/log"
+	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/windows/monitor"
 )
 
@@ -259,14 +259,20 @@ func GetMonitorDataList(p Proxy) []*monitor.MonitorData {
 	var monitors = make([]*monitor.MonitorData, num, num)
 	var bound int = int(num)
 	for i := 0; i < bound; i++ {
+		var name string = getAtomName(p.disp, xrrmonitorsArr[i].name)
+
 		monitors[i] = &monitor.MonitorData{
+			BaseResource: resource.BaseResource{
+				Path: name,
+				Title: name,
+				Profile: "monitor",
+			},
 			X:       int(xrrmonitorsArr[i].x),
 			Y:       int(xrrmonitorsArr[i].y),
 			W:       int(xrrmonitorsArr[i].width),
 			H:       int(xrrmonitorsArr[i].height),
 			Wmm:     int(xrrmonitorsArr[i].mwidth),
 			Hmm:     int(xrrmonitorsArr[i].mheight),
-			Name:    getAtomName(p.disp, xrrmonitorsArr[i].name),
 			Primary: xrrmonitorsArr[i].primary != 0,
 		}
 	}

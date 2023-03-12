@@ -110,7 +110,7 @@ func determineDefaultIconTheme() {
 
 	if defaultThemeName != "" {
 		for themeId, theme := range themeMap {
-			if theme.Name == defaultThemeName {
+			if theme.Title == defaultThemeName {
 				themeSearchList = []string{themeId}
 				return
 			}

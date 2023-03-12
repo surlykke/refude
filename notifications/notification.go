@@ -7,15 +7,12 @@ package notifications
 
 import (
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/surlykke/RefudeServices/lib/link"
-	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
-	"github.com/surlykke/RefudeServices/lib/searchutils"
 )
 
 type Urgency uint8
@@ -31,10 +28,9 @@ const flashTimeoutNormal time.Duration = 6 * time.Second
 const _50ms = 50 * time.Millisecond
 
 type Notification struct {
+	resource.BaseResource
 	NotificationId uint32
 	Sender         string
-	Subject        string
-	Body           string
 	Created        int64
 	Expires        int64
 	Urgency        Urgency
@@ -44,31 +40,26 @@ type Notification struct {
 	IconSize       uint32 `json:",omitempty"`
 }
 
-func (n *Notification) Path() string {
-	return strconv.Itoa(int(n.NotificationId))
-}
 
-func (n *Notification) Presentation() (title string, comment string, icon link.Href, profile string) {
-	return n.Subject, n.Body, link.IconUrl(n.iconName), "notification"
-}
 
-func (n *Notification) Links(self, term string) link.List {
-	var ll = link.List{}
+func (n *Notification) Actions() link.ActionList {
+	var ll = link.ActionList{}
 	if actionDesc, ok := n.NActions["default"]; ok {
-		if searchutils.Match(term, actionDesc) > -1 {
-			ll = append(ll, link.Make(self+"?action=default", actionDesc, "", relation.DefaultAction))
-		}
+		ll = append(ll, link.MkAction("default", actionDesc, ""))
 	}
 	for actionId, actionDesc := range n.NActions {
-		if searchutils.Match(term, actionDesc) > -1 {
-			if actionId != "default" {
-				ll = append(ll, link.Make(self+"?action="+actionId, actionDesc, "", relation.Action))
-			}
+		if actionId != "default" {
+			ll = append(ll, link.MkAction(actionId, actionDesc, ""))
 		}
 	}
-	ll = append(ll, link.Make(self, "Dismiss", "", relation.Delete))
+	// FIXME ll = append(ll, link.Make(self, "Dismiss", "", relation.Delete))
 
 	return ll
+}
+
+
+func (n *Notification) DeleteAction() (string, bool) {
+	return "Dismiss", true
 }
 
 func (n *Notification) RelevantForSearch() bool {
@@ -76,7 +67,6 @@ func (n *Notification) RelevantForSearch() bool {
 }	
 
 func (n *Notification) DoPost(w http.ResponseWriter, r *http.Request) {
-
 	var action = requests.GetSingleQueryParameter(r, "action", "default")
 
 	if _, ok := n.NActions[action]; ok {

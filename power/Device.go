@@ -3,20 +3,19 @@
 // This file is part of the RefudeServices project.
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
-//
 package power
 
 import (
 	"strings"
 
 	"github.com/godbus/dbus/v5"
-	"github.com/surlykke/RefudeServices/lib/link"
+	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
 type Device struct {
+	resource.BaseResource
 	// Properies of our making
 	DbusPath      dbus.ObjectPath
-	title         string
 	DisplayDevice bool
 
 	// Properties from upower/dbus
@@ -48,7 +47,6 @@ type Device struct {
 	Technology       string
 	Warninglevel     string
 	Batterylevel     string
-	IconName         string
 }
 
 func deviceTitle(devType, model string) string {
@@ -122,20 +120,4 @@ func deviceBatteryLevel(index uint32) string {
 		index = 0
 	}
 	return devBatteryLevel[index]
-}
-
-func (d *Device) Path() string {
-	return path2id(d.DbusPath)
-}
-
-func (d *Device) Presentation() (title string, comment string, icon link.Href, profile string) {
-	return d.title, "", link.IconUrl(d.IconName), "device"
-}
-
-func (d *Device) Links(self, term string) link.List {
-	return link.List{}
-}
-
-func (d *Device) RelevantForSearch() bool {
-	return true
 }
