@@ -3,7 +3,6 @@
 // This file is part of the RefudeServices project.
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
-//
 package applications
 
 import (
@@ -37,7 +36,7 @@ type DesktopApplication struct {
 	DbusActivatable bool   `json:",omitempty"`
 	TryExec         string `json:",omitempty"`
 	Exec            string `json:",omitempty"`
-	Path            string //`json:",omitempty"`
+	WorkingDir      string //`json:",omitempty"`
 	Terminal        bool
 	Categories      []string
 	Implements      []string
@@ -48,10 +47,10 @@ type DesktopApplication struct {
 	DesktopActions  []DesktopAction
 	DesktopId       string
 	Mimetypes       []string
-	DesktopFile     string 
+	DesktopFile     string
 }
 
-func (d *DesktopApplication) Id() string {
+func (d *DesktopApplication) Path() string {
 	return d.DesktopId
 }
 
@@ -67,6 +66,10 @@ func (d *DesktopApplication) Links(self, term string) link.List {
 		}
 	}
 	return ll
+}
+
+func (d *DesktopApplication) RelevantForSearch() bool {
+	return ! d.NoDisplay
 }
 
 func (d *DesktopApplication) Run(arg string) error {
@@ -104,20 +107,11 @@ func (d *DesktopApplication) DoPost(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-var Applications = resource.MakeCollection[string, *DesktopApplication]("/application/")
+var Applications = resource.MakeCollection[*DesktopApplication]()
 
-func Search(sink chan link.Link, term string) {
-	Applications.Search(sink, func(a *DesktopApplication) int {
-		if a.NoDisplay {
-			return -1
-		} else {
-			return searchutils.Match(term, a.Name, a.Keywords...)
-		}
-	})
-}
 
 func GetAppsIds(mimetypeId string) []string {
-	if res := Mimetypes.Get(mimetypeId); res != nil {
+	if res, ok := Mimetypes.Get(mimetypeId); ok {
 		return res.Applications
 	} else {
 		return []string{}
@@ -127,7 +121,7 @@ func GetAppsIds(mimetypeId string) []string {
 func GetApps(appIds ...string) []*DesktopApplication {
 	var apps = make([]*DesktopApplication, 0, len(appIds))
 	for _, appId := range appIds {
-		if res := Applications.Get(appId); res != nil {
+		if res, ok := Applications.Get(appId); ok {
 			apps = append(apps, res)
 		}
 	}
@@ -138,27 +132,25 @@ func OpenFile(appId, path string) (bool, error) {
 	if appId == "" {
 		xdg.RunCmd("xdg-open", path)
 		return true, nil
-	} else if res := Applications.Get(appId); res != nil {
+	} else if res, ok := Applications.Get(appId); ok {
 		return true, res.Run(path)
 	} else {
 		return false, nil
 	}
 }
 
-
 func GetIconName(appId string) string {
 	// Some special handling
-	if (appId == "Alacritty") {
+	if appId == "Alacritty" {
 		appId = "com.alacritty.Alacritty"
 	}
 	appId += ".desktop"
-	if app := Applications.Get(appId); app != nil {
+	if app, ok := Applications.Get(appId); ok {
 		return app.Icon
 	} else {
 		return ""
 	}
 }
-
 
 var argPlaceholders = regexp.MustCompile("%[uUfF]")
 

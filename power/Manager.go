@@ -121,7 +121,8 @@ func retrieveDevice(path dbus.ObjectPath) *Device {
 }
 
 var previousPercentage = 101
-const notificationId uint32 = 1152165262 
+
+const notificationId uint32 = 1152165262
 
 func showOnDesktop() {
 	if config.Notifications.BatteryNotifications {
@@ -138,22 +139,23 @@ func updateTrayIcon() {
 }
 
 func notifyOnLow() {
-	var displayDevice = Devices.Get(path2id(displayDeviceDbusPath))
-	var percentage = int(displayDevice.Percentage)
-	if (displayDevice.State == "Discharging") {
-		if percentage <= 5 {
-			notifications.Notify("refude", notificationId, "dialog-warning", "Battery critical", fmt.Sprintf("At %d%%", percentage), []string{}, map[string]dbus.Variant{"urgency": dbus.MakeVariant(uint8(2))}, -1)
-		} else if percentage <= 10 && previousPercentage > 10 {
-			notifications.Notify("refude", notificationId, "dialog-information", "Battery", fmt.Sprintf("At %d%%", percentage), []string{}, map[string]dbus.Variant{}, 10000)
-		} else if percentage <= 15 && previousPercentage > 15 {
-			notifications.Notify("refude", notificationId, "dialog-information", "Battery", fmt.Sprintf("At %d%%", percentage), []string{}, map[string]dbus.Variant{}, 5000)
+	if displayDevice, ok := Devices.Get(path2id(displayDeviceDbusPath)); ok {
+		var percentage = int(displayDevice.Percentage)
+		if displayDevice.State == "Discharging" {
+			if percentage <= 5 {
+				notifications.Notify("refude", notificationId, "dialog-warning", "Battery critical", fmt.Sprintf("At %d%%", percentage), []string{}, map[string]dbus.Variant{"urgency": dbus.MakeVariant(uint8(2))}, -1)
+			} else if percentage <= 10 && previousPercentage > 10 {
+				notifications.Notify("refude", notificationId, "dialog-information", "Battery", fmt.Sprintf("At %d%%", percentage), []string{}, map[string]dbus.Variant{}, 10000)
+			} else if percentage <= 15 && previousPercentage > 15 {
+				notifications.Notify("refude", notificationId, "dialog-information", "Battery", fmt.Sprintf("At %d%%", percentage), []string{}, map[string]dbus.Variant{}, 5000)
+			}
+			previousPercentage = percentage
+		} else {
+			if percentage <= 15 {
+				notifications.CloseNotification(notificationId)
+			}
+			previousPercentage = 101 // So when unplugging, and battery low, we get the relevant notification
 		}
-		previousPercentage = percentage
-	} else {
-		if (percentage <= 15) {
-			notifications.CloseNotification(notificationId)
-		}
-		previousPercentage = 101 // So when unplugging, and battery low, we get the relevant notification
 	}
 }
 

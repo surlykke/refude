@@ -7,17 +7,21 @@ package main
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/surlykke/RefudeServices/applications"
 	"github.com/surlykke/RefudeServices/bookmarks"
 	"github.com/surlykke/RefudeServices/browse"
 	"github.com/surlykke/RefudeServices/client"
-	"github.com/surlykke/RefudeServices/complete"
 	"github.com/surlykke/RefudeServices/config"
 	"github.com/surlykke/RefudeServices/doc"
 	"github.com/surlykke/RefudeServices/file"
 	"github.com/surlykke/RefudeServices/icons"
+	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/log"
+	"github.com/surlykke/RefudeServices/lib/requests"
+	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/notifications"
 	"github.com/surlykke/RefudeServices/power"
 	"github.com/surlykke/RefudeServices/start"
@@ -31,7 +35,7 @@ import (
 func main() {
 	log.Info("Running")
 
-	go windows.WM.Run()
+	go windows.Run()
 	go applications.Run()
 	if config.Notifications.Enabled {
 		go notifications.Run()
@@ -39,31 +43,147 @@ func main() {
 	go power.Run()
 	//go statusnotifications.Run()
 
-	http.HandleFunc("/start", start.ServeHTTP)
 	http.HandleFunc("/refude/", client.ServeHTTP)
 	http.HandleFunc("/icon", icons.ServeHTTP)
-	http.HandleFunc("/icontheme/", icons.ServeHTTP)
-	http.HandleFunc("/iconthemes", icons.ServeHTTP)
-	http.HandleFunc("/complete", complete.ServeHTTP)
+	http.HandleFunc("/complete", Complete)
 	http.HandleFunc("/watch", watch.ServeHTTP)
 	http.HandleFunc("/doc", doc.ServeHTTP)
-	http.HandleFunc("/file/", file.ServeHTTP)
-	http.HandleFunc("/tmux/", windows.ServeHTTP)
-	http.HandleFunc("/bookmarks", bookmarks.ServeHTTP)
-	http.HandleFunc("/bookmarks/", bookmarks.ServeHTTP)
-	if config.Notifications.Enabled {
-		http.HandleFunc("/notification/", notifications.ServeHTTP)
-	}
+	http.HandleFunc("/window/", collectionHandler("/window/", windows.GetResourceRepo()))
+	http.HandleFunc("/application/", collectionHandler("/application/", applications.Applications))
+	http.HandleFunc("/notification/", collectionHandler("/notification/", notifications.Notifications))
+	http.HandleFunc("/notification/flash", resourceHandler("/notification/", notifications.GetFlash))
+	http.HandleFunc("/device/", collectionHandler("/device/", power.Devices))
+	http.HandleFunc("/file/", collectionHandler("/file", file.FileRepo))
+	http.HandleFunc("/icontheme/", collectionHandler("/icontheme/", icons.IconThemes))
+	http.HandleFunc("/item/", collectionHandler("/item/", statusnotifications.Items))
+	http.HandleFunc("/itemmenu/", collectionHandler("/itemmenu/", statusnotifications.Menus))
+	http.HandleFunc("/mimetype/", collectionHandler("/mimetype/", applications.Mimetypes))
+
+	http.HandleFunc("/start", resourceHandler("", start.Get))
+	http.HandleFunc("/bookmarks", resourceHandler("", bookmarks.Get))
+
 	http.Handle("/browse", browse.Handler)
 	http.Handle("/browse/", browse.Handler)
-	http.Handle("/window/", windows.WM)
-	http.Handle("/item/", statusnotifications.Items)
-	http.Handle("/itemmenu/", statusnotifications.Menus)
-	http.Handle("/device/", power.Devices)
-	http.Handle("/application/", applications.Applications)
-	http.Handle("/mimetype/", applications.Mimetypes)
 
 	if err := http.ListenAndServe(":7938", nil); err != nil {
 		log.Warn("http.ListenAndServe failed:", err)
 	}
+}
+
+func collectionHandler(context string, resourceRepo resource.ResourceRepo) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		serve(w, r, resourceRepo, context)
+	}
+}
+
+func resourceHandler(context string, resourceGetter func(string) resource.Resource) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		serveSingle(w, r, resourceGetter, context)
+	}
+}
+
+func handle(context string, resourceRepo resource.ResourceRepo) {
+	http.HandleFunc(context, func(w http.ResponseWriter, r *http.Request) {
+		serve(w, r, resourceRepo, context)
+	})
+}
+
+func handleSingle(path string, getter func(path string) resource.Resource) {
+	http.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
+		serveSingle(w, r, getter, "")
+	})
+}
+
+func serve(w http.ResponseWriter, r *http.Request, resourceRepo resource.ResourceRepo, context string) {
+	if r.URL.Path == context {
+		// Serve list
+		var resources = resourceRepo.GetResources()
+		if r.Method == "GET" {
+			var wrappers = make([]wrapper, 0, len(resources))
+			for _, res := range resources {
+				wrappers = append(wrappers, makeWrapper(res, context, ""))
+			}
+			respond.AsJson(w, wrappers)
+		} else {
+			respond.NotAllowed(w)
+		}
+	} else {
+		serveSingle(w, r, resourceRepo.GetResource, context)
+	}
+
+}
+
+// Caller ensures r.URL.Path starts with context
+func serveSingle(w http.ResponseWriter, r *http.Request, getter func(string) resource.Resource, context string) {
+	var path = r.URL.Path[len(context):]
+	var res = getter(path)
+	if res == nil {
+		respond.NotFound(w)
+	} else if r.Method == "GET" {
+		var linkSearchTerm = requests.GetSingleQueryParameter(r, "search", "")
+		respond.AsJson(w, makeWrapper(res, context, linkSearchTerm))
+	} else if postable, ok := res.(resource.Postable); ok && r.Method == "POST" {
+		postable.DoPost(w, r)
+	} else if deletable, ok := res.(resource.Deleteable); ok && r.Method == "DELETE" {
+		deletable.DoDelete(w, r)
+	} else {
+		respond.NotAllowed(w)
+	}
+}
+
+type wrapper struct {
+	Self    link.Href   `json:"self"`
+	Links   link.List   `json:"links"`
+	Title   string      `json:"title"`
+	Comment string      `json:"comment,omitempty"`
+	Icon    link.Href   `json:"icon,omitempty"`
+	Profile string      `json:"profile"`
+	Data    interface{} `json:"data"`
+}
+
+func makeWrapper(res resource.Resource, context, linkSearchTerm string) wrapper {
+	var wrapper = wrapper{}
+	wrapper.Self = link.Href(context + res.Path())
+	wrapper.Links = res.Links(context, linkSearchTerm)
+	wrapper.Data = res
+	wrapper.Title, wrapper.Comment, wrapper.Icon, wrapper.Profile = res.Presentation()
+	return wrapper
+}
+
+func Complete(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
+		respond.AsJson(w, collectPaths(requests.GetSingleQueryParameter(r, "prefix", "")))
+	} else {
+		respond.NotAllowed(w)
+	}
+}
+
+func collectPaths(prefix string) []string {
+	var paths = make([]string, 0, 1000)
+	paths = append(paths, "/icon?name=", "/start?search=", "/complete?prefix=", "/watch", "/doc", "/bookmarks")
+	paths = append(paths, rewrite("/window/", windows.GetPaths())...)
+	paths = append(paths, rewrite("/application/", applications.Applications.GetPaths())...)
+	paths = append(paths, rewrite("/mimetype/", applications.Mimetypes.GetPaths())...)
+	paths = append(paths, rewrite("/item/", statusnotifications.Items.GetPaths())...)
+	paths = append(paths, rewrite("/notification/", notifications.Notifications.GetPaths())...)
+	paths = append(paths, rewrite("/device/", power.Devices.GetPaths())...)
+	paths = append(paths, rewrite("/icontheme/", icons.IconThemes.GetPaths())...)
+
+	var pos = 0
+	for _, path := range paths {
+		if strings.HasPrefix(path, prefix) {
+			paths[pos] = path
+			pos = pos + 1
+		}
+	}
+
+	return paths[0:pos]
+}
+
+func rewrite(context string, paths []string) []string {
+	var rewritten = make([]string, 0, len(paths))
+	for _, path := range paths {
+		rewritten = append(rewritten, context+path)
+	}
+	return rewritten
 }

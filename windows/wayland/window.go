@@ -67,8 +67,8 @@ type WaylandWindow struct {
 	IconName string `json:",omitempty"`
 }
 
-func (this *WaylandWindow) Id() uint64 {
-	return this.Wid
+func (this *WaylandWindow) Path() string {
+	return strconv.FormatUint(this.Wid, 10)
 }
 
 func (this *WaylandWindow) Presentation() (string, string, link.Href, string) {
@@ -84,6 +84,10 @@ func (this *WaylandWindow) Links(self, term string) link.List {
 	}
 
 	return links
+}
+
+func (this *WaylandWindow) RelevantForSearch() bool {
+	return true // FIXME
 }
 
 func (this *WaylandWindow) DoDelete(w http.ResponseWriter, r *http.Request) {
@@ -112,7 +116,7 @@ func (this *WaylandWindow) DoPost(w http.ResponseWriter, r *http.Request) {
 }
 
 type WaylandWindowManager struct {
-	windows       *resource.Collection[uint64, *WaylandWindow]
+	windows       *resource.Collection[*WaylandWindow]
 	recentMap     map[uint64]uint32
 	recentCount   uint32
 	recentMapLock sync.Mutex
@@ -120,30 +124,12 @@ type WaylandWindowManager struct {
 
 func MakeWaylandWindowManager() *WaylandWindowManager {
 	var wwm = WaylandWindowManager{}
-	wwm.windows = resource.MakeCollection[uint64, *WaylandWindow]("/window/")
+	wwm.windows = resource.MakeCollection[*WaylandWindow]()
 	wwm.recentMap = make(map[uint64]uint32)
 	return &wwm
 }
 
 var WM *WaylandWindowManager
-
-func (this *WaylandWindowManager) Search(sink chan link.Link, term string) {
-	this.windows.Search(sink, func(wWin *WaylandWindow) int {
-		if wWin.Title != "org.refude.panel" {
-			if rnk := searchutils.Match(term, wWin.Title); rnk > -1 {
-				this.recentMapLock.Lock()
-				defer this.recentMapLock.Unlock()
-				var recentNess = this.recentCount - this.recentMap[wWin.Wid]
-				return int(recentNess) + rnk
-			}
-		}
-		return -1
-	})
-}
-
-func (this *WaylandWindowManager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	this.windows.ServeHTTP(w, r)
-}
 
 func (this *WaylandWindowManager) GetPaths() []string {
 	return this.windows.GetPaths()
@@ -180,12 +166,12 @@ func (this *WaylandWindowManager) handle_parent(wId uint64, parent uint64) {
 }
 
 func (this *WaylandWindowManager) handle_closed(wId uint64) {
-	this.windows.Delete(wId)
+	this.windows.Delete(strconv.FormatUint(wId, 10))
 }
 
 func (this *WaylandWindowManager) getCopy(wId uint64) WaylandWindow {
 	var ww WaylandWindow
-	if w := this.windows.Get(wId); w != nil {
+	if w, ok := this.windows.Get(strconv.FormatUint(wId, 10)); ok {
 		ww = *w
 	} else {
 		ww.Wid = wId

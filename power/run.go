@@ -8,10 +8,8 @@ package power
 import (
 	"github.com/godbus/dbus/v5"
 
-	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/resource"
-	"github.com/surlykke/RefudeServices/lib/searchutils"
 )
 
 func Run() {
@@ -27,7 +25,7 @@ func Run() {
 	for signal := range signals {
 		var path = path2id(signal.Path)
 		if signal.Name == "org.freedesktop.DBus.Properties.PropertiesChanged" {
-			if res := Devices.Get(path); res != nil {
+			if _, ok := Devices.Get(path); ok {
 				Devices.Put(retrieveDevice(signal.Path))
 			}
 			if (displayDeviceDbusPath == signal.Path) {
@@ -60,10 +58,5 @@ func getAddedRemovedPath(signal *dbus.Signal) (dbus.ObjectPath, bool) {
 	}
 }
 
-var Devices = resource.MakeCollection[string, *Device]("/device/")
+var Devices = resource.MakeCollection[*Device]()
 
-func Search(sink chan link.Link, term string) {
-	Devices.Search(sink, func(d *Device) int {
-		return searchutils.Match(term, d.title, "battery", "charge")
-	})
-}

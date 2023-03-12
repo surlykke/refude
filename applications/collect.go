@@ -3,7 +3,6 @@
 // This file is part of the RefudeServices project.
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
-//
 package applications
 
 import (
@@ -296,7 +295,7 @@ func readDesktopFile(path string, id string) (*DesktopApplication, error) {
 	} else if len(iniFile) == 0 || iniFile[0].Name != "Desktop Entry" {
 		return nil, errors.New("file must start with '[Desktop Entry]'")
 	} else {
-		var da = DesktopApplication{DesktopId: id}
+		var da = DesktopApplication{ DesktopId: id}
 		da.DesktopActions = []DesktopAction{}
 		var actionNames = []string{}
 		group := iniFile[0]
@@ -320,7 +319,7 @@ func readDesktopFile(path string, id string) (*DesktopApplication, error) {
 		da.DbusActivatable = group.Entries["DBusActivatable"] == "true"
 		da.TryExec = group.Entries["TryExec"]
 		da.Exec = group.Entries["Exec"]
-		da.Path = group.Entries["Path"]
+		da.WorkingDir = group.Entries["Path"]
 		da.Terminal = group.Entries["Terminal"] == "true"
 		actionNames = slice.Split(group.Entries["Actions"], ";")
 		da.Categories = slice.Split(group.Entries["Categories"], ";")

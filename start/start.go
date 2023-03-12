@@ -6,7 +6,6 @@
 package start
 
 import (
-	"net/http"
 	"strings"
 
 	"github.com/surlykke/RefudeServices/applications"
@@ -18,13 +17,13 @@ import (
 	"github.com/surlykke/RefudeServices/windows"
 )
 
-func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	resource.ServeResource[string](w, r, "/start", Start{})
-}
-
 type Start struct{}
 
-func (s Start) Id() string {
+func Get(path string) resource.Resource {
+	return Start{}
+}
+
+func (s Start) Path() string {
 	return ""
 }
 
@@ -36,36 +35,31 @@ func (s Start) Links(self, term string) link.List {
 	return doDesktopSearch(term)
 }
 
+func (s Start) RelevantForSearch() bool {
+	return true
+}
+
 func doDesktopSearch(term string) link.List {
 	var links = make(link.List, 0, 300)
 	term = strings.ToLower(term)
-	var sources = make([]chan link.Link, 0, 12)
 
-	var addSources = func(searchFuncs...func(chan link.Link, string)) {
-		for _, searchFunc := range searchFuncs {
-			var sink = make(chan link.Link)
-			go searchFunc(sink, term)  
-			sources = append(sources, sink)
-		}
-	}
-	
-	addSources(notifications.Search, windows.WM.Search)
-
-	if len(term) > 0 {
-		addSources(applications.Search, file.Search)
-	}
-
-	if len(term) > 3 {
-		addSources(power.Search)
-	}
-
-	for _, ch := range sources {
-		for l := range ch {
-			links = append(links, l)
-		}
-	}
+	// Could be done concurrently..
+	links = append(links, rewriteAndSort("/notification/", notifications.Notifications.Search(term, 0))...)
+	links = append(links, rewriteAndSort("/window/", windows.GetResourceRepo().Search(term, 0))...)
+	links = append(links, rewriteAndSort("/application/", applications.Applications.Search(term, 1))...)
+	links = append(links, rewriteAndSort("/file/", file.FileRepo.Search(term, 2))...)
+	links = append(links, rewriteAndSort("/device/", power.Devices.Search(term, 3))...)
 
 	return links
 }
 
-
+func rewriteAndSort(context string, links link.List) link.List {
+	var rewritten = make(link.List, 0, len(links))
+	for _, lnk := range links {
+		var tmp = lnk 
+	    tmp.Href = link.Href(context) + tmp.Href
+		rewritten = append(rewritten, tmp)
+	}
+	rewritten.SortByRank()
+	return rewritten
+}

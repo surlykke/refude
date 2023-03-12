@@ -29,7 +29,7 @@ type IconTheme struct {
 	Dirs     []IconDir
 }
 
-func (it *IconTheme) Id() string {
+func (it *IconTheme) Path() string {
 	return it.ThemeId
 }
 
@@ -39,6 +39,10 @@ func (it *IconTheme) Presentation() (title string, comment string, icon link.Hre
 
 func (it *IconTheme) Links(self, term string) link.List {
 	return link.List{}
+}
+
+func (it *IconTheme) RelevantForSearch() bool {
+	return true
 }
 
 type IconDir struct {
@@ -177,4 +181,4 @@ func readUint32OrFallback(uintAsString string, fallback uint32) uint32 {
 	}
 }
 
-var IconThemes = resource.MakeCollection[string, *IconTheme]("/icontheme/")
+var IconThemes = resource.MakeCollection[*IconTheme]()

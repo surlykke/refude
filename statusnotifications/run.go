@@ -30,7 +30,7 @@ func Run() {
 			Items.Delete(id)
 			Menus.Delete(id)
 		default:
-			if res := Items.Get(id); res != nil {
+			if res, ok := Items.Get(id); ok {
 				var itemCopy = *res
 				switch event.eventName {
 				case "org.kde.StatusNotifierItem.NewTitle":
@@ -84,5 +84,5 @@ func Run() {
 	}
 }
 
-var Items = resource.MakeCollection[string, *Item]("/item/")
-var Menus = resource.MakeCollection[string, *Menu]("/itemmenu/")
+var Items = resource.MakeCollection[*Item]()
+var Menus = resource.MakeCollection[*Menu]()

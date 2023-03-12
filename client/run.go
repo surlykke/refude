@@ -42,7 +42,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 
 		if r.URL.Path == "/refude/html/showLauncher" {
-			if !windows.WM.RaiseAndFocusNamedWindow("Refude launcher++") {
+			if !windows.RaiseAndFocusNamedWindow("Refude launcher++") {
 				xdg.RunCmd("brave-browser", "--app=http://localhost:7938/refude/html/launcher")
 			}
 			respond.Accepted(w)
@@ -80,7 +80,7 @@ func calculateNotificationPos(width, height int) (int, int) {
 	var mX, mY, mW, mH, distX, distY int
 outer:
 	for _, placement := range config.Notifications.Placement {
-		for _, m := range windows.WM.GetMonitors() {
+		for _, m := range windows.GetMonitors() {
 			if placement.Screen == "" && m.Primary || placement.Screen == m.Name {
 				mX, mY, mW, mH = m.X, m.Y, m.W, m.H
 				corner, distX, distY = placement.Corner, placement.CornerDistX, placement.CornerDistY

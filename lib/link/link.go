@@ -106,3 +106,11 @@ func IconUrl(name string) Href {
 		return ""
 	}
 }
+
+type Action struct {
+	Name     string 
+	Title    string
+	Icon     Href
+	Rank     int
+}
+

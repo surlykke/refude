@@ -124,7 +124,7 @@ func deviceBatteryLevel(index uint32) string {
 	return devBatteryLevel[index]
 }
 
-func (d *Device) Id() string {
+func (d *Device) Path() string {
 	return path2id(d.DbusPath)
 }
 
@@ -134,4 +134,8 @@ func (d *Device) Presentation() (title string, comment string, icon link.Href, p
 
 func (d *Device) Links(self, term string) link.List {
 	return link.List{}
+}
+
+func (d *Device) RelevantForSearch() bool {
+	return true
 }

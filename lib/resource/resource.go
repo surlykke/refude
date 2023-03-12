@@ -3,7 +3,6 @@
 // This file is part of the RefudeServices project.
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
-//
 package resource
 
 import (
@@ -11,17 +10,17 @@ import (
 	"net/http"
 
 	"github.com/surlykke/RefudeServices/lib/link"
-	"golang.org/x/exp/constraints"
 )
 
-type Resource[ID constraints.Ordered] interface {
-	Id() ID
+type Resource interface {
+	Path() string
 	Presentation() (title string, comment string, iconUrl link.Href, profile string)
-	Links(self, term string) link.List
+	Links(context, term string) link.List
+	RelevantForSearch() bool
 }
 
-func LinkTo[ID constraints.Ordered](res Resource[ID], context string, rank int) link.Link {
-	var path = fmt.Sprint(context, res.Id())
+func LinkTo(res Resource, context string, rank int) link.Link {
+	var path = fmt.Sprint(context, res.Path())
 	var title, _, iconName, profile = res.Presentation()
 	return link.MakeRanked2(link.Href(path), title, iconName, profile, rank)
 }
@@ -34,21 +33,9 @@ type Deleteable interface {
 	DoDelete(w http.ResponseWriter, r *http.Request)
 }
 
-type Wrapper struct { // Maybe generic?
-	Self    link.Href   `json:"self"`
-	Links   link.List   `json:"links"`
-	Title   string      `json:"title"`
-	Comment string      `json:"comment,omitempty"`
-	Icon    link.Href   `json:"icon,omitempty"`
-	Profile string      `json:"profile"`
-	Data    interface{} `json:"data"`
-}
 
-func MakeWrapper[ID constraints.Ordered, T Resource[ID]](self string, res T, linkSearchTerm string) Wrapper {
-	var wrapper = Wrapper{}
-	wrapper.Self = link.Href(self)
-	wrapper.Links = res.Links(self, linkSearchTerm)
-	wrapper.Data = res
-	wrapper.Title, wrapper.Comment, wrapper.Icon, wrapper.Profile = res.Presentation()
-	return wrapper
+type ResourceRepo interface {
+	GetResources() []Resource
+	GetResource(path string) Resource
+	Search(term string, threshold int) link.List
 }

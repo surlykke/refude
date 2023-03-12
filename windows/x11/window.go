@@ -6,14 +6,9 @@
 package x11
 
 import (
-	"crypto/sha1"
-	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"net/http"
-	"sort"
-	"strings"
-	"sync"
+	"strconv"
 
 	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/link"
@@ -23,7 +18,6 @@ import (
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
-	"github.com/surlykke/RefudeServices/lib/xdg"
 	"github.com/surlykke/RefudeServices/windows/monitor"
 )
 
@@ -33,28 +27,33 @@ func (this X11Window) Id() uint32 {
 	return uint32(this)
 }
 
+func (this X11Window) Path() string {
+	return strconv.Itoa(int(this))
+}
+
 func (this X11Window) Presentation() (title string, comment string, icon link.Href, profile string) {
-	var name = WM.getName(this)
-	var iconName = WM.getIconName(this)
-	return name, "", link.IconUrl(iconName), "window"
+	return this.GetName(), "", link.IconUrl(this.GetIconName()), "window"
 }
 
 func (this X11Window) Links(self, searchTerm string) link.List {
 	var name, iconName string
-	var err error
-	name = WM.getName(this)
-	iconName = WM.getIconName(this)
+	name = this.GetName()
+	iconName = this.GetIconName()
 
-	if err == nil {
-		var links = make(link.List, 0, 10)
-		if rnk := searchutils.Match(searchTerm, name); rnk > -1 {
-			links = append(links, link.Make(self, "Raise and focus", iconName, relation.DefaultAction))
-			links = append(links, link.Make(self, "Close", iconName, relation.Delete))
-		}
-		return links
+	var links = make(link.List, 0, 10)
+	if rnk := searchutils.Match(searchTerm, name); rnk > -1 {
+		links = append(links, link.Make(self, "Raise and focus", iconName, relation.DefaultAction))
+		links = append(links, link.Make(self, "Close", iconName, relation.Delete))
 	}
+	return links
+}
 
-	return link.List{}
+func (this X11Window) RelevantForSearch() bool {
+	var applicationName, _ = this.GetApplicationAndClass()
+	var states = this.GetStates()
+	return applicationName != "localhost__refude_html_launcher" &&
+		applicationName != "localhost__refude_html_notifier" &&
+		states&(SKIP_TASKBAR|SKIP_PAGER|ABOVE) == 0
 }
 
 type windowData struct {
@@ -70,11 +69,11 @@ type windowData struct {
 func (this X11Window) buildWindowData() windowData {
 	var wd = windowData{
 		WindowId: uint32(this),
-		Name:     WM.getName(this),
-		IconName: WM.getIconName(this),
-		State:    WM.getStates(this),
+		Name:     this.GetName(),
+		IconName: this.GetIconName(),
+		State:    this.GetStates(),
 	}
-	wd.ApplicationName, wd.ApplicationClass = WM.getApplicationAndClass(this)
+	wd.ApplicationName, wd.ApplicationClass = this.GetApplicationAndClass()
 	return wd
 }
 
@@ -83,46 +82,65 @@ func (this X11Window) MarshalJSON() ([]byte, error) {
 }
 
 func (this X11Window) DoDelete(w http.ResponseWriter, r *http.Request) {
-	WM.CloseWindow(this)
+	this.Close()
 	respond.Accepted(w)
 }
 
 func (this X11Window) DoPost(w http.ResponseWriter, r *http.Request) {
 	var action = requests.GetSingleQueryParameter(r, "action", "")
 	if "" == action {
-		WM.RaiseAndFocusWindow(this)
+		this.RaiseAndFocus()
 		respond.Accepted(w)
 	} else {
 		respond.NotFound(w)
 	}
 }
 
-type WindowGroup struct {
-	Name    string
-	Windows []uint32
+func (this X11Window) RaiseAndFocus() {
+	proxy.Lock()
+	defer proxy.Unlock()
+
+	RaiseAndFocusWindow(proxy, uint32(this))
 }
 
-func (this *WindowGroup) Id() string {
-	return this.Name
+func (this X11Window) Close() {
+	proxy.Lock()
+	defer proxy.Unlock()
+
+	CloseWindow(proxy, uint32(this))
 }
 
-func (this *WindowGroup) Presentation() (title string, comment string, icon link.Href, profile string) {
-	var name = this.Name
-	var iconName = ""
-	if len(this.Windows) > 0 {
-		iconName = WM.getIconName(X11Window(this.Windows[0]))
+func (this X11Window) GetName() string {
+	proxy.Lock()
+	defer proxy.Unlock()
+	if name, err := GetName(proxy, uint32(this)); err != nil {
+		return ""
+	} else {
+		return name
 	}
-
-	return name, "", link.IconUrl(iconName), "window"
 }
 
-func (this *WindowGroup) Links(self, searchTerm string) link.List {
-	var links = make(link.List, 0, 20)
-	for _, wId := range this.Windows {
-		links = append(links, resource.LinkTo[uint32](X11Window(wId), "/window/", 0))
-	}
+func (this X11Window) GetApplicationAndClass() (string, string) {
+	proxy.Lock()
+	defer proxy.Unlock()
+	return GetApplicationAndClass(proxy, uint32(this))
+}
 
-	return links
+func (this X11Window) GetStates() WindowStateMask {
+	proxy.Lock()
+	defer proxy.Unlock()
+	return GetStates(proxy, uint32(this))
+}
+
+func (this X11Window) GetIconName() string {
+	proxy.Lock()
+	defer proxy.Unlock()
+
+	if name, err := GetIconName(proxy, uint32(this)); err != nil {
+		return ""
+	} else {
+		return name
+	}
 }
 
 func findNamedWindow(proxy Proxy, name string) (uint32, bool) {
@@ -137,124 +155,27 @@ func findNamedWindow(proxy Proxy, name string) (uint32, bool) {
 func GetIconName(p Proxy, wId uint32) (string, error) {
 	pixelArray, err := GetIcon(p, wId)
 	if err != nil {
-		log.Warn("Error converting x11 icon to pngs", err)
+		log.Warn("Error retrieving x11 icon", err)
 		return "", err
 	} else {
 		return icons.AddX11Icon(pixelArray)
 	}
 }
 
-type X11WindowManager struct {
-	windows       *resource.Collection[uint32, X11Window]
-	monitors      *resource.Collection[string, *monitor.MonitorData]
-	proxy         Proxy
-	recentMap     map[uint32]uint32
-	recentCount   uint32
-	recentMapLock sync.Mutex
-}
+var Windows = resource.MakeCollection[X11Window]()
+var Monitors = resource.MakeCollection[*monitor.MonitorData]()
+var proxy = MakeProxy()
 
-func makeX11WindowManager() *X11WindowManager {
-	return &X11WindowManager{
-		windows:   resource.MakePublishingCollection[uint32, X11Window]("/window/", "/search"),
-		monitors:  resource.MakeCollection[string, *monitor.MonitorData]("/screen/"),
-		proxy:     MakeProxy(),
-		recentMap: make(map[uint32]uint32),
-	}
-}
-
-func (this *X11WindowManager) Lock() {
-	this.proxy.Lock()
-}
-
-func (this *X11WindowManager) Unlock() {
-	this.proxy.Unlock()
-}
-
-func (this *X11WindowManager) Search(sink chan link.Link, term string) {
-	this.windows.Search(sink, func(xWin X11Window) int {
-		var name = this.getName(xWin)
-		var state = this.getStates(xWin)
-		var appName, _ = this.getApplicationAndClass(xWin)
-		if appName != "localhost__refude_html_launcher" &&
-			appName != "localhost__refude_html_notifier" &&
-			state&(SKIP_TASKBAR|SKIP_PAGER|ABOVE) == 0 {
-			if rnk := searchutils.Match(term, name); rnk > -1 {
-				this.recentMapLock.Lock()
-				defer this.recentMapLock.Unlock()
-				var recentNess = this.recentCount - this.recentMap[uint32(xWin)]
-				return int(recentNess) + rnk
-			}
-		}
-		return -1
-	})
-}
-
-func (this *X11WindowManager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if strings.HasPrefix(r.URL.Path, "/window/group/") && len(r.URL.Path) > 14 {
-		var groupName = r.URL.Path[14:]
-		if group, found := this.buildGroup(groupName); !found {
-			respond.NotFound(w)
-		} else {
-			respond.AsJson(w, resource.MakeWrapper[string](r.URL.Path, &group, ""))
-		}
-	} else if r.URL.Path == "/window/screenlayout" {
-		if r.Method == "GET" {
-			respond.AsJson(w, this.GetScreenLayoutFingerprint())
-		} else {
-			respond.NotAllowed(w)
-		}
-	} else if r.URL.Path == "/window/screen/" {
-		if r.Method == "GET" {
-			var wrappers []resource.Wrapper = make([]resource.Wrapper, 0, 4)
-			for _, m := range this.monitors.GetAll() {
-				wrappers = append(wrappers, monitor.MakeMonitorWrapper(m))
-			}
-			respond.AsJson(w, wrappers)
-		} else {
-			respond.NotAllowed(w)
-		}
-	} else if strings.HasPrefix(r.URL.Path, "/window/screen/") {
-		if m := this.monitors.Get(r.URL.Path[15:]); m != nil {
-			respond.AsJson(w, monitor.MakeMonitorWrapper(m))
-		} else {
-			respond.NotFound(w)
-		}
-	} else {
-		this.windows.ServeHTTP(w, r)
-	}
-}
-
-func (this *X11WindowManager) GetPaths() []string {
-	return this.windows.GetPaths()
-}
-
-func (this *X11WindowManager) RaiseAndFocusWindow(win X11Window) {
-	this.Lock()
-	defer this.Unlock()
-
-	RaiseAndFocusWindow(this.proxy, uint32(win))
-}
-
-func (this *X11WindowManager) CloseWindow(win X11Window) {
-	this.Lock()
-	defer this.Unlock()
-
-	CloseWindow(this.proxy, uint32(win))
-}
-
-func (this *X11WindowManager) RaiseAndFocusNamedWindow(name string) bool {
-	this.Lock()
-	defer this.Unlock()
-
-	if wId, found := findNamedWindow(this.proxy, name); found {
-		RaiseAndFocusWindow(this.proxy, wId)
+func RaiseAndFocusNamedWindow(name string) bool {
+	if w, ok := Windows.FindFirst(func(w X11Window) bool { return w.GetName() == name }); ok {
+		w.RaiseAndFocus()
 		return true
 	} else {
 		return false
 	}
 }
 
-func (this *X11WindowManager) Run() {
+func Run() {
 
 	var updateWindowList = func(p Proxy) {
 		var wIds = GetStack(p)
@@ -262,47 +183,29 @@ func (this *X11WindowManager) Run() {
 		for i := 0; i < len(wIds); i++ {
 			xWins[i] = X11Window(wIds[i])
 		}
-		this.windows.ReplaceWith(xWins)
+		Windows.ReplaceWith(xWins)
 	}
-
 
 	var proxy = MakeProxy()
 	SubscribeToEvents(proxy)
 	updateWindowList(proxy)
-	this.monitors.ReplaceWith(GetMonitorDataList(proxy))
-	
+	Monitors.ReplaceWith(GetMonitorDataList(proxy))
+
 	for {
 		event, _ := NextEvent(proxy)
 		if event == DesktopStacking {
 			updateWindowList(proxy)
-		} else if event == ActiveWindow {
-			if activeWindow, err := GetActiveWindow(proxy); err == nil {
-				//this.recentMapLock.Lock()
-				this.recentMap[activeWindow] = this.recentCount
-				this.recentCount += 1
-				//this.recentMapLock.Unlock()
-			}
 		} else if event == DesktopGeometry {
-			this.monitors.ReplaceWith(GetMonitorDataList(proxy))
+			Monitors.ReplaceWith(GetMonitorDataList(proxy))
 		}
 
 	}
 }
 
-func (this *X11WindowManager) getName(wId X11Window) string {
-	this.Lock()
-	defer this.Unlock()
-	if name, err := GetName(this.proxy, uint32(wId)); err != nil {
-		return ""
-	} else {
-		return name
-	}
-}
-
-func (this *X11WindowManager) getIconName(wId X11Window) string {
-	this.Lock()
-	defer this.Unlock()
-	pixelArray, err := GetIcon(this.proxy, uint32(wId))
+func getIconName(wId X11Window) string {
+	proxy.Lock()
+	defer proxy.Unlock()
+	pixelArray, err := GetIcon(proxy, uint32(wId))
 	if err != nil {
 		log.Warn("Error converting x11 icon to pngs", err)
 		return ""
@@ -314,61 +217,6 @@ func (this *X11WindowManager) getIconName(wId X11Window) string {
 	}
 }
 
-func (this *X11WindowManager) getStates(wId X11Window) WindowStateMask {
-	this.Lock()
-	defer this.Unlock()
-	return GetStates(this.proxy, uint32(wId))
-}
-
-func (this *X11WindowManager) GetApplicationAndClass(wId X11Window) (string, string) {
-	this.Lock()
-	defer this.Unlock()
-	return GetApplicationAndClass(this.proxy, uint32(wId))
-}
-
-func (this *X11WindowManager) GetScreenLayoutFingerprint() string {
-	this.Lock()
-	defer this.Unlock()
-	var monitors = GetMonitorDataList(this.proxy)
-
-	sort.Slice(monitors, func(i, j int) bool { return monitors[i].X < monitors[j].X })
-	var fp = sha1.New()
-	for _, m := range monitors {
-		fp.Write([]byte(fmt.Sprintf(":%s:%d:%d:%d:%d", m.Name, m.X, m.Y, m.W, m.H)))
-	}
-	return hex.EncodeToString(fp.Sum(nil))
-}
-
-func (this *X11WindowManager) GetMonitors() []*monitor.MonitorData {
-	return this.monitors.GetAll()
-}
-
-
-
-func (this *X11WindowManager) getApplicationAndClass(wId X11Window) (string, string) {
-	this.Lock()
-	defer this.Unlock()
-	return GetApplicationAndClass(this.proxy, uint32(wId))
-}
-
-func (this *X11WindowManager) buildGroup(name string) (WindowGroup, bool) {
-	var windowList = make([]uint32, 0, 20)
-	for _, wId := range this.windows.GetAll() {
-		if applicationName, _ := this.getApplicationAndClass(wId); applicationName == name {
-			windowList = append(windowList, uint32(wId))
-		}
-	}
-	if len(windowList) == 0 {
-		return WindowGroup{}, false
-	} else {
-		return WindowGroup{name, windowList}, true
-	}
-}
-
-var WM *X11WindowManager
-
-func init() {
-	if "x11" == xdg.SessionType {
-		WM = makeX11WindowManager()
-	}
+func GetMonitors() []*monitor.MonitorData {
+	return Monitors.GetAll()
 }

@@ -42,7 +42,7 @@ type Item struct {
 	UseOverlayIconPixmap    bool
 }
 
-func (item *Item) Id() string {
+func (item *Item) Path() string {
 	return pathEscape(item.sender, item.path)
 }
 
@@ -59,6 +59,11 @@ func (item *Item) Links(self, term string) link.List {
 	}
 	return ll
 }
+
+func (item *Item) RelevantForSearch() bool {
+	return true
+}
+
 
 func (item *Item) DoPost(w http.ResponseWriter, r *http.Request) {
 	action := requests.GetSingleQueryParameter(r, "action", "left")

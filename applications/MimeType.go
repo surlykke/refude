@@ -51,9 +51,9 @@ func MakeMimetype(id string) (*Mimetype, error) {
 	}
 }
 
-var Mimetypes = resource.MakeCollection[string, *Mimetype]("/mimetype/")
+var Mimetypes = resource.MakeCollection[*Mimetype]()
 
-func (m *Mimetype) Id() string {
+func (m *Mimetype) Path() string {
 	return m.MimeId
 }
 
@@ -63,6 +63,10 @@ func (m *Mimetype) Presentation() (title string, comment string, icon link.Href,
 
 func (m *Mimetype) Links(self, term string) link.List {
 	return link.List{}
+}
+
+func (m *Mimetype) RelevantForSearch() bool {
+	return true
 }
 
 /*func SetDefaultApp(mimetypeId string, appId string) error {

@@ -40,9 +40,10 @@ type Menu struct {
 	path   dbus.ObjectPath
 }
 
-func (menu *Menu) Id() string {
+func (menu *Menu) Path() string {
 	return pathEscape(menu.sender, menu.path)
 }
+
 
 func (menu *Menu) Presentation() (title string, comment string, iconUrl link.Href, profile string) {
 	return "Menu", "", "", "menu"
@@ -51,6 +52,11 @@ func (menu *Menu) Presentation() (title string, comment string, iconUrl link.Hre
 func (menu *Menu) Links(self, term string) link.List {
 	return link.List{} // FIXME should contain posts
 }
+
+func (menu *Menu) RelevantForSearch() bool {
+	return true
+}
+
 
 var emptyList = []byte("[]")
 

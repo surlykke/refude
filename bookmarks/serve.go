@@ -1,31 +1,37 @@
 package bookmarks
 
 import (
-	"net/http"
-
 	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/resource"
-	"github.com/surlykke/RefudeServices/lib/respond"
 )
 
-var bookmarks = resource.Wrapper {
-	Self: "/bookmarks/",
-	Links: link.List{
+type Bookmarks struct {}
+
+func (bm Bookmarks) Path() string {
+	return "/bookmarks"
+}
+
+func (bm Bookmarks) Presentation() (string, string, link.Href, string) {
+	return "Bookmarks", "", "", "bookmarks"
+}
+
+func (bm Bookmarks) Links(context, term string) link.List {
+   return link.List{
 	{ Href: "/application/", Title: "Applications", Profile: "application*"},
 	{ Href: "/window/", Title: "Windows", Profile: "window*"},
 	{ Href: "/notification/", Title: "Notifications", Profile: "notification*"},
 	{ Href: "/device/", Title: "Devices", Profile: "device*"},
-	{ Href: "/item/", Title: "Items", Profile: "item*"}},
-	Title: "Bookmarks",
-	Profile: "bookmarks",
+	{ Href: "/item/", Title: "Items", Profile: "item*"}}
+}
+
+func (bm Bookmarks) RelevantForSearch() bool {
+	return true
+}
+
+func Get(path string) resource.Resource {
+	return Bookmarks{}
 }
 
 
-func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "GET" {
-		respond.AsJson(w, bookmarks)
-	} else {
-		respond.NotAllowed(w)
-	}
-}
+
 

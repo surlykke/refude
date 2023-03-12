@@ -7,6 +7,7 @@ package notifications
 
 import (
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/surlykke/RefudeServices/lib/link"
@@ -43,8 +44,8 @@ type Notification struct {
 	IconSize       uint32 `json:",omitempty"`
 }
 
-func (n *Notification) Id() uint32 {
-	return n.NotificationId
+func (n *Notification) Path() string {
+	return strconv.Itoa(int(n.NotificationId))
 }
 
 func (n *Notification) Presentation() (title string, comment string, icon link.Href, profile string) {
@@ -70,6 +71,10 @@ func (n *Notification) Links(self, term string) link.List {
 	return ll
 }
 
+func (n *Notification) RelevantForSearch() bool {
+	return n.Urgency == Critical || (len(n.NActions) > 0 && n.Urgency == Normal && n.Created+60000 > time.Now().UnixMilli())
+}	
+
 func (n *Notification) DoPost(w http.ResponseWriter, r *http.Request) {
 
 	var action = requests.GetSingleQueryParameter(r, "action", "default")
@@ -90,18 +95,8 @@ func (n *Notification) DoDelete(w http.ResponseWriter, r *http.Request) {
 	respond.Accepted(w)
 }
 
-var Notifications = resource.MakePublishingCollection[uint32, *Notification]("/notification/", "/search")
+var Notifications = resource.MakeCollection[*Notification]()
 
-
-func Search(sink chan link.Link, term string) {
-	Notifications.Search(sink, func(n *Notification) int {
-		if n.Urgency == Critical || (len(n.NActions) > 0 && n.Urgency == Normal && n.Created+60000 > time.Now().UnixMilli()) {
-			return searchutils.Match(term, n.Subject)
-		} else {
-			return -1
-		}
-	})
-}
 
 
 

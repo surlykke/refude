@@ -3,28 +3,26 @@
 // This file is part of the RefudeServices project.
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
-//
 package file
 
 import (
-	"net/http"
+	"fmt"
 
+	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/resource"
-	"github.com/surlykke/RefudeServices/lib/respond"
+	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
-func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if f := Get(r.URL.Path[5:]); f != nil {
-		var self = "/file/" + f.Id()
-		resource.ServeResource[string](w, r, self, f)
-	} else {
-		respond.NotFound(w)
-	}
+type FileRepoType struct {}
+
+func (fr FileRepoType) GetResources() []resource.Resource {
+	return []resource.Resource{}
 }
 
-func Get(filePath string) *File {
-	if file, err := makeFile(filePath); err != nil {
+func (fr FileRepoType) GetResource(filePath string) resource.Resource {
+	fmt.Println("GetResource file for", filePath)
+	if file, err := makeFile("/" + filePath); err != nil {
 		log.Warn("Could not make file from", filePath, err)
 		return nil
 	} else if file == nil {
@@ -33,3 +31,13 @@ func Get(filePath string) *File {
 		return file
 	}
 }
+
+func (fr FileRepoType) Search(term string, threshold int) link.List{
+	if len(term) < threshold {
+		return link.List{}
+	} else {
+		return SearchFrom(xdg.Home, term, "~/")
+	}
+}
+
+var FileRepo FileRepoType

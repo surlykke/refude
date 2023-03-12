@@ -3,7 +3,6 @@
 // This file is part of the RefudeServices project.
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
-//
 package file
 
 import (
@@ -51,7 +50,7 @@ func getFileType(m os.FileMode) string {
 
 type File struct {
 	self        string
-	Path        string
+	FilePath    string
 	Name        string
 	Type        string
 	Permissions string
@@ -60,12 +59,12 @@ type File struct {
 	Apps        []string
 }
 
-func (f *File) Id() string {
-	return f.Path[1:]
+func (f *File) Path() string {
+	return f.FilePath[1:]
 }
 
 func (f *File) Presentation() (title string, comment string, icon link.Href, profile string) {
-	return f.Name, f.Path, link.IconUrl(f.Icon), "file"
+	return f.Name, f.FilePath, link.IconUrl(f.Icon), "file"
 }
 
 func (f *File) Links(self, term string) link.List {
@@ -80,18 +79,14 @@ func (f *File) Links(self, term string) link.List {
 	}
 
 	if f.Type == "Directory" {
-		ll = append(ll, SearchFrom(f.Path, term, "")...)
+		ll = append(ll, SearchFrom(f.FilePath, term, "")...)
 	}
 
 	return ll
 }
 
-
-func Search(sink chan link.Link, term string) {
-	for _, l := range SearchFrom(xdg.Home, term, "~/") {
-		sink <- l 
-	}
-	close(sink)
+func (file *File) RelevantForSearch() bool {
+	return true
 }
 
 // Assumes dir is a directory
@@ -113,7 +108,7 @@ func searchRecursiveFrom(dir, term, context string, depth int) link.List {
 			if rnk := searchutils.Match(term, dirEntry.Name()); rnk > -1 {
 				var mimetype, _ = magicmime.TypeByFile(entryPath)
 				var icon = strings.ReplaceAll(mimetype, "/", "-")
-				ll = append(ll, link.MakeRanked("/file"+entryPath, context+dirEntry.Name(), icon, "file", rnk+50))
+				ll = append(ll, link.MakeRanked(entryPath[1:], context+dirEntry.Name(), icon, "file", rnk+50))
 
 			}
 			if depth > 0 && dirEntry.IsDir() {
@@ -141,7 +136,7 @@ func makeFile(path string) (*File, error) {
 	} else {
 		var mimetype, _ = magicmime.TypeByFile(path)
 		var f = File{
-			Path:        path,
+			FilePath:    path,
 			Name:        fileInfo.Name(),
 			Type:        getFileType(fileInfo.Mode()),
 			Permissions: fileInfo.Mode().String(),
@@ -168,7 +163,7 @@ func (f *File) DoPost(w http.ResponseWriter, r *http.Request) {
 		defaultAppId = f.Apps[0]
 	}
 	var appId = requests.GetSingleQueryParameter(r, "action", defaultAppId)
-	var ok, err = applications.OpenFile(appId, f.Path)
+	var ok, err = applications.OpenFile(appId, f.FilePath)
 	if ok {
 		if err != nil {
 			respond.ServerError(w, err)

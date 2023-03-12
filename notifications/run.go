@@ -6,13 +6,11 @@
 package notifications
 
 import (
-	"fmt"
-	"net/http"
+	"strconv"
 	"sync"
 	"time"
 
 	"github.com/surlykke/RefudeServices/lib/resource"
-	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 	"github.com/surlykke/RefudeServices/watch"
 )
@@ -32,7 +30,7 @@ func removeExpired() {
 	for _, notification := range Notifications.GetAll() {
 		if notification.Urgency < Critical {
 			if notification.Expires < time.Now().UnixMilli() {
-				Notifications.Delete(notification.NotificationId)
+				Notifications.Delete(notification.Path())
 				conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", notification.NotificationId, Expired)
 				count++
 			}
@@ -45,30 +43,18 @@ func removeExpired() {
 }
 
 func removeNotification(id uint32, reason uint32) {
-	if deleted := Notifications.Delete(id); deleted {
+	if deleted := Notifications.Delete(strconv.Itoa(int(id))); deleted {
 		conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", id, reason)
 		updateFlash()
 		watch.SomethingChanged("/notification/")
 	}
 }
 
-func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path == "/notification/flash" {
-		if r.Method == "GET" {
-			flashMutex.Lock()
-			var flashCopy = flash
-			flashMutex.Unlock()
-
-			if flashCopy != nil {
-				respond.AsJson(w, resource.MakeWrapper[uint32](fmt.Sprintf("/notification/%d", flashCopy.Id()), flashCopy, ""))
-			} else {
-				respond.NotFound(w)
-			}
-		} else {
-			respond.NotAllowed(w)
-		}
+func GetFlash(string) resource.Resource {
+	if flash != nil {
+		return flash 
 	} else {
-		Notifications.ServeHTTP(w, r)
+		return nil
 	}
 }
 
