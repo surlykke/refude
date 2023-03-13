@@ -11,7 +11,6 @@ import (
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/xdg"
-	"github.com/surlykke/RefudeServices/windows/monitor"
 )
 
 // Get current rect
@@ -167,11 +166,6 @@ func (this *WaylandWindowManager) RaiseAndFocusNamedWindow(name string) bool {
 		return false
 	}
 
-}
-
-func (this *WaylandWindowManager) GetMonitors() []*monitor.MonitorData {
-	// TODO
-	return []*monitor.MonitorData{}
 }
 
 func (this *WaylandWindowManager) Run() {

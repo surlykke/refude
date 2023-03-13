@@ -2,7 +2,6 @@ package windows
 
 import (
 	"github.com/surlykke/RefudeServices/lib/resource"
-	"github.com/surlykke/RefudeServices/windows/monitor"
 	"github.com/surlykke/RefudeServices/windows/x11"
 )
 
@@ -22,6 +21,4 @@ func RaiseAndFocusNamedWindow(name string) bool {
 	return x11.RaiseAndFocusNamedWindow(name)
 }
 
-func GetMonitors() []*monitor.MonitorData {
-	return x11.GetMonitors()
-}
+

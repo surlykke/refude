@@ -16,7 +16,6 @@ import (
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
-	"github.com/surlykke/RefudeServices/windows/monitor"
 )
 
 type X11Window uint32
@@ -161,7 +160,6 @@ func GetIconName(p Proxy, wId uint32) (string, error) {
 }
 
 var Windows = resource.MakeCollection[X11Window]()
-var Monitors = resource.MakeCollection[*monitor.MonitorData]()
 var proxy = MakeProxy()
 
 func RaiseAndFocusNamedWindow(name string) bool {
@@ -187,16 +185,12 @@ func Run() {
 	var proxy = MakeProxy()
 	SubscribeToEvents(proxy)
 	updateWindowList(proxy)
-	Monitors.ReplaceWith(GetMonitorDataList(proxy))
 
 	for {
 		event, _ := NextEvent(proxy)
 		if event == DesktopStacking {
 			updateWindowList(proxy)
-		} else if event == DesktopGeometry {
-			Monitors.ReplaceWith(GetMonitorDataList(proxy))
-		}
-
+		} 
 	}
 }
 
@@ -215,6 +209,9 @@ func getIconName(wId X11Window) string {
 	}
 }
 
-func GetMonitors() []*monitor.MonitorData {
-	return Monitors.GetAll()
+
+func GetMonitors() []*MonitorData {
+	proxy.Lock()
+	defer proxy.Unlock()
+	return GetMonitorDataList(proxy)
 }

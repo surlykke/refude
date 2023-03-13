@@ -17,27 +17,29 @@ var configDir = xdg.ConfigHome + "/refude"
 var configFile = configDir + "/config.yaml"
 
 type NotificationConf struct {
-	Enabled             bool
+	Enabled              bool
 	BatteryNotifications bool
-	Placement            []struct {
-		Screen      string
-		Corner      uint8
-		CornerDistX int
-		CornerDistY int
-	}
+	Placement            []Placement
+}
+
+type Placement struct {
+	Screen      string
+	Corner      uint8
+	CornerDistX int
+	CornerDistY int
 }
 
 type Conf struct {
-	Notifications NotificationConf 
+	Notifications NotificationConf
 }
 
 var Notifications = NotificationConf{
-	Enabled: true,
+	Enabled:              true,
 	BatteryNotifications: true,
 }
 
 func init() {
-	var tmp Conf 
+	var tmp Conf
 	var bytes []byte
 	var err error
 

@@ -29,7 +29,7 @@ import (
 	"github.com/surlykke/RefudeServices/statusnotifications"
 	"github.com/surlykke/RefudeServices/watch"
 	"github.com/surlykke/RefudeServices/windows"
-	"github.com/surlykke/RefudeServices/windows/x11"
+	"github.com/surlykke/RefudeServices/windows/monitor"
 
 	_ "net/http/pprof"
 )
@@ -60,7 +60,7 @@ func main() {
 	http.HandleFunc("/item/", collectionHandler("/item/", statusnotifications.Items))
 	http.HandleFunc("/itemmenu/", collectionHandler("/itemmenu/", statusnotifications.Menus))
 	http.HandleFunc("/mimetype/", collectionHandler("/mimetype/", applications.Mimetypes))
-	http.HandleFunc("/screen/", collectionHandler("/screen/", x11.Monitors))
+	http.HandleFunc("/screen/", collectionHandler("/screen/", monitor.Repo))
 	http.HandleFunc("/start", resourceHandler("", start.Get))
 	http.HandleFunc("/bookmarks", resourceHandler("", bookmarks.Get))
 

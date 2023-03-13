@@ -97,7 +97,6 @@ import (
 
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/resource"
-	"github.com/surlykke/RefudeServices/windows/monitor"
 )
 
 
@@ -252,16 +251,16 @@ func NextEvent(p Proxy) (Event, uint32) {
 	}
 }
 
-func GetMonitorDataList(p Proxy) []*monitor.MonitorData {
+func GetMonitorDataList(p Proxy) []*MonitorData {
 	var num C.int
 	xrrmonitorsPtr := C.XRRGetMonitors(p.disp, p.rootWindow, 1, &num)
 	xrrmonitorsArr := (*[1 << 30]C.XRRMonitorInfo)(unsafe.Pointer(xrrmonitorsPtr))
-	var monitors = make([]*monitor.MonitorData, num, num)
+	var monitors = make([]*MonitorData, num, num)
 	var bound int = int(num)
 	for i := 0; i < bound; i++ {
 		var name string = getAtomName(p.disp, xrrmonitorsArr[i].name)
 
-		monitors[i] = &monitor.MonitorData{
+		monitors[i] = &MonitorData{
 			BaseResource: resource.BaseResource{
 				Path: name,
 				Title: name,

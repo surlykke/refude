@@ -18,6 +18,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 	"github.com/surlykke/RefudeServices/windows"
+	"github.com/surlykke/RefudeServices/windows/monitor"
 )
 
 //go:embed html
@@ -78,9 +79,12 @@ func calculateNotificationPos(width, height int) (int, int) {
 	// zero values means top right corner
 	var corner uint8
 	var mX, mY, mW, mH, distX, distY int
+	var mdList = monitor.GetMonitors()
+	var tmp = append(config.Notifications.Placement, config.Placement{}) // The appended assures we'll always get a match below
+
 outer:
-	for _, placement := range config.Notifications.Placement {
-		for _, m := range windows.GetMonitors() {
+	for _, placement := range tmp {
+		for _, m := range mdList {
 			if placement.Screen == "" && m.Primary || placement.Screen == m.Title {
 				mX, mY, mW, mH = m.X, m.Y, m.W, m.H
 				corner, distX, distY = placement.Corner, placement.CornerDistX, placement.CornerDistY
