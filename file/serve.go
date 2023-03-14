@@ -36,7 +36,7 @@ func (fr FileRepoType) Search(term string, threshold int) link.List{
 	if len(term) < threshold {
 		return link.List{}
 	} else {
-		return SearchFrom(xdg.Home, term, "~/")
+		return Search(xdg.Home, term)
 	}
 }
 

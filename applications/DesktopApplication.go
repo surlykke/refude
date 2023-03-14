@@ -130,7 +130,6 @@ func GetIconName(appId string) string {
 	if appId == "Alacritty" {
 		appId = "com.alacritty.Alacritty"
 	}
-	appId += ".desktop"
 	if app, ok := Applications.Get(appId); ok {
 		return app.IconName
 	} else {

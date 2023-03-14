@@ -57,73 +57,17 @@ type File struct {
 	Apps        []string
 }
 
-func (f *File) Actions() link.ActionList {
-	var actions = make(link.ActionList, 0, 10)
-	for _, app := range applications.GetApps(f.Apps...) {
-		actions = append(actions, link.MkAction(app.DesktopId, "Open with " + app.Title, app.IconName))
-	}
-	return actions
-}
-
-func (f *File) Links(searchTerm string) link.List {
-
-	var ll = make(link.List, 0, 10)
-	if f.Type == "Directory" {
-		ll = append(ll, SearchFrom(f.Path, searchTerm, "")...)
-	}
-
-	return ll
-}
-
-// Assumes dir is a directory
-func SearchFrom(dir, term, context string) link.List {
-	var depth = len(term) / 3
-	if depth > 2 {
-		depth = 2
-	}
-	return searchRecursiveFrom(dir, term, context, depth)
-}
-
-func searchRecursiveFrom(dir, term, context string, depth int) link.List {
-	var ll = make(link.List, 0, 30)
-	var directoriesFound = make([]fs.DirEntry, 0, 10)
-
-	if dirEntries, err := os.ReadDir(dir); err == nil {
-		for _, dirEntry := range dirEntries {
-			var entryPath = dir + "/" + dirEntry.Name()
-			if rnk := searchutils.Match(term, dirEntry.Name()); rnk > -1 {
-				var mimetype, _ = magicmime.TypeByFile(entryPath)
-				var icon = strings.ReplaceAll(mimetype, "/", "-")
-				ll = append(ll, link.MakeRanked(entryPath[1:], context+dirEntry.Name(), icon, "file", rnk+50))
-
-			}
-			if depth > 0 && dirEntry.IsDir() {
-				directoriesFound = append(directoriesFound, dirEntry)
-			}
-		}
-	}
-
-	for _, directory := range directoriesFound {
-		ll = append(ll, searchRecursiveFrom(dir+"/"+directory.Name(), term, context+directory.Name()+"/", depth-1)...)
-	}
-	return ll
-}
-
 func makeFile(path string) (*File, error) {
-	if !strings.HasPrefix(path, "/") {
-		path = xdg.Home + "/" + path
-	}
-	path = filepath.Clean(path)
-
-	if fileInfo, err := os.Stat(path); os.IsNotExist(err) {
+	var osPath = filepath.Clean("/" + path)	
+	if fileInfo, err := os.Stat(osPath); os.IsNotExist(err) {
 		return nil, nil
 	} else if err != nil {
 		return nil, err
 	} else {
-		var mimetype, _ = magicmime.TypeByFile(path)
+		var mimetype, _ = magicmime.TypeByFile(osPath)
 		var f = File{
 			BaseResource: resource.BaseResource{
-				Path:     path,
+				Path:     osPath[1:],
 				Title:    fileInfo.Name(),
 				Comment:  path,
 				IconName: strings.ReplaceAll(mimetype, "/", "-"),
@@ -137,6 +81,60 @@ func makeFile(path string) (*File, error) {
 		return &f, nil
 	}
 }
+
+
+func (f *File) Actions() link.ActionList {
+	var actions = make(link.ActionList, 0, 10)
+	for _, app := range applications.GetApps(f.Apps...) {
+		actions = append(actions, link.MkAction(app.DesktopId, "Open with " + app.Title, app.IconName))
+	}
+	return actions
+}
+
+func (f *File) Links(searchTerm string) link.List {
+
+	var ll = make(link.List, 0, 10)
+	if f.Type == "Directory" {
+		ll = append(ll, Search("/" + f.Path, searchTerm)...)
+	}
+
+	return ll
+}
+
+// Assumes dir is a directory
+func Search(from, searchTerm string) link.List {
+	var depth = len(searchTerm) / 3
+	if depth > 2 {
+		depth = 2
+	}
+	return searchRecursive(from, searchTerm, depth)
+}
+
+func searchRecursive(from, searchTerm string, depth int) link.List {
+	var ll = make(link.List, 0, 30)
+	var directoriesFound = make([]fs.DirEntry, 0, 10)
+
+	if dirEntries, err := os.ReadDir(from); err == nil {
+		for _, dirEntry := range dirEntries {
+			var entryPath = from + "/" + dirEntry.Name()
+			if rnk := searchutils.Match(searchTerm, dirEntry.Name()); rnk > -1 {
+				var mimetype, _ = magicmime.TypeByFile(entryPath)
+				var icon = strings.ReplaceAll(mimetype, "/", "-")
+				ll = append(ll, link.MakeRanked(entryPath[1:], shortenPath(entryPath), icon, "file", rnk+50))
+
+			}
+			if depth > 0 && dirEntry.IsDir() {
+				directoriesFound = append(directoriesFound, dirEntry)
+			}
+		}
+	}
+
+	for _, directory := range directoriesFound {
+		ll = append(ll, searchRecursive(from+"/"+directory.Name(), searchTerm, depth-1)...)
+	}
+	return ll
+}
+
 
 func shortenPath(path string) string {
 	if strings.HasPrefix(path, xdg.Home) {
@@ -152,7 +150,7 @@ func (f *File) DoPost(w http.ResponseWriter, r *http.Request) {
 		defaultAppId = f.Apps[0]
 	}
 	var appId = requests.GetSingleQueryParameter(r, "action", defaultAppId)
-	var ok, err = applications.OpenFile(appId, f.Path)
+	var ok, err = applications.OpenFile(appId, "/" + f.Path)
 	if ok {
 		if err != nil {
 			respond.ServerError(w, err)

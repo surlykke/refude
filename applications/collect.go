@@ -296,7 +296,7 @@ func readDesktopFile(path string, id string) (*DesktopApplication, error) {
 		return nil, errors.New("file must start with '[Desktop Entry]'")
 	} else {
 		var da = DesktopApplication{ DesktopId: id}
-		da.Path = id[:len(id) - len(".desktop")] 
+		da.Path = id 
 		da.DesktopActions = []DesktopAction{}
 		var actionNames = []string{}
 		group := iniFile[0]
