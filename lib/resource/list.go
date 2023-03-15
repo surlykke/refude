@@ -86,6 +86,7 @@ func (l *Collection[T]) Search(term string, threshold int) link.List {
 			}
 		}
 	}
+	links.SortByRank()
 	return links
 }
 

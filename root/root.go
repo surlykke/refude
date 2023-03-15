@@ -3,7 +3,7 @@
 // This file is part of the RefudeServices project.
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
-package start
+package root
 
 import (
 	"strings"
@@ -17,15 +17,32 @@ import (
 	"github.com/surlykke/RefudeServices/windows"
 )
 
-type Start struct{
-	resource.BaseResource
-	searchTerm string
+type RootRepo struct{}
+
+func (this RootRepo) GetResources() []resource.Resource {
+	return []resource.Resource{&start, &bookmarks}
 }
 
-func Get(path string) resource.Resource {
-	return &Start{
-		BaseResource: resource.BaseResource{Path: "/start", Title: "Start", Profile: "start"},
+func (this RootRepo) GetResource(path string) resource.Resource {
+	switch path {
+	case "start":
+		return &start
+	case "bookmarks":
+		return &bookmarks
+	default:
+		return nil
 	}
+}
+
+func (this RootRepo) Search(term string, threshold int) link.List {
+	return link.List{}
+}
+
+var Repo RootRepo
+
+type Start struct {
+	resource.BaseResource
+	searchTerm string
 }
 
 func (s *Start) Links(term string) link.List {
@@ -49,10 +66,30 @@ func doDesktopSearch(term string) link.List {
 func rewriteAndSort(context string, links link.List) link.List {
 	var rewritten = make(link.List, 0, len(links))
 	for _, lnk := range links {
-		var tmp = lnk 
-	    tmp.Href = link.Href(context) + tmp.Href
+		var tmp = lnk
+		tmp.Href = link.Href(context) + tmp.Href
 		rewritten = append(rewritten, tmp)
 	}
-	rewritten.SortByRank()
 	return rewritten
 }
+
+var start = Start{
+	BaseResource: resource.BaseResource{Path: "start", Title: "Start", Profile: "start"},
+}
+
+
+type Bookmarks struct {
+	resource.BaseResource
+}
+
+
+func (bm Bookmarks) Links(searchTerm string) link.List {
+   return link.List{
+	{ Href: "/application/", Title: "Applications", Profile: "application*"},
+	{ Href: "/window/", Title: "Windows", Profile: "window*"},
+	{ Href: "/notification/", Title: "Notifications", Profile: "notification*"},
+	{ Href: "/device/", Title: "Devices", Profile: "device*"},
+	{ Href: "/item/", Title: "Items", Profile: "item*"}}
+}
+
+var bookmarks = Bookmarks{BaseResource:resource.BaseResource{Path: "bookmarks", Title: "Bookmarks", Profile: "bookmarks"}}

@@ -10,11 +10,11 @@ import (
 	"strings"
 
 	"github.com/surlykke/RefudeServices/applications"
-	"github.com/surlykke/RefudeServices/bookmarks"
 	"github.com/surlykke/RefudeServices/browse"
 	"github.com/surlykke/RefudeServices/client"
 	"github.com/surlykke/RefudeServices/config"
 	"github.com/surlykke/RefudeServices/doc"
+	"github.com/surlykke/RefudeServices/root"
 	"github.com/surlykke/RefudeServices/file"
 	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/link"
@@ -26,7 +26,6 @@ import (
 	"github.com/surlykke/RefudeServices/lib/searchutils"
 	"github.com/surlykke/RefudeServices/notifications"
 	"github.com/surlykke/RefudeServices/power"
-	"github.com/surlykke/RefudeServices/start"
 	"github.com/surlykke/RefudeServices/statusnotifications"
 	"github.com/surlykke/RefudeServices/watch"
 	"github.com/surlykke/RefudeServices/windows"
@@ -57,8 +56,7 @@ func main() {
 	http.HandleFunc("/itemmenu/", collectionHandler("/itemmenu/", statusnotifications.Menus))
 	http.HandleFunc("/mimetype/", collectionHandler("/mimetype/", applications.Mimetypes))
 	http.HandleFunc("/screen/", collectionHandler("/screen/", monitor.Repo))
-	http.HandleFunc("/start", resourceHandler("", start.Get))
-	http.HandleFunc("/bookmarks", resourceHandler("", bookmarks.Get))
+	http.HandleFunc("/", collectionHandler("/", root.Repo))
 
 	http.HandleFunc("/refude/", client.ServeHTTP)
 	http.HandleFunc("/icon", icons.ServeHTTP)
@@ -175,7 +173,6 @@ func buildFilterAndRewriteLinks(res resource.Resource, context, searchTerm strin
 	}
 
 	var lnks link.List = res.Links(searchTerm)
-	lnks.SortByRank()
 
 	for _, lnk := range lnks {
 		if ! strings.HasPrefix(string(lnk.Href), "/") {
