@@ -19,7 +19,6 @@ import (
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
-	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
 func init() {

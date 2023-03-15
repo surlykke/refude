@@ -4,7 +4,7 @@
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
 //
-import { div, frag, span } from "../common/elements.js"
+import { div, frag, hr, span } from "../common/elements.js"
 import { resourceHead } from "./resourcehead.js"
 import { link } from "./link.js"
 import { doPost, restorePosition, savePositionAndClose, watchResource } from "../common/utils.js"
@@ -121,10 +121,13 @@ export class Main extends React.Component {
                 fraqs.push(div({className: 'linkHeading'}, "No match"))
             }
             let links = resource.links ? resource.links.map(l => link(l, l.profile, this.closeBrowser, this.move)) : []
-            /*let firstRel = links.findIndex(l => l.props.rel === 'related')
+            let firstRel = links.findIndex(l => l.props.rel === 'related')
             if (firstRel > 0) {
-                links[firstRel - 1].classList.add(" last-action")
-            }*/
+                links = [span({className: "linkHeading"}, "Actions")]
+                        .concat(...links.slice(0, firstRel))
+                        .concat(span({className: "linkHeading"}, "Links"))
+                        .concat(...links.slice(firstRel))
+            }
             fraqs.push(div({ className: 'links' }, ...links))
         }
 

@@ -23,6 +23,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
+	"github.com/surlykke/RefudeServices/lib/searchutils"
 	"github.com/surlykke/RefudeServices/notifications"
 	"github.com/surlykke/RefudeServices/power"
 	"github.com/surlykke/RefudeServices/start"
@@ -162,13 +163,21 @@ func buildFilterAndRewriteLinks(res resource.Resource, context, searchTerm strin
 		if action.Name != "" {
 			href += "?action=" + action.Name
 		}
+		if searchutils.Match(searchTerm, action.Name) < 0 {
+			continue 
+		}
 		list = append(list, link.Make(href, action.Title, action.IconName, relation.Action))
 	}
 	if deleteTitle, ok := res.DeleteAction(); ok {
-		list = append(list, link.Make(context + res.GetPath(), deleteTitle, "", relation.Delete))
+		if searchutils.Match(searchTerm, deleteTitle) > -1 {
+			list = append(list, link.Make(context + res.GetPath(), deleteTitle, "", relation.Delete))
+		}
 	}
-	
-	for _, lnk := range res.Links(searchTerm) {
+
+	var lnks link.List = res.Links(searchTerm)
+	lnks.SortByRank()
+
+	for _, lnk := range lnks {
 		if ! strings.HasPrefix(string(lnk.Href), "/") {
 			lnk.Href = link.Href(context) + lnk.Href
 		} 
