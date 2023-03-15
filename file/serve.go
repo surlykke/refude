@@ -6,8 +6,6 @@
 package file
 
 import (
-	"fmt"
-
 	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/resource"
@@ -21,7 +19,6 @@ func (fr FileRepoType) GetResources() []resource.Resource {
 }
 
 func (fr FileRepoType) GetResource(filePath string) resource.Resource {
-	fmt.Println("GetResource file for", filePath)
 	if file, err := makeFile("/" + filePath); err != nil {
 		log.Warn("Could not make file from", filePath, err)
 		return nil
@@ -36,7 +33,7 @@ func (fr FileRepoType) Search(term string, threshold int) link.List{
 	if len(term) < threshold {
 		return link.List{}
 	} else {
-		return Search(xdg.Home, term)
+		return Search(xdg.Home, "~", term)
 	}
 }
 

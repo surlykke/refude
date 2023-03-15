@@ -95,32 +95,36 @@ func (f *File) Links(searchTerm string) link.List {
 
 	var ll = make(link.List, 0, 10)
 	if f.Type == "Directory" {
-		ll = append(ll, Search("/" + f.Path, searchTerm)...)
+		ll = append(ll, Search("/" + f.Path, ".", searchTerm)...)
 	}
 
 	return ll
 }
 
 // Assumes dir is a directory
-func Search(from, searchTerm string) link.List {
+func Search(from, prefix, searchTerm string) link.List {
 	var depth = len(searchTerm) / 3
 	if depth > 2 {
 		depth = 2
 	}
-	return searchRecursive(from, searchTerm, depth)
+	return searchRecursive(from, prefix, searchTerm, depth)
 }
 
-func searchRecursive(from, searchTerm string, depth int) link.List {
+func searchRecursive(from, prefix, searchTerm string, depth int) link.List {
 	var ll = make(link.List, 0, 30)
 	var directoriesFound = make([]fs.DirEntry, 0, 10)
 
 	if dirEntries, err := os.ReadDir(from); err == nil {
 		for _, dirEntry := range dirEntries {
 			var entryPath = from + "/" + dirEntry.Name()
+			var relName = dirEntry.Name()
+			if prefix != "." {
+				relName = prefix + "/" + relName
+			}
 			if rnk := searchutils.Match(searchTerm, dirEntry.Name()); rnk > -1 {
 				var mimetype, _ = magicmime.TypeByFile(entryPath)
 				var icon = strings.ReplaceAll(mimetype, "/", "-")
-				ll = append(ll, link.MakeRanked(entryPath[1:], shortenPath(entryPath), icon, "file", rnk+50))
+				ll = append(ll, link.MakeRanked(entryPath[1:], relName, icon, "file", rnk+50))
 
 			}
 			if depth > 0 && dirEntry.IsDir() {
@@ -130,19 +134,11 @@ func searchRecursive(from, searchTerm string, depth int) link.List {
 	}
 
 	for _, directory := range directoriesFound {
-		ll = append(ll, searchRecursive(from+"/"+directory.Name(), searchTerm, depth-1)...)
+		ll = append(ll, searchRecursive(from+"/"+directory.Name(), prefix + "/" + directory.Name(),  searchTerm, depth-1)...)
 	}
 	return ll
 }
 
-
-func shortenPath(path string) string {
-	if strings.HasPrefix(path, xdg.Home) {
-		return "~" + path[len(xdg.Home):]
-	} else {
-		return path
-	}
-}
 
 func (f *File) DoPost(w http.ResponseWriter, r *http.Request) {
 	var defaultAppId = ""
