@@ -101,6 +101,8 @@ export class Main extends React.Component {
             this.setState({ term: this.state.term + key }, this.getResource)
         } else if (key === "Backspace") {
             this.setState({ term: this.state.term.slice(0, -1) }, this.getResource)
+        } else if (key === "n" && ctrlKey || key == "p" && ctrlKey) {
+            // Ignore
         } else {
             return
         }
