@@ -81,7 +81,7 @@ func (l *Collection[T]) Search(term string, threshold int) link.List {
 	for _, res := range l.resources {
 		if res.RelevantForSearch() {
 			var title, _, icon, profile = res.Presentation() 
-			if rnk := searchutils.Match(term, title); rnk > -1 {
+			if rnk := searchutils.Match(term, title, res.GetKeywords()...); rnk > -1 {
 				links = append(links, link.MakeRanked(res.GetPath(), title, icon, profile, rnk))
 			}
 		}

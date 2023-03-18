@@ -53,6 +53,10 @@ func (this X11Window) RelevantForSearch() bool {
 		states&(SKIP_TASKBAR|SKIP_PAGER|ABOVE) == 0
 }
 
+func (this X11Window) GetKeywords() []string {
+	return []string{}
+}
+
 type windowData struct {
 	WindowId         uint32
 	Name             string
@@ -178,6 +182,7 @@ func Run() {
 		var xWins = make([]X11Window, len(wIds), len(wIds))
 		for i := 0; i < len(wIds); i++ {
 			xWins[i] = X11Window(wIds[i])
+			SubscribeToWindowEvents(p, wIds[i])
 		}
 		Windows.ReplaceWith(xWins)
 	}

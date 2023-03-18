@@ -19,15 +19,16 @@ type Resource interface {
 	DeleteAction() (title string, ok bool)
 	Links(searchTerm string) link.List
 	RelevantForSearch() bool
+	GetKeywords() []string
 }
 
 type BaseResource struct {
-	Path     string `json:"-"`
-	Title    string `json:"-"`
-
-	Comment  string `json:"-"`
+	Path     string
+	Title    string
+	Comment  string `json:",omitempty"`
 	IconName string `json:",omitempty"`
-	Profile  string `json:"-"`
+	Profile  string
+	Keywords []string
 }
 
 func (br *BaseResource) GetPath() string {
@@ -52,6 +53,10 @@ func (br *BaseResource) Links(searchTerm string) link.List {
 
 func (br *BaseResource) RelevantForSearch() bool {
 	return true
+}
+
+func (br *BaseResource) GetKeywords() []string {
+	return br.Keywords
 }
 
 func LinkTo(res Resource, context string, rank int) link.Link {

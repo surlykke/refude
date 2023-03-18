@@ -36,7 +36,6 @@ type DesktopApplication struct {
 	Terminal        bool
 	Categories      []string
 	Implements      []string
-	Keywords        []string
 	StartupNotify   bool
 	StartupWmClass  string `json:",omitempty"`
 	Url             string `json:",omitempty"`

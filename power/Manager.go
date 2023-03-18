@@ -119,6 +119,7 @@ func retrieveDevice(path dbus.ObjectPath) *Device {
 	device.Path = path2id(device.DbusPath)
 	device.Title = deviceTitle(device.Type, device.Model)
 	device.Profile = "device"
+	device.Keywords = []string{"battery"}
 	return &device
 }
 
