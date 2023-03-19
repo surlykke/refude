@@ -211,7 +211,7 @@ func stateUpdater(p Proxy, win *X11Window) bool {
 func getIconName(p Proxy, wId uint32) (string, error) {
 	p.Lock()
 	defer p.Unlock()
-	if pixelArray, err := GetIcon(proxy, uint32(wId)); err != nil {
+	if pixelArray, err := GetIcon(p, uint32(wId)); err != nil {
 		return "", err
 	} else if name, err := icons.AddX11Icon(pixelArray); err != nil {
 		return "", err
