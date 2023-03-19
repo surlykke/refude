@@ -20,7 +20,7 @@ export class Main extends React.Component {
         this.browserUrl = browserStartUrl
         this.browserHistory = []
         this.getResource()
-        watchResource("/search", this.getResource)
+        watchResource("/start", this.getResource)
     }
 
     componentDidMount = () => {

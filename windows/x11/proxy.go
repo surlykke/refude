@@ -351,10 +351,10 @@ func GetIcon(p Proxy, wId uint32) ([]uint32, error) {
 	return getUint32s(p.disp, C.ulong(wId), _NET_WM_ICON)
 }
 
-func GetStates(p Proxy, wId uint32) WindowStateMask {
+func GetStates(p Proxy, wId uint32) (WindowStateMask, error) {
 	var state WindowStateMask = 0
 	if atoms, err := getUint32s(p.disp, C.ulong(wId), _NET_WM_STATE); err != nil {
-		return 0
+		return 0, err
 	} else {
 		for _, atom := range atoms {
 			switch C.ulong(atom) {
@@ -384,7 +384,7 @@ func GetStates(p Proxy, wId uint32) WindowStateMask {
 				state |= DEMANDS_ATTENTION
 			}
 		}
-		return state
+		return state, nil
 	}
 }
 

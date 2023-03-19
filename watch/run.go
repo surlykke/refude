@@ -51,6 +51,19 @@ func SomethingChanged(path string) {
 	publish(path)
 }
 
+func SearchChanged() {
+	publish("/start")
+}
+
+func NotificationChanged() {
+	publish("/notification/")
+}
+
+func StatusNotificatinChanged() {
+	publish("/item/")
+}
+
+
 const chunkTemplate = "%x\r\n" + // chunk length in hex
 	"data:%s\n" +
 	"\n" +
