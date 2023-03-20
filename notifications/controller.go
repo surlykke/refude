@@ -218,11 +218,14 @@ func Notify(app_name string,
 
 	notification.Expires = notification.Created + int64(expire_timeout)
 
-	Notifications.Put(&notification)
-
-	watch.SomethingChanged("/notification/")
-	updateFlash()
-
+	Notifications.PutFirst(&notification)
+	watch.NotificationChanged()
+	notifierShow()
+	if notification.Urgency == Normal {
+		time.AfterFunc(10100*time.Millisecond, watch.NotificationChanged)
+	} else if notification.Urgency == Low {
+		time.AfterFunc(4100*time.Millisecond, watch.NotificationChanged)
+	}
 	return id, nil
 }
 

@@ -4,25 +4,20 @@
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
 //
-import { div, span, img } from "../common/elements.js"
-import { doPost, retrieveResource, follow, followResource } from "../common/utils.js"
+import { div, img } from "../common/elements.js"
+import { doPost, retrieveResource, follow} from "../common/utils.js"
 
 export class Main extends React.Component {
 
     constructor(props) {
         super(props)
         this.state = { }
-        followResource("/notification/flash", this.setFlash, this.clearFlash)
+        follow("/notification/",  this.getFlash, this.clearFlash)
     }
 
-    setFlash = flash => {
-        console.log("setting flash to:", flash)
-        this.setState({flash: flash})
-    }
-
-    clearFlash = () => {
-        this.setState({flash: undefined})
-    }
+    getFlash = () => retrieveResource("/notification/flash", this.setFlash, this.clearFlash)
+    setFlash = flash => this.setState({flash: flash})
+    clearFlash = () => this.setState({flash: undefined})
 
     render = () => {
         let { flash } = this.state
