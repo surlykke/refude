@@ -47,7 +47,7 @@ func init() {
 		log.Info(configFile, "not found")
 	} else if bytes, err = os.ReadFile(configFile); err != nil {
 		log.Warn("Unable to read", configFile, err)
-	} else if err = yaml.UnmarshalStrict(bytes, &tmp); err != nil {
+	} else if err = yaml.Unmarshal(bytes, &tmp); err != nil {
 		log.Warn("Unable to parse", configFile, err)
 	} else {
 		Notifications = tmp.Notifications
