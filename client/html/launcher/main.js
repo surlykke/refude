@@ -24,8 +24,6 @@ export class Main extends React.Component {
     }
 
     componentDidMount = () => {
-        restorePosition("launch")
-
         document.addEventListener("keydown", this.onKeyDown)
     };
 
@@ -59,7 +57,11 @@ export class Main extends React.Component {
     }
 
     closeBrowser = () => {
-        savePositionAndClose("launch")
+        this.setState({ term: "" })
+        this.browserUrl = browserStartUrl
+        this.browserHistory = []
+        this.getResource()
+        doPost("/refude/html/hide?app=launcher")
     }
 
     handleInput = e => {
@@ -117,18 +119,18 @@ export class Main extends React.Component {
                 resourceHead(resource),
                 div({ className: 'search-box' },
                     span({ style: { display: term ? "" : "none" } }, term)
-                ) 
+                )
             )
             if (term && resource.links.length === 0) {
-                fraqs.push(div({className: 'linkHeading'}, "No match"))
+                fraqs.push(div({ className: 'linkHeading' }, "No match"))
             }
             let links = resource.links ? resource.links.map(l => link(l, l.profile, this.closeBrowser, this.move)) : []
             let firstRel = links.findIndex(l => l.props.rel === 'related')
             if (firstRel > 0) {
-                links = [span({className: "linkHeading"}, "Actions")]
-                        .concat(...links.slice(0, firstRel))
-                        .concat(span({className: "linkHeading"}, "Links"))
-                        .concat(...links.slice(firstRel))
+                links = [span({ className: "linkHeading" }, "Actions")]
+                    .concat(...links.slice(0, firstRel))
+                    .concat(span({ className: "linkHeading" }, "Links"))
+                    .concat(...links.slice(firstRel))
             }
             fraqs.push(div({ className: 'links' }, ...links))
         }
@@ -136,11 +138,5 @@ export class Main extends React.Component {
         return frag(fraqs)
     }
 }
-
-let resizeToContent = () => {
-    let { width, height } = document.getElementById('main').getBoundingClientRect()
-    window.resizeTo(width + 100, Math.min(600, Math.max(300, height)))
-}
-new ResizeObserver((observed) => observed && observed[0] && resizeToContent()).observe(document.getElementById('main'))
 
 ReactDOM.createRoot(document.getElementById('main')).render(React.createElement(Main))

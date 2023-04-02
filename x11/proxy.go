@@ -33,6 +33,7 @@ inline XPropertyEvent* xproperty(XEvent* e) { return &(e->xproperty); }
 const unsigned long sizeOfLong = sizeof(long);
 inline char getByte(unsigned char* data, int index) { return ((char*)data)[index]; }
 inline long getLong(unsigned char* data, int index) { return ((long*)data)[index]; }
+inline Window getWindowFromArray(Window* data, int index) { return data[index]; }
 
 XEvent createClientMessage32(Window window, Atom message_type, long l0, long l1, long l2, long l3, long l4) {
 	XEvent event;
@@ -280,7 +281,7 @@ func GetMonitorDataList(p Proxy) []*MonitorData {
 }
 
 func GetParent(p Proxy, wId uint32) (uint32, error) {
-	var root_return C.ulong
+var root_return C.ulong
 	var parent_return C.ulong
 	var children_return *C.ulong
 	var nchildren_return C.uint
@@ -297,8 +298,37 @@ func GetParent(p Proxy, wId uint32) (uint32, error) {
 				wId = uint32(parent_return)
 			}
 		}
-	}
+	}	
 }
+
+func GetWindows(p Proxy, from uint32, recursively bool) ([]uint32, error) {
+	var root_return C.ulong
+	var parent_return C.Window
+	var children_return *C.Window
+	var nchildren_return C.uint
+	var result = make([]uint32, 0, 5)
+	if C.XQueryTree(p.disp, C.ulong(from), &root_return, &parent_return, &children_return, &nchildren_return) == 0 {
+			return []uint32{}, errors.New("Error from XQueryTree")
+	} else {
+		for i := 0; i < int(nchildren_return); i++ {
+			result = append(result, uint32(C.getWindowFromArray(children_return, C.int(i))))
+		}
+		if recursively {	
+			for i := 0; i < int(nchildren_return); i++ {
+				if subWindows, err := GetWindows(p, uint32(C.getWindowFromArray(children_return, C.int(i))), recursively); err != nil {
+					return []uint32{}, err
+				} else {
+					result = append(result, subWindows...)
+				}
+			}
+		}
+		if children_return != nil {
+			C.XFree(unsafe.Pointer(children_return))
+		}
+	}
+	return result, nil
+}
+
 
 func GetGeometry(p Proxy, wId uint32) (int32, int32, uint32, uint32, error) {
 	return getGeometry(p.disp, wId)
@@ -317,6 +347,15 @@ func SetOpaque(p Proxy, wId uint32) {
 // Returns wIds of current windows, stack order, bottom up
 func GetStack(p Proxy) []uint32 {
 	if stack, err := getUint32s(p.disp, p.rootWindow, _NET_CLIENT_LIST_STACKING); err != nil {
+		log.Warn("Unable to get stack:", err)
+		return []uint32{}
+	} else {
+		return stack
+	}	
+}
+
+func GetAllWindows(p Proxy) []uint32 {
+	if stack, err := getUint32s(p.disp, p.rootWindow, _NET_CLIENT_LIST); err != nil {
 		log.Warn("Unable to get stack:", err)
 		return []uint32{}
 	} else {
@@ -448,6 +487,19 @@ func CloseWindow(p Proxy, wId uint32) {
 	C.XFlush(p.disp)
 
 }
+
+
+func UnmapWindow(p Proxy, wId uint32) {
+	C.XUnmapWindow(p.disp, C.Window(wId))
+	C.XFlush(p.disp)
+}
+
+func MapWindow(p Proxy, wId uint32) {
+	C.XMapWindow(p.disp, C.Window(wId))
+	C.XFlush(p.disp)
+}
+
+
 
 func GetScreenshotAsPng(p Proxy, wId uint32, downscale uint8) ([]byte, error) {
 	var ximage, w, h = getScreenShotAsXImage(p.disp, wId)
@@ -666,6 +718,7 @@ var _NET_WM_VISIBLE_ICON_NAME = internAtom(commonProxy.disp, "_NET_WM_VISIBLE_IC
 var _NET_WM_ICON_NAME = internAtom(commonProxy.disp, "_NET_WM_ICON_NAME")
 var _NET_WM_ICON = internAtom(commonProxy.disp, "_NET_WM_ICON")
 var _NET_CLIENT_LIST_STACKING = internAtom(commonProxy.disp, "_NET_CLIENT_LIST_STACKING")
+var _NET_CLIENT_LIST = internAtom(commonProxy.disp, "_NET_CLIENT_LIST")
 var _NET_DESKTOP_GEOMETRY = internAtom(commonProxy.disp, "_NET_DESKTOP_GEOMETRY")
 var _NET_WM_STATE = internAtom(commonProxy.disp, "_NET_WM_STATE")
 var _NET_WM_STATE_MODAL = internAtom(commonProxy.disp, "_NET_WM_STATE_MODAL")

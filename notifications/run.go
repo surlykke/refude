@@ -12,6 +12,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 	"github.com/surlykke/RefudeServices/watch"
+	"github.com/surlykke/RefudeServices/x11"
 )
 
 var notificationExpireryHints = make(chan struct{})
@@ -58,7 +59,6 @@ func GetFlash(string) resource.Resource {
 		}
 	}
 	
-	notifierHide()
 	return nil
 }
 
@@ -74,9 +74,8 @@ func timedOut(flash *Notification, now int64) bool {
 
 
 func notifierShow() {
-	xdg.RunCmd("notifierShow")
+	if !x11.PurgeAndShow("localhost__refude_html_notifier", false) {
+		xdg.RunCmd(xdg.BrowserCommand, "--app=http://localhost:7938/refude/html/notifier")
+	}
 }
 
-func notifierHide() {
-	xdg.RunCmd("notifierHide")
-}

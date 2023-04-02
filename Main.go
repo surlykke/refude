@@ -14,7 +14,6 @@ import (
 	"github.com/surlykke/RefudeServices/client"
 	"github.com/surlykke/RefudeServices/config"
 	"github.com/surlykke/RefudeServices/doc"
-	"github.com/surlykke/RefudeServices/root"
 	"github.com/surlykke/RefudeServices/file"
 	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/link"
@@ -24,12 +23,13 @@ import (
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
+	"github.com/surlykke/RefudeServices/monitor"
 	"github.com/surlykke/RefudeServices/notifications"
 	"github.com/surlykke/RefudeServices/power"
+	"github.com/surlykke/RefudeServices/root"
 	"github.com/surlykke/RefudeServices/statusnotifications"
 	"github.com/surlykke/RefudeServices/watch"
-	"github.com/surlykke/RefudeServices/windows"
-	"github.com/surlykke/RefudeServices/windows/monitor"
+	"github.com/surlykke/RefudeServices/x11"
 
 	_ "net/http/pprof"
 )
@@ -37,7 +37,7 @@ import (
 func main() {
 	log.Info("Running")
 
-	go windows.Run()
+	go x11.Run()
 	go applications.Run()
 	if config.Notifications.Enabled {
 		go notifications.Run()
@@ -45,7 +45,7 @@ func main() {
 	go power.Run()
 	//go statusnotifications.Run()
 
-	http.HandleFunc("/window/", collectionHandler("/window/", windows.GetResourceRepo()))
+	http.HandleFunc("/window/", collectionHandler("/window/", x11.Windows))
 	http.HandleFunc("/application/", collectionHandler("/application/", applications.Applications))
 	http.HandleFunc("/notification/", collectionHandler("/notification/", notifications.Notifications))
 	http.HandleFunc("/notification/flash", resourceHandler("/notification/", notifications.GetFlash))
@@ -146,7 +146,7 @@ type wrapper struct {
 func makeWrapper(res resource.Resource, context, searchTerm string) wrapper {
 	var wrapper = wrapper{}
 	wrapper.Self = link.Href(context + res.GetPath())
-	wrapper.Links = buildFilterAndRewriteLinks(res, context, searchTerm) 
+	wrapper.Links = buildFilterAndRewriteLinks(res, context, searchTerm)
 	wrapper.Data = res
 	var iconName string
 	wrapper.Title, wrapper.Comment, iconName, wrapper.Profile = res.Presentation()
@@ -162,28 +162,27 @@ func buildFilterAndRewriteLinks(res resource.Resource, context, searchTerm strin
 			href += "?action=" + action.Name
 		}
 		if searchutils.Match(searchTerm, action.Name) < 0 {
-			continue 
+			continue
 		}
 		list = append(list, link.Make(href, action.Title, action.IconName, relation.Action))
 	}
 	if deleteTitle, ok := res.DeleteAction(); ok {
 		if searchutils.Match(searchTerm, deleteTitle) > -1 {
-			list = append(list, link.Make(context + res.GetPath(), deleteTitle, "", relation.Delete))
+			list = append(list, link.Make(context+res.GetPath(), deleteTitle, "", relation.Delete))
 		}
 	}
 
 	var lnks link.List = res.Links(searchTerm)
 
 	for _, lnk := range lnks {
-		if ! strings.HasPrefix(string(lnk.Href), "/") {
+		if !strings.HasPrefix(string(lnk.Href), "/") {
 			lnk.Href = link.Href(context) + lnk.Href
-		} 
+		}
 		list = append(list, lnk)
 	}
 
 	return list
 }
-
 
 func Complete(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
@@ -196,7 +195,7 @@ func Complete(w http.ResponseWriter, r *http.Request) {
 func collectPaths(prefix string) []string {
 	var paths = make([]string, 0, 1000)
 	paths = append(paths, "/icon?name=", "/start?search=", "/complete?prefix=", "/watch", "/doc", "/bookmarks")
-	paths = append(paths, rewrite("/window/", windows.GetPaths())...)
+	paths = append(paths, rewrite("/window/", x11.Windows.GetPaths())...)
 	paths = append(paths, rewrite("/application/", applications.Applications.GetPaths())...)
 	paths = append(paths, rewrite("/mimetype/", applications.Mimetypes.GetPaths())...)
 	paths = append(paths, rewrite("/item/", statusnotifications.Items.GetPaths())...)

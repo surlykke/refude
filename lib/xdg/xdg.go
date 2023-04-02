@@ -3,7 +3,6 @@
 // This file is part of the RefudeServices project.
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
-//
 package xdg
 
 import (
@@ -35,6 +34,8 @@ var DocumentsDir string
 var MusicDir string
 var PicturesDir string
 var VideosDir string
+
+var BrowserCommand = "brave-browser" // FIXME
 
 func init() {
 	Home = clean(os.Getenv("HOME"))

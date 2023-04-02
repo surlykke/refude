@@ -50,8 +50,8 @@ func main() {
 	if err != nil {
 		log.Error("unmarshal err:", err)
 	}
-	var slut = time.Now()
-	fmt.Println(slut.Sub(start))
+	var end = time.Now()
+	fmt.Println(end.Sub(start))
 	for key, val := range m {
 		fmt.Println(key, "-->", val)
 	}

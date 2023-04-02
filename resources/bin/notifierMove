@@ -1,5 +1,0 @@
-#!/usr/bin/env bash
-# Requires xdotool in path
-
-xdotool search --classname localhost__refude_html_notifier windowmove $1 $2 windowsize $3 $4
-

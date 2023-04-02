@@ -17,7 +17,10 @@ export class Main extends React.Component {
 
     getFlash = () => retrieveResource("/notification/flash", this.setFlash, this.clearFlash)
     setFlash = flash => this.setState({flash: flash})
-    clearFlash = () => this.setState({flash: undefined})
+    clearFlash = () => {
+        this.setState({ flash: undefined})
+        doPost("/refude/html/hide", {app: 'notifier'})
+    }
 
     render = () => {
         let { flash } = this.state
@@ -47,7 +50,7 @@ let resizeToContent = () => {
     height = Math.round(window.devicePixelRatio * height)
     // Java script call window.resizeTo will not make height or width smaller than 50 px (or so),
     // so we ask server to resize us
-    doPost("/refude/html/resizeNotifier", { width: width, height: height })
+    doPost("/refude/html/resize", {app: "notifier", width: width, height: height })
 }
 new ResizeObserver((observed) => observed && observed[0] && resizeToContent()).observe(document.getElementById('main'))
 

@@ -7,18 +7,20 @@ package client
 
 import (
 	"embed"
+	"errors"
+	"fmt"
 	"io/fs"
 	"net/http"
 	"os"
-	"strconv"
 
 	"github.com/surlykke/RefudeServices/config"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/respond"
+	"github.com/surlykke/RefudeServices/lib/slice"
 	"github.com/surlykke/RefudeServices/lib/xdg"
-	"github.com/surlykke/RefudeServices/windows"
-	"github.com/surlykke/RefudeServices/windows/monitor"
+	"github.com/surlykke/RefudeServices/monitor"
+	"github.com/surlykke/RefudeServices/x11"
 )
 
 //go:embed html
@@ -40,42 +42,54 @@ func init() {
 }
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "POST" {
-
-		if r.URL.Path == "/refude/html/showLauncher" {
-			if !windows.RaiseAndFocusNamedWindow("Refude launcher++") {
-				xdg.RunCmd("brave-browser", "--app=http://localhost:7938/refude/html/launcher")
+	if slice.Among(r.URL.Path, "/refude/html/show", "/refude/html/hide", "/refude/html/resize") {
+		if r.Method != "POST" {
+			respond.NotAllowed(w)
+			return
+		} else if app := requests.GetSingleQueryParameter(r, "app", ""); app != "launcher" && app != "notifier" {
+			respond.UnprocessableEntity(w, errors.New("'app' must be given"))
+		} else if r.URL.Path == "/refude/html/show" {
+			if !x11.PurgeAndShow("localhost__refude_html_"+app, app == "launcher") {
+				xdg.RunCmd(xdg.BrowserCommand, fmt.Sprintf("--app=http://localhost:7938/refude/html/%s/", app))
 			}
 			respond.Accepted(w)
-			return
-		} else if r.URL.Path == "/refude/html/resizeNotifier" {
-			var widthS = requests.GetSingleQueryParameter(r, "width", "10")
-			var heightS = requests.GetSingleQueryParameter(r, "height", "10")
-			if width, err := strconv.Atoi(widthS); err != nil {
-				respond.UnprocessableEntity(w, err)
-			} else if height, err := strconv.Atoi(heightS); err != nil {
-				respond.UnprocessableEntity(w, err)
+		} else if r.URL.Path == "/refude/html/hide" {
+			x11.PurgeAndHide("localhost__refude_html_" + app)
+			respond.Accepted(w)
+		} else if width, ok := requests.GetInt(r, "width"); !ok || width <= 0 {
+			respond.UnprocessableEntity(w, errors.New("'width' must be given, and be a positive int"))
+		} else if height, ok := requests.GetInt(r, "height"); !ok || height <= 0 {
+			respond.UnprocessableEntity(w, errors.New("'height' must be given, and be a positive int"))
+		} else {
+			var x, y int
+			if app == "launcher" {
+				x, y = calculateLauncherPos(width, height)
 			} else {
-				if width < 10 {
-					width = 10
-				}
-
-				if height < 10 {
-					height = 10
-				}
-
-				x, y := calculateNotificationPos(width, height)
-				xdg.RunCmd("notifierMove", strconv.Itoa(x), strconv.Itoa(y), strconv.Itoa(width), strconv.Itoa(height))
-				respond.Accepted(w)
+				x, y = calculateNotifierPos(width, height)
 			}
-			return
-
+			x11.MoveAndResize("localhost__refude_html_"+app, int32(x), int32(y), uint32(width), uint32(height))
+			respond.Accepted(w)
 		}
 	}
 	StaticServer.ServeHTTP(w, r)
 }
 
-func calculateNotificationPos(width, height int) (int, int) {
+func calculateLauncherPos(width, height int) (int, int) {
+	var x, y int = 0, 0
+	var mdList = monitor.GetMonitors()
+
+	for _, m := range mdList {
+		if m.Primary {
+			x = m.X + (m.W-width)/2
+			y = m.Y + (m.H-height)/2
+			break
+		}
+	}
+
+	return x, y
+}
+
+func calculateNotifierPos(width, height int) (int, int) {
 	// zero values means top right corner
 	var corner uint8
 	var mX, mY, mW, mH, distX, distY int
@@ -97,11 +111,11 @@ outer:
 	case 0: // top-left
 		return mX + distX, mY + distY
 	case 1: // top-right
-		return mX + mW - width - distX, mY + distY
+		return mX + mW - width - distX - 2, mY + distY
 	case 2: // bottorm right
-		return mX + mW - width - distX, mY + mH - height - distY
+		return mX + mW - width - distX - 2, mY + mH - height - distY - 2
 	case 3: // bottorm left
-		return mX + distX, mY + mH - height - distY
+		return mX + distX, mY + mH - height - distY - 2
 	default:
 		return 0, 0
 	}

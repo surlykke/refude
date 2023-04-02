@@ -3,7 +3,7 @@ package monitor
 import (
 	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/resource"
-	"github.com/surlykke/RefudeServices/windows/x11"
+	"github.com/surlykke/RefudeServices/x11"
 )
 
 

@@ -144,6 +144,22 @@ func (l *Collection[T]) FindFirst(test func(t T) bool) (T, bool) {
 	return t, false
 }
 
+func (l *Collection[T]) Find(test func(t T) bool) []T {
+	l.Lock()
+	defer l.Unlock()
+
+	var found = make([]T, 0, 5)
+
+	for _, res := range l.resources {
+		if test(res) {
+			found = append(found, res)
+		}
+	}
+
+	return found
+}
+
+
 func (l *Collection[T]) GetPaths() []string {
 	var res = make([]string, 0, len(l.resources))
 	for _, r := range l.resources {
