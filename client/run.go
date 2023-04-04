@@ -45,7 +45,6 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if slice.Among(r.URL.Path, "/refude/html/show", "/refude/html/hide", "/refude/html/resize") {
 		if r.Method != "POST" {
 			respond.NotAllowed(w)
-			return
 		} else if app := requests.GetSingleQueryParameter(r, "app", ""); app != "launcher" && app != "notifier" {
 			respond.UnprocessableEntity(w, errors.New("'app' must be given"))
 		} else if r.URL.Path == "/refude/html/show" {
@@ -70,8 +69,9 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			x11.MoveAndResize("localhost__refude_html_"+app, int32(x), int32(y), uint32(width), uint32(height))
 			respond.Accepted(w)
 		}
+	} else {
+		StaticServer.ServeHTTP(w, r)
 	}
-	StaticServer.ServeHTTP(w, r)
 }
 
 func calculateLauncherPos(width, height int) (int, int) {
