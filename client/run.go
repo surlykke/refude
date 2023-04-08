@@ -20,7 +20,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/slice"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 	"github.com/surlykke/RefudeServices/monitor"
-	"github.com/surlykke/RefudeServices/x11"
+	"github.com/surlykke/RefudeServices/windows"
 )
 
 //go:embed html
@@ -48,12 +48,12 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		} else if app := requests.GetSingleQueryParameter(r, "app", ""); app != "launcher" && app != "notifier" {
 			respond.UnprocessableEntity(w, errors.New("'app' must be given"))
 		} else if r.URL.Path == "/refude/html/show" {
-			if !x11.PurgeAndShow("localhost__refude_html_"+app, app == "launcher") {
+			if !windows.PurgeAndShow("Refude "+app, app == "launcher") {
 				xdg.RunCmd(xdg.BrowserCommand, fmt.Sprintf("--app=http://localhost:7938/refude/html/%s/", app))
 			}
 			respond.Accepted(w)
 		} else if r.URL.Path == "/refude/html/hide" {
-			x11.PurgeAndHide("localhost__refude_html_" + app)
+			windows.PurgeAndHide("Refude " + app)
 			respond.Accepted(w)
 		} else if width, ok := requests.GetInt(r, "width"); !ok || width <= 0 {
 			respond.UnprocessableEntity(w, errors.New("'width' must be given, and be a positive int"))
@@ -66,7 +66,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			} else {
 				x, y = calculateNotifierPos(width, height)
 			}
-			x11.MoveAndResize("localhost__refude_html_"+app, int32(x), int32(y), uint32(width), uint32(height))
+			windows.MoveAndResize("Refude "+app, int32(x), int32(y), uint32(width), uint32(height))
 			respond.Accepted(w)
 		}
 	} else {

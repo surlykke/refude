@@ -17,10 +17,13 @@ typedef struct zwlr_foreign_toplevel_handle_v1 *toplevel_handle;
 typedef struct wl_array* wl_array;
 void close_toplevel(uintptr_t);
 void activate_toplevel(uintptr_t);
+void hide_toplevel(uintptr_t);
+void show_toplevel(uintptr_t);
 void set_toplevel_rectangle(uintptr_t handle, int32_t x, int32_t y, int32_t width, int32_t height);
 */
 import "C"
 import (
+	"strconv"
 	"unsafe"
 )
 
@@ -32,28 +35,39 @@ func activate(handle uint64) {
 	C.activate_toplevel(C.uintptr_t(handle))
 }
 
+func hide(handle uint64) {
+	C.hide_toplevel(C.uintptr_t(handle))
+}
+
+func show(handle uint64) {
+	C.show_toplevel(C.uintptr_t(handle))
+}
+
 func setRectangle(wId uint64, x uint32, y uint32, w uint32, h uint32) {
 	C.set_toplevel_rectangle(C.uintptr_t(wId), C.int32_t(x), C.int32_t(y), C.int32_t(w), C.int32_t(h))
 }
 
 //export handle_title
 func handle_title(handle C.uintptr_t, c_title *C.char) {
-	WM.handle_title(uint64(handle), C.GoString(c_title))
+	var ww = getCopy(uint64(handle))
+	ww.Title = C.GoString(c_title)
+	Windows.Put(ww)
+
 }
 
 //export handle_app_id
 func handle_app_id(handle C.uintptr_t, c_app_id *C.char) {
-	WM.handle_app_id(uint64(handle), C.GoString(c_app_id))
+	var ww = getCopy(uint64(handle))
+	ww.AppId = C.GoString(c_app_id)
+	Windows.Put(ww)
 }
 
 //export handle_output_enter
 func handle_output_enter(handle C.uintptr_t, output C.uintptr_t) {
-	WM.handle_output_enter(uint64(handle), uint64(output))
 }
 
 //export handle_output_leave
 func handle_output_leave(handle C.uintptr_t, output C.uintptr_t) {
-	WM.handle_output_leave(uint64(handle), uint64(output))
 }
 
 //export handle_state
@@ -74,22 +88,21 @@ func handle_state(handle C.uintptr_t, state C.wl_array) {
 
 	}
 
-	WM.handle_state(uint64(handle), windowStateMask) 
+	var ww = getCopy(uint64(handle))
+	ww.State = windowStateMask
+	Windows.Put(ww)
+
 }
 
 //export handle_done
-func handle_done(handle C.uintptr_t) {
-	WM.handle_done(uint64(handle))
-}
+func handle_done(handle C.uintptr_t) {}
 
 //export handle_parent
-func handle_parent(handle C.uintptr_t, parent C.uintptr_t) {
-	WM.handle_parent(uint64(handle), uint64(parent))
-}
+func handle_parent(handle C.uintptr_t, parent C.uintptr_t) {}
 
 //export handle_closed
 func handle_closed(handle C.uintptr_t) {
-	WM.handle_closed(uint64(handle))
+	Windows.Delete(strconv.FormatUint(uint64(handle), 10))
 }
 
 func setupAndRunAsWaylandClient() {

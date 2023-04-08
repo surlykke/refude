@@ -10,7 +10,6 @@ import (
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
-	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
 // Get current rect
@@ -57,15 +56,29 @@ func (wsm WindowStateMask) MarshalJSON() ([]byte, error) {
 
 type WaylandWindow struct {
 	resource.BaseResource
-	Wid      uint64 `json:"id"`
-	AppId    string `json:"app_id"`
-	State    WindowStateMask
+	Wid   uint64 `json:"id"`
+	AppId string `json:"app_id"`
+	State WindowStateMask
 }
 
+func MakeWindow(wId uint64) *WaylandWindow {
+	return &WaylandWindow {
+		BaseResource: resource.BaseResource {
+			Path: strconv.FormatUint(wId, 10),
+		},
+		Wid: wId,
+	}
+}
+
+
+
+
 func (this *WaylandWindow) Actions() link.ActionList {
-	return link.ActionList {
+	return link.ActionList{
 		{Name: "activate", Title: "Raise and focus", IconName: this.IconName},
 		{Name: "close", Title: "Close", IconName: this.IconName},
+		{Name: "hide", Title: "Hide", IconName: this.IconName},
+		{Name: "show", Title: "Show", IconName: this.IconName},
 	}
 }
 
@@ -79,6 +92,10 @@ func (this *WaylandWindow) DoPost(w http.ResponseWriter, r *http.Request) {
 	if "" == action {
 		activate(this.Wid)
 		respond.Accepted(w)
+	} else if "hide" == action {
+		hide(this.Wid)
+	} else if "show" == action {
+		show(this.Wid)
 	} else if "resize" == action {
 		if width, err := strconv.ParseUint(requests.GetSingleQueryParameter(r, "width", ""), 10, 32); err != nil {
 			respond.UnprocessableEntity(w, err)
@@ -94,72 +111,25 @@ func (this *WaylandWindow) DoPost(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-type WaylandWindowManager struct {
-	windows       *resource.Collection[*WaylandWindow]
-	recentMap     map[uint64]uint32
-	recentCount   uint32
-	recentMapLock sync.Mutex
-}
+var Windows = resource.MakeCollection[*WaylandWindow]()
+var recentMap = make(map[uint64]uint32)
+var recentCount uint32
+var recentMapLock sync.Mutex
 
-func MakeWaylandWindowManager() *WaylandWindowManager {
-	var wwm = WaylandWindowManager{}
-	wwm.windows = resource.MakeCollection[*WaylandWindow]()
-	wwm.recentMap = make(map[uint64]uint32)
-	return &wwm
-}
 
-var WM *WaylandWindowManager
-
-func (this *WaylandWindowManager) GetPaths() []string {
-	return this.windows.GetPaths()
-}
-
-func (this *WaylandWindowManager) handle_title(wId uint64, title string) {
-	var ww = this.getCopy(wId)
-	ww.Title = title
-	this.windows.Put(&ww)
-}
-
-func (this *WaylandWindowManager) handle_app_id(wId uint64, app_id string) {
-	var ww = this.getCopy(wId)
-	ww.AppId = app_id
-	this.windows.Put(&ww)
-}
-
-func (this *WaylandWindowManager) handle_output_enter(wId uint64, output uint64) {
-}
-
-func (this *WaylandWindowManager) handle_output_leave(wId uint64, output uint64) {
-}
-
-func (this *WaylandWindowManager) handle_state(wId uint64, state WindowStateMask) {
-	var ww = this.getCopy(wId)
-	ww.State = state
-	this.windows.Put(&ww)
-}
-
-func (this *WaylandWindowManager) handle_done(wId uint64) {
-}
-
-func (this *WaylandWindowManager) handle_parent(wId uint64, parent uint64) {
-}
-
-func (this *WaylandWindowManager) handle_closed(wId uint64) {
-	this.windows.Delete(strconv.FormatUint(wId, 10))
-}
-
-func (this *WaylandWindowManager) getCopy(wId uint64) WaylandWindow {
-	var ww WaylandWindow
-	if w, ok := this.windows.Get(strconv.FormatUint(wId, 10)); ok {
-		ww = *w
+func getCopy(wId uint64) *WaylandWindow {
+	var	copy WaylandWindow 
+	var path = strconv.FormatUint(wId, 10)
+	if w, ok := Windows.Get(path); ok {
+		copy = *w	
 	} else {
-		ww.Wid = wId
+		copy = *MakeWindow(wId)
 	}
-	return ww
+	return &copy
 }
 
-func (this *WaylandWindowManager) RaiseAndFocusNamedWindow(name string) bool {
-	if w, ok := this.windows.FindFirst(func(ww *WaylandWindow) bool { return ww.Title == name }); ok {
+func RaiseAndFocusNamedWindow(name string) bool {
+	if w, ok := Windows.FindFirst(func(ww *WaylandWindow) bool { return ww.Title == name }); ok {
 		activate(w.Wid)
 		return true
 	} else {
@@ -168,12 +138,48 @@ func (this *WaylandWindowManager) RaiseAndFocusNamedWindow(name string) bool {
 
 }
 
-func (this *WaylandWindowManager) Run() {
+func Run() {
 	setupAndRunAsWaylandClient()
 }
 
-func init() {
-	if xdg.SessionType == "wayland" {
-		WM = MakeWaylandWindowManager()
+func PurgeAndShow(applicationTitle string, focus bool) bool {
+	if w := getAndPurge(applicationTitle); w == nil {
+		return false
+	} else {
+		show(w.Wid)
+		if focus {
+			activate(w.Wid)
+		}
+		return true
 	}
 }
+
+func PurgeAndHide(applicationTitle string) {
+	if w := getAndPurge(applicationTitle); w != nil {
+		hide(w.Wid)
+	}
+}
+
+func MoveAndResize(applicationTitle string, x,y int32, width,height uint32) bool {
+	if w := getAndPurge(applicationTitle); w == nil {
+		return false
+	} else {
+		setRectangle(w.Wid, uint32(x), uint32(y) ,width, height)
+		return true
+	}
+}
+
+
+func getAndPurge(applicationTitle string) *WaylandWindow {
+	var result *WaylandWindow
+	for _, w := range Windows.Find(func(w *WaylandWindow) bool { return w.Title == applicationTitle })  {
+		if result == nil {
+			result = w 
+		} else {
+			close(w.Wid)
+		}
+	}
+	return result
+}
+
+

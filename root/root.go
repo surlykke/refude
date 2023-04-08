@@ -14,7 +14,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/notifications"
 	"github.com/surlykke/RefudeServices/power"
-	"github.com/surlykke/RefudeServices/x11"
+	"github.com/surlykke/RefudeServices/windows"
 )
 
 type RootRepo struct{}
@@ -53,9 +53,9 @@ func doDesktopSearch(term string) link.List {
 	var links = make(link.List, 0, 300)
 	term = strings.ToLower(term)
 
-	// Could be done concurrently..
+	// Could perhaps be done concurrently..
 	links = append(links, rewriteAndSort("/notification/", notifications.Notifications.Search(term, 0))...)
-	links = append(links, rewriteAndSort("/window/", x11.Windows.Search(term, 0))...)
+	links = append(links, rewriteAndSort("/window/", windows.GetWindowCollection().Search(term, 0))...)
 	links = append(links, rewriteAndSort("/application/", applications.Applications.Search(term, 1))...)
 	links = append(links, rewriteAndSort("/file/", file.FileRepo.Search(term, 2))...)
 	links = append(links, rewriteAndSort("/device/", power.Devices.Search(term, 3))...)

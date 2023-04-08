@@ -29,7 +29,7 @@ import (
 	"github.com/surlykke/RefudeServices/root"
 	"github.com/surlykke/RefudeServices/statusnotifications"
 	"github.com/surlykke/RefudeServices/watch"
-	"github.com/surlykke/RefudeServices/x11"
+	"github.com/surlykke/RefudeServices/windows"
 
 	_ "net/http/pprof"
 )
@@ -37,7 +37,7 @@ import (
 func main() {
 	log.Info("Running")
 
-	go x11.Run()
+	go windows.Run()
 	go applications.Run()
 	if config.Notifications.Enabled {
 		go notifications.Run()
@@ -45,7 +45,7 @@ func main() {
 	go power.Run()
 	//go statusnotifications.Run()
 
-	http.HandleFunc("/window/", collectionHandler("/window/", x11.Windows))
+	http.HandleFunc("/window/", collectionHandler("/window/", windows.GetWindowCollection()))
 	http.HandleFunc("/application/", collectionHandler("/application/", applications.Applications))
 	http.HandleFunc("/notification/", collectionHandler("/notification/", notifications.Notifications))
 	http.HandleFunc("/notification/flash", resourceHandler("/notification/", notifications.GetFlash))
@@ -195,7 +195,7 @@ func Complete(w http.ResponseWriter, r *http.Request) {
 func collectPaths(prefix string) []string {
 	var paths = make([]string, 0, 1000)
 	paths = append(paths, "/icon?name=", "/start?search=", "/complete?prefix=", "/watch", "/doc", "/bookmarks")
-	paths = append(paths, rewrite("/window/", x11.Windows.GetPaths())...)
+	paths = append(paths, rewrite("/window/", windows.GetPaths())...)
 	paths = append(paths, rewrite("/application/", applications.Applications.GetPaths())...)
 	paths = append(paths, rewrite("/mimetype/", applications.Mimetypes.GetPaths())...)
 	paths = append(paths, rewrite("/item/", statusnotifications.Items.GetPaths())...)

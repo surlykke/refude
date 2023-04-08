@@ -6,7 +6,6 @@
 package x11
 
 import (
-	"fmt"
 	"net/http"
 	"strconv"
 
@@ -144,8 +143,8 @@ func PurgeAndHide(applicationName string) bool {
 	}
 }
 
-func MoveAndResize(applicationName string, x,y int32, width,height uint32) bool {
-	if w, found := purgeAndGet(applicationName); !found {
+func MoveAndResize(applicationTitle string, x,y int32, width,height uint32) bool {
+	if w, found := purgeAndGet(applicationTitle); !found {
 		return false
 	} else {
 		proxy.Lock()
@@ -155,8 +154,8 @@ func MoveAndResize(applicationName string, x,y int32, width,height uint32) bool 
 	}
 }
 
-func PurgeAndShow(applicationName string, focus bool) bool {
-	if w, found := purgeAndGet(applicationName); !found {
+func PurgeAndShow(applicationTitle string, focus bool) bool {
+	if w, found := purgeAndGet(applicationTitle); !found {
 		return false
 	} else {
 		proxy.Lock()
@@ -174,7 +173,7 @@ func PurgeAndShow(applicationName string, focus bool) bool {
 	} 
 }
 
-func purgeAndGet(applicationName string) (uint32, bool) {
+func purgeAndGet(applicationTitle string) (uint32, bool) {
 	proxy.Lock()
 	defer proxy.Unlock()
 	if allWins, err := GetWindows(proxy, uint32(proxy.rootWindow), true); err != nil {
@@ -184,10 +183,9 @@ func purgeAndGet(applicationName string) (uint32, bool) {
 		var result uint32 = 0
 		var found bool = false 
 		for _, w := range allWins {
-			appName, _ := GetApplicationAndClass(proxy, w)
-			if appName == applicationName {
+			appTitle, _ := GetName(proxy, w)
+			if appTitle == applicationTitle {
 				if found {
-					fmt.Println("Closing...")
 					CloseWindow(proxy, w)
 				} else { 
 					result, found = w, true
