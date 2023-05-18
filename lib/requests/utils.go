@@ -6,6 +6,8 @@
 package requests
 
 import (
+	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 )
@@ -18,13 +20,16 @@ func GetSingleQueryParameter(r *http.Request, parameterName string, fallbackValu
 	}
 }
 
-func GetInt(r *http.Request, parameterName string) (int, bool) {
-	if paramValue := GetSingleQueryParameter(r, parameterName, ""); paramValue == "" {
-		return 0, false
-	} else if intVal, err := strconv.Atoi(paramValue); err != nil {
-		return 0, false
+func GetPosInt(r *http.Request, parameterName string) (uint, error) {
+	var paramValue = GetSingleQueryParameter(r, parameterName, "")
+	if intVal, err := strconv.Atoi(paramValue); err != nil {
+		return 0, err 
+	} else if intVal <= 0{
+		return 0, errors.New(fmt.Sprintf("'%s' should be positive", parameterName))
 	} else {
-		return intVal, true
+		return uint(intVal), nil 
 	}
 }
+
+
 

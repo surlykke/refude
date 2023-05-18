@@ -7,6 +7,8 @@
 import { div, img } from "../common/elements.js"
 import { doPost, retrieveResource, follow} from "../common/utils.js"
 
+let shown
+
 export class Main extends React.Component {
 
     constructor(props) {
@@ -16,9 +18,15 @@ export class Main extends React.Component {
     }
 
     getFlash = () => retrieveResource("/notification/flash", this.setFlash, this.clearFlash)
-    setFlash = flash => this.setState({flash: flash})
+
+    setFlash = flash => {
+        this.setState({flash: flash})
+        shown = true
+    }
+
     clearFlash = () => {
         this.setState({ flash: undefined})
+        shown = false
         doPost("/refude/html/hide", {app: 'notifier'})
     }
 
@@ -45,12 +53,14 @@ export class Main extends React.Component {
 }
 
 let resizeToContent = () => {
-    let { width, height } = document.getElementById('main').getBoundingClientRect()
-    width = Math.round(window.devicePixelRatio * width)
-    height = Math.round(window.devicePixelRatio * height)
-    // Java script call window.resizeTo will not make height or width smaller than 50 px (or so),
-    // so we ask server to resize us
-    doPost("/refude/html/resize", {app: "notifier", width: width, height: height })
+    if (shown) {
+        let { width, height } = document.getElementById('main').getBoundingClientRect()
+        width = Math.round(window.devicePixelRatio * width)
+        height = Math.round(window.devicePixelRatio * height)
+        // Java script call window.resizeTo will not make height or width smaller than 50 px (or so),
+        // so we ask server to resize us
+        doPost("/refude/html/show", {app: "notifier", width: width, height: height })
+    }
 }
 new ResizeObserver((observed) => observed && observed[0] && resizeToContent()).observe(document.getElementById('main'))
 

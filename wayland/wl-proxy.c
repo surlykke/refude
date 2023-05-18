@@ -32,8 +32,8 @@ void show_toplevel(uintptr_t handle) {
 
 
 void set_toplevel_rectangle(uintptr_t handle, int32_t x, int32_t y, int32_t width, int32_t height) {
-	zwlr_foreign_toplevel_handle_v1_set_rectangle((toplevel_handle) handle, (struct wl_surface*)handle, x, y, width, height);
-	wl_display_flush(wl_display);
+	/*zwlr_foreign_toplevel_handle_v1_set_rectangle((toplevel_handle) handle, NULL, x, y, width, height);
+	wl_display_flush(wl_display);  FIXME */
 }
 
 

@@ -236,7 +236,7 @@ func NextEvent(p Proxy) (Event, uint32) {
 				return DesktopStacking, 0
 			} else if xproperty.atom == _NET_DESKTOP_GEOMETRY {
 				return DesktopGeometry, 0
-			} else if xproperty.atom == _NET_WM_VISIBLE_NAME || xproperty.atom == _NET_WM_NAME || xproperty.atom == _WM_NAME {
+			} else if xproperty.atom == _NET_WM_VISIBLE_NAME || xproperty.atom == _NET_WM_NAME || xproperty.atom == WM_NAME {
 				return WindowTitle, uint32(xproperty.window)
 			} else if xproperty.atom == _NET_WM_VISIBLE_ICON_NAME || xproperty.atom == _NET_WM_ICON_NAME || xproperty.atom == _NET_WM_ICON {
 				return WindowIconName, uint32(xproperty.window)
@@ -375,15 +375,22 @@ func GetActiveWindow(p Proxy) (uint32, error) {
 
 
 func GetName(p Proxy, wId uint32) (string, error) {
-	if bytes, err := getBytes(p.disp, C.Window(wId), _NET_WM_VISIBLE_NAME); err == nil {
+	var bytes, err = getBytes(p.disp, C.Window(wId), _NET_WM_VISIBLE_NAME); 
+	if err == nil {
 		return string(bytes), nil
-	} else if bytes, err = getBytes(p.disp, C.Window(wId), _NET_WM_NAME); err == nil {
-		return string(bytes), nil
-	} else if bytes, err = getBytes(p.disp, C.Window(wId), _WM_NAME); err == nil {
-		return string(bytes), nil
-	} else {
-		return "", errors.New("Neither '_NET_WM_VISIBLE_NAME', '_NET_WM_NAME' nor 'WM_NAME' set")
 	}
+    
+	bytes, err = getBytes(p.disp, C.Window(wId), _NET_WM_NAME); 
+	if err == nil {
+		return string(bytes), nil
+	} 
+	
+	bytes, err = getBytes(p.disp, C.Window(wId), WM_NAME); 
+	if err == nil {
+		return string(bytes), nil
+	} 
+
+	return "", errors.New("Neither '_NET_WM_VISIBLE_NAME', '_NET_WM_NAME' nor 'WM_NAME' set")
 }
 
 func GetIcon(p Proxy, wId uint32) ([]uint32, error) {
@@ -713,7 +720,7 @@ var _NET_CLOSE_WINDOW = internAtom(commonProxy.disp, "_NET_CLOSE_WINDOW")
 var _NET_WM_VISIBLE_NAME = internAtom(commonProxy.disp, "_NET_WM_VISIBLE_NAME")
 var _NET_WM_NAME = internAtom(commonProxy.disp, "_NET_WM_NAME")
 var _NET_WM_PID = internAtom(commonProxy.disp, "_NET_WM_PID")
-var _WM_NAME = internAtom(commonProxy.disp, "_WM_NAME")
+var WM_NAME = internAtom(commonProxy.disp, "WM_NAME")
 var _NET_WM_VISIBLE_ICON_NAME = internAtom(commonProxy.disp, "_NET_WM_VISIBLE_ICON_NAME")
 var _NET_WM_ICON_NAME = internAtom(commonProxy.disp, "_NET_WM_ICON_NAME")
 var _NET_WM_ICON = internAtom(commonProxy.disp, "_NET_WM_ICON")
@@ -745,7 +752,7 @@ func init() {
 	_NET_WM_VISIBLE_NAME = internAtom(disp, "_NET_WM_VISIBLE_NAME")
 	_NET_WM_NAME = internAtom(disp, "_NET_WM_NAME")
 	_NET_WM_PID = internAtom(disp, "_NET_WM_PID")
-	_WM_NAME = internAtom(disp, "_WM_NAME")
+	WM_NAME = internAtom(disp, "WM_NAME")
 	_NET_WM_VISIBLE_ICON_NAME = internAtom(disp, "_NET_WM_VISIBLE_ICON_NAME")
 	_NET_WM_ICON_NAME = internAtom(disp, "_NET_WM_ICON_NAME")
 	_NET_WM_ICON = internAtom(disp, "_NET_WM_ICON")

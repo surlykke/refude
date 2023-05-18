@@ -42,82 +42,86 @@ func init() {
 }
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if slice.Among(r.URL.Path, "/refude/html/show", "/refude/html/hide", "/refude/html/resize") {
+	fmt.Println("client.ServeHTTP, path:", r.URL.Path, ", query:", r.URL.Query())
+	if slice.Among(r.URL.Path, "/refude/html/show", "/refude/html/hide") {
 		if r.Method != "POST" {
 			respond.NotAllowed(w)
 		} else if app := requests.GetSingleQueryParameter(r, "app", ""); app != "launcher" && app != "notifier" {
-			respond.UnprocessableEntity(w, errors.New("'app' must be given"))
-		} else if r.URL.Path == "/refude/html/show" {
-			if !windows.PurgeAndShow("Refude "+app, app == "launcher") {
-				xdg.RunCmd(xdg.BrowserCommand, fmt.Sprintf("--app=http://localhost:7938/refude/html/%s/", app))
-			}
-			respond.Accepted(w)
+			respond.UnprocessableEntity(w, errors.New("'app' must be given and one of 'launcher' or 'notifier'"))
 		} else if r.URL.Path == "/refude/html/hide" {
 			windows.PurgeAndHide("Refude " + app)
 			respond.Accepted(w)
-		} else if width, ok := requests.GetInt(r, "width"); !ok || width <= 0 {
-			respond.UnprocessableEntity(w, errors.New("'width' must be given, and be a positive int"))
-		} else if height, ok := requests.GetInt(r, "height"); !ok || height <= 0 {
-			respond.UnprocessableEntity(w, errors.New("'height' must be given, and be a positive int"))
-		} else {
-			var x, y int
-			if app == "launcher" {
-				x, y = calculateLauncherPos(width, height)
-			} else {
-				x, y = calculateNotifierPos(width, height)
+		} else if app == "launcher" {
+			x, y, width, height := calculatePosAndSize(config.Launcher.Placement, 300, 400)
+			if (!windows.MoveAndResize("Refude launcher", int32(x), int32(y), uint32(width), uint32(height))) {
+				xdg.RunCmd(xdg.BrowserCommand, "--app=http://localhost:7938/refude/html/launcher/")
 			}
-			windows.MoveAndResize("Refude "+app, int32(x), int32(y), uint32(width), uint32(height))
 			respond.Accepted(w)
+		} else if app == "notifier" {
+			if width, height, err := getWidthAndHeight(r); err != nil {
+				respond.UnprocessableEntity(w, err)
+			}  else {
+				var x, y, width, height = calculatePosAndSize(config.Notifications.Placement, width, height)
+				if (!windows.MoveAndResize("Refude notifier", int32(x), int32(y), uint32(width), uint32(height))) {
+					xdg.RunCmd(xdg.BrowserCommand, "--app=http://localhost:7938/refude/html/notifier/")
+				}		
+				respond.Accepted(w)
+			}
 		}
 	} else {
 		StaticServer.ServeHTTP(w, r)
 	}
 }
 
-func calculateLauncherPos(width, height int) (int, int) {
-	var x, y int = 0, 0
-	var mdList = monitor.GetMonitors()
-
-	for _, m := range mdList {
-		if m.Primary {
-			x = m.X + (m.W-width)/2
-			y = m.Y + (m.H-height)/2
-			break
-		}
+func getWidthAndHeight(r *http.Request) (uint, uint, error) {
+	if width, err := requests.GetPosInt(r, "width"); err != nil {
+		return 0, 0, err
+	} else if height, err := requests.GetPosInt(r, "height"); err != nil {
+		return 0, 0, err
+	} else {
+		return width, height, nil
 	}
-
-	return x, y
 }
 
-func calculateNotifierPos(width, height int) (int, int) {
+
+func calculatePosAndSize(placementList []config.Placement, widthHint uint, heightHint uint) (uint, uint, uint, uint) {
 	// zero values means top right corner
 	var corner uint8
-	var mX, mY, mW, mH, distX, distY int
+	var mX, mY, mW, mH, relX, relY, width, height uint
 	var mdList = monitor.GetMonitors()
-	var tmp = append(config.Notifications.Placement, config.Placement{}) // The appended assures we'll always get a match below
+	var tmp = append(placementList, config.Placement{}) // The appended assures we'll always get a match below
 
 outer:
 	for _, placement := range tmp {
 		for _, m := range mdList {
 			if placement.Screen == "" && m.Primary || placement.Screen == m.Title {
-				mX, mY, mW, mH = m.X, m.Y, m.W, m.H
-				corner, distX, distY = placement.Corner, placement.CornerDistX, placement.CornerDistY
+				mX, mY, mW, mH = uint(m.X), uint(m.Y), uint(m.W), uint(m.H)
+				corner, relX, relY, width, height = placement.Corner, placement.CornerdistX, placement.CornerdistY, placement.Width, placement.Height
 				break outer
 			}
 		}
 	}
 
-	switch corner {
-	case 0: // top-left
-		return mX + distX, mY + distY
-	case 1: // top-right
-		return mX + mW - width - distX - 2, mY + distY
-	case 2: // bottorm right
-		return mX + mW - width - distX - 2, mY + mH - height - distY - 2
-	case 3: // bottorm left
-		return mX + distX, mY + mH - height - distY - 2
-	default:
-		return 0, 0
+	if width == 0 {
+		width = widthHint
+	}
+	if height == 0 {
+		height = heightHint
 	}
 
+	var x,y uint
+	switch corner {
+	case 0: // top-left
+		x,y = mX + relX, mY + relY
+	case 1: // top-right
+		x,y = mX + mW - width - relX - 2, mY + relY
+	case 2: // bottorm right
+		x,y = mX + mW - width - relX - 2, mY + mH - height - relY - 2
+	case 3: // bottorm left
+		x,y = mX + relX, mY + mH - height - relY - 2
+	default:
+		x,y = 0, 0
+	}
+	return x,y,width,height
 }
+

@@ -144,7 +144,7 @@ func PurgeAndHide(applicationName string) bool {
 }
 
 func MoveAndResize(applicationTitle string, x,y int32, width,height uint32) bool {
-	if w, found := purgeAndGet(applicationTitle); !found {
+	if w, found := purgeAndShow(applicationTitle, true); !found {
 		return false
 	} else {
 		proxy.Lock()
@@ -155,20 +155,26 @@ func MoveAndResize(applicationTitle string, x,y int32, width,height uint32) bool
 }
 
 func PurgeAndShow(applicationTitle string, focus bool) bool {
+	var _, ok = purgeAndShow(applicationTitle, focus)
+	return ok
+}
+
+
+func purgeAndShow(applicationTitle string, focus bool) (uint32, bool) {
 	if w, found := purgeAndGet(applicationTitle); !found {
-		return false
+		return 0, false
 	} else {
 		proxy.Lock()
 		defer proxy.Unlock()
 		if win, err := MakeWindow(proxy, w); err != nil {
 			log.Warn(err)
-			return false
+			return 0, false
 		} else { 
 			MapWindow(proxy, win.Wid)
 			if focus {
 				RaiseAndFocusWindow(proxy, win.Wid)
 			}
-			return true	
+			return win.Wid, true	
 		}
 	} 
 }

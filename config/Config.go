@@ -22,21 +22,30 @@ type NotificationConf struct {
 	Placement            []Placement
 }
 
+type LauncherConf struct {
+	Placement []Placement
+}
+
 type Placement struct {
 	Screen      string
 	Corner      uint8
-	CornerDistX int
-	CornerDistY int
+	CornerdistX uint
+	CornerdistY uint
+	Width       uint
+	Height      uint
 }
 
 type Conf struct {
 	Notifications NotificationConf
+	Launcher      LauncherConf
 }
 
 var Notifications = NotificationConf{
 	Enabled:              true,
 	BatteryNotifications: true,
 }
+
+var Launcher = LauncherConf{}
 
 func init() {
 	var tmp Conf
@@ -51,7 +60,11 @@ func init() {
 		log.Warn("Unable to parse", configFile, err)
 	} else {
 		Notifications = tmp.Notifications
+		Launcher = tmp.Launcher
 	}
 
-	fmt.Println("After config init, Notifications:", Notifications, ", yaml file was:", string(bytes))
+	fmt.Println("After config init")
+	fmt.Println("Notifications:", Notifications)
+	fmt.Println("Launcher:", Launcher)
+	fmt.Println("yaml file was:", string(bytes))
 }
