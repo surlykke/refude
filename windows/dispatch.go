@@ -51,9 +51,9 @@ func PurgeAndHide(applicationTitle string) {
 	}
 }
 
-func MoveAndResize(applicationTitle string, x,y int32, width,height uint32) bool {
+func MoveAndResize(applicationTitle string, x,y int32, width,height uint32, focus bool) bool {
 	if runningX11 {
-		return x11.MoveAndResize(applicationTitle, x,y, width, height) 
+		return x11.MoveAndResize(applicationTitle, x,y, width, height, focus) 
 	} else {
 		return wayland.MoveAndResize(applicationTitle, x, y, width, height) 
 	}

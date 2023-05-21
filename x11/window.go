@@ -143,8 +143,8 @@ func PurgeAndHide(applicationName string) bool {
 	}
 }
 
-func MoveAndResize(applicationTitle string, x,y int32, width,height uint32) bool {
-	if w, found := purgeAndShow(applicationTitle, true); !found {
+func MoveAndResize(applicationTitle string, x,y int32, width,height uint32, focus bool) bool {
+	if w, found := purgeAndShow(applicationTitle, focus); !found {
 		return false
 	} else {
 		proxy.Lock()

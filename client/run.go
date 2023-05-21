@@ -53,7 +53,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			respond.Accepted(w)
 		} else if app == "launcher" {
 			x, y, width, height := calculatePosAndSize(config.Launcher.Placement, 300, 400)
-			if (!windows.MoveAndResize("Refude launcher", int32(x), int32(y), uint32(width), uint32(height))) {
+			if (!windows.MoveAndResize("Refude launcher", int32(x), int32(y), uint32(width), uint32(height), true)) {
 				xdg.RunCmd(xdg.BrowserCommand, "--app=http://localhost:7938/refude/html/launcher/")
 			}
 			respond.Accepted(w)
@@ -62,7 +62,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				respond.UnprocessableEntity(w, err)
 			}  else {
 				var x, y, width, height = calculatePosAndSize(config.Notifications.Placement, width, height)
-				if (!windows.MoveAndResize("Refude notifier", int32(x), int32(y), uint32(width), uint32(height))) {
+				if (!windows.MoveAndResize("Refude notifier", int32(x), int32(y), uint32(width), uint32(height), false)) {
 					xdg.RunCmd(xdg.BrowserCommand, "--app=http://localhost:7938/refude/html/notifier/")
 				}		
 				respond.Accepted(w)
