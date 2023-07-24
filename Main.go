@@ -58,11 +58,11 @@ func main() {
 	http.HandleFunc("/screen/", collectionHandler("/screen/", monitor.Repo))
 	http.HandleFunc("/", collectionHandler("/", root.Repo))
 
-	http.HandleFunc("/refude/", client.ServeHTTP)
 	http.HandleFunc("/icon", icons.ServeHTTP)
 	http.HandleFunc("/complete", Complete)
 	http.HandleFunc("/watch", watch.ServeHTTP)
 	http.HandleFunc("/doc", doc.ServeHTTP)
+	http.HandleFunc("/refude/", client.ServeHTTP)
 
 	http.Handle("/browse", browse.Handler)
 	http.Handle("/browse/", browse.Handler)

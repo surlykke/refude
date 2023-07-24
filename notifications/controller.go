@@ -14,6 +14,7 @@ import (
 
 	"github.com/godbus/dbus/v5"
 	"github.com/godbus/dbus/v5/introspect"
+	"github.com/surlykke/RefudeServices/client"
 	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/image"
 	"github.com/surlykke/RefudeServices/lib/log"
@@ -220,7 +221,7 @@ func Notify(app_name string,
 
 	Notifications.PutFirst(&notification)
 	watch.NotificationChanged()
-	notifierShow()
+	client.Show("notifier", false)	
 	if notification.Urgency == Normal {
 		time.AfterFunc(10100*time.Millisecond, watch.NotificationChanged)
 	} else if notification.Urgency == Low {

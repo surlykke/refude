@@ -71,8 +71,8 @@ func (this X11Window) DoDelete(w http.ResponseWriter, r *http.Request) {
 }
 
 func (this X11Window) DoPost(w http.ResponseWriter, r *http.Request) {
-	var action = requests.GetSingleQueryParameter(r, "action", "")
-	if "" == action {
+	var action = requests.GetSingleQueryParameter(r, "action", "activate")
+	if "activate" == action {
 		this.RaiseAndFocus()
 		respond.Accepted(w)
 	} else {
@@ -127,81 +127,17 @@ func RaiseAndFocusNamedWindow(name string) bool {
 	}
 }
 
-func PurgeAndHide(applicationName string) bool {
-	if w, found := purgeAndGet(applicationName); !found {
-		return false
-	} else{
-		proxy.Lock()
-		defer proxy.Unlock()
-		if win, err := MakeWindow(proxy, w); err != nil {
-			log.Warn(err)
-			return false
-		} else {
-			UnmapWindow(proxy, win.Wid)
-			return true
-		}
-	}
-}
-
-func MoveAndResize(applicationTitle string, x,y int32, width,height uint32, focus bool) bool {
-	if w, found := purgeAndShow(applicationTitle, focus); !found {
-		return false
-	} else {
-		proxy.Lock()
-		defer proxy.Unlock()
-		SetBounds(proxy, w, x, y, width, height)
-		return true;
-	}
-}
-
 func PurgeAndShow(applicationTitle string, focus bool) bool {
-	var _, ok = purgeAndShow(applicationTitle, focus)
-	return ok
-}
-
-
-func purgeAndShow(applicationTitle string, focus bool) (uint32, bool) {
-	if w, found := purgeAndGet(applicationTitle); !found {
-		return 0, false
-	} else {
-		proxy.Lock()
-		defer proxy.Unlock()
-		if win, err := MakeWindow(proxy, w); err != nil {
-			log.Warn(err)
-			return 0, false
-		} else { 
-			MapWindow(proxy, win.Wid)
-			if focus {
-				RaiseAndFocusWindow(proxy, win.Wid)
-			}
-			return win.Wid, true	
+	var found bool = false
+	for _, w := range Windows.Find(func(w *X11Window) bool { return w.Title == applicationTitle}) {
+		if found {
+			w.Close()
+		} else {
+			w.RaiseAndFocus()	
+			found = true;
 		}
-	} 
-}
-
-func purgeAndGet(applicationTitle string) (uint32, bool) {
-	proxy.Lock()
-	defer proxy.Unlock()
-	if allWins, err := GetWindows(proxy, uint32(proxy.rootWindow), true); err != nil {
-		log.Warn(err)
-		return 0, false
-	} else {
-		var result uint32 = 0
-		var found bool = false 
-		for _, w := range allWins {
-			appTitle, _ := GetName(proxy, w)
-			if appTitle == applicationTitle {
-				if found {
-					CloseWindow(proxy, w)
-				} else { 
-					result, found = w, true
-				}
-
-			}
-		}
-		return result, found
 	}
-
+	return found
 }
 
 func Run() {

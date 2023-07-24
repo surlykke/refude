@@ -25,6 +25,10 @@ export class Main extends React.Component {
 
     componentDidMount = () => {
         document.addEventListener("keydown", this.onKeyDown)
+        let { width, height } = document.getElementById('html').getBoundingClientRect()
+        let x = screen.availLeft + (screen.availWidth - width)/2
+        let y = screen.availTop + (screen.availHeight - height)/2
+        window.moveTo(x, y)
     };
 
     componentDidUpdate = () => {
@@ -57,11 +61,7 @@ export class Main extends React.Component {
     }
 
     closeBrowser = () => {
-        this.setState({ term: "" })
-        this.browserUrl = browserStartUrl
-        this.browserHistory = []
-        this.getResource()
-        doPost("/refude/html/hide?app=launcher")
+        window.close()
     }
 
     handleInput = e => {

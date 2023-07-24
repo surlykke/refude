@@ -5,7 +5,7 @@ html, body {
     height: 100%;
     margin: 0;
     overflow: hidden;
-    background-color: gray;
+    background-color: #002b36;
     color:   #fdf6e3;
     font-size: 1.1em;
 }

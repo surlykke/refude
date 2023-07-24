@@ -70,15 +70,9 @@ func MakeWindow(wId uint64) *WaylandWindow {
 	}
 }
 
-
-
-
 func (this *WaylandWindow) Actions() link.ActionList {
 	return link.ActionList{
 		{Name: "activate", Title: "Raise and focus", IconName: this.IconName},
-		{Name: "close", Title: "Close", IconName: this.IconName},
-		{Name: "hide", Title: "Hide", IconName: this.IconName},
-		{Name: "show", Title: "Show", IconName: this.IconName},
 	}
 }
 
@@ -88,24 +82,10 @@ func (this *WaylandWindow) DoDelete(w http.ResponseWriter, r *http.Request) {
 }
 
 func (this *WaylandWindow) DoPost(w http.ResponseWriter, r *http.Request) {
-	var action = requests.GetSingleQueryParameter(r, "action", "")
-	if "" == action {
+	var action = requests.GetSingleQueryParameter(r, "action", "activate")
+	if "activate" == action {
 		activate(this.Wid)
 		respond.Accepted(w)
-	} else if "hide" == action {
-		hide(this.Wid)
-	} else if "show" == action {
-		show(this.Wid)
-	} else if "resize" == action {
-		if width, err := strconv.ParseUint(requests.GetSingleQueryParameter(r, "width", ""), 10, 32); err != nil {
-			respond.UnprocessableEntity(w, err)
-		} else if height, err := strconv.ParseUint(requests.GetSingleQueryParameter(r, "height", ""), 10, 32); err != nil {
-			respond.UnprocessableEntity(w, err)
-		} else {
-			setRectangle(this.Wid, 0, 0, uint32(width), uint32(height))
-			respond.Accepted(w)
-		}
-
 	} else {
 		respond.NotFound(w)
 	}
@@ -115,7 +95,6 @@ var Windows = resource.MakeCollection[*WaylandWindow]()
 var recentMap = make(map[uint64]uint32)
 var recentCount uint32
 var recentMapLock sync.Mutex
-
 
 func getCopy(wId uint64) *WaylandWindow {
 	var	copy WaylandWindow 
@@ -154,20 +133,6 @@ func PurgeAndShow(applicationTitle string, focus bool) bool {
 	}
 }
 
-func PurgeAndHide(applicationTitle string) {
-	if w := getAndPurge(applicationTitle); w != nil {
-		hide(w.Wid)
-	}
-}
-
-func MoveAndResize(applicationTitle string, x,y int32, width,height uint32) bool {
-	if w := getAndPurge(applicationTitle); w == nil {
-		return false
-	} else {
-		setRectangle(w.Wid, uint32(x), uint32(y) ,width, height)
-		return true
-	}
-}
 
 
 func getAndPurge(applicationTitle string) *WaylandWindow {

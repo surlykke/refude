@@ -43,20 +43,3 @@ func PurgeAndShow(applicationTitle string, focus bool) bool {
 	}
 }
 
-func PurgeAndHide(applicationTitle string) {
-	if runningX11 {
-		x11.PurgeAndHide(applicationTitle)
-	} else {
-		wayland.PurgeAndHide(applicationTitle)
-	}
-}
-
-func MoveAndResize(applicationTitle string, x,y int32, width,height uint32, focus bool) bool {
-	if runningX11 {
-		return x11.MoveAndResize(applicationTitle, x,y, width, height, focus) 
-	} else {
-		return wayland.MoveAndResize(applicationTitle, x, y, width, height) 
-	}
-}
-
-
