@@ -6,13 +6,12 @@
 package notifications
 
 import (
+	"fmt"
 	"strconv"
 	"time"
 
-	"github.com/surlykke/RefudeServices/lib/resource"
-	"github.com/surlykke/RefudeServices/lib/xdg"
-	"github.com/surlykke/RefudeServices/watch"
-	"github.com/surlykke/RefudeServices/windows"
+	"github.com/surlykke/RefudeServices/lib/log"
+	"golang.org/x/net/websocket"
 )
 
 var notificationExpireryHints = make(chan struct{})
@@ -30,52 +29,29 @@ func removeExpired() {
 	for _, notification := range Notifications.GetAll() {
 		if notification.Urgency < Critical {
 			if notification.Expires < time.Now().UnixMilli() {
-				Notifications.Delete(notification.GetPath())
+				Notifications.Delete(notification.GetId())
 				conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", notification.NotificationId, Expired)
 				count++
 			}
 		}
-	}
-	if count > 0 {
-		watch.NotificationChanged()
 	}
 }
 
 func removeNotification(id uint32, reason uint32) {
 	if deleted := Notifications.Delete(strconv.Itoa(int(id))); deleted {
 		conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", id, reason)
-		watch.NotificationChanged()
 	}
 }
 
-func GetFlash(string) resource.Resource {
-	var notifications = Notifications.GetAll()
-	var now = time.Now().UnixMilli()
-	for _, urgency := range []Urgency{Critical, Normal, Low} {
-		for _, notification := range notifications {
-			if notification.Urgency == urgency && !timedOut(notification, now) {
-				return notification
-			}
+var WebsocketHandler = websocket.Handler(func(conn *websocket.Conn) {
+	var subscription = Notifications.Subscribe()
+	for {
+		subscription.Next()
+		fmt.Println("Notification...")
+
+		if err := websocket.JSON.Send(conn, Notifications.GetAll()); err != nil {
+			log.Info(err)	
+			return
 		}
 	}
-	
-	return nil
-}
-
-func timedOut(flash *Notification, now int64) bool {
-	if flash.Urgency == Critical {
-		return now > flash.Created+3600000
-	} else if flash.Urgency == Normal {
-		return now > flash.Created+10000
-	} else { // Low
-		return now > flash.Created+4000
-	}
-}
-
-
-func notifierShow() {
-	if !windows.PurgeAndShow("Refude notifier", false) {
-		xdg.RunCmd(xdg.BrowserCommand, "--app=http://localhost:7938/refude/html/notifier")
-	}
-}
-
+})

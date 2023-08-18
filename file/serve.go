@@ -6,16 +6,28 @@
 package file
 
 import (
+	"net/http"
+	"strings"
+
 	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
 type FileRepoType struct {}
 
-func (fr FileRepoType) GetResources() []resource.Resource {
-	return []resource.Resource{}
+func ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if !strings.HasPrefix(r.URL.Path, "/file/") {
+		respond.NotFound(w)
+	} else if file, err := makeFile(r.URL.Path[6:]); err != nil {
+		respond.ServerError(w, err)
+	} else if file == nil {
+		respond.NotFound(w)
+	} else {
+		resource.ServeSingleResource(w, r, file, "/file/")
+	}
 }
 
 func (fr FileRepoType) GetResource(filePath string) resource.Resource {

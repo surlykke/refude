@@ -14,12 +14,10 @@ import (
 
 	"github.com/godbus/dbus/v5"
 	"github.com/godbus/dbus/v5/introspect"
-	"github.com/surlykke/RefudeServices/client"
 	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/image"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/resource"
-	"github.com/surlykke/RefudeServices/watch"
 )
 
 const NOTIFICATIONS_SERVICE = "org.freedesktop.Notifications"
@@ -176,7 +174,7 @@ func Notify(app_name string,
 
 	notification := Notification{
 		BaseResource: resource.BaseResource{
-			Path:     strconv.FormatUint(uint64(id), 10),
+			Id:       strconv.FormatUint(uint64(id), 10),
 			Title:    sanitize(summary, []string{}, []string{}),
 			Comment:  sanitize(body, allowedTags, allowedEscapes),
 			IconName: iconName,
@@ -211,22 +209,24 @@ func Notify(app_name string,
 		}
 	}
 
-	if notification.Urgency == Critical && expire_timeout <= 0 {
-		expire_timeout = 84600000
-	} else if expire_timeout <= 0 || expire_timeout > 120000 {
-		expire_timeout = 120000
+	// We don't respect timeout as given by the client, but calculate from urgency
+	// - Critical: 24 hours
+	// - Normal: 10 seconds
+	// - Low: 2 seconds
+	var timeToLive time.Duration
+	switch notification.Urgency {
+	case Critical:
+		timeToLive = 24*time.Hour
+	case Normal:
+		timeToLive = 10*time.Second
+	default:
+		timeToLive = 2*time.Second
 	}
 
-	notification.Expires = notification.Created + int64(expire_timeout)
+	notification.Expires = notification.Created + int64(timeToLive/time.Millisecond)
+	time.AfterFunc(timeToLive + 10*time.Millisecond, removeExpired)
 
 	Notifications.PutFirst(&notification)
-	watch.NotificationChanged()
-	client.Show("notifier", false)	
-	if notification.Urgency == Normal {
-		time.AfterFunc(10100*time.Millisecond, watch.NotificationChanged)
-	} else if notification.Urgency == Low {
-		time.AfterFunc(4100*time.Millisecond, watch.NotificationChanged)
-	}
 	return id, nil
 }
 

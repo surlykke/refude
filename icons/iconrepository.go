@@ -55,6 +55,11 @@ func init() {
 		}
 	}
 
+	var iconThemeList = make([]*IconTheme, 0, len(themeMap))
+	for _, iconTheme := range themeMap {
+		iconThemeList = append(iconThemeList, iconTheme)
+	}
+	IconThemes.ReplaceWith(iconThemeList)
 }
 
 func determineBasedirs() {

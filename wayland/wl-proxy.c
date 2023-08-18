@@ -30,13 +30,6 @@ void show_toplevel(uintptr_t handle) {
 	wl_display_flush(wl_display);
 }
 
-
-void set_toplevel_rectangle(uintptr_t handle, int32_t x, int32_t y, int32_t width, int32_t height) {
-	/*zwlr_foreign_toplevel_handle_v1_set_rectangle((toplevel_handle) handle, NULL, x, y, width, height);
-	wl_display_flush(wl_display);  FIXME */
-}
-
-
 // Events
 void tl_handle_title(void *data, struct zwlr_foreign_toplevel_handle_v1 *handle, const char *title) {
 	handle_title((uintptr_t)handle, (char*)title);

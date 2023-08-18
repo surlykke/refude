@@ -35,8 +35,6 @@ var MusicDir string
 var PicturesDir string
 var VideosDir string
 
-var BrowserCommand = "brave-browser" // FIXME
-
 func init() {
 	Home = clean(os.Getenv("HOME"))
 	ConfigHome = clean(notEmptyOr(os.Getenv("XDG_CONFIG_HOME"), Home+"/.config"))
@@ -110,3 +108,4 @@ func cleanS(dirs []string) []string {
 	}
 	return cleaned
 }
+

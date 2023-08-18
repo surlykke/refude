@@ -2,10 +2,12 @@ package wayland
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"sync"
 
+	"github.com/surlykke/RefudeServices/applications"
 	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
@@ -64,11 +66,16 @@ type WaylandWindow struct {
 func MakeWindow(wId uint64) *WaylandWindow {
 	return &WaylandWindow {
 		BaseResource: resource.BaseResource {
-			Path: strconv.FormatUint(wId, 10),
+			Id: strconv.FormatUint(wId, 10),
 		},
 		Wid: wId,
 	}
 }
+
+func (this *WaylandWindow) RelevantForSearch() bool {
+	return this.Title != "Refude launcher" && this.Title != "Refude notifier"
+}
+
 
 func (this *WaylandWindow) Actions() link.ActionList {
 	return link.ActionList{
@@ -91,7 +98,7 @@ func (this *WaylandWindow) DoPost(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-var Windows = resource.MakeCollection[*WaylandWindow]()
+var Windows = resource.MakeCollection[*WaylandWindow]("/window/")
 var recentMap = make(map[uint64]uint32)
 var recentCount uint32
 var recentMapLock sync.Mutex
@@ -118,7 +125,22 @@ func RaiseAndFocusNamedWindow(name string) bool {
 }
 
 func Run() {
+	go watchApplications()
 	setupAndRunAsWaylandClient()
+}
+
+func watchApplications() {
+	var subscription = applications.Applications.Subscribe()
+	for {
+		if subscription.Next() == "/application/" {
+			fmt.Println("updating icons...")
+			for _, w := range Windows.GetAll() {
+				var win = *w
+				win.IconName = applications.GetIconName(win.AppId + ".desktop")
+				Windows.Update(&win)
+			}
+		}
+	}
 }
 
 func PurgeAndShow(applicationTitle string, focus bool) bool {

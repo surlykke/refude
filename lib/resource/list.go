@@ -6,32 +6,46 @@
 package resource
 
 import (
+	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/surlykke/RefudeServices/lib/link"
+	"github.com/surlykke/RefudeServices/lib/pubsub"
+	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
 )
 
+type ResourceCollection interface {
+	CanServe(path string) bool
+	ServeHTTP(w http.ResponseWriter, r *http.Request)
+	Search(term string, threshold int) link.List
+}
+
 /**
- * Behave like an ordered syncronized map
- * Order is determined by insertion
+* Behave like an ordered syncronized map
+* Order is determined by insertion
  */
 type Collection[T Resource] struct {
 	sync.Mutex
+	context   string
 	resources []T
+	publisher *pubsub.Publisher[string]
 }
 
-func MakeCollection[T Resource]() *Collection[T] {
+func MakeCollection[T Resource](context string) *Collection[T] {
 	return &Collection[T]{
+		context:   context,
 		resources: make([]T, 0, 100),
+		publisher: pubsub.MakePublisher[string](),
 	}
 }
 
-func (l *Collection[T]) Get(path string) (T, bool) {
-	l.Lock()
-	defer l.Unlock()
-	for _, res := range l.resources {
-		if res.GetPath() == path {
+func (this *Collection[T]) Get(id string) (T, bool) {
+	this.Lock()
+	defer this.Unlock()
+	for _, res := range this.resources {
+		if res.GetId() == id {
 			return res, true
 		}
 	}
@@ -39,48 +53,39 @@ func (l *Collection[T]) Get(path string) (T, bool) {
 	return t, false
 }
 
-func (l *Collection[T]) GetAll() []T {
-	l.Lock()
-	defer l.Unlock()
+func (this *Collection[T]) GetByPath(path string) (T, bool) {
+	var id string
+	if strings.HasPrefix(path, this.context) {
+		id = path[len(this.context):]
+	}
+	return this.Get(id)
+}
 
-	var list = make([]T, 0, len(l.resources))
-	for _, res := range l.resources {
+
+func (this *Collection[T]) GetAll() []T {
+	this.Lock()
+	defer this.Unlock()
+
+	var list = make([]T, 0, len(this.resources))
+	for _, res := range this.resources {
 		list = append(list, res)
 	}
 	return list
 }
 
-func (l *Collection[T]) GetResource(path string) Resource {
-	if res, ok := l.Get(path); ok {
-		return res
-	} else {
-		return nil
-	}
-}
-
-func (l *Collection[T]) GetResources() []Resource {
-	l.Lock()
-	defer l.Unlock()
-	var all = make([]Resource, 0, len(l.resources))
-	for _, res := range l.resources {
-		all = append(all, res)
-	}
-	return all
-}
-
-func (l *Collection[T]) Search(term string, threshold int) link.List {
+func (this *Collection[T]) Search(term string, threshold int) link.List {
 	if len(term) < threshold {
 		return link.List{}
 	}
 
-	l.Lock()
-	defer l.Unlock()
-	var links = make(link.List, 0, len(l.resources))
-	for _, res := range l.resources {
+	this.Lock()
+	defer this.Unlock()
+	var links = make(link.List, 0, len(this.resources))
+	for _, res := range this.resources {
 		if res.RelevantForSearch() {
 			var title, _, icon, profile = res.Presentation()
 			if rnk := searchutils.Match(term, title, res.GetKeywords()...); rnk > -1 {
-				links = append(links, link.MakeRanked(res.GetPath(), title, icon, profile, rnk))
+				links = append(links, link.MakeRanked(res.GetId(), title, icon, profile, rnk))
 			}
 		}
 	}
@@ -88,54 +93,70 @@ func (l *Collection[T]) Search(term string, threshold int) link.List {
 	return links
 }
 
-func (l *Collection[T]) Put(res T) {
-	l.Lock()
-	defer l.Unlock()
-	for i := 0; i < len(l.resources); i++ {
-		if l.resources[i].GetPath() == res.GetPath() {
-			l.resources[i] = res
+func (this *Collection[T]) Put(res T) {
+	this.Lock()
+	defer  this.publish()
+	defer this.Unlock()
+	for i := 0; i < len(this.resources); i++ {
+		if this.resources[i].GetId() == res.GetId() {
+			this.resources[i] = res
 			return
 		}
 	}
-	l.resources = append(l.resources, res)
+	this.resources = append(this.resources, res)
 }
 
-func (l *Collection[T]) PutFirst(res T) {
-	l.Lock()
-	defer l.Unlock()
-	for i := 0; i < len(l.resources); i++ {
-		if l.resources[i].GetPath() == res.GetPath() {
-			l.resources[i] = res
+func (this *Collection[T]) Update(res T) {
+	this.Lock() 
+	defer this.Unlock()
+	for i := 0; i < len(this.resources); i++ {
+		if this.resources[i].GetId() == res.GetId() {
+			this.resources[i] = res
+			this.publish()
+			break
+		}
+	}
+}
+
+func (this *Collection[T]) PutFirst(res T) {
+	this.Lock()
+	defer this.publish()
+	defer this.Unlock()
+	for i := 0; i < len(this.resources); i++ {
+		if this.resources[i].GetId() == res.GetId() {
+			this.resources[i] = res
 			return
 		}
 	}
-	l.resources = append([]T{res}, l.resources...)
+	this.resources = append([]T{res}, this.resources...)
 }
 
-func (l *Collection[T]) ReplaceWith(resources []T) {
-	l.Lock()
-	defer l.Unlock()
-	l.resources = resources
+func (this *Collection[T]) ReplaceWith(resources []T) {
+	this.Lock()
+	this.resources = resources
+	this.Unlock()
+	this.publish()
 }
 
-func (l *Collection[T]) Delete(path string) bool {
-	l.Lock()
-	defer l.Unlock()
+func (this *Collection[T]) Delete(path string) bool {
+	this.Lock()
+	defer this.Unlock()
 
-	for i, res := range l.resources {
-		if res.GetPath() == path {
-			l.resources = append(l.resources[:i], l.resources[i+1:]...)
+	for i, res := range this.resources {
+		if res.GetId() == path {
+			this.resources = append(this.resources[:i], this.resources[i+1:]...)
+			this.publish()
 			return true
 		}
 	}
 	return false
 }
 
-func (l *Collection[T]) FindFirst(test func(t T) bool) (T, bool) {
-	l.Lock()
-	defer l.Unlock()
+func (this *Collection[T]) FindFirst(test func(t T) bool) (T, bool) {
+	this.Lock()
+	defer this.Unlock()
 
-	for _, res := range l.resources {
+	for _, res := range this.resources {
 		if test(res) {
 			return res, true
 		}
@@ -144,13 +165,13 @@ func (l *Collection[T]) FindFirst(test func(t T) bool) (T, bool) {
 	return t, false
 }
 
-func (l *Collection[T]) Find(test func(t T) bool) []T {
-	l.Lock()
-	defer l.Unlock()
+func (this *Collection[T]) Find(test func(t T) bool) []T {
+	this.Lock()
+	defer this.Unlock()
 
 	var found = make([]T, 0, 5)
 
-	for _, res := range l.resources {
+	for _, res := range this.resources {
 		if test(res) {
 			found = append(found, res)
 		}
@@ -159,11 +180,37 @@ func (l *Collection[T]) Find(test func(t T) bool) []T {
 	return found
 }
 
-
-func (l *Collection[T]) GetPaths() []string {
-	var res = make([]string, 0, len(l.resources))
-	for _, r := range l.resources {
-		res = append(res, r.GetPath())
+func (this *Collection[T]) GetPaths() []string {
+	var res = make([]string, 0, len(this.resources))
+	for _, r := range this.resources {
+		res = append(res, this.context + r.GetId())
 	}
 	return res
+}
+
+func (this *Collection[T]) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path == this.context {
+		// Serve as list
+		if r.Method == "GET" {
+			var jsonReps = make([]jsonRepresentation, 0, 500)
+			for _, res := range this.GetAll() {
+				jsonReps = append(jsonReps, buildJsonRepresentation(res, this.context, ""))
+			}
+			respond.AsJson(w, jsonReps)
+		} else {
+			respond.NotAllowed(w)
+		}
+	} else if res, ok := this.GetByPath(r.URL.Path); ok { 
+		ServeSingleResource(w, r, res, this.context)
+	} else {
+		respond.NotFound(w)
+	}	
+}
+
+func (this *Collection[T]) Subscribe() *pubsub.Subscription[string] {
+	return this.publisher.Subscribe()
+}
+
+func (this *Collection[T]) publish() {
+	this.publisher.Publish(this.context)
 }

@@ -52,7 +52,6 @@ func (n *Notification) Actions() link.ActionList {
 			ll = append(ll, link.MkAction(actionId, actionDesc, ""))
 		}
 	}
-	// FIXME ll = append(ll, link.Make(self, "Dismiss", "", relation.Delete))
 
 	return ll
 }
@@ -63,7 +62,7 @@ func (n *Notification) DeleteAction() (string, bool) {
 }
 
 func (n *Notification) RelevantForSearch() bool {
-	return n.Urgency == Critical || (len(n.NActions) > 0 && n.Urgency == Normal && n.Created+60000 > time.Now().UnixMilli())
+	return true
 }	
 
 func (n *Notification) DoPost(w http.ResponseWriter, r *http.Request) {
@@ -85,7 +84,7 @@ func (n *Notification) DoDelete(w http.ResponseWriter, r *http.Request) {
 	respond.Accepted(w)
 }
 
-var Notifications = resource.MakeCollection[*Notification]()
+var Notifications = resource.MakeCollection[*Notification]("/notification/")
 
 
 

@@ -263,7 +263,7 @@ func GetMonitorDataList(p Proxy) []*MonitorData {
 
 		monitors[i] = &MonitorData{
 			BaseResource: resource.BaseResource{
-				Path: name,
+				Id: name,
 				Title: name,
 				Profile: "monitor",
 			},

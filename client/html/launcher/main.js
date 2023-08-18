@@ -4,7 +4,7 @@
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
 //
-import { div, frag, hr, span } from "../common/elements.js"
+import { div, frag, hr, span, a } from "../common/elements.js"
 import { resourceHead } from "./resourcehead.js"
 import { link } from "./link.js"
 import { doPost, restorePosition, savePositionAndClose, watchResource } from "../common/utils.js"
@@ -20,14 +20,15 @@ export class Main extends React.Component {
         this.browserUrl = browserStartUrl
         this.browserHistory = []
         this.getResource()
-        watchResource("/start", this.getResource)
+        this.watchSearch()
     }
 
     componentDidMount = () => {
         document.addEventListener("keydown", this.onKeyDown)
         let { width, height } = document.getElementById('html').getBoundingClientRect()
-        let x = screen.availLeft + (screen.availWidth - width)/2
-        let y = screen.availTop + (screen.availHeight - height)/2
+        let x = screen.availLeft + (screen.availWidth - width) / 2
+        let y = screen.availTop + (screen.availHeight - height) / 2
+        window.resizeTo(640, 480)
         window.moveTo(x, y)
     };
 
@@ -35,6 +36,16 @@ export class Main extends React.Component {
         let links = Array.from(document.querySelectorAll("a.link"))
         let link = links.find(l => l.href == this.preferred) || links[0]
         link?.focus()
+    }
+
+    watchSearch = () => {
+        let evtSource = new EventSource("http://localhost:7938/start/watch")
+        evtSource.onmessage = this.getResource
+        evtSource.onerror = () => {
+            if (evtSource.readyState === 2) {
+                setTimeout(this.watchSearch, 5000)
+            }
+        }
     }
 
     getResource = () => {
@@ -97,7 +108,7 @@ export class Main extends React.Component {
         let { key, ctrlKey, altKey } = event;
         if (key === "Escape") {
             this.closeBrowser();
-        } else if (key === "ArrowLeft" || key === "h" && ctrlKey) {
+        } else if (key === "ArrowLeft") {
             this.move("left")
         } else if (key.length === 1 && !ctrlKey && !altKey) {
             this.setState({ term: this.state.term + key }, this.getResource)

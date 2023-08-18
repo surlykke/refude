@@ -8,6 +8,7 @@ package x11
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/link"
@@ -15,7 +16,6 @@ import (
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
-	"github.com/surlykke/RefudeServices/watch"
 )
 
 type X11Window struct {
@@ -35,7 +35,7 @@ func MakeWindow(p Proxy, wId uint32) (*X11Window, error) {
 		var appName, appClass = GetApplicationAndClass(p, wId)
 		return &X11Window{
 			BaseResource: resource.BaseResource{
-				Path:     strconv.Itoa(int(wId)),
+				Id:       strconv.Itoa(int(wId)),
 				Title:    name,
 				Comment:  appClass,
 				IconName: iconName,
@@ -60,8 +60,7 @@ func (this *X11Window) DeleteAction() (string, bool) {
 }
 
 func (this *X11Window) RelevantForSearch() bool {
-	return this.ApplicationName != "localhost__refude_html_launcher" &&
-		this.ApplicationName != "localhost__refude_html_notifier" &&
+	return !strings.HasPrefix(this.Title, "Refude launcher") &&
 		this.State&(SKIP_TASKBAR|SKIP_PAGER|ABOVE) == 0
 }
 
@@ -115,7 +114,7 @@ func GetIconName(p Proxy, wId uint32) (string, error) {
 	}
 }
 
-var Windows = resource.MakeCollection[*X11Window]()
+var Windows = resource.MakeCollection[*X11Window]("/window/")
 var proxy = MakeProxy()
 
 func RaiseAndFocusNamedWindow(name string) bool {
@@ -129,12 +128,12 @@ func RaiseAndFocusNamedWindow(name string) bool {
 
 func PurgeAndShow(applicationTitle string, focus bool) bool {
 	var found bool = false
-	for _, w := range Windows.Find(func(w *X11Window) bool { return w.Title == applicationTitle}) {
+	for _, w := range Windows.Find(func(w *X11Window) bool { return w.Title == applicationTitle }) {
 		if found {
 			w.Close()
 		} else {
-			w.RaiseAndFocus()	
-			found = true;
+			w.RaiseAndFocus()
+			found = true
 		}
 	}
 	return found
@@ -159,7 +158,6 @@ func Run() {
 		} else {
 			continue
 		}
-		watch.SearchChanged()
 	}
 }
 

@@ -42,9 +42,8 @@ func readThemes() map[string]*IconTheme {
 			for _, indexFilePath := range indexFilePaths {
 				if theme, ok := readTheme(indexFilePath); !ok {
 					log.Warn("Could not read", indexFilePath)
-				} else if _, ok := themeMap[theme.Path]; !ok {
-					themeMap[theme.Path] = theme
-					IconThemes.Put(theme)
+				} else if _, ok := themeMap[theme.Id]; !ok {
+					themeMap[theme.Id] = theme
 				}
 			}
 		}
@@ -74,7 +73,7 @@ func readTheme(indexThemeFilePath string) (*IconTheme, bool) {
 	themeGroup := iniFile[0]
 
 	theme := IconTheme{}
-	theme.Path = themeId
+	theme.Id = themeId
 	theme.Title = themeGroup.Entries["Name"]
 	theme.Comment = themeGroup.Entries["Comment"]
 	theme.Inherits = slice.Split(themeGroup.Entries["Inherits"], ",")
@@ -82,7 +81,7 @@ func readTheme(indexThemeFilePath string) (*IconTheme, bool) {
 	var addedDirs = make(map[string]bool)
 	directories := slice.Split(themeGroup.Entries["Directories"], ",")
 	if len(directories) == 0 {
-		log.Warn("Ignoring theme ", theme.Path, " - no directories")
+		log.Warn("Ignoring theme ", theme.Id, " - no directories")
 		return nil, false
 	}
 	for _, iniGroup := range iniFile[1:] {
@@ -160,4 +159,4 @@ func readUint32OrFallback(uintAsString string, fallback uint32) uint32 {
 	}
 }
 
-var IconThemes = resource.MakeCollection[*IconTheme]()
+var IconThemes = resource.MakeCollection[*IconTheme]("/icontheme/")

@@ -92,7 +92,7 @@ func (d *DesktopApplication) DoPost(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-var Applications = resource.MakeCollection[*DesktopApplication]()
+var Applications = resource.MakeCollection[*DesktopApplication]("/application/")
 
 
 func GetAppsIds(mimetypeId string) []string {
@@ -125,13 +125,16 @@ func OpenFile(appId, path string) (bool, error) {
 }
 
 func GetIconName(appId string) string {
+	fmt.Println("GetIconName", appId)
 	// Some special handling
 	if appId == "Alacritty" {
 		appId = "com.alacritty.Alacritty"
 	}
 	if app, ok := Applications.Get(appId); ok {
+		fmt.Println("Returning", app.IconName)
 		return app.IconName
 	} else {
+		fmt.Println("Not found")
 		return ""
 	}
 }

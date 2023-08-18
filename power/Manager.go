@@ -116,7 +116,7 @@ func retrieveDevice(path dbus.ObjectPath) *Device {
 			device.IconName = variant.Value().(string)
 		}
 	}
-	device.Path = path2id(device.DbusPath)
+	device.Id = path2id(device.DbusPath)
 	device.Title = deviceTitle(device.Type, device.Model)
 	device.Profile = "device"
 	device.Keywords = []string{"battery"}

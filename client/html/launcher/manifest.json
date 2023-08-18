@@ -1,0 +1,12 @@
+{
+  "name": "Refude launcher",
+  "short_name": "Launcher",
+  "icons": [],
+  "lang": "en-US",
+  "id": "http://localhost:7938/refude/html/launcher",
+  "start_url": "http://localhost:7938/refude/html/launcher",
+  "display": "browser",
+  "launch_handler": {
+    "client_mode": "focus-existing"
+  }
+}

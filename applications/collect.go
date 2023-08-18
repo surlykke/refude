@@ -25,8 +25,8 @@ func Collect() {
 	// Add aliases as mimetypes
 	for _, mt := range mimetypes {
 		for _, alias := range aliasTypes(mt) {
-			if _, ok := mimetypes[alias.Path]; !ok {
-				mimetypes[alias.Path] = alias
+			if _, ok := mimetypes[alias.Id]; !ok {
+				mimetypes[alias.Id] = alias
 			}
 		}
 	}
@@ -77,7 +77,7 @@ func aliasTypes(mt *Mimetype) []*Mimetype {
 	var result = make([]*Mimetype, 0, len(mt.Aliases))
 	for _, id := range mt.Aliases {
 		var copy = *mt
-		copy.Path = id
+		copy.Id = id
 		copy.Aliases = []string{}
 		result = append(result, &copy)
 	}
@@ -166,7 +166,7 @@ func CollectMimeTypes() map[string]*Mimetype {
 			if tmp.Icon.Name != "" {
 				mimeType.IconName = tmp.Icon.Name
 			} else {
-				mimeType.IconName = strings.Replace(mimeType.Path, "/", "-", -1)
+				mimeType.IconName = strings.Replace(mimeType.Id, "/", "-", -1)
 			}
 
 			for _, aliasStruct := range tmp.Alias {
@@ -184,11 +184,11 @@ func CollectMimeTypes() map[string]*Mimetype {
 			if tmp.GenericIcon.Name != "" {
 				mimeType.GenericIcon = tmp.GenericIcon.Name
 			} else {
-				slashPos := strings.Index(mimeType.Path, "/")
-				mimeType.GenericIcon = mimeType.Path[:slashPos] + "-x-generic"
+				slashPos := strings.Index(mimeType.Id, "/")
+				mimeType.GenericIcon = mimeType.Id[:slashPos] + "-x-generic"
 			}
 
-			res[mimeType.Path] = mimeType
+			res[mimeType.Id] = mimeType
 		}
 	}
 
@@ -234,7 +234,7 @@ func collectApplications(appdir string, apps map[string]*DesktopApplication) {
 		}
 		app.Keywords = append(app.Keywords, executableName)
 
-		apps[app.Path] = app
+		apps[app.Id] = app
 
 		return nil
 	}
@@ -296,7 +296,7 @@ func readDesktopFile(path string, id string) (*DesktopApplication, error) {
 		return nil, errors.New("file must start with '[Desktop Entry]'")
 	} else {
 		var da = DesktopApplication{ DesktopId: id}
-		da.Path = id 
+		da.Id = id 
 		da.DesktopActions = []DesktopAction{}
 		var actionNames = []string{}
 		group := iniFile[0]

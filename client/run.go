@@ -7,15 +7,11 @@ package client
 
 import (
 	"embed"
-	"fmt"
 	"io/fs"
 	"net/http"
 	"os"
 
 	"github.com/surlykke/RefudeServices/lib/log"
-	"github.com/surlykke/RefudeServices/lib/respond"
-	"github.com/surlykke/RefudeServices/lib/xdg"
-	"github.com/surlykke/RefudeServices/windows"
 )
 
 //go:embed html
@@ -36,27 +32,6 @@ func init() {
 	StaticServer = http.StripPrefix("/refude/html", tmp)
 }
 
-func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("client.ServeHTTP, path:", r.URL.Path, ", query:", r.URL.Query())
-	if r.URL.Path == "/refude/html/showlauncher" {
-		if r.Method != "POST" {
-			respond.NotAllowed(w)
-		} else {
-			Show("launcher", true)
-			respond.Accepted(w)
-		} 	
-	} else {
-		StaticServer.ServeHTTP(w, r)
-	}
-}
-
-
-func Show(app string, focus bool)  {
-	var appName = "Refude " + app
-	if ! windows.PurgeAndShow(appName, focus) {
-		xdg.RunCmd(xdg.BrowserCommand, "--app=http://localhost:7938/refude/html/" + app)
-	}
-}
-		
+	
 
 

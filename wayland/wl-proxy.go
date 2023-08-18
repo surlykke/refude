@@ -19,12 +19,13 @@ void close_toplevel(uintptr_t);
 void activate_toplevel(uintptr_t);
 void hide_toplevel(uintptr_t);
 void show_toplevel(uintptr_t);
-void set_toplevel_rectangle(uintptr_t handle, int32_t x, int32_t y, int32_t width, int32_t height);
 */
 import "C"
 import (
 	"strconv"
 	"unsafe"
+
+	"github.com/surlykke/RefudeServices/applications"
 )
 
 func close(handle uint64) {
@@ -43,10 +44,6 @@ func show(handle uint64) {
 	C.show_toplevel(C.uintptr_t(handle))
 }
 
-func setRectangle(wId uint64, x uint32, y uint32, w uint32, h uint32) {
-	C.set_toplevel_rectangle(C.uintptr_t(wId), C.int32_t(x), C.int32_t(y), C.int32_t(w), C.int32_t(h))
-}
-
 //export handle_title
 func handle_title(handle C.uintptr_t, c_title *C.char) {
 	var ww = getCopy(uint64(handle))
@@ -59,6 +56,7 @@ func handle_title(handle C.uintptr_t, c_title *C.char) {
 func handle_app_id(handle C.uintptr_t, c_app_id *C.char) {
 	var ww = getCopy(uint64(handle))
 	ww.AppId = C.GoString(c_app_id)
+	ww.IconName = applications.GetIconName(ww.AppId + ".desktop")
 	Windows.Put(ww)
 }
 
