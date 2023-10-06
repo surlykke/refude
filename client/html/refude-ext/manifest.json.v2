@@ -15,6 +15,7 @@
     "persistent": true
   },
   "permissions": [
+    "tabs",
     "notifications", 
     "background",
     "http://localhost:7938/*"

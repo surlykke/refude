@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/surlykke/RefudeServices/applications"
+	"github.com/surlykke/RefudeServices/browsertabs"
 	"github.com/surlykke/RefudeServices/file"
 	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/pubsub"
@@ -61,6 +62,7 @@ func doDesktopSearch(term string) link.List {
 	links = append(links, rewriteAndSort("/application/", applications.Applications.Search(term, 1))...)
 	links = append(links, rewriteAndSort("/file/", file.FileRepo.Search(term, 2))...)
 	links = append(links, rewriteAndSort("/device/", power.Devices.Search(term, 3))...)
+	links = append(links, rewriteAndSort("/tab/", browsertabs.Tabs.Search(term, 0))...)
 
 	return links
 }

@@ -11,6 +11,7 @@ import (
 
 	"github.com/surlykke/RefudeServices/applications"
 	"github.com/surlykke/RefudeServices/browse"
+	"github.com/surlykke/RefudeServices/browsertabs"
 	"github.com/surlykke/RefudeServices/client"
 	"github.com/surlykke/RefudeServices/config"
 	"github.com/surlykke/RefudeServices/doc"
@@ -64,6 +65,8 @@ func main() {
 	http.Handle("/browse", browse.Handler)
 	http.Handle("/browse/", browse.Handler)
 	http.Handle("/refude/", client.StaticServer)
+	http.Handle("/tab/", browsertabs.Tabs)
+	http.Handle("/tab/websocket", browsertabs.WebsocketHandler)
 	http.Handle("/ping", ping.WebsocketHandler)
 	http.HandleFunc("/file/", file.ServeHTTP)
 	http.HandleFunc("/icon", icons.ServeHTTP)

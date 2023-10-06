@@ -1,5 +1,7 @@
-let websocket
+let notificationSocket
 let notifications = []
+
+let tabsSocket
 
 let id = notification => "refude-notification-" + notification.NotificationId
 
@@ -12,6 +14,9 @@ const handler = m => {
     }
 
     for (let nn of newNotifications) {
+        if (!nn.IconName) {
+            nn.IconName = nn.Urgency === 2 ? "dialog-warning" : "dialog-info"
+        }
         chrome.notifications.create(
             id(nn), {
             type: "basic",
@@ -31,17 +36,16 @@ const errorHandler = error => {
 
 const closeHandler = () => {
     console.log("Connection closed")
-    websocket.close()
+    notificationSocket.close()
     setTimeout(consumeNotifications, 5000)
 }
 
 const consumeNotifications = () => {
-    console.log("Connecting")
-    websocket = new WebSocket("ws://localhost:7938/notification/websocket")
-    websocket.addEventListener('message', handler)
-    websocket.addEventListener('error', () => console.warn("Error:", error))
-    websocket.addEventListener('close', () => {
-        websocket.close()
+    notificationSocket = new WebSocket("ws://localhost:7938/notification/websocket")
+    notificationSocket.addEventListener('message', handler)
+    notificationSocket.addEventListener('error', error => console.log("Error:", error))
+    notificationSocket.addEventListener('close', () => {
+        notificationSocket.close()
         setTimeout(consumeNotifications, 5000)
     })
 }
@@ -49,11 +53,50 @@ const consumeNotifications = () => {
 // launch_handler "focus-existing" doesn't work for tabbed pwa's, so this instead
 // But a bit more agressive.. Close existing launcher tabs whenever a new tab is opened, so
 // launcher tabs becomes ephemeral (kind of..)
-const handleTabCreated = tab => {
+const cleanUpLauncherTabs = tab => {
     chrome.tabs.query(
         { url: "http://localhost:7938/refude/html/launcher/" },
-        tabs => chrome.tabs.remove(tabs.map(t => t.id).filter(id => id !== tab.id))
+        tabs => {
+            chrome.tabs.remove(tabs.map(t => t.id).filter(id => id !== tab.id))
+        }
     )
+}
+
+const reportTabs = () => {
+    console.log("Reporting tabs")
+    chrome.tabs.query({}, tabs => {
+        console.log("tabsSocket:", tabsSocket)
+        console.log("tabids:", tabs.map(t => t.id).join(", "))
+        if (tabsSocket) {
+            let tabsData = tabs.map(t => {
+                return {
+                    id: "" + t.id,
+                    title: t.title,
+                    url: t.url
+                }
+            })
+            tabsSocket.send(JSON.stringify(tabsData))
+        }
+    })
+}
+
+const openTabsSocket = () => {
+    tabsSocket = new WebSocket("ws://localhost:7938/tab/websocket")
+    tabsSocket.onopen = reportTabs
+    tabsSocket.onmessage = m => {
+        console.log("m.data:", m.data)
+        let marshalled = JSON.parse(m.data)
+        let tabId = parseInt(marshalled)
+        console.log("tabId:", tabId)
+        if (tabId) {
+            var updateProperties = { 'active': true };
+            chrome.tabs.update(tabId, updateProperties, (tab) => { }) 
+        }
+    }
+    tabsSocket.onclose = () => {
+        tabsSocket = null;
+        setTimeout(openTabsSocket, 10000)
+    }
 }
 
 /*
@@ -84,5 +127,9 @@ const keepAlive = () => {
 keepAlive()
 */
 
-chrome.tabs.onCreated.addListener(handleTabCreated)
+chrome.tabs.onCreated.addListener(cleanUpLauncherTabs)
+chrome.tabs.onRemoved.addListener(reportTabs)
+chrome.tabs.onUpdated.addListener(reportTabs)
+
 consumeNotifications("/notification/", handler, error => console.log(error))
+openTabsSocket()
