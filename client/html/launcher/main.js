@@ -7,7 +7,7 @@
 import { div, frag, hr, span, a } from "../common/elements.js"
 import { resourceHead } from "./resourcehead.js"
 import { link } from "./link.js"
-import { doPost, restorePosition, savePositionAndClose, watchResource } from "../common/utils.js"
+import { doPost} from "../common/utils.js"
 
 const browserStartUrl = "http://localhost:7938/start"
 
@@ -24,6 +24,7 @@ export class Main extends React.Component {
     }
 
     componentDidMount = () => {
+        document.addEventListener("focus", () => console.log("document focused"))
         document.addEventListener("keydown", this.onKeyDown)
         let { width, height } = document.getElementById('html').getBoundingClientRect()
         let x = screen.availLeft + (screen.availWidth - width) / 2
@@ -61,6 +62,7 @@ export class Main extends React.Component {
                 json => {
                     // browserUrl may have changed while request in flight 
                     if (browserUrlCopy === this.browserUrl) {
+                        console.log("Resource:", json)
                         this.setState({ resource: json })
                     }
                 },
@@ -71,8 +73,17 @@ export class Main extends React.Component {
             )
     }
 
-    closeBrowser = () => {
-        window.close()
+    dismiss = (restoreWindow, restoreTab) => {
+        let url = "http://localhost:7938/refude/html/hidelauncher"
+        let separator = "?"
+        if (restoreTab) {
+            url = url + separator + "restore=tab"
+            separator = "&"
+        }
+        if (restoreWindow) {
+            url = url + separator + "restore=window"
+        }
+        doPost(url)
     }
 
     handleInput = e => {
@@ -107,7 +118,7 @@ export class Main extends React.Component {
     onKeyDown = (event) => {
         let { key, ctrlKey, altKey } = event;
         if (key === "Escape") {
-            this.closeBrowser();
+            this.dismiss(true, true);
         } else if (key === "ArrowLeft") {
             this.move("left")
         } else if (key.length === 1 && !ctrlKey && !altKey) {
@@ -135,7 +146,7 @@ export class Main extends React.Component {
             if (term && resource.links.length === 0) {
                 fraqs.push(div({ className: 'linkHeading' }, "No match"))
             }
-            let links = resource.links ? resource.links.map(l => link(l, l.profile, this.closeBrowser, this.move)) : []
+            let links = resource.links ? resource.links.map(l => link(l, l.profile, this.dismiss, this.move)) : []
             let firstRel = links.findIndex(l => l.props.rel === 'related')
             if (firstRel > 0) {
                 links = [span({ className: "linkHeading" }, "Actions")]

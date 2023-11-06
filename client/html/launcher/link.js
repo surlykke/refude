@@ -20,9 +20,13 @@ export let link = (link, comment, dismiss, move) => {
         } else if (key === "ArrowDown" || key === "j" && ctrlKey || key === 'Tab' && !shiftKey && !ctrlKey && !altKey) {
             move("down");
         } else if (key === "Enter") {
-            doPost(event.target.href).then(response => response.ok && !ctrlKey && dismiss())
+            console.log("Enter")
+            doPost(event.target.href).then(response => {
+                console.log("response.ok:", response.ok)
+                response.ok && !ctrlKey && dismiss(false, "browsertab" != event.target.dataset.profile)
+            })
         } else if (key === "Delete") {
-            doDelete(event.target.href).then(response => response.ok && !ctrlKey && dismiss())
+            doDelete(event.target.href).then(response => response.ok && !ctrlKey && dismiss(true, true))
         } else { 
             return;
         }
@@ -32,11 +36,15 @@ export let link = (link, comment, dismiss, move) => {
     comment = comment || "" 
     return a({  className: "link", 
                 onClick: e => e.preventDefault(),
-                onDoubleClick: e => doPost(e.target.href).then(response => response.ok && dismiss && dismiss()),
+                onDoubleClick: e => {
+                    doPost(e.currentTarget.href, response => response.ok && dismiss(false, "browsertab" !== e.currentTarget.dataset.profile))
+                    e.preventDefault()
+                },
                 onKeyDown: onKeyDown,
                 rel:link.rel, 
                 href: link.href,
                 tabIndex: -1,
+                "data-profile": link.profile,
              }, 
         link.icon && img({className: "icon", src:link.icon, height:"20", width:"20"}), 
         span({className:"title"}, link.title),

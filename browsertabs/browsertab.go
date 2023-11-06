@@ -56,7 +56,6 @@ var WebsocketHandler = websocket.Handler(func(conn *websocket.Conn) {
 			conn.Close()
 			return
 		} else {
-			log.Info("Got:", len(data))
 			var tabs = make([]*Tab, 0, len(data))
 			for _, d := range data {
 				tabs = append(tabs, &Tab{

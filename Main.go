@@ -64,7 +64,7 @@ func main() {
 	http.Handle("/mimetype/", applications.Mimetypes)
 	http.Handle("/browse", browse.Handler)
 	http.Handle("/browse/", browse.Handler)
-	http.Handle("/refude/", client.StaticServer)
+	http.Handle("/refude/commands", client.CommandSocketHandler)
 	http.Handle("/tab/", browsertabs.Tabs)
 	http.Handle("/tab/websocket", browsertabs.WebsocketHandler)
 	http.Handle("/ping", ping.WebsocketHandler)
@@ -75,6 +75,7 @@ func main() {
 	http.HandleFunc("/start", resource.SingleResourceServer(start.Start, "/"))
 	http.HandleFunc("/start/watch", start.ServeHTTP)
 	http.HandleFunc("/bookmarks", resource.SingleResourceServer(start.Bookmarks, "/"))
+	http.HandleFunc("/refude/", client.ServeHTTP)
 	
 	if err := http.ListenAndServe(":7938", nil); err != nil {
 		log.Warn("http.ListenAndServe failed:", err)

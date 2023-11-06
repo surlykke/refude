@@ -2,6 +2,8 @@ let notificationSocket
 let notifications = []
 
 let tabsSocket
+let commandSocket
+
 
 let id = notification => "refude-notification-" + notification.NotificationId
 
@@ -50,23 +52,9 @@ const consumeNotifications = () => {
     })
 }
 
-// launch_handler "focus-existing" doesn't work for tabbed pwa's, so this instead
-// But a bit more agressive.. Close existing launcher tabs whenever a new tab is opened, so
-// launcher tabs becomes ephemeral (kind of..)
-const cleanUpLauncherTabs = tab => {
-    chrome.tabs.query(
-        { url: "http://localhost:7938/refude/html/launcher/" },
-        tabs => {
-            chrome.tabs.remove(tabs.map(t => t.id).filter(id => id !== tab.id))
-        }
-    )
-}
 
 const reportTabs = () => {
-    console.log("Reporting tabs")
     chrome.tabs.query({}, tabs => {
-        console.log("tabsSocket:", tabsSocket)
-        console.log("tabids:", tabs.map(t => t.id).join(", "))
         if (tabsSocket) {
             let tabsData = tabs.map(t => {
                 return {
@@ -84,13 +72,12 @@ const openTabsSocket = () => {
     tabsSocket = new WebSocket("ws://localhost:7938/tab/websocket")
     tabsSocket.onopen = reportTabs
     tabsSocket.onmessage = m => {
-        console.log("m.data:", m.data)
         let marshalled = JSON.parse(m.data)
         let tabId = parseInt(marshalled)
-        console.log("tabId:", tabId)
         if (tabId) {
+            console.log("message, tabId:", tabId)
             var updateProperties = { 'active': true };
-            chrome.tabs.update(tabId, updateProperties, (tab) => { }) 
+            chrome.tabs.update(tabId, updateProperties, (tab) => { })
         }
     }
     tabsSocket.onclose = () => {
@@ -98,6 +85,64 @@ const openTabsSocket = () => {
         setTimeout(openTabsSocket, 10000)
     }
 }
+
+const openCommandSocket = () => {
+    console.log("Open command socket")
+    commandSocket = new WebSocket("ws://localhost:7938/refude/commands")
+    commandSocket.onmessage = m => {
+        console.log("commandSocket data:", m.data)
+        let marshalled = JSON.parse(m.data)
+        switch (marshalled.Command) {
+            case "show":
+                showLauncher();
+                break;
+            case "hide":
+                hideLauncher();
+                break;
+            case "restoreTab":
+                restoreTab()
+                break;
+            default:
+                console.warn("Unknown command:", marshalled.Command)
+        }
+    }
+    commandSocket.onclose = () => {
+        commandSocket = null;
+        setTimeout(openCommandSocket, 2000)
+    }
+
+}
+
+let rememberedTab
+
+let showLauncher = () => {
+    chrome.windows.getCurrent({}, window => {
+        if (!window) {
+            chrome.windows.create({ focused: true, url: "http://localhost:7938/refude/html/launcher/" })
+        } else {
+            chrome.tabs.query({ active: true }, ([tab]) => {
+                rememberedTab = tab
+                chrome.tabs.query(
+                    { url: "http://localhost:7938/refude/html/launcher/" },
+                    tabs => chrome.tabs.remove(tabs.map(t => t.id), () => {
+                        chrome.tabs.create({ active: true, index: 0, url: "http://localhost:7938/refude/html/launcher" })
+                    }))
+            })
+        }
+    })
+}
+
+let restoreTab = () => {
+    rememberedTab && chrome.tabs.update(rememberedTab.id, { active: true })
+
+}
+
+let hideLauncher = () => {
+    chrome.tabs.query(
+        { url: "http://localhost:7938/refude/html/launcher/" }, tabs => chrome.tabs.remove(tabs.map(t => t.id))
+    )
+}
+
 
 /*
     Some nonsense one has to do to keep the service worker alive when on manifest version 3
@@ -127,9 +172,9 @@ const keepAlive = () => {
 keepAlive()
 */
 
-chrome.tabs.onCreated.addListener(cleanUpLauncherTabs)
 chrome.tabs.onRemoved.addListener(reportTabs)
 chrome.tabs.onUpdated.addListener(reportTabs)
 
 consumeNotifications("/notification/", handler, error => console.log(error))
 openTabsSocket()
+openCommandSocket()

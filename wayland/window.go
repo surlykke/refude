@@ -156,6 +156,23 @@ func PurgeAndShow(applicationTitle string, focus bool) bool {
 }
 
 
+var rememberedActive uint64
+var rememberedActiveLock sync.Mutex
+
+func RememberActive() {
+	if active, found := Windows.FindFirst(func(w *WaylandWindow) bool { return w.State.Is(ACTIVATED) }); found {
+		rememberedActiveLock.Lock()
+		rememberedActive = active.Wid
+		rememberedActiveLock.Unlock()
+	}
+}
+
+func ActivateRememberedActive() {
+	rememberedActiveLock.Lock()
+	var copy = rememberedActive
+	rememberedActiveLock.Unlock()
+	activate(copy)
+}
 
 func getAndPurge(applicationTitle string) *WaylandWindow {
 	var result *WaylandWindow
