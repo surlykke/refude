@@ -181,7 +181,7 @@ func Notify(app_name string,
 		},
 		NotificationId: id,
 		Sender:         app_name,
-		Created:        time.Now().UnixMilli(),
+		Created:        UnixTime(time.Now()),
 		Urgency:        Normal,
 		NActions:       map[string]string{},
 		Hints:          map[string]interface{}{},
@@ -223,10 +223,12 @@ func Notify(app_name string,
 		timeToLive = 2*time.Second
 	}
 
-	notification.Expires = notification.Created + int64(timeToLive/time.Millisecond)
+	var expires = time.Time(notification.Created).Add(timeToLive)
+	notification.Expires = UnixTime(expires) 
 	time.AfterFunc(timeToLive + 10*time.Millisecond, removeExpired)
 
 	Notifications.PutFirst(&notification)
+	flashPing <- struct{}{}
 	return id, nil
 }
 

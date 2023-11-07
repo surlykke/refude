@@ -7,6 +7,7 @@ package notifications
 
 import (
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/surlykke/RefudeServices/lib/link"
@@ -23,16 +24,22 @@ const (
 	Critical         = 2
 )
 
-const flashTimeoutLow time.Duration = 2 * time.Second
-const flashTimeoutNormal time.Duration = 6 * time.Second
-const _50ms = 50 * time.Millisecond
+type UnixTime time.Time // Behaves like Time, but json-marshalls to milliseconds since epoch
+
+
+func (ut UnixTime) MarshalJSON() ([]byte, error) {
+	var buf = make([]byte, 0, 22)
+	buf = strconv.AppendInt(buf,time.Time(ut).UnixMilli(), 10) 	
+	return buf, nil
+}
+
 
 type Notification struct {
 	resource.BaseResource
 	NotificationId uint32
 	Sender         string
-	Created        int64
-	Expires        int64
+	Created        UnixTime
+	Expires        UnixTime
 	Urgency        Urgency
 	NActions       map[string]string `json:"actions"`
 	Hints          map[string]interface{}
