@@ -297,6 +297,7 @@ func readDesktopFile(path string, id string) (*DesktopApplication, error) {
 	} else {
 		var da = DesktopApplication{ DesktopId: id}
 		da.Id = id 
+		da.Profile = "application"
 		da.DesktopActions = []DesktopAction{}
 		var actionNames = []string{}
 		group := iniFile[0]

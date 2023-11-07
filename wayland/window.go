@@ -67,6 +67,7 @@ func MakeWindow(wId uint64) *WaylandWindow {
 	return &WaylandWindow {
 		BaseResource: resource.BaseResource {
 			Id: strconv.FormatUint(wId, 10),
+			Profile: "window",
 		},
 		Wid: wId,
 	}

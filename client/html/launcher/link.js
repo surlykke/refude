@@ -23,7 +23,7 @@ export let link = (link, comment, dismiss, move) => {
             console.log("Enter")
             doPost(event.target.href).then(response => {
                 console.log("response.ok:", response.ok)
-                response.ok && !ctrlKey && dismiss(false, "browsertab" != event.target.dataset.profile)
+                response.ok && !ctrlKey && dismiss("window" != event.target.dataset.profile, "browsertab" != event.target.dataset.profile)
             })
         } else if (key === "Delete") {
             doDelete(event.target.href).then(response => response.ok && !ctrlKey && dismiss(true, true))
