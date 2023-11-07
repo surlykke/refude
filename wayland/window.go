@@ -156,7 +156,7 @@ func PurgeAndShow(applicationTitle string, focus bool) bool {
 }
 
 
-var rememberedActive uint64
+var rememberedActive uint64 = 0
 var rememberedActiveLock sync.Mutex
 
 func RememberActive() {
@@ -171,7 +171,9 @@ func ActivateRememberedActive() {
 	rememberedActiveLock.Lock()
 	var copy = rememberedActive
 	rememberedActiveLock.Unlock()
-	activate(copy)
+	if (copy > 0) {
+		activate(copy)
+	}
 }
 
 func getAndPurge(applicationTitle string) *WaylandWindow {
