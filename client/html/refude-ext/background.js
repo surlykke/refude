@@ -1,57 +1,5 @@
-let notificationSocket
-let notifications = []
-
 let tabsSocket
 let commandSocket
-
-
-let id = notification => "refude-notification-" + notification.NotificationId
-
-const handler = m => {
-    let newNotifications = JSON.parse(m.data)
-    for (let n of notifications) {
-        if (!newNotifications.find(nn => nn.NotificationId === n.NotificationId)) {
-            chrome.notifications.clear(id(n))
-        }
-    }
-
-    for (let nn of newNotifications) {
-        if (!nn.IconName) {
-            nn.IconName = nn.Urgency === 2 ? "dialog-warning" : "dialog-info"
-        }
-        chrome.notifications.create(
-            id(nn), {
-            type: "basic",
-            iconUrl: `http://localhost:7938/icon?name=${nn.IconName}`,
-            title: nn.Title || " ",
-            message: nn.Comment || "",
-            priority: nn.Urgency,
-            requireInteraction: true
-        })
-    }
-    notifications = newNotifications
-}
-
-const errorHandler = error => {
-    console.log("Error:", error)
-}
-
-const closeHandler = () => {
-    console.log("Connection closed")
-    notificationSocket.close()
-    setTimeout(consumeNotifications, 5000)
-}
-
-const consumeNotifications = () => {
-    notificationSocket = new WebSocket("ws://localhost:7938/notification/websocket")
-    notificationSocket.addEventListener('message', handler)
-    notificationSocket.addEventListener('error', error => console.log("Error:", error))
-    notificationSocket.addEventListener('close', () => {
-        notificationSocket.close()
-        setTimeout(consumeNotifications, 5000)
-    })
-}
-
 
 const reportTabs = () => {
     chrome.tabs.query({}, tabs => {
@@ -175,6 +123,5 @@ keepAlive()
 chrome.tabs.onRemoved.addListener(reportTabs)
 chrome.tabs.onUpdated.addListener(reportTabs)
 
-consumeNotifications("/notification/", handler, error => console.log(error))
 openTabsSocket()
 openCommandSocket()

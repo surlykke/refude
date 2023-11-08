@@ -56,7 +56,6 @@ func main() {
 	}
 	http.Handle("/application/", applications.Applications)
 	http.Handle("/notification/", notifications.Notifications)
-	http.Handle("/notification/websocket", notifications.WebsocketHandler)
 	http.Handle("/device/", power.Devices)
 	http.Handle("/icontheme/", icons.IconThemes)
 	http.Handle("/item/", statusnotifications.Items)

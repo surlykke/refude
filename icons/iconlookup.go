@@ -24,7 +24,7 @@ import (
   'input-mouse' and 'input'. Here we prefer specificy over theme, ie. if 'input-mouse-usb' is found in an inherited theme, that
   is preferred over 'input-mouse' in the default theme
 */
-func findIconPath(name string, size uint32) string {
+func FindIconPath(name string, size uint32) string {
 	lock.Lock()
 	defer lock.Unlock()
 	for name != "" {

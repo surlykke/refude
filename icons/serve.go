@@ -31,7 +31,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				http.ServeFile(w, r, name)
 			} else if size, err := extractSize(r); err != nil {
 				respond.UnprocessableEntity(w, err)
-			} else if iconFilePath := findIconPath(name, size); iconFilePath == "" {
+			} else if iconFilePath := FindIconPath(name, size); iconFilePath == "" {
 				respond.NotFound(w)
 			} else {
 				http.ServeFile(w, r, iconFilePath)

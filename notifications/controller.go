@@ -228,7 +228,6 @@ func Notify(app_name string,
 	time.AfterFunc(timeToLive + 10*time.Millisecond, removeExpired)
 
 	Notifications.PutFirst(&notification)
-	flashPing <- struct{}{}
 	return id, nil
 }
 
