@@ -8,13 +8,13 @@ package notifications
 import (
 	"strconv"
 	"time"
+
 )
 
 var notificationExpireryHints = make(chan struct{})
 
 func Run() {
 	go DoDBus()
-	go runGui()
 	for range time.NewTicker(30 * time.Minute).C {
 		removeExpired()
 	}

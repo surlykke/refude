@@ -23,6 +23,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 	"github.com/surlykke/RefudeServices/notifications"
+	"github.com/surlykke/RefudeServices/notifyclient"
 	"github.com/surlykke/RefudeServices/ping"
 	"github.com/surlykke/RefudeServices/power"
 	"github.com/surlykke/RefudeServices/start"
@@ -44,6 +45,7 @@ func main() {
 	go applications.Run()
 	if config.Notifications.Enabled {
 		go notifications.Run()
+		go notifyclient.Run() 
 	}
 	go power.Run()
 	//go statusnotifications.Run()
