@@ -2,7 +2,6 @@ package notifyclient
 
 import (
 	_ "embed"
-	"fmt"
 	"log"
 	"time"
 
@@ -15,13 +14,16 @@ import (
 	"github.com/gotk3/gotk3/gtk"
 )
 
+const transitionTime uint = 200
+
 //go:embed gui.css
 var guiCss string
 
 var (
 	cssProvider  *gtk.CssProvider
-	screen *gdk.Screen
+	screen       *gdk.Screen
 	win          *gtk.Window
+	revealer     *gtk.Revealer
 	hbox         *gtk.Box
 	iconImage    *gtk.Image
 	vbox         *gtk.Box
@@ -69,11 +71,19 @@ func setup() {
 	layershell.SetMargin(win, layershell.LAYER_SHELL_EDGE_RIGHT, 5)
 	layershell.SetMargin(win, layershell.LAYER_SHELL_EDGE_BOTTOM, 5)
 
+	if revealer, err = gtk.RevealerNew(); err != nil {
+		log.Fatal("Unable to create revealer", err)
+	}
+	win.Add(revealer)
+	// Would have liked SLIDE_LEFT, but reavealing in a horizontal direction 
+	// seems to mess up line wrapping...
+	revealer.SetTransitionDuration(transitionTime)
+	revealer.SetRevealChild(false)
 
 	if hbox, err = gtk.BoxNew(gtk.ORIENTATION_HORIZONTAL, 5); err != nil {
 		log.Fatal("Unable to create hbox", err)
 	}
-	win.Add(hbox)
+	revealer.Add(hbox)
 
 	hbox.SetName("mainbox")
 	hbox.SetMarginTop(8)
@@ -107,9 +117,20 @@ func setup() {
 }
 
 func update(flash *notifications.Notification) {
-	// win *gtk.Window, haveFlash bool, subject string, body string, iconName string, urgency notifications.Urgency
 	if flash == nil {
-		win.Hide()
+		revealer.SetRevealChild(false)
+		// Once the unrevealing complete, clean up...
+		// Couldn't find a more canonical way of doing this with gtk
+		time.AfterFunc(time.Duration(transitionTime)*time.Millisecond, func() {
+			glib.IdleAdd(func() {
+				if !revealer.GetRevealChild() { // Some other notification may have arrived during the 200 ms.
+					//win.Hide() // Commented out to prevent layer-shell moving the window. Hopefully fixed in the wlr-layer-shell protocol soonish.
+					iconImage.Clear()
+					subjectLabel.SetText("")
+					bodyLabel.SetText("")
+				}
+			})
+		})
 	} else {
 		var iconFile = ""
 		if flash.IconName != "" {
@@ -121,16 +142,14 @@ func update(flash *notifications.Notification) {
 			iconImage.Clear()
 		}
 		subjectLabel.SetText(flash.Title)
-		fmt.Println("comment len:", len(flash.Comment))
+		bodyLabel.SetText(flash.Comment)
 		if len(flash.Comment) > 30 {
-			fmt.Println("SetMaxWidthChars")	
 			bodyLabel.SetWidthChars(30)
 		} else {
-			fmt.Println("UnSetMaxWidthChars")	
 			bodyLabel.SetWidthChars(-1)
 		}
-		bodyLabel.SetText(flash.Comment)
 		win.ShowAll()
+		revealer.SetRevealChild(true)
 	}
 }
 
@@ -167,7 +186,7 @@ func getFlash() {
 				glib.IdleAdd(getFlash)
 			})
 		}
-	} 
+	}
 	update(flash)
 
 }
