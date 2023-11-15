@@ -209,25 +209,9 @@ func Notify(app_name string,
 		}
 	}
 
-	// We don't respect timeout as given by the client, but calculate from urgency
-	// - Critical: 24 hours
-	// - Normal: 10 seconds
-	// - Low: 2 seconds
-	var timeToLive time.Duration
-	switch notification.Urgency {
-	case Critical:
-		timeToLive = 24*time.Hour
-	case Normal:
-		timeToLive = 10*time.Second
-	default:
-		timeToLive = 2*time.Second
-	}
-
-	var expires = time.Time(notification.Created).Add(timeToLive)
-	notification.Expires = UnixTime(expires) 
-	time.AfterFunc(timeToLive + 10*time.Millisecond, removeExpired)
-
+	notification.Expires = UnixTime(time.Now().Add(time.Duration(expire_timeout)*time.Millisecond)) 
 	Notifications.PutFirst(&notification)
+	calculateFlash()
 	return id, nil
 }
 

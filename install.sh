@@ -1,5 +1,6 @@
 #!/bin/bash
 cd `dirname $0`
+thisdir=$(pwd)
 set -x
 set -e 
 
@@ -11,11 +12,12 @@ DESKTOP_FILE_DIR=${XDG_DATA_HOME:-${HOME}/.local/share}/applications
 ASSETS_DIR=${XDG_DATA_HOME:-${HOME}/.local/share}/RefudeServices
 mkdir -p $GOBIN $BASH_COMPLETION_DIR $FISH_COMPLETION_DIR $HICOLOR_ICON_DIR $ASSETS_DIR
 
-pwd
 go install 
-cd tools/refuc 
+cd ${thisdir}/tools/refuc 
 go install 
-cd ../..
+cd ${thisdir}/notifyclient
+go install
+cd ${thisdir}
 
 cp README.md $ASSETS_DIR
 cp -R ./refudeicons/* $HICOLOR_ICON_DIR 

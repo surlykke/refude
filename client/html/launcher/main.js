@@ -40,7 +40,7 @@ export class Main extends React.Component {
     }
 
     watchSearch = () => {
-        let evtSource = new EventSource("http://localhost:7938/start/watch")
+        let evtSource = new EventSource("http://localhost:7938/watch")
         evtSource.onmessage = this.getResource
         evtSource.onerror = () => {
             if (evtSource.readyState === 2) {

@@ -23,11 +23,11 @@ import (
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 	"github.com/surlykke/RefudeServices/notifications"
-	"github.com/surlykke/RefudeServices/notifyclient"
 	"github.com/surlykke/RefudeServices/ping"
 	"github.com/surlykke/RefudeServices/power"
 	"github.com/surlykke/RefudeServices/start"
 	"github.com/surlykke/RefudeServices/statusnotifications"
+	"github.com/surlykke/RefudeServices/watch"
 	"github.com/surlykke/RefudeServices/wayland"
 	"github.com/surlykke/RefudeServices/x11"
 
@@ -45,7 +45,7 @@ func main() {
 	go applications.Run()
 	if config.Notifications.Enabled {
 		go notifications.Run()
-		go notifyclient.Run() 
+		//go notifyclient.Run() 
 	}
 	go power.Run()
 	//go statusnotifications.Run()
@@ -69,12 +69,13 @@ func main() {
 	http.Handle("/tab/", browsertabs.Tabs)
 	http.Handle("/tab/websocket", browsertabs.WebsocketHandler)
 	http.Handle("/ping", ping.WebsocketHandler)
+	http.HandleFunc("/flash", notifications.ServeFlash)
 	http.HandleFunc("/file/", file.ServeHTTP)
 	http.HandleFunc("/icon", icons.ServeHTTP)
 	http.HandleFunc("/complete", Complete)
 	http.HandleFunc("/doc", doc.ServeHTTP)
 	http.HandleFunc("/start", resource.SingleResourceServer(start.Start, "/"))
-	http.HandleFunc("/start/watch", start.ServeHTTP)
+	http.HandleFunc("/watch", watch.ServeHTTP)
 	http.HandleFunc("/bookmarks", resource.SingleResourceServer(start.Bookmarks, "/"))
 	http.HandleFunc("/refude/", client.ServeHTTP)
 	

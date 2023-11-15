@@ -6,37 +6,27 @@
 package start
 
 import (
-	"fmt"
-	"net/http"
 	"strings"
 
 	"github.com/surlykke/RefudeServices/applications"
 	"github.com/surlykke/RefudeServices/browsertabs"
 	"github.com/surlykke/RefudeServices/file"
 	"github.com/surlykke/RefudeServices/lib/link"
-	"github.com/surlykke/RefudeServices/lib/pubsub"
 	"github.com/surlykke/RefudeServices/lib/resource"
-	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 	"github.com/surlykke/RefudeServices/notifications"
 	"github.com/surlykke/RefudeServices/power"
+	"github.com/surlykke/RefudeServices/watch"
 	"github.com/surlykke/RefudeServices/wayland"
 	"github.com/surlykke/RefudeServices/x11"
 )
 
-var searchChanges = pubsub.MakePublisher[string]()
-
-func watch(subscription *pubsub.Subscription[string]) {
-	for {
-		searchChanges.Publish(subscription.Next())
-	}
-}
 
 var Run = func() {
-	go watch(notifications.Notifications.Subscribe())
-	go watch(x11.Windows.Subscribe())
-	go watch(applications.Applications.Subscribe())
-	go watch(power.Devices.Subscribe())
+	go watch.PublishStream(notifications.Notifications.Subscribe())
+	go watch.PublishStream(x11.Windows.Subscribe())
+	go watch.PublishStream(applications.Applications.Subscribe())
+	go watch.PublishStream(power.Devices.Subscribe())
 }
 
 type StartResource struct {
@@ -97,31 +87,4 @@ func (bm BookmarksResource) Links(searchTerm string) link.List {
 var Bookmarks = &BookmarksResource{BaseResource: resource.BaseResource{Id: "bookmarks", Title: "Bookmarks", Profile: "bookmarks"}}
 
 
-func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
-		respond.NotAllowed(w)
-	} else if r.URL.Path == "/start/watch" {
-		var subscription = searchChanges.Subscribe()
 
-		w.Header().Set("Connection", "keep-alive")
-		w.Header().Set("Content-Type", "text/event-stream")
-		w.Header().Set("Cache-Control", "no-cache")
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.(http.Flusher).Flush()
-
-		if _, err := fmt.Fprintf(w, "data:%s\n\n", ""); err != nil {
-			return
-		}
-		w.(http.Flusher).Flush()
-
-		for {
-			if _, err := fmt.Fprintf(w, "data:%s\n\n", subscription.Next()); err != nil {
-				return
-			}
-			w.(http.Flusher).Flush()
-		}
-
-	} else {
-		respond.NotFound(w)
-	}
-}

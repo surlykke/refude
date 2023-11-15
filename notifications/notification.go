@@ -26,13 +26,11 @@ const (
 
 type UnixTime time.Time // Behaves like Time, but json-marshalls to milliseconds since epoch
 
-
 func (ut UnixTime) MarshalJSON() ([]byte, error) {
 	var buf = make([]byte, 0, 22)
-	buf = strconv.AppendInt(buf,time.Time(ut).UnixMilli(), 10) 	
+	buf = strconv.AppendInt(buf, time.Time(ut).UnixMilli(), 10)
 	return buf, nil
 }
-
 
 type Notification struct {
 	resource.BaseResource
@@ -40,14 +38,13 @@ type Notification struct {
 	Sender         string
 	Created        UnixTime
 	Expires        UnixTime
+	Deleted        bool
 	Urgency        Urgency
 	NActions       map[string]string `json:"actions"`
 	Hints          map[string]interface{}
 	iconName       string
 	IconSize       uint32 `json:",omitempty"`
 }
-
-
 
 func (n *Notification) Actions() link.ActionList {
 	var ll = link.ActionList{}
@@ -63,14 +60,13 @@ func (n *Notification) Actions() link.ActionList {
 	return ll
 }
 
-
 func (n *Notification) DeleteAction() (string, bool) {
 	return "Dismiss", true
 }
 
 func (n *Notification) RelevantForSearch() bool {
-	return true
-}	
+	return !n.Deleted && time.Now().Before(time.Time(n.Expires ))
+}
 
 func (n *Notification) DoPost(w http.ResponseWriter, r *http.Request) {
 	var action = requests.GetSingleQueryParameter(r, "action", "default")
@@ -92,7 +88,3 @@ func (n *Notification) DoDelete(w http.ResponseWriter, r *http.Request) {
 }
 
 var Notifications = resource.MakeCollection[*Notification]("/notification/")
-
-
-
-
