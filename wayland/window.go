@@ -59,7 +59,7 @@ func (wsm WindowStateMask) MarshalJSON() ([]byte, error) {
 
 type WaylandWindow struct {
 	resource.BaseResource
-	Wid   uint64 `json:"id"`
+	Wid   uint64 `json:"-"`
 	AppId string `json:"app_id"`
 	State WindowStateMask
 }

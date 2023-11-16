@@ -28,11 +28,11 @@ type Resource interface {
 }
 
 type BaseResource struct {
-	Id       string
-	Title    string
-	Comment  string `json:",omitempty"`
-	IconName string `json:",omitempty"`
-	Profile  string
+	Id       string 
+	Title    string `json:"-"`
+	Comment  string `json:"-"`
+	IconName string `json:"-"` 
+	Profile  string `json:"-"` 
 	Keywords []string
 }
 
