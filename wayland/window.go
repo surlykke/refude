@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/surlykke/RefudeServices/applications"
@@ -74,7 +75,7 @@ func MakeWindow(wId uint64) *WaylandWindow {
 }
 
 func (this *WaylandWindow) RelevantForSearch() bool {
-	return this.Title != "Refude launcher" && this.Title != "Refude notifier"
+	return !strings.HasPrefix(this.Title, "Refude launcher")
 }
 
 
