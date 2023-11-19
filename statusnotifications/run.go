@@ -8,6 +8,7 @@ package statusnotifications
 import (
 	"github.com/surlykke/RefudeServices/icons"
 
+	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
@@ -56,11 +57,11 @@ func Run() {
 				case "org.kde.StatusNotifierItem.NewIcon":
 					if itemCopy.UseIconPixmap {
 						if v, ok := getProp(itemCopy.sender, itemCopy.path, "IconPixmap"); ok {
-							itemCopy.IconName = collectPixMap(v)
+							itemCopy.IconUrl = link.IconUrl(collectPixMap(v))
 						}
 					} else {
 						if v, ok := getProp(itemCopy.sender, itemCopy.path, "IconName"); ok {
-							itemCopy.IconName = getStringOr(v)
+							itemCopy.IconUrl = link.IconUrl(getStringOr(v))
 						}
 					}
 				case "org.kde.StatusNotifierItem.NewIconThemePath":

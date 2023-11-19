@@ -38,7 +38,7 @@ func MakeWindow(p Proxy, wId uint32) (*X11Window, error) {
 				Id:       strconv.Itoa(int(wId)),
 				Title:    name,
 				Comment:  appClass,
-				IconName: iconName,
+				IconUrl: link.IconUrl(iconName),
 				Profile:  "window",
 			},
 			Wid:              wId,
@@ -51,8 +51,8 @@ func MakeWindow(p Proxy, wId uint32) (*X11Window, error) {
 }
 
 func (this *X11Window) Actions() link.ActionList {
-	var iconName = this.IconName
-	return link.ActionList{{Name: "activate", Title: "Raise and focus", IconName: iconName}}
+	var iconName = this.IconUrl
+	return link.ActionList{{Name: "activate", Title: "Raise and focus", IconUrl: iconName}}
 }
 
 func (this *X11Window) DeleteAction() (string, bool) {
@@ -193,7 +193,7 @@ func titleUpdater(p Proxy, win *X11Window) bool {
 
 func iconUpdater(p Proxy, win *X11Window) bool {
 	if iconName, err := getIconName(p, win.Wid); err == nil {
-		win.IconName = iconName
+		win.IconUrl = link.IconUrl(iconName)
 		return true
 	} else {
 		return false

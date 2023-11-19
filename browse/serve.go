@@ -4,9 +4,7 @@ import (
 	"bytes"
 	_ "embed"
 	"encoding/json"
-	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httputil"
 	"regexp"
@@ -24,7 +22,6 @@ var repl2 = []byte(`"icon": <a href="$2">"$2"</a>`)
 
 var Handler = &httputil.ReverseProxy{
 	Director: func(req *http.Request) {
-		fmt.Println("browse: req.URL.Host", req.URL.Host, "req.Host:", req.Host )
 		req.URL.Scheme = "http"
 		req.URL.Host = req.Host
 		req.URL.Path = req.URL.Path[len("/browse"):]
@@ -33,7 +30,7 @@ var Handler = &httputil.ReverseProxy{
 	ModifyResponse: func(resp *http.Response) error {
 		if resp.Header.Get("Content-Type") == "application/vnd.refude+json" {
 			var buf bytes.Buffer
-			if jsonBytes, err := ioutil.ReadAll(resp.Body); err != nil {
+			if jsonBytes, err := io.ReadAll(resp.Body); err != nil {
 				return err
 			} else	if err := json.Indent(&buf, jsonBytes, "", "   "); err != nil {
 				return err

@@ -2,64 +2,60 @@ let tabsSocket
 let commandSocket
 
 const reportTabs = () => {
+    console.log("reportTabs")
     chrome.tabs.query({}, tabs => {
-        if (tabsSocket) {
-            let tabsData = tabs.map(t => {
-                return {
-                    id: "" + t.id,
-                    title: t.title,
-                    url: t.url
+        let tabsData = tabs.map(t => {
+            console.log("t:", t)
+            return {
+                id: "" + t.id,
+                title: t.title,
+                url: t.url,
+                favIcon: t.favIconUrl
+            }
+        })
+        fetch("http://localhost:7938/tab/", {method: "POST", body: JSON.stringify(tabsData)})
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(response.status)
                 }
             })
-            tabsSocket.send(JSON.stringify(tabsData))
-        }
+            .catch(e => { // If we couldn't deliver data, try again i 5 secs.
+                setTimeout(reportTabs, 5000)
+            })
     })
 }
 
-const openTabsSocket = () => {
-    tabsSocket = new WebSocket("ws://localhost:7938/tab/websocket")
-    tabsSocket.onopen = reportTabs
-    tabsSocket.onmessage = m => {
-        let marshalled = JSON.parse(m.data)
-        let tabId = parseInt(marshalled)
-        if (tabId) {
-            console.log("message, tabId:", tabId)
-            var updateProperties = { 'active': true };
-            chrome.tabs.update(tabId, updateProperties, (tab) => { })
-        }
-    }
-    tabsSocket.onclose = () => {
-        tabsSocket = null;
-        setTimeout(openTabsSocket, 10000)
-    }
-}
-
-const openCommandSocket = () => {
-    console.log("Open command socket")
-    commandSocket = new WebSocket("ws://localhost:7938/refude/commands")
-    commandSocket.onmessage = m => {
-        console.log("commandSocket data:", m.data)
-        let marshalled = JSON.parse(m.data)
-        switch (marshalled.Command) {
-            case "show":
-                showLauncher();
-                break;
-            case "hide":
-                hideLauncher();
-                break;
-            case "restoreTab":
+const watch = () => {
+    // commands
+    const focusTab = "focustab"
+    reportTabs()
+    let evtSource = new EventSource("http://localhost:7938/watch")
+    evtSource.onopen = reportTabs
+    evtSource.onmessage = ({data}) => {
+        console.log("watch got: ", data)
+        if (data) {
+            if (data.startsWith(focusTab)) {
+                let tabId = parseInt(data.substr(focusTab.length))
+                tabId && chrome.tabs.update(tabId, { 'active': true }, (tab) => { }) 
+            } else if (data === "showLauncher") {
+                showLauncher()
+            } else if (data === "hideLauncher") {
+                hideLauncher()
+            } else if (data === "restoreTab") {
                 restoreTab()
-                break;
-            default:
-                console.warn("Unknown command:", marshalled.Command)
+            }
         }
     }
-    commandSocket.onclose = () => {
-        commandSocket = null;
-        setTimeout(openCommandSocket, 2000)
-    }
+
+    evtSource.onerror = error => {
+        console.log(error)
+        if (evtSource.readyState === 2) {
+            setTimeout(watch, 5000)
+        }
+    } 
 
 }
+
 
 let rememberedTab
 
@@ -82,7 +78,6 @@ let showLauncher = () => {
 
 let restoreTab = () => {
     rememberedTab && chrome.tabs.update(rememberedTab.id, { active: true })
-
 }
 
 let hideLauncher = () => {
@@ -120,8 +115,7 @@ const keepAlive = () => {
 keepAlive()
 */
 
+console.log("Starting")
 chrome.tabs.onRemoved.addListener(reportTabs)
 chrome.tabs.onUpdated.addListener(reportTabs)
-
-openTabsSocket()
-openCommandSocket()
+watch()

@@ -30,7 +30,9 @@ var backslashEscape = []byte(`\\`)
 func (href Href) MarshalJSON() ([]byte, error) {
 	var buf = &bytes.Buffer{}
 	buf.WriteByte('"')
-	buf.Write(httpLocalHost7838)
+	if strings.HasPrefix(string(href), "/") {
+		buf.Write(httpLocalHost7838)
+	}
 	for _, b := range []byte(href) {
 		if b <= 0x1F {
 			buf.Write(controlEscape[b])
@@ -55,17 +57,17 @@ type Link struct {
 	Rank     int               `json:"-"` // Used when searching
 }
 
-func Make(href, title, iconName string, rel relation.Relation) Link {
+func Make(href string, title string, iconUrl Href, rel relation.Relation) Link {
 	return Link{
 		Href:     Href(href),
 		Title:    title,
-		Icon:     IconUrl(iconName),
+		Icon:     iconUrl,
 		Relation: rel,
 	}
 }
 
-func MakeRanked(href, title, iconName string, profile string, rank int) Link {
-	return MakeRanked2(Href(href), title, IconUrl(iconName), profile, rank)
+func MakeRanked(href string, title string, iconUrl Href, profile string, rank int) Link {
+	return MakeRanked2(Href(href), title, iconUrl, profile, rank)
 }
 
 func MakeRanked2(href Href, title string, icon Href, profile string, rank int) Link {
@@ -108,13 +110,14 @@ func IconUrl(name string) Href {
 }
 
 type Action struct {
-	Name     string
-	Title    string
-	IconName string
+	Name    string
+	Title   string
+	IconUrl Href
+	
 }
 
-func MkAction(name, title, iconName string) Action {
-	return Action{Name: name, Title: title, IconName: iconName}
+func MkAction(name string, title string, iconUrl Href) Action {
+	return Action{Name: name, Title: title, IconUrl: iconUrl}
 }
 
 type ActionList []Action

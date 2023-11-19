@@ -11,15 +11,12 @@ import (
 	"io/fs"
 	"net/http"
 	"os"
-	"sync"
 
 	"github.com/surlykke/RefudeServices/lib/log"
-	"github.com/surlykke/RefudeServices/lib/pubsub"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/slice"
-	"github.com/surlykke/RefudeServices/lib/xdg"
+	"github.com/surlykke/RefudeServices/watch"
 	"github.com/surlykke/RefudeServices/wayland"
-	"golang.org/x/net/websocket"
 )
 
 //go:embed html
@@ -41,12 +38,12 @@ func init() {
 }
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("client.Run:", r.URL.Path)
+	fmt.Println("Request:", r.URL.Path);
 	if r.URL.Path == "/refude/html/showlauncher" {
 		if r.Method != "POST" {
 			respond.NotAllowed(w)
 		} else {
-			showLauncher()
+			watch.Publish("showLauncher")			
 			respond.Accepted(w)
 		}
 	} else if r.URL.Path == "/refude/html/hidelauncher" {
@@ -55,13 +52,12 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		} else {
 			var restore = r.URL.Query()["restore"]
 			if slice.Contains(restore, "tab") {
-				commands.Publish(command{"restoreTab"})
+				watch.Publish("restoreTab")
 			}
 			if slice.Contains(restore, "window") {
 				wayland.ActivateRememberedActive()
 			}
-
-			commands.Publish(command{"hide"})
+			watch.Publish("hideLauncher")
 			respond.Accepted(w)
 		}
 	} else {
@@ -69,40 +65,4 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func showLauncher() {
-	nclientsLock.Lock()
-	var haveClient = nclients > 0
-	nclientsLock.Unlock()
-	wayland.RememberActive()
-	if haveClient {
-		commands.Publish(command{"show"})
-	} else {
-		xdg.RunCmd("xdg-open", "http://localhost:7938/refude/html/launcher/")
-	}
 
-}
-
-type command struct {
-	Command string
-}
-
-var commands = pubsub.MakePublisher[command]()
-var nclients int = 0
-var nclientsLock sync.Mutex
-
-var CommandSocketHandler = websocket.Handler(func(conn *websocket.Conn) {
-	nclientsLock.Lock()
-	nclients++
-	nclientsLock.Unlock()
-	var sub = commands.Subscribe()
-	for {
-		var command = sub.Next()
-		if err := websocket.JSON.Send(conn, command); err != nil {
-			log.Warn(err)
-			nclientsLock.Lock()
-			nclients--
-			nclientsLock.Unlock()
-			return
-		}
-	}
-})

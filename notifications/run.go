@@ -45,7 +45,7 @@ func ServeFlash(w http.ResponseWriter, r *http.Request) {
 
 		f["subject"] = flash.Title
 		f["body"] = flash.Comment
-		f["iconFilePath"] = icons.FindIconPath(flash.IconName, 64)
+		f["iconFilePath"] = icons.FindIconPath(flash.iconName, 64)
 		switch flash.Urgency {
 		case Critical:
 			f["urgency"] = "critical"

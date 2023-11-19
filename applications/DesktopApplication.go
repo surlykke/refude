@@ -46,15 +46,15 @@ type DesktopApplication struct {
 }
 
 func (d *DesktopApplication) Actions() link.ActionList {
-	var ll = link.ActionList{link.MkAction("", "Launch", d.IconName)}
+	var ll = link.ActionList{link.MkAction("", "Launch", d.IconUrl)}
 	for _, da := range d.DesktopActions {
-		ll = append(ll, link.MkAction(da.id, da.Name, da.Icon))
+		ll = append(ll, link.MkAction(da.id, da.Name, da.IconUrl))
 	}
 	return ll
 }
 
 func (d *DesktopApplication) RelevantForSearch() bool {
-	return ! d.NoDisplay
+	return !d.NoDisplay
 }
 
 func (d *DesktopApplication) Run(arg string) error {
@@ -62,10 +62,10 @@ func (d *DesktopApplication) Run(arg string) error {
 }
 
 type DesktopAction struct {
-	id   string
-	Name string
-	Exec string
-	Icon string
+	id      string
+	Name    string
+	Exec    string
+	IconUrl link.Href
 }
 
 func (d *DesktopApplication) DoPost(w http.ResponseWriter, r *http.Request) {
@@ -93,7 +93,6 @@ func (d *DesktopApplication) DoPost(w http.ResponseWriter, r *http.Request) {
 }
 
 var Applications = resource.MakeCollection[*DesktopApplication]("/application/")
-
 
 func GetAppsIds(mimetypeId string) []string {
 	if res, ok := Mimetypes.Get(mimetypeId); ok {
@@ -124,17 +123,10 @@ func OpenFile(appId, path string) (bool, error) {
 	}
 }
 
-func GetIconName(appId string) string {
-	fmt.Println("GetIconName", appId)
-	// Some special handling
-	if appId == "Alacritty" {
-		appId = "com.alacritty.Alacritty"
-	}
+func GetIconUrl(appId string) link.Href {
 	if app, ok := Applications.Get(appId); ok {
-		fmt.Println("Returning", app.IconName)
-		return app.IconName
+		return app.IconUrl
 	} else {
-		fmt.Println("Not found")
 		return ""
 	}
 }

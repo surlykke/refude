@@ -19,7 +19,7 @@ import (
 
 type Resource interface {
 	GetId() string
-	Presentation() (title string, comment string, iconName string, profile string)
+	Presentation() (title string, comment string, iconUrl link.Href, profile string)
 	Actions() link.ActionList
 	DeleteAction() (title string, ok bool)
 	Links(searchTerm string) link.List
@@ -28,11 +28,11 @@ type Resource interface {
 }
 
 type BaseResource struct {
-	Id       string 
-	Title    string `json:"-"`
-	Comment  string `json:"-"`
-	IconName string `json:"-"` 
-	Profile  string `json:"-"` 
+	Id       string
+	Title    string    `json:"-"`
+	Comment  string    `json:"-"`
+	IconUrl  link.Href `json:"-"`
+	Profile  string    `json:"-"`
 	Keywords []string
 }
 
@@ -40,8 +40,8 @@ func (br *BaseResource) GetId() string {
 	return br.Id
 }
 
-func (br *BaseResource) Presentation() (title string, comment string, iconName string, profile string) {
-	return br.Title, br.Comment, br.IconName, br.Profile
+func (br *BaseResource) Presentation() (title string, comment string, iconUrl link.Href, profile string) {
+	return br.Title, br.Comment, br.IconUrl, br.Profile
 }
 
 func (br *BaseResource) Actions() link.ActionList {
@@ -66,8 +66,8 @@ func (br *BaseResource) GetKeywords() []string {
 
 func LinkTo(res Resource, context string, rank int) link.Link {
 	var path = fmt.Sprint(context, res.GetId())
-	var title, _, iconName, profile = res.Presentation()
-	return link.MakeRanked(path, title, iconName, profile, rank)
+	var title, _, iconUrl, profile = res.Presentation()
+	return link.MakeRanked(path, title, iconUrl, profile, rank)
 }
 
 type Postable interface {
@@ -83,7 +83,6 @@ type ResourceRepo interface {
 	GetResource(path string) Resource
 	Search(term string, threshold int) link.List
 }
-
 
 func SingleResourceServer(res Resource, context string) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -104,7 +103,6 @@ func ServeSingleResource(w http.ResponseWriter, r *http.Request, res Resource, c
 	}
 }
 
-
 type jsonRepresentation struct {
 	Self    link.Href   `json:"self"`
 	Links   link.List   `json:"links"`
@@ -120,9 +118,7 @@ func buildJsonRepresentation(res Resource, context, searchTerm string) jsonRepre
 	wrapper.Self = link.Href(context + res.GetId())
 	wrapper.Links = buildFilterAndRewriteLinks(res, context, searchTerm)
 	wrapper.Data = res
-	var iconName string
-	wrapper.Title, wrapper.Comment, iconName, wrapper.Profile = res.Presentation()
-	wrapper.Icon = link.IconUrl(iconName)
+	wrapper.Title, wrapper.Comment, wrapper.Icon, wrapper.Profile = res.Presentation()
 	return wrapper
 }
 
@@ -136,7 +132,7 @@ func buildFilterAndRewriteLinks(res Resource, context, searchTerm string) link.L
 		if searchutils.Match(searchTerm, action.Name) < 0 {
 			continue
 		}
-		list = append(list, link.Make(href, action.Title, action.IconName, relation.Action))
+		list = append(list, link.Make(href, action.Title, action.IconUrl, relation.Action))
 	}
 	if deleteTitle, ok := res.DeleteAction(); ok {
 		if searchutils.Match(searchTerm, deleteTitle) > -1 {
@@ -155,6 +151,3 @@ func buildFilterAndRewriteLinks(res Resource, context, searchTerm string) link.L
 
 	return list
 }
-
-
-

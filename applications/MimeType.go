@@ -34,7 +34,7 @@ func MakeMimetype(id string) (*Mimetype, error) {
 		return nil, errors.New("Incomprehensible mimetype: " + id)
 	} else {
 		var mt = Mimetype{
-			BaseResource: resource.BaseResource{Id: id, IconName: "unknown"},
+			BaseResource: resource.BaseResource{Id: id, IconUrl: "unknown"},
 			Aliases:     []string{},
 			Globs:       []string{},
 			SubClassOf:  []string{},

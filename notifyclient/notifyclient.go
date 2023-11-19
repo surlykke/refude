@@ -7,12 +7,12 @@ package main
 import "C"
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"time"
 
 	"github.com/r3labs/sse/v2"
+	"gopkg.in/cenkalti/backoff.v1"
 )
 
 func main() {
@@ -21,7 +21,11 @@ func main() {
 }
 
 func followFlash() {
-	sse.NewClient("http://localhost:7938/watch").Subscribe("data", func(evt *sse.Event) {
+	var client *sse.Client
+ 	client = sse.NewClient("http://localhost:7938/watch")
+	client.ReconnectStrategy = backoff.NewConstantBackOff(2*time.Second)
+
+	client.Subscribe("data", func(evt *sse.Event) {
 		if "/flash" == string(evt.Data) {
 			getFlash()
 		}
@@ -58,9 +62,6 @@ func getFlash() {
 }
 
 func closeNotification(msg string, err error) {
-	if msg != "" {
-		fmt.Println(msg, err)
-	}
 	C.update(0, C.CString(""), C.CString(""), nil)
 	time.AfterFunc(200*time.Millisecond, func() { C.hide() })
 }

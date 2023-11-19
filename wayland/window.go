@@ -2,7 +2,6 @@ package wayland
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -81,7 +80,7 @@ func (this *WaylandWindow) RelevantForSearch() bool {
 
 func (this *WaylandWindow) Actions() link.ActionList {
 	return link.ActionList{
-		{Name: "activate", Title: "Raise and focus", IconName: this.IconName},
+		{Name: "activate", Title: "Raise and focus", IconUrl: this.IconUrl},
 	}
 }
 
@@ -135,10 +134,9 @@ func watchApplications() {
 	var subscription = applications.Applications.Subscribe()
 	for {
 		if subscription.Next() == "/application/" {
-			fmt.Println("updating icons...")
 			for _, w := range Windows.GetAll() {
 				var win = *w
-				win.IconName = applications.GetIconName(win.AppId + ".desktop")
+				win.IconUrl = applications.GetIconUrl(win.AppId + ".desktop")
 				Windows.Update(&win)
 			}
 		}

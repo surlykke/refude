@@ -57,7 +57,7 @@ type File struct {
 }
 
 func makeFile(path string) (*File, error) {
-	var osPath = filepath.Clean("/" + path)	
+	var osPath = filepath.Clean("/" + path)
 	if fileInfo, err := os.Stat(osPath); os.IsNotExist(err) {
 		return nil, nil
 	} else if err != nil {
@@ -66,10 +66,10 @@ func makeFile(path string) (*File, error) {
 		var mimetype, _ = magicmime.TypeByFile(osPath)
 		var f = File{
 			BaseResource: resource.BaseResource{
-				Id:     osPath[1:],
-				Title:    fileInfo.Name(),
-				Comment:  path,
-				IconName: strings.ReplaceAll(mimetype, "/", "-"),
+				Id:      osPath[1:],
+				Title:   fileInfo.Name(),
+				Comment: path,
+				IconUrl: link.IconUrl(strings.ReplaceAll(mimetype, "/", "-")),
 			},
 			Type:        getFileType(fileInfo.Mode()),
 			Permissions: fileInfo.Mode().String(),
@@ -81,11 +81,10 @@ func makeFile(path string) (*File, error) {
 	}
 }
 
-
 func (f *File) Actions() link.ActionList {
 	var actions = make(link.ActionList, 0, 10)
 	for _, app := range applications.GetApps(f.Apps...) {
-		actions = append(actions, link.MkAction(app.DesktopId, "Open with " + app.Title, app.IconName))
+		actions = append(actions, link.MkAction(app.DesktopId, "Open with "+app.Title, app.IconUrl))
 	}
 	return actions
 }
@@ -94,7 +93,7 @@ func (f *File) Links(searchTerm string) link.List {
 
 	var ll = make(link.List, 0, 10)
 	if f.Type == "Directory" {
-		ll = append(ll, Search("/" + f.Id, ".", searchTerm)...)
+		ll = append(ll, Search("/"+f.Id, ".", searchTerm)...)
 	}
 
 	return ll
@@ -122,7 +121,7 @@ func searchRecursive(from, prefix, searchTerm string, depth int) link.List {
 			}
 			if rnk := searchutils.Match(searchTerm, dirEntry.Name()); rnk > -1 {
 				var mimetype, _ = magicmime.TypeByFile(entryPath)
-				var icon = strings.ReplaceAll(mimetype, "/", "-")
+				var icon = link.IconUrl(strings.ReplaceAll(mimetype, "/", "-"))
 				ll = append(ll, link.MakeRanked(entryPath[1:], relName, icon, "file", rnk+50))
 
 			}
@@ -133,11 +132,10 @@ func searchRecursive(from, prefix, searchTerm string, depth int) link.List {
 	}
 
 	for _, directory := range directoriesFound {
-		ll = append(ll, searchRecursive(from+"/"+directory.Name(), prefix + "/" + directory.Name(),  searchTerm, depth-1)...)
+		ll = append(ll, searchRecursive(from+"/"+directory.Name(), prefix+"/"+directory.Name(), searchTerm, depth-1)...)
 	}
 	return ll
 }
-
 
 func (f *File) DoPost(w http.ResponseWriter, r *http.Request) {
 	var defaultAppId = ""
@@ -145,7 +143,7 @@ func (f *File) DoPost(w http.ResponseWriter, r *http.Request) {
 		defaultAppId = f.Apps[0]
 	}
 	var appId = requests.GetSingleQueryParameter(r, "action", defaultAppId)
-	var ok, err = applications.OpenFile(appId, "/" + f.Id)
+	var ok, err = applications.OpenFile(appId, "/"+f.Id)
 	if ok {
 		if err != nil {
 			respond.ServerError(w, err)

@@ -3,7 +3,6 @@
 // This file is part of the RefudeServices project.
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
-//
 package statusnotifications
 
 import (
@@ -17,6 +16,7 @@ import (
 	"github.com/godbus/dbus/v5/introspect"
 	"github.com/godbus/dbus/v5/prop"
 	"github.com/surlykke/RefudeServices/lib/dbusutils"
+	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/log"
 )
 
@@ -113,7 +113,7 @@ func getOnTheBus() {
 	_ = conn.Export(introspect.Introspectable(INTROSPECT_XML), WATCHER_PATH, dbuscall.INTROSPECT_INTERFACE)
 
 	// Add properties interface
-	watcherProperties = prop.New(
+	watcherProperties, _ = prop.Export(
 		conn,
 		WATCHER_PATH,
 		map[string]map[string]*prop.Prop{
@@ -157,9 +157,9 @@ func buildItem(sender string, path dbus.ObjectPath) *Item {
 	}
 
 	if item.UseIconPixmap = getStringOr(props["IconName"]) == ""; item.UseIconPixmap {
-		item.IconName = collectPixMap(props["IconPixmap"])
+		item.IconUrl = link.IconUrl(collectPixMap(props["IconPixmap"]))
 	} else {
-		item.IconName = getStringOr(props["IconName"])
+		item.IconUrl = link.IconUrl(getStringOr(props["IconName"]))
 	}
 
 	if item.UseAttentionIconPixmap = getStringOr(props["AttentionIconName"]) == ""; item.UseAttentionIconPixmap {

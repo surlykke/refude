@@ -16,6 +16,7 @@ import (
 	"github.com/godbus/dbus/v5/introspect"
 	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/image"
+	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/resource"
 )
@@ -174,10 +175,10 @@ func Notify(app_name string,
 
 	notification := Notification{
 		BaseResource: resource.BaseResource{
-			Id:       strconv.FormatUint(uint64(id), 10),
-			Title:    sanitize(summary, []string{}, []string{}),
-			Comment:  sanitize(body, allowedTags, allowedEscapes),
-			IconName: iconName,
+			Id:      strconv.FormatUint(uint64(id), 10),
+			Title:   sanitize(summary, []string{}, []string{}),
+			Comment: sanitize(body, allowedTags, allowedEscapes),
+			IconUrl: link.IconUrl(iconName),
 		},
 		NotificationId: id,
 		Sender:         app_name,
@@ -185,6 +186,7 @@ func Notify(app_name string,
 		Urgency:        Normal,
 		NActions:       map[string]string{},
 		Hints:          map[string]interface{}{},
+		iconName:       iconName,
 		IconSize:       sizeHint,
 	}
 
@@ -209,7 +211,7 @@ func Notify(app_name string,
 		}
 	}
 
-	notification.Expires = UnixTime(time.Now().Add(time.Duration(expire_timeout)*time.Millisecond)) 
+	notification.Expires = UnixTime(time.Now().Add(time.Duration(expire_timeout) * time.Millisecond))
 	Notifications.PutFirst(&notification)
 	calculateFlash()
 	return id, nil

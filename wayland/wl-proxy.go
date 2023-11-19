@@ -56,7 +56,7 @@ func handle_title(handle C.uintptr_t, c_title *C.char) {
 func handle_app_id(handle C.uintptr_t, c_app_id *C.char) {
 	var ww = getCopy(uint64(handle))
 	ww.AppId = C.GoString(c_app_id)
-	ww.IconName = applications.GetIconName(ww.AppId + ".desktop")
+	ww.IconUrl = applications.GetIconUrl(ww.AppId + ".desktop")
 	Windows.Put(ww)
 }
 

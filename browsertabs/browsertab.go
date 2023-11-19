@@ -1,72 +1,67 @@
 package browsertabs
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"sync"
 
-	"github.com/surlykke/RefudeServices/lib/log"
+	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
-	"golang.org/x/net/websocket"
+	"github.com/surlykke/RefudeServices/watch"
 )
 
-var connections = make(map[*websocket.Conn]bool, 10)
 var connectionsLock sync.Mutex
-
-
 
 type Tab struct {
 	resource.BaseResource
 }
 
 func (this *Tab) DoPost(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("DoPost...")
 	connectionsLock.Lock()
-	for conn := range connections {
-		fmt.Println("Sending", this.Id)
-		websocket.JSON.Send(conn, this.Id)
-	}
-	connectionsLock.Unlock()
+	fmt.Println("Publish")
+	watch.Publish(fmt.Sprintf("focustab %s", this.Id))
 	respond.Accepted(w)
 }
 
 func (this *Tab) RelevantForSearch() bool {
-	return ! strings.HasPrefix(this.Title, "Refude launcher")
+	return !strings.HasPrefix(this.Title, "Refude launcher")
 }
 
 var Tabs = resource.MakeCollection[*Tab]("/tab/")
 
-
-var WebsocketHandler = websocket.Handler(func(conn *websocket.Conn) {
-	connectionsLock.Lock()
-	connections[conn] = true
-	connectionsLock.Unlock()
-
-	defer fmt.Println("receiver done")
-	fmt.Println("Start receiving")
-	for {
-		var data = make([]map[string]string, 30)
-		if err := websocket.JSON.Receive(conn, &data); err != nil {
-			log.Warn(err)
-			connectionsLock.Lock()
-			delete(connections, conn)
-			connectionsLock.Unlock()
-			conn.Close()
-			return
+func ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("browsertab: ", r.Method, r.URL.Path)
+	if r.URL.Path == "/tab/" && r.Method == "POST" {
+		if r.Body == nil {
+			respond.UnprocessableEntity(w, errors.New("No data"))
+		} else if bytes, err := io.ReadAll(r.Body); err != nil {
+			respond.ServerError(w, err)
 		} else {
-			var tabs = make([]*Tab, 0, len(data))
-			for _, d := range data {
-				tabs = append(tabs, &Tab{
-					BaseResource: resource.BaseResource{
-						Id:      d["id"],
-						Title:   d["title"],
-						Comment: d["url"],
-						Profile: "browsertab",
-					}})
+			var data = make([]map[string]string, 30)
+			if err := json.Unmarshal(bytes, &data); err != nil {
+				respond.UnprocessableEntity(w, err)
+			} else {
+				var tabs = make([]*Tab, 0, len(data))
+				for _, d := range data {
+					tabs = append(tabs, &Tab{
+						BaseResource: resource.BaseResource{
+							Id:      d["id"],
+							Title:   d["title"],
+							Comment: d["url"],
+							IconUrl: link.Href(d["favIcon"]),
+							Profile: "browsertab",
+						}})
+				}
+				Tabs.ReplaceWith(tabs)
+				respond.Ok(w)
 			}
-			Tabs.ReplaceWith(tabs)
 		}
+	} else {
+		Tabs.ServeHTTP(w, r)
 	}
-})
+}

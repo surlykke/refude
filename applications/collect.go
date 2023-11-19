@@ -8,11 +8,11 @@ package applications
 import (
 	"encoding/xml"
 	"errors"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/slice"
 	"github.com/surlykke/RefudeServices/lib/xdg"
@@ -132,7 +132,7 @@ func CollectMimeTypes() map[string]*Mimetype {
 		} `xml:"mime-type"`
 	}{}
 
-	xmlInput, err := ioutil.ReadFile(freedesktopOrgXml)
+	xmlInput, err := os.ReadFile(freedesktopOrgXml)
 	if err != nil {
 		log.Warn("Unable to open ", freedesktopOrgXml, ": ", err)
 	}
@@ -164,9 +164,9 @@ func CollectMimeTypes() map[string]*Mimetype {
 			}
 
 			if tmp.Icon.Name != "" {
-				mimeType.IconName = tmp.Icon.Name
+				mimeType.IconUrl = link.IconUrl(tmp.Icon.Name)
 			} else {
-				mimeType.IconName = strings.Replace(mimeType.Id, "/", "-", -1)
+				mimeType.IconUrl = link.IconUrl(strings.Replace(mimeType.Id, "/", "-", -1))
 			}
 
 			for _, aliasStruct := range tmp.Alias {
@@ -313,7 +313,7 @@ func readDesktopFile(path string, id string) (*DesktopApplication, error) {
 		da.GenericName = group.Entries["GenericName"]
 		da.NoDisplay = group.Entries["NoDisplay"] == "true"
 		da.Comment = group.Entries["Comment"]
-		da.IconName = group.Entries["Icon"]
+		da.IconUrl = link.IconUrl(group.Entries["Icon"])
 
 		da.Hidden = group.Entries["Hidden"] == "true"
 		da.OnlyShowIn = slice.Split(group.Entries["OnlyShowIn"], ";")
@@ -348,7 +348,7 @@ func readDesktopFile(path string, id string) (*DesktopApplication, error) {
 					id:   currentAction,
 					Name: name,
 					Exec: actionGroup.Entries["Exec"],
-					Icon: actionGroup.Entries["icon"],
+					IconUrl: link.IconUrl(actionGroup.Entries["icon"]),
 				})
 			}
 		}

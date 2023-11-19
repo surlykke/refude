@@ -2,7 +2,6 @@ package config
 
 import (
 	_ "embed"
-	"fmt"
 	"os"
 
 	"github.com/surlykke/RefudeServices/lib/log"
@@ -62,9 +61,4 @@ func init() {
 		Notifications = tmp.Notifications
 		Launcher = tmp.Launcher
 	}
-
-	fmt.Println("After config init")
-	fmt.Println("Notifications:", Notifications)
-	fmt.Println("Launcher:", Launcher)
-	fmt.Println("yaml file was:", string(bytes))
 }

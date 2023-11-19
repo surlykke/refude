@@ -3,12 +3,10 @@
 // This file is part of the RefudeServices project.
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
-//
 package icons
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"regexp"
 	"sync"
@@ -103,7 +101,7 @@ func determineDefaultIconTheme() {
 		log.Info("default icon theme taken from env REFUDE_ICON_THEME", defaultThemeName)
 	} else {
 		for _, fileToLookAt := range filesToLookAt {
-			if bytes, err := ioutil.ReadFile(fileToLookAt); err == nil {
+			if bytes, err := os.ReadFile(fileToLookAt); err == nil {
 				if matches := iconThemeDefPattern.FindStringSubmatch(string(bytes)); matches != nil {
 					defaultThemeName = matches[1]
 					log.Info("default icon theme taken from", fileToLookAt, defaultThemeName)
@@ -213,7 +211,7 @@ func writeSessionHicolorIcon(iconName string, size uint32, data []byte) {
 	for _, dir := range themeMap["hicolor"].Dirs {
 		if dir.Context == "converted" && dir.MinSize <= size && dir.MaxSize >= size {
 			var path = fmt.Sprintf("%s/hicolor/%s/%s.png", refudeSessionIconsDir, dir.Path, iconName)
-			if err := ioutil.WriteFile(path, data, 0700); err != nil {
+			if err := os.WriteFile(path, data, 0700); err != nil {
 				log.Warn("Problem writing", path, err)
 			}
 			return
@@ -225,7 +223,7 @@ func writeSessionHicolorIcon(iconName string, size uint32, data []byte) {
 
 func writeSessionOtherIcon(iconName string, data []byte) {
 	var path = fmt.Sprintf("%s/%s.png", refudeSessionIconsDir, iconName)
-	if err := ioutil.WriteFile(path, data, 0700); err != nil {
+	if err := os.WriteFile(path, data, 0700); err != nil {
 		log.Warn("Problem writing", path, err)
 	}
 }
