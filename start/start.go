@@ -21,12 +21,16 @@ import (
 	"github.com/surlykke/RefudeServices/x11"
 )
 
+func onResourceChange() {
+	watch.ResourceChanged("/start")
+}
 
 var Run = func() {
-	go watch.PublishStream(notifications.Notifications.Subscribe())
-	go watch.PublishStream(x11.Windows.Subscribe())
-	go watch.PublishStream(applications.Applications.Subscribe())
-	go watch.PublishStream(power.Devices.Subscribe())
+	notifications.Notifications.AddListener(onResourceChange)
+	x11.Windows.AddListener(onResourceChange)
+	wayland.Windows.AddListener(onResourceChange)
+	applications.Applications.AddListener(onResourceChange)
+	power.Devices.AddListener(onResourceChange)
 }
 
 type StartResource struct {

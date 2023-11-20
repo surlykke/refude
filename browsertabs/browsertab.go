@@ -3,11 +3,9 @@ package browsertabs
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
-	"sync"
 
 	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/resource"
@@ -15,16 +13,12 @@ import (
 	"github.com/surlykke/RefudeServices/watch"
 )
 
-var connectionsLock sync.Mutex
-
 type Tab struct {
 	resource.BaseResource
 }
 
 func (this *Tab) DoPost(w http.ResponseWriter, r *http.Request) {
-	connectionsLock.Lock()
-	fmt.Println("Publish")
-	watch.Publish(fmt.Sprintf("focustab %s", this.Id))
+	watch.Publish("focusTab", this.Id)
 	respond.Accepted(w)
 }
 
@@ -35,7 +29,6 @@ func (this *Tab) RelevantForSearch() bool {
 var Tabs = resource.MakeCollection[*Tab]("/tab/")
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("browsertab: ", r.Method, r.URL.Path)
 	if r.URL.Path == "/tab/" && r.Method == "POST" {
 		if r.Body == nil {
 			respond.UnprocessableEntity(w, errors.New("No data"))

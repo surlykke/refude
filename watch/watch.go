@@ -8,17 +8,21 @@ import (
 	"github.com/surlykke/RefudeServices/lib/respond"
 )
 
-var events = pubsub.MakePublisher[string]()
-
-func PublishStream(subscription *pubsub.Subscription[string]) {
-	for {
-		events.Publish(subscription.Next())
-	}
+type event struct {
+	event string
+	data  string
 }
 
-func Publish(evt string) {
-	events.Publish(evt)
+var events = pubsub.MakePublisher[event]()
+
+func Publish(evt string, data string) {
+	events.Publish(event{evt, data})
 }
+
+func ResourceChanged(path string) {
+	Publish("resourceChanged", path)
+}
+
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
@@ -32,13 +36,11 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.(http.Flusher).Flush()
 
-		if _, err := fmt.Fprintf(w, "data:%s\n\n", ""); err != nil {
-			return
-		}
-		w.(http.Flusher).Flush()
-
 		for {
-			if _, err := fmt.Fprintf(w, "data:%s\n\n", subscription.Next()); err != nil {
+			var evt = subscription.Next()
+			if _, err := fmt.Fprintf(w, "event:%s\n", evt.event); err != nil {
+				return
+			} else if _, err := fmt.Fprintf(w, "data:%s\n\n", evt.data); err != nil {
 				return
 			}
 			w.(http.Flusher).Flush()

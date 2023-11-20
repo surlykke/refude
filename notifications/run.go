@@ -101,7 +101,7 @@ func calculateFlash() {
 		flashLock.Lock()
 		flash = calculatedFlash
 		flashLock.Unlock()
-		watch.Publish("/flash")
+		watch.ResourceChanged("/flash")
 	}
 
 }

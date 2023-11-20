@@ -5,7 +5,6 @@ const reportTabs = () => {
     console.log("reportTabs")
     chrome.tabs.query({}, tabs => {
         let tabsData = tabs.map(t => {
-            console.log("t:", t)
             return {
                 id: "" + t.id,
                 title: t.title,
@@ -31,22 +30,13 @@ const watch = () => {
     reportTabs()
     let evtSource = new EventSource("http://localhost:7938/watch")
     evtSource.onopen = reportTabs
-    evtSource.onmessage = ({data}) => {
-        console.log("watch got: ", data)
-        if (data) {
-            if (data.startsWith(focusTab)) {
-                let tabId = parseInt(data.substr(focusTab.length))
-                tabId && chrome.tabs.update(tabId, { 'active': true }, (tab) => { }) 
-            } else if (data === "showLauncher") {
-                showLauncher()
-            } else if (data === "hideLauncher") {
-                hideLauncher()
-            } else if (data === "restoreTab") {
-                restoreTab()
-            }
-        }
-    }
-
+    evtSource.addEventListener("showLauncher", showLauncher)
+    evtSource.addEventListener("hideLauncher", hideLauncher)
+    evtSource.addEventListener("restoreTab", restoreTab)
+    evtSource.addEventListener("focusTab", ({data}) => {
+        let tabId = parseInt(data)
+        tabId && chrome.tabs.update(tabId, { 'active': true }, (tab) => { }) 
+    })
     evtSource.onerror = error => {
         console.log(error)
         if (evtSource.readyState === 2) {

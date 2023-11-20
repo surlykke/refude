@@ -7,7 +7,6 @@ package client
 
 import (
 	"embed"
-	"fmt"
 	"io/fs"
 	"net/http"
 	"os"
@@ -38,12 +37,12 @@ func init() {
 }
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Request:", r.URL.Path);
 	if r.URL.Path == "/refude/html/showlauncher" {
 		if r.Method != "POST" {
 			respond.NotAllowed(w)
 		} else {
-			watch.Publish("showLauncher")			
+			wayland.RememberActive()
+			watch.Publish("showLauncher", "")			
 			respond.Accepted(w)
 		}
 	} else if r.URL.Path == "/refude/html/hidelauncher" {
@@ -52,12 +51,12 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		} else {
 			var restore = r.URL.Query()["restore"]
 			if slice.Contains(restore, "tab") {
-				watch.Publish("restoreTab")
+				watch.Publish("restoreTab", "")
 			}
 			if slice.Contains(restore, "window") {
 				wayland.ActivateRememberedActive()
 			}
-			watch.Publish("hideLauncher")
+			watch.Publish("hideLauncher", "")
 			respond.Accepted(w)
 		}
 	} else {

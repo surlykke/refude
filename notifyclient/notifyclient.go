@@ -25,8 +25,8 @@ func followFlash() {
  	client = sse.NewClient("http://localhost:7938/watch")
 	client.ReconnectStrategy = backoff.NewConstantBackOff(2*time.Second)
 
-	client.Subscribe("data", func(evt *sse.Event) {
-		if "/flash" == string(evt.Data) {
+	client.Subscribe("resourceChanged", func(evt *sse.Event) {
+		if "resourceChanged" == string(evt.Event) && "/flash" == string(evt.Data) { // Subscribe doesn't filter on Event ??
 			getFlash()
 		}
 	})

@@ -11,7 +11,6 @@ import (
 	"sync"
 
 	"github.com/surlykke/RefudeServices/lib/link"
-	"github.com/surlykke/RefudeServices/lib/pubsub"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
 )
@@ -22,6 +21,8 @@ type ResourceCollection interface {
 	Search(term string, threshold int) link.List
 }
 
+type Listener func() 
+
 /**
 * Behave like an ordered syncronized map
 * Order is determined by insertion
@@ -30,14 +31,14 @@ type Collection[T Resource] struct {
 	sync.Mutex
 	context   string
 	resources []T
-	publisher *pubsub.Publisher[string]
+	listeners []Listener
 }
 
 func MakeCollection[T Resource](context string) *Collection[T] {
 	return &Collection[T]{
 		context:   context,
 		resources: make([]T, 0, 100),
-		publisher: pubsub.MakePublisher[string](),
+		listeners: []Listener{},
 	}
 }
 
@@ -207,10 +208,12 @@ func (this *Collection[T]) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}	
 }
 
-func (this *Collection[T]) Subscribe() *pubsub.Subscription[string] {
-	return this.publisher.Subscribe()
+func (this *Collection[T]) AddListener(listener Listener) {
+	this.listeners = append(this.listeners, listener)
 }
 
 func (this *Collection[T]) publish() {
-	this.publisher.Publish(this.context)
+	for _, listener := range this.listeners {
+		listener()
+	}
 }

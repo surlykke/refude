@@ -64,9 +64,9 @@ type WaylandWindow struct {
 }
 
 func MakeWindow(wId uint64) *WaylandWindow {
-	return &WaylandWindow {
-		BaseResource: resource.BaseResource {
-			Id: strconv.FormatUint(wId, 10),
+	return &WaylandWindow{
+		BaseResource: resource.BaseResource{
+			Id:      strconv.FormatUint(wId, 10),
 			Profile: "window",
 		},
 		Wid: wId,
@@ -76,7 +76,6 @@ func MakeWindow(wId uint64) *WaylandWindow {
 func (this *WaylandWindow) RelevantForSearch() bool {
 	return !strings.HasPrefix(this.Title, "Refude launcher")
 }
-
 
 func (this *WaylandWindow) Actions() link.ActionList {
 	return link.ActionList{
@@ -105,10 +104,10 @@ var recentCount uint32
 var recentMapLock sync.Mutex
 
 func getCopy(wId uint64) *WaylandWindow {
-	var	copy WaylandWindow 
+	var copy WaylandWindow
 	var path = strconv.FormatUint(wId, 10)
 	if w, ok := Windows.Get(path); ok {
-		copy = *w	
+		copy = *w
 	} else {
 		copy = *MakeWindow(wId)
 	}
@@ -131,16 +130,13 @@ func Run() {
 }
 
 func watchApplications() {
-	var subscription = applications.Applications.Subscribe()
-	for {
-		if subscription.Next() == "/application/" {
-			for _, w := range Windows.GetAll() {
-				var win = *w
-				win.IconUrl = applications.GetIconUrl(win.AppId + ".desktop")
-				Windows.Update(&win)
-			}
+	applications.Applications.AddListener(func() {
+		for _, w := range Windows.GetAll() {
+			var win = *w
+			win.IconUrl = applications.GetIconUrl(win.AppId + ".desktop")
+			Windows.Update(&win)
 		}
-	}
+	})
 }
 
 func PurgeAndShow(applicationTitle string, focus bool) bool {
@@ -154,7 +150,6 @@ func PurgeAndShow(applicationTitle string, focus bool) bool {
 		return true
 	}
 }
-
 
 var rememberedActive uint64 = 0
 var rememberedActiveLock sync.Mutex
@@ -171,21 +166,19 @@ func ActivateRememberedActive() {
 	rememberedActiveLock.Lock()
 	var copy = rememberedActive
 	rememberedActiveLock.Unlock()
-	if (copy > 0) {
+	if copy > 0 {
 		activate(copy)
 	}
 }
 
 func getAndPurge(applicationTitle string) *WaylandWindow {
 	var result *WaylandWindow
-	for _, w := range Windows.Find(func(w *WaylandWindow) bool { return w.Title == applicationTitle })  {
+	for _, w := range Windows.Find(func(w *WaylandWindow) bool { return w.Title == applicationTitle }) {
 		if result == nil {
-			result = w 
+			result = w
 		} else {
 			close(w.Wid)
 		}
 	}
 	return result
 }
-
-
