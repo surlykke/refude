@@ -39,7 +39,7 @@ export let link = (link, comment, dismiss, move) => {
     return a({  className: "link", 
                 onClick: e => e.preventDefault(),
                 onDoubleClick: e => {
-                    doPost(e.currentTarget.href, response => response.ok && dismiss(false, "browsertab" !== e.currentTarget.dataset.profile))
+                    doPost(e.currentTarget.href).then(response => response.ok && dismiss(false, "browsertab" !== e.currentTarget.dataset.profile))
                     e.preventDefault()
                 },
                 onKeyDown: onKeyDown,
