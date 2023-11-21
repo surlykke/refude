@@ -8,7 +8,13 @@ import {doDelete, doPost, iconClassName} from "../common/utils.js"
 import { img, a, span } from "../common/elements.js"
 
 export let link = (link, comment, dismiss, move) => {
-    
+
+    let activate = (href, close, profile) => {
+        doPost(href).then(response => {
+                response.ok && close && dismiss("window" !== profile && "browsertab" !== profile , "browsertab" !== profile)
+            })
+    }
+
     let  onKeyDown = event => {
         let { key, ctrlKey, shiftKey, altKey} = event;
         if (key === "ArrowRight") {
@@ -20,13 +26,7 @@ export let link = (link, comment, dismiss, move) => {
         } else if (key === "ArrowDown" || key === "j" && ctrlKey || key === 'Tab' && !shiftKey && !ctrlKey && !altKey) {
             move("down");
         } else if (key === "Enter") {
-            console.log("Enter")
-            doPost(event.target.href).then(response => {
-                console.log("response.ok:", response.ok)
-                let profile = event.target.dataset.profile
-                response.ok && !ctrlKey && dismiss(
-                    "window" !== profile && "browsertab" !== profile , "browsertab" !== profile)
-            })
+            activate(event.target.href, !ctrlKey, event.target.dataset.profile) 
         } else if (key === "Delete") {
             doDelete(event.target.href).then(response => response.ok && !ctrlKey && dismiss(true, true))
         } else { 
@@ -39,7 +39,7 @@ export let link = (link, comment, dismiss, move) => {
     return a({  className: "link", 
                 onClick: e => e.preventDefault(),
                 onDoubleClick: e => {
-                    doPost(e.currentTarget.href).then(response => response.ok && dismiss(false, "browsertab" !== e.currentTarget.dataset.profile))
+                    activate(e.currentTarget.href, true, e.currentTarget.dataset.profile)
                     e.preventDefault()
                 },
                 onKeyDown: onKeyDown,

@@ -24,13 +24,7 @@ export class Main extends React.Component {
     }
 
     componentDidMount = () => {
-        document.addEventListener("focus", () => console.log("document focused"))
         document.addEventListener("keydown", this.onKeyDown)
-        let { width, height } = document.getElementById('html').getBoundingClientRect()
-        let x = screen.availLeft + (screen.availWidth - width) / 2
-        let y = screen.availTop + (screen.availHeight - height) / 2
-        window.resizeTo(640, 480)
-        window.moveTo(x, y)
     };
 
     componentDidUpdate = () => {
@@ -41,7 +35,7 @@ export class Main extends React.Component {
 
     watchSearch = () => {
         let evtSource = new EventSource("http://localhost:7938/watch")
-        evtSource.onmessage = this.getResource
+        evtSource.addEventListener("resourceChanged", ({data}) => data === "/start" && this.getResource())
         evtSource.onerror = () => {
             if (evtSource.readyState === 2) {
                 setTimeout(this.watchSearch, 5000)
