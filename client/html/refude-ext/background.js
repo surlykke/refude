@@ -25,9 +25,6 @@ const reportTabs = () => {
 }
 
 const watch = () => {
-    // commands
-    const focusTab = "focustab"
-    reportTabs()
     let evtSource = new EventSource("http://localhost:7938/watch")
     evtSource.onopen = reportTabs
     evtSource.addEventListener("showLauncher", showLauncher)
@@ -43,9 +40,7 @@ const watch = () => {
             setTimeout(watch, 5000)
         }
     } 
-
 }
-
 
 let rememberedTab
 
@@ -58,9 +53,15 @@ let showLauncher = () => {
                 rememberedTab = tab
                 chrome.tabs.query(
                     { url: "http://localhost:7938/refude/html/launcher/" },
-                    tabs => chrome.tabs.remove(tabs.map(t => t.id), () => {
-                        chrome.tabs.create({ active: true, index: 0, url: "http://localhost:7938/refude/html/launcher" })
-                    }))
+                    tabs => {
+                        if (tabs.length == 0) {
+                            chrome.tabs.create({ active: true, index: 0, url: "http://localhost:7938/refude/html/launcher" })
+                        } else {
+                            chrome.tabs.update(tabs[0].id, {active: true})
+                            chrome.tabs.remove(tabs.slice(1).map(t => t.id))
+                        }
+                    }
+                )
             })
         }
     })
@@ -106,6 +107,7 @@ keepAlive()
 */
 
 console.log("Starting")
+reportTabs()
 chrome.tabs.onRemoved.addListener(reportTabs)
 chrome.tabs.onUpdated.addListener(reportTabs)
 watch()
