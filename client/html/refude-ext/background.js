@@ -58,6 +58,7 @@ let showLauncher = () => {
                             chrome.tabs.create({ active: true, index: 0, url: "http://localhost:7938/refude/html/launcher" })
                         } else {
                             chrome.tabs.update(tabs[0].id, {active: true})
+                            chrome.windows.update(tabs[0].windowId, {focused: true})
                             chrome.tabs.remove(tabs.slice(1).map(t => t.id))
                         }
                     }
