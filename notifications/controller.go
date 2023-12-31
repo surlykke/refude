@@ -315,15 +315,25 @@ func helper(src *string, dest *string, allowedPrefixes []string, endMarker strin
 
 func DoDBus() {
 	var err error
+	var reply dbus.RequestNameReply
+	
+	defer func() {
+		if err := recover(); err != nil {
+			log.Warn(err, "- hence Notifications not running")
+		} 
+	}()
 
+	
 	// Get on the bus
 	conn, err = dbus.SessionBus()
 	if err != nil {
 		panic(err)
-	} else if reply, err := conn.RequestName(NOTIFICATIONS_SERVICE, dbus.NameFlagDoNotQueue); err != nil {
+	} 
+	if reply, err = conn.RequestName(NOTIFICATIONS_SERVICE, dbus.NameFlagDoNotQueue); err != nil {
 		panic(err)
-	} else if reply != dbus.RequestNameReplyPrimaryOwner {
-		log.Warn(NOTIFICATIONS_SERVICE + " taken")
+	} 
+	if reply != dbus.RequestNameReplyPrimaryOwner {
+		panic(errors.New(NOTIFICATIONS_SERVICE + " taken"))
 	}
 
 	go generate(ids)

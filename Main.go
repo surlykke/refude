@@ -48,7 +48,7 @@ func main() {
 		//go notifyclient.Run() 
 	}
 	go power.Run()
-	//go statusnotifications.Run()
+	go statusnotifications.Run()
 	go start.Run()
 
 	if xdg.SessionType == "x11" {

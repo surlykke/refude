@@ -84,6 +84,12 @@ func checkItemStatus(sender string) {
 func getOnTheBus() {
 	var err error
 
+	defer func() {
+		if err := recover(); err != nil {
+			log.Warn(err, "- hence statusnotifications not running")
+		}
+	}()
+
 	conn, err = dbus.SessionBus()
 	if err != nil {
 		panic(err)
