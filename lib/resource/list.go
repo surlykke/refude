@@ -29,39 +29,28 @@ type Listener func()
  */
 type Collection[T Resource] struct {
 	sync.Mutex
-	context   string
 	resources []T
 	listeners []Listener
 }
 
-func MakeCollection[T Resource](context string) *Collection[T] {
+func MakeCollection[T Resource]() *Collection[T] {
 	return &Collection[T]{
-		context:   context,
 		resources: make([]T, 0, 100),
 		listeners: []Listener{},
 	}
 }
 
-func (this *Collection[T]) Get(id string) (T, bool) {
+func (this *Collection[T]) Get(path string) (T, bool) {
 	this.Lock()
 	defer this.Unlock()
 	for _, res := range this.resources {
-		if res.GetId() == id {
+		if res.GetPath() == path {
 			return res, true
 		}
 	}
 	var t T
 	return t, false
 }
-
-func (this *Collection[T]) GetByPath(path string) (T, bool) {
-	var id string
-	if strings.HasPrefix(path, this.context) {
-		id = path[len(this.context):]
-	}
-	return this.Get(id)
-}
-
 
 func (this *Collection[T]) GetAll() []T {
 	this.Lock()
@@ -84,9 +73,11 @@ func (this *Collection[T]) Search(term string, threshold int) link.List {
 	var links = make(link.List, 0, len(this.resources))
 	for _, res := range this.resources {
 		if res.RelevantForSearch() {
-			var title, _, icon, profile = res.Presentation()
+			var title = res.GetTitle()
+			var icon = res.GetIconUrl()
+			var profile = res.GetProfile()
 			if rnk := searchutils.Match(term, title, res.GetKeywords()...); rnk > -1 {
-				links = append(links, link.MakeRanked(res.GetId(), title, icon, profile, rnk))
+				links = append(links, link.MakeRanked(res.GetPath(), title, icon, profile, rnk))
 			}
 		}
 	}
@@ -99,7 +90,7 @@ func (this *Collection[T]) Put(res T) {
 	defer  this.publish()
 	defer this.Unlock()
 	for i := 0; i < len(this.resources); i++ {
-		if this.resources[i].GetId() == res.GetId() {
+		if this.resources[i].GetPath() == res.GetPath() {
 			this.resources[i] = res
 			return
 		}
@@ -111,7 +102,7 @@ func (this *Collection[T]) Update(res T) {
 	this.Lock() 
 	defer this.Unlock()
 	for i := 0; i < len(this.resources); i++ {
-		if this.resources[i].GetId() == res.GetId() {
+		if this.resources[i].GetPath() == res.GetPath() {
 			this.resources[i] = res
 			this.publish()
 			break
@@ -124,7 +115,7 @@ func (this *Collection[T]) PutFirst(res T) {
 	defer this.publish()
 	defer this.Unlock()
 	for i := 0; i < len(this.resources); i++ {
-		if this.resources[i].GetId() == res.GetId() {
+		if this.resources[i].GetPath() == res.GetPath() {
 			this.resources[i] = res
 			return
 		}
@@ -144,7 +135,7 @@ func (this *Collection[T]) Delete(path string) bool {
 	defer this.Unlock()
 
 	for i, res := range this.resources {
-		if res.GetId() == path {
+		if res.GetPath() == path {
 			this.resources = append(this.resources[:i], this.resources[i+1:]...)
 			this.publish()
 			return true
@@ -184,25 +175,27 @@ func (this *Collection[T]) Find(test func(t T) bool) []T {
 func (this *Collection[T]) GetPaths() []string {
 	var res = make([]string, 0, len(this.resources))
 	for _, r := range this.resources {
-		res = append(res, this.context + r.GetId())
+		res = append(res, r.GetPath())
 	}
 	return res
 }
 
 func (this *Collection[T]) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path == this.context {
+	if strings.HasSuffix(r.URL.Path, "/") {
 		// Serve as list
 		if r.Method == "GET" {
 			var jsonReps = make([]jsonRepresentation, 0, 500)
 			for _, res := range this.GetAll() {
-				jsonReps = append(jsonReps, buildJsonRepresentation(res, this.context, ""))
+				if strings.HasPrefix(res.GetPath(), r.URL.Path) {
+				jsonReps = append(jsonReps, buildJsonRepresentation(res,""))
+			}
 			}
 			respond.AsJson(w, jsonReps)
 		} else {
 			respond.NotAllowed(w)
 		}
-	} else if res, ok := this.GetByPath(r.URL.Path); ok { 
-		ServeSingleResource(w, r, res, this.context)
+	} else if res, ok := this.Get(r.URL.Path); ok { 
+		ServeSingleResource(w, r, res)
 	} else {
 		respond.NotFound(w)
 	}	

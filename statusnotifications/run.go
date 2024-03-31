@@ -27,7 +27,7 @@ func Run() {
 			if item.MenuPath != "" {
 				Menus.Put(&Menu{
 					BaseResource: resource.BaseResource{
-						Id: pathEscape(event.sender, item.MenuPath),
+						Path: "/menu/" + pathEscape(event.sender, item.MenuPath),
 						Title: "Menu",
 						Profile: "menu",
 					},
@@ -93,5 +93,5 @@ func Run() {
 	}
 }
 
-var Items = resource.MakeCollection[*Item]("/item/")
-var Menus = resource.MakeCollection[*Menu]("/menu/")
+var Items = resource.MakeCollection[*Item]()
+var Menus = resource.MakeCollection[*Menu]()

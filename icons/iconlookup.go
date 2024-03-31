@@ -61,13 +61,14 @@ func locateIcon(iconName string, size uint32) string {
 func locateIconInTheme(iconName string, size uint32, theme *IconTheme) string {
 	var shortestDistanceSoFar = uint32(math.MaxUint32)
 	var filename string
+	var id = theme.Path[len("/icontheme/"):]
 
 	for _, basedir := range basedirs {
-		if existsAndIsDir(basedir + "/" + theme.Id) {
+		if existsAndIsDir(basedir + "/" + id) {
 			for _, iconDir := range theme.Dirs {
-				if existsAndIsDir(basedir + "/" + theme.Id + "/" + iconDir.Path) {
+				if existsAndIsDir(basedir + "/" + id + "/" + iconDir.Path) {
 					for _, extension := range []string{".png", ".svg"} { // TODO deal with xpm
-						var tentativeFilename = basedir + "/" + theme.Id + "/" + iconDir.Path + "/" + iconName + extension
+						var tentativeFilename = basedir + "/" + id + "/" + iconDir.Path + "/" + iconName + extension
 						if existsAndIsNotDir(tentativeFilename) /* Maybe also check mimetype... */ {
 							var distance uint32
 							if iconDir.MinSize > size {

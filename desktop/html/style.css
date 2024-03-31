@@ -1,0 +1,46 @@
+@charset "UTF-8";
+html, body {
+    background-color:#002b36;
+    color:  darkgray;
+}
+
+
+.searchRow p {
+    font-size: 1.2em;
+    border-bottom: solid gray 1px;
+    padding-bottom: 6px;
+    margin: 4px 0 8px 0;
+}
+
+
+.searchResult {
+    padding-bottom: 20px;
+}
+
+.searchResult.active {
+    font-size: 1.1em;
+    /*color: #fefefe; */
+    /*color:#8A865D;*/
+    color:   beige;
+}
+.searchResult.active td:last-child p {
+    border-left: solid darkgray 1px;
+    padding-left: 8px;
+}
+
+.searchResult td:first-child {
+    vertical-align: top;
+    padding: 6px 6px 0 6px;
+}
+
+.searchResult td {
+    padding-bottom: 8px;
+}
+
+.searchResult p:first-child {
+    font-size: 1.2em;
+}
+
+.searchResult p {
+    margin: 0;
+}

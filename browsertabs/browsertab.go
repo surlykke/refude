@@ -17,8 +17,12 @@ type Tab struct {
 	resource.BaseResource
 }
 
+func (this *Tab) Id() string {
+	return this.Path[len("/tab/"):]
+}
+
 func (this *Tab) DoPost(w http.ResponseWriter, r *http.Request) {
-	watch.Publish("focusTab", this.Id)
+	watch.Publish("focusTab", this.Id())
 	respond.Accepted(w)
 }
 
@@ -26,7 +30,9 @@ func (this *Tab) RelevantForSearch() bool {
 	return !strings.HasPrefix(this.Title, "Refude launcher")
 }
 
-var Tabs = resource.MakeCollection[*Tab]("/tab/")
+
+var Tabs = resource.MakeCollection[*Tab]()
+
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == "/tab/" && r.Method == "POST" {
@@ -43,7 +49,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				for _, d := range data {
 					tabs = append(tabs, &Tab{
 						BaseResource: resource.BaseResource{
-							Id:      d["id"],
+							Path:    "/tab/" +   d["id"],
 							Title:   d["title"],
 							Comment: d["url"],
 							IconUrl: link.Href(d["favIcon"]),

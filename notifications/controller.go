@@ -7,8 +7,8 @@ package notifications
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
-	"strconv"
 	"strings"
 	"time"
 
@@ -175,7 +175,7 @@ func Notify(app_name string,
 
 	notification := Notification{
 		BaseResource: resource.BaseResource{
-			Id:      strconv.FormatUint(uint64(id), 10),
+			Path:    fmt.Sprintf("/notification/%d", id),
 			Title:   sanitize(summary, []string{}, []string{}),
 			Comment: sanitize(body, allowedTags, allowedEscapes),
 			IconUrl: link.IconUrl(iconName),
@@ -316,22 +316,21 @@ func helper(src *string, dest *string, allowedPrefixes []string, endMarker strin
 func DoDBus() {
 	var err error
 	var reply dbus.RequestNameReply
-	
+
 	defer func() {
 		if err := recover(); err != nil {
 			log.Warn(err, "- hence Notifications not running")
-		} 
+		}
 	}()
 
-	
 	// Get on the bus
 	conn, err = dbus.SessionBus()
 	if err != nil {
 		panic(err)
-	} 
+	}
 	if reply, err = conn.RequestName(NOTIFICATIONS_SERVICE, dbus.NameFlagDoNotQueue); err != nil {
 		panic(err)
-	} 
+	}
 	if reply != dbus.RequestNameReplyPrimaryOwner {
 		panic(errors.New(NOTIFICATIONS_SERVICE + " taken"))
 	}

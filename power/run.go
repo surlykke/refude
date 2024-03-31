@@ -58,5 +58,5 @@ func getAddedRemovedPath(signal *dbus.Signal) (dbus.ObjectPath, bool) {
 	}
 }
 
-var Devices = resource.MakeCollection[*Device]("/device/")
+var Devices = resource.MakeCollection[*Device]()
 

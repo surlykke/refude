@@ -87,4 +87,4 @@ func (n *Notification) DoDelete(w http.ResponseWriter, r *http.Request) {
 	respond.Accepted(w)
 }
 
-var Notifications = resource.MakeCollection[*Notification]("/notification/")
+var Notifications = resource.MakeCollection[*Notification]()

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html dir="ltr" lang="da" id="html">
+
+<head>
+	<meta charset="utf-8">
+	<title>Refude</title>
+	<link rel="shortcut icon" href="favicon.ico">
+	<link rel="stylesheet" href="./style.css">
+	<script type="application/javascript" src="navigation.js"></script>
+	<script type="application/javascript">
+		document.addEventListener("keydown", onKeyDown)
+	</script>
+</head>
+
+<body>
+	<div class="mainDiv">
+		{{if ne .Title "Start" }}
+		<div class="resource-header">
+			<div class="resource-icon">
+				{{if .Icon }}
+				<img src="{{.Icon }}" height="32" width="32">
+				{{end}}
+			</div>
+			<div>
+				<div class="resource-name">{{.Title }}</div>
+			</div>
+		</div>
+		{{end}}
+		<table class="resource-props">
+			<tbody>
+			</tbody>
+		</table>
+		<table>
+			{{if .Term}}
+			<tr class="searchRow">
+				<td colspan="2">
+					<p>&#x1f50e;&nbsp;{{.Term}}</p>
+				</td>
+			</tr>
+			{{end}}
+			{{with $collection := .LinkCollection}}
+				{{range $index, $profile := .Profiles}}
+				<tr class="heading">
+					<td/>	
+					<td>
+						<p>{{$profile}}</p>
+					</td>
+				</tr>	
+					{{range $collection.Links $profile}}	
+					<tr class="searchResult"  data-resource="{{.Href}}" data-profile="{{.Profile}}">
+						<td>
+							{{if .Icon}}
+							<img class="icon" src="{{.Icon}}" height="20" width="20">
+							{{end}}
+						</td>
+						<td>
+							<p class="title">{{.Title}}</p>
+						</td>
+					</tr>
+					{{end}}
+				{{end}}
+			{{end}}
+		</div>
+	</div>
+	<script type="application/javascript">document.getElementsByClassName('searchResult')[0]?.classList.add('active')</script>
+</body>
+
+</html>

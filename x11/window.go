@@ -6,8 +6,8 @@
 package x11
 
 import (
+	"fmt"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/surlykke/RefudeServices/icons"
@@ -35,7 +35,7 @@ func MakeWindow(p Proxy, wId uint32) (*X11Window, error) {
 		var appName, appClass = GetApplicationAndClass(p, wId)
 		return &X11Window{
 			BaseResource: resource.BaseResource{
-				Id:       strconv.Itoa(int(wId)),
+				Path:     fmt.Sprintf("/window/%d", wId),
 				Title:    name,
 				Comment:  appClass,
 				IconUrl: link.IconUrl(iconName),
@@ -114,7 +114,7 @@ func GetIconName(p Proxy, wId uint32) (string, error) {
 	}
 }
 
-var Windows = resource.MakeCollection[*X11Window]("/window/")
+var Windows = resource.MakeCollection[*X11Window]()
 var proxy = MakeProxy()
 
 func RaiseAndFocusNamedWindow(name string) bool {

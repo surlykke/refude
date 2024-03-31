@@ -66,7 +66,7 @@ func makeFile(path string) (*File, error) {
 		var mimetype, _ = magicmime.TypeByFile(osPath)
 		var f = File{
 			BaseResource: resource.BaseResource{
-				Id:      osPath[1:],
+				Path:    "/file/" +   osPath[1:],
 				Title:   fileInfo.Name(),
 				Comment: path,
 				IconUrl: link.IconUrl(strings.ReplaceAll(mimetype, "/", "-")),
@@ -93,8 +93,8 @@ func (f *File) Links(searchTerm string) link.List {
 
 	var ll = make(link.List, 0, 10)
 	if f.Type == "Directory" {
-		ll = append(ll, Search("/"+f.Id, ".", searchTerm)...)
-	}
+		ll = append(ll, Search(f.Path[len("/file"):], ".", searchTerm)...)
+    	}
 
 	return ll
 }
@@ -143,7 +143,7 @@ func (f *File) DoPost(w http.ResponseWriter, r *http.Request) {
 		defaultAppId = f.Apps[0]
 	}
 	var appId = requests.GetSingleQueryParameter(r, "action", defaultAppId)
-	var ok, err = applications.OpenFile(appId, "/"+f.Id)
+	var ok, err = applications.OpenFile(appId, f.Path[len("/file"):])
 	if ok {
 		if err != nil {
 			respond.ServerError(w, err)

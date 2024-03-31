@@ -92,7 +92,7 @@ func (d *DesktopApplication) DoPost(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-var Applications = resource.MakeCollection[*DesktopApplication]("/application/")
+var Applications = resource.MakeCollection[*DesktopApplication]()
 
 func GetAppsIds(mimetypeId string) []string {
 	if res, ok := Mimetypes.Get(mimetypeId); ok {

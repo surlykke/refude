@@ -2,8 +2,8 @@ package wayland
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
-	"strconv"
 	"strings"
 	"sync"
 
@@ -66,7 +66,7 @@ type WaylandWindow struct {
 func MakeWindow(wId uint64) *WaylandWindow {
 	return &WaylandWindow{
 		BaseResource: resource.BaseResource{
-			Id:      strconv.FormatUint(wId, 10),
+			Path:     fmt.Sprintf("/window/%d", wId),
 			Profile: "window",
 		},
 		Wid: wId,
@@ -98,14 +98,14 @@ func (this *WaylandWindow) DoPost(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-var Windows = resource.MakeCollection[*WaylandWindow]("/window/")
+var Windows = resource.MakeCollection[*WaylandWindow]()
 var recentMap = make(map[uint64]uint32)
 var recentCount uint32
 var recentMapLock sync.Mutex
 
 func getCopy(wId uint64) *WaylandWindow {
 	var copy WaylandWindow
-	var path = strconv.FormatUint(wId, 10)
+	var path = fmt.Sprintf("/window/%d", wId)
 	if w, ok := Windows.Get(path); ok {
 		copy = *w
 	} else {

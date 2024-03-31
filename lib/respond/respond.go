@@ -59,6 +59,11 @@ func AsJson(w http.ResponseWriter, data interface{}) {
 	w.Write(json)
 }
 
+func AsHtml(w http.ResponseWriter, html []byte) {
+	w.Header().Set("Content-Type", "text/html")
+	w.Write(html)
+}
+
 func writeOrPanic(w io.Writer, byteArrArr ...[]byte) {
 	for _, byteArr := range byteArrArr {
 		for len(byteArr) > 0 {

@@ -26,12 +26,12 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	} else if file == nil {
 		respond.NotFound(w)
 	} else {
-		resource.ServeSingleResource(w, r, file, "/file/")
+		resource.ServeSingleResource(w, r, file,)
 	}
 }
 
 func (fr FileRepoType) GetResource(filePath string) resource.Resource {
-	if file, err := makeFile("/" + filePath); err != nil {
+	if file, err := makeFile(filePath); err != nil {
 		log.Warn("Could not make file from", filePath, err)
 		return nil
 	} else if file == nil {
