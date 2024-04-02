@@ -10,11 +10,9 @@ import (
 	"strings"
 
 	"github.com/surlykke/RefudeServices/applications"
-	"github.com/surlykke/RefudeServices/browse"
 	"github.com/surlykke/RefudeServices/browsertabs"
 	"github.com/surlykke/RefudeServices/config"
 	"github.com/surlykke/RefudeServices/desktop"
-	"github.com/surlykke/RefudeServices/doc"
 	"github.com/surlykke/RefudeServices/file"
 	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/log"
@@ -28,6 +26,7 @@ import (
 	"github.com/surlykke/RefudeServices/statusnotifications"
 	"github.com/surlykke/RefudeServices/watch"
 	"github.com/surlykke/RefudeServices/wayland"
+	"golang.org/x/exp/slices"
 
 	_ "net/http/pprof"
 )
@@ -44,8 +43,6 @@ func main() {
 	go power.Run()
 	go statusnotifications.Run()
 
-	http.Handle("/browse", browse.Handler)
-	http.Handle("/browse/", browse.Handler)
 	http.Handle("/ping", ping.WebsocketHandler)
 
 	http.HandleFunc("/tabsink", browsertabs.ServeHTTP)
@@ -53,7 +50,6 @@ func main() {
 	http.HandleFunc("/file/", file.ServeHTTP)
 	http.HandleFunc("/icon", icons.ServeHTTP)
 	http.HandleFunc("/complete", Complete)
-	http.HandleFunc("/doc", doc.ServeHTTP)
 	http.HandleFunc("/watch", watch.ServeHTTP)
 	http.HandleFunc("/desktop/", desktop.ServeHTTP)
 	http.HandleFunc("/", resourcerepo.ServeHTTP)
@@ -73,9 +69,9 @@ func Complete(w http.ResponseWriter, r *http.Request) {
 
 func collectPaths(prefix string) []string {
 	var paths = make([]string, 0, 1000)
-	paths = append(paths, "/icon?name=", "/start?search=", "/complete?prefix=", "/watch", "/doc", "/bookmarks")
+	paths = append(paths, "/icon?name=", "/complete?prefix=", "/watch")
 	paths = append(paths, resourcerepo.GetPaths()...)
-
+	slices.Sort(paths)
 	var pos = 0
 	for _, path := range paths {
 		if strings.HasPrefix(path, prefix) {
