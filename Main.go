@@ -23,7 +23,6 @@ import (
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/resourcerepo"
 	"github.com/surlykke/RefudeServices/lib/respond"
-	"github.com/surlykke/RefudeServices/lib/xdg"
 	"github.com/surlykke/RefudeServices/notifications"
 	"github.com/surlykke/RefudeServices/ping"
 	"github.com/surlykke/RefudeServices/power"
@@ -31,7 +30,6 @@ import (
 	"github.com/surlykke/RefudeServices/statusnotifications"
 	"github.com/surlykke/RefudeServices/watch"
 	"github.com/surlykke/RefudeServices/wayland"
-	"github.com/surlykke/RefudeServices/x11"
 
 	_ "net/http/pprof"
 )
@@ -39,11 +37,7 @@ import (
 func main() {
 	log.Info("Running")
 
-	if xdg.SessionType == "x11" {
-		go x11.Run()
-	} else {
-		go wayland.Run()
-	}
+	go wayland.Run()
 	go applications.Run()
 	if config.Notifications.Enabled {
 		go notifications.Run()
