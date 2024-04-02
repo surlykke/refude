@@ -12,7 +12,6 @@ import (
 	"github.com/surlykke/RefudeServices/applications"
 	"github.com/surlykke/RefudeServices/browse"
 	"github.com/surlykke/RefudeServices/browsertabs"
-	"github.com/surlykke/RefudeServices/client"
 	"github.com/surlykke/RefudeServices/config"
 	"github.com/surlykke/RefudeServices/desktop"
 	"github.com/surlykke/RefudeServices/doc"
@@ -41,12 +40,10 @@ func main() {
 	go applications.Run()
 	if config.Notifications.Enabled {
 		go notifications.Run()
-		//go notifyclient.Run() 
 	}
 	go power.Run()
 	go statusnotifications.Run()
 
-	//http.Handle("/notification/", notifications.Notifications)
 	http.Handle("/browse", browse.Handler)
 	http.Handle("/browse/", browse.Handler)
 	http.Handle("/ping", ping.WebsocketHandler)
@@ -60,7 +57,6 @@ func main() {
 	http.HandleFunc("/start", resource.SingleResourceServer(start.Start, "/"))
 	http.HandleFunc("/watch", watch.ServeHTTP)
 	http.HandleFunc("/bookmarks", resource.SingleResourceServer(start.Bookmarks, "/"))
-	http.HandleFunc("/refude/", client.ServeHTTP)
 	http.HandleFunc("/desktop/", desktop.ServeHTTP)
 	http.HandleFunc("/", resourcerepo.ServeHTTP)
 	
