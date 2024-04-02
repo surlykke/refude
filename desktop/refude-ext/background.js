@@ -71,6 +71,7 @@ let showLauncher = () => {
 }
 
 let showDesktop = () => {
+    console.log("showDesktop")
     chrome.windows.getCurrent({}, window => {
         if (!window) {
             chrome.windows.create({ focused: true, url: "http://localhost:7938/desktop/" })
@@ -143,7 +144,6 @@ const keepAlive = () => {
 keepAlive()
 */
 
-console.log("Starting")
 reportTabs()
 chrome.tabs.onRemoved.addListener(reportTabs)
 chrome.tabs.onUpdated.addListener(reportTabs)

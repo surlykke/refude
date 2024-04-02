@@ -7,11 +7,14 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/surlykke/RefudeServices/applications"
 	"github.com/surlykke/RefudeServices/lib/link"
+	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/resourcerepo"
 	"github.com/surlykke/RefudeServices/lib/respond"
+	"github.com/surlykke/RefudeServices/lib/searchutils"
 )
 
 // Get current rect
@@ -73,13 +76,21 @@ func MakeWindow(wId uint64) *WaylandWindow {
 	}
 }
 
+func (this *WaylandWindow) GetIconUrl() link.Href {
+	return applications.GetIconUrl(this.AppId + ".desktop")
+}
+
 func (this *WaylandWindow) RelevantForSearch(term string) bool {
 	return !strings.HasPrefix(this.Title, "Refude launcher")
 }
 
-func (this *WaylandWindow) Actions() link.ActionList {
-	return link.ActionList{
-		{Name: "activate", Title: "Raise and focus", IconUrl: this.IconUrl},
+func (this *WaylandWindow) Links(searchTerm string) link.List {
+	if searchutils.Match(searchTerm, "Raise and focus") >= 0 {
+		return link.List{
+			link.Make(this.Path + "?action=activate", "Raise and focus", this.IconUrl, relation.Action),
+		}
+	} else {
+		return link.List{}
 	}
 }
 
@@ -117,16 +128,6 @@ func Run() {
 	//go watchApplications()
 	setupAndRunAsWaylandClient()
 }
-
-/*func watchApplications() {
-	applications.Applications.AddListener(func() {
-		for _, w := range Windows.GetAll() {
-			var win = *w
-			win.IconUrl = applications.GetIconUrl(win.AppId + ".desktop")
-			Windows.Update(&win)
-		}
-	})
-}*/ // TODO
 
 var rememberedActive uint64 = 0
 var rememberedActiveLock sync.Mutex

@@ -15,6 +15,7 @@ import (
 	"github.com/rakyll/magicmime"
 	"github.com/surlykke/RefudeServices/applications"
 	"github.com/surlykke/RefudeServices/lib/link"
+	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
@@ -66,7 +67,7 @@ func makeFile(path string) (*File, error) {
 		var mimetype, _ = magicmime.TypeByFile(osPath)
 		var f = File{
 			BaseResource: resource.BaseResource{
-				Path:    "/file/" +   osPath[1:],
+				Path:    "/file/" + osPath[1:],
 				Title:   fileInfo.Name(),
 				Comment: path,
 				IconUrl: link.IconUrl(strings.ReplaceAll(mimetype, "/", "-")),
@@ -81,20 +82,20 @@ func makeFile(path string) (*File, error) {
 	}
 }
 
-func (f *File) Actions() link.ActionList {
-	var actions = make(link.ActionList, 0, 10)
-	for _, app := range applications.GetApps(f.Apps...) {
-		actions = append(actions, link.MkAction(app.DesktopId, "Open with "+app.Title, app.IconUrl))
-	}
-	return actions
-}
-
 func (f *File) Links(searchTerm string) link.List {
 
 	var ll = make(link.List, 0, 10)
+
+	for _, app := range applications.GetApps(f.Apps...) {
+		var title = "Open with " + app.Title
+		if searchutils.Match(searchTerm, title) >= 0 {
+			ll = append(ll, link.Make(f.Path+"?action="+app.DesktopId, title, app.IconUrl, relation.Action))
+		}
+	}
+
 	if f.Type == "Directory" {
 		ll = append(ll, Search(f.Path[len("/file"):], ".", searchTerm)...)
-    	}
+	}
 
 	return ll
 }

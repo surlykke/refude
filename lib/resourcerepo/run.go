@@ -36,6 +36,17 @@ func Get(path string) (resource.Resource, bool) {
 	return res, ok
 }
 
+func GetAll() []resource.Resource {
+	lock.Lock()
+	defer lock.Unlock()
+	var all = make([]resource.Resource, 0, len(repo))
+	for _, res := range repo {
+		all = append(all, res)
+	}
+	return all
+}
+
+
 func GetTyped[T resource.Resource](path string) (T, bool) {
 	if res, ok := Get(path); ok {
 		if t, ok := res.(T); ok {
@@ -106,10 +117,9 @@ func Remove(path string) {
 }		
 
 func Search(term string) link.List {
-	lock.Lock()
-	defer lock.Unlock()
-	var links = make(link.List, 0, len(repo))
-	for _, res := range repo {
+	var all = GetAll()
+	var links = make(link.List, 0, len(all))
+	for _, res := range all {
 		if res.RelevantForSearch(term) {
 			var title = res.GetTitle()
 			var icon = res.GetIconUrl()

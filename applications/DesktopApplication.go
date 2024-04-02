@@ -13,10 +13,12 @@ import (
 	"strings"
 
 	"github.com/surlykke/RefudeServices/lib/link"
+	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/resourcerepo"
 	"github.com/surlykke/RefudeServices/lib/respond"
+	"github.com/surlykke/RefudeServices/lib/searchutils"
 
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
@@ -46,12 +48,17 @@ type DesktopApplication struct {
 	DesktopFile     string
 }
 
-func (d *DesktopApplication) Actions() link.ActionList {
-	var ll = link.ActionList{link.MkAction("", "Launch", d.IconUrl)}
-	for _, da := range d.DesktopActions {
-		ll = append(ll, link.MkAction(da.id, da.Name, da.IconUrl))
+func (d *DesktopApplication) Links(searchTerm string) link.List {
+	var l = make(link.List, 0, 1+len(d.DesktopActions))
+	if searchutils.Match(searchTerm, "Launch") >= 0 {
+		l = append(l, link.Make(d.Path, "Launch", d.IconUrl, relation.Action))
 	}
-	return ll
+	for _, da := range d.DesktopActions {
+		if searchutils.Match(searchTerm, da.Name) >= 0 {
+			l = append(l, link.Make(d.Path+"?action="+da.id, da.Name, da.IconUrl, relation.Action))
+		}
+	}
+	return l
 }
 
 func (d *DesktopApplication) RelevantForSearch(term string) bool {
@@ -94,7 +101,7 @@ func (d *DesktopApplication) DoPost(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetAppsIds(mimetypeId string) []string {
-	if mimetype, ok := resourcerepo.GetTyped[*Mimetype](fmt.Sprintf("/mimetype/%s",mimetypeId)); ok {
+	if mimetype, ok := resourcerepo.GetTyped[*Mimetype](fmt.Sprintf("/mimetype/%s", mimetypeId)); ok {
 		return mimetype.Applications
 	} else {
 		return []string{}

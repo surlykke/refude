@@ -38,15 +38,16 @@
 				</td>
 			</tr>
 			{{end}}
-			{{with $collection := .LinkCollection}}
-				{{range $index, $profile := .Profiles}}
+			{{with $data := .}}
+				{{range $index, $heading := .Headings}}
+				<custom-tag>
 				<tr class="heading">
 					<td/>	
 					<td>
-						<p>{{$profile}}</p>
+						<p>{{$heading}}</p>
 					</td>
 				</tr>	
-					{{range $collection.Links $profile}}	
+					{{range index $data.Links $heading}}	
 					<tr class="searchResult"  data-resource="{{.Href}}" data-profile="{{.Profile}}">
 						<td>
 							{{if .Icon}}
@@ -57,6 +58,7 @@
 							<p class="title">{{.Title}}</p>
 						</td>
 					</tr>
+					</custom-tag>
 					{{end}}
 				{{end}}
 			{{end}}

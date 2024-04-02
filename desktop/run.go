@@ -56,12 +56,14 @@ func init() {
 }
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("Her er vi", r.URL.Path)
 	var resourcePath = requests.GetSingleQueryParameter(r, "resource", "/start")
 	var term = requests.GetSingleQueryParameter(r, "search", "")
 	switch(r.URL.Path) {
 
 
 	case "/desktop/", "/desktop/index.html":
+		fmt.Println("Søger resource under:", "'" + resourcePath + "'")
 		if m, ok := fetchResourceData(resourcePath, term); ok {
 			if err := mainTemplate.Execute(w, m); err != nil {
 				fmt.Fprintln(os.Stderr, "Error executing mainTemplate:", err)

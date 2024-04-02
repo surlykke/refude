@@ -9,10 +9,8 @@ import (
 	"net/http"
 
 	"github.com/surlykke/RefudeServices/lib/link"
-	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/respond"
-	"github.com/surlykke/RefudeServices/lib/searchutils"
 )
 
 type Resource interface {
@@ -21,8 +19,6 @@ type Resource interface {
 	GetComment() string
 	GetIconUrl() link.Href
 	GetProfile() string
-	Actions() link.ActionList
-	DeleteAction() (title string, ok bool)
 	Links(searchTerm string) link.List
 	RelevantForSearch(term string) bool
 	GetKeywords() []string
@@ -55,14 +51,6 @@ func (br *BaseResource) GetIconUrl() link.Href {
 
 func (br *BaseResource) GetProfile() string {
 	return br.Profile
-}
-
-func (br *BaseResource) Actions() link.ActionList {
-	return link.ActionList{}
-}
-
-func (br *BaseResource) DeleteAction() (string, bool) {
-	return "", false
 }
 
 func (br *BaseResource) Links(searchTerm string) link.List {
@@ -150,21 +138,6 @@ func BuildJsonRepresentation(res Resource, searchTerm string) jsonRepresentation
 
 func buildFilterAndRewriteLinks(res Resource, searchTerm string) link.List {
 	var list = make(link.List, 0, 10)
-	for _, action := range res.Actions() {
-		var href = res.GetPath()
-		if action.Name != "" {
-			href += "?action=" + action.Name
-		}
-		if searchutils.Match(searchTerm, action.Name) < 0 {
-			continue
-		}
-		list = append(list, link.Make(href, action.Title, action.IconUrl, relation.Action))
-	}
-	if deleteTitle, ok := res.DeleteAction(); ok {
-		if searchutils.Match(searchTerm, deleteTitle) > -1 {
-			list = append(list, link.Make(res.GetPath(), deleteTitle, "", relation.Delete))
-		}
-	}
 
 	for _, lnk := range res.Links(searchTerm) {
 		list = append(list, lnk)

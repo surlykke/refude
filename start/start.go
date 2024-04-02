@@ -12,12 +12,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/resourcerepo"
-	"github.com/surlykke/RefudeServices/watch"
 )
-
-func onResourceChange() {
-	watch.ResourceChanged("/start")
-}
 
 type StartResource struct {
 	resource.BaseResource
@@ -31,32 +26,14 @@ func (s *StartResource) Links(term string) link.List {
 func DoDesktopSearch(term string) link.List {
 	var links = make(link.List, 0, 300)
 	term = strings.ToLower(term)
-
-	// Could perhaps be done concurrently..
 	links = append(links, resourcerepo.Search(term)...)
 	links = append(links, file.FileRepo.Search(term, 2)...)
 
 	return links
 }
 
-var Start = &StartResource{
-	BaseResource: resource.BaseResource{Path: "/start", Title: "Start", Profile: "start"},
+func Run() {
+	resourcerepo.Put(&StartResource{BaseResource: resource.BaseResource{Path: "/start", Title: "Start", Profile: "start"}})
 }
-
-type BookmarksResource struct {
-	resource.BaseResource
-}
-
-func (bm BookmarksResource) Links(searchTerm string) link.List {
-	return link.List{
-		{Href: "/application/", Title: "Applications", Profile: "application*"},
-		{Href: "/window/", Title: "Windows", Profile: "window*"},
-		{Href: "/notification/", Title: "Notifications", Profile: "notification*"},
-		{Href: "/device/", Title: "Devices", Profile: "device*"},
-		{Href: "/item/", Title: "Items", Profile: "item*"}}
-}
-
-var Bookmarks = &BookmarksResource{BaseResource: resource.BaseResource{Path: "/bookmarks", Title: "Bookmarks", Profile: "bookmarks"}}
-
 
 

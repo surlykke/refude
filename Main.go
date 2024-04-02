@@ -19,7 +19,6 @@ import (
 	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/requests"
-	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/resourcerepo"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/notifications"
@@ -36,6 +35,7 @@ import (
 func main() {
 	log.Info("Running")
 
+	go start.Run()
 	go wayland.Run()
 	go applications.Run()
 	if config.Notifications.Enabled {
@@ -54,9 +54,7 @@ func main() {
 	http.HandleFunc("/icon", icons.ServeHTTP)
 	http.HandleFunc("/complete", Complete)
 	http.HandleFunc("/doc", doc.ServeHTTP)
-	http.HandleFunc("/start", resource.SingleResourceServer(start.Start, "/"))
 	http.HandleFunc("/watch", watch.ServeHTTP)
-	http.HandleFunc("/bookmarks", resource.SingleResourceServer(start.Bookmarks, "/"))
 	http.HandleFunc("/desktop/", desktop.ServeHTTP)
 	http.HandleFunc("/", resourcerepo.ServeHTTP)
 	
