@@ -21,6 +21,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib/resourcerepo"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 	"github.com/surlykke/RefudeServices/notifications"
@@ -50,24 +51,13 @@ func main() {
 	}
 	go power.Run()
 	go statusnotifications.Run()
-	go start.Run()
 
-	if xdg.SessionType == "x11" {
-		http.Handle("/window/", x11.Windows)
-	} else {
-		http.Handle("/window/", wayland.Windows)
-	}
-	http.Handle("/application/", applications.Applications)
-	http.Handle("/notification/", notifications.Notifications)
-	http.Handle("/device/", power.Devices)
-	http.Handle("/icontheme/", icons.IconThemes)
-	http.Handle("/item/", statusnotifications.Items)
-	http.Handle("/itemmenu/", statusnotifications.Menus)
-	http.Handle("/mimetype/", applications.Mimetypes)
+	//http.Handle("/notification/", notifications.Notifications)
 	http.Handle("/browse", browse.Handler)
 	http.Handle("/browse/", browse.Handler)
 	http.Handle("/ping", ping.WebsocketHandler)
-	http.HandleFunc("/tab/", browsertabs.ServeHTTP)
+
+	http.HandleFunc("/tabsink", browsertabs.ServeHTTP)
 	http.HandleFunc("/flash", notifications.ServeFlash)
 	http.HandleFunc("/file/", file.ServeHTTP)
 	http.HandleFunc("/icon", icons.ServeHTTP)
@@ -78,6 +68,7 @@ func main() {
 	http.HandleFunc("/bookmarks", resource.SingleResourceServer(start.Bookmarks, "/"))
 	http.HandleFunc("/refude/", client.ServeHTTP)
 	http.HandleFunc("/desktop/", desktop.ServeHTTP)
+	http.HandleFunc("/", resourcerepo.ServeHTTP)
 	
 	if err := http.ListenAndServe(":7938", nil); err != nil {
 		log.Warn("http.ListenAndServe failed:", err)
@@ -95,17 +86,7 @@ func Complete(w http.ResponseWriter, r *http.Request) {
 func collectPaths(prefix string) []string {
 	var paths = make([]string, 0, 1000)
 	paths = append(paths, "/icon?name=", "/start?search=", "/complete?prefix=", "/watch", "/doc", "/bookmarks")
-	if xdg.SessionType == "x11" {
-		paths = append(paths, x11.Windows.GetPaths()...)
-	} else {
-		paths = append(paths, wayland.Windows.GetPaths()...)
-	}
-	paths = append(paths, applications.Applications.GetPaths()...)
-	paths = append(paths, applications.Mimetypes.GetPaths()...)
-	paths = append(paths, statusnotifications.Items.GetPaths()...)
-	paths = append(paths, notifications.Notifications.GetPaths()...)
-	paths = append(paths, power.Devices.GetPaths()...)
-	paths = append(paths, icons.IconThemes.GetPaths()...)
+	paths = append(paths, resourcerepo.GetPaths()...)
 
 	var pos = 0
 	for _, path := range paths {

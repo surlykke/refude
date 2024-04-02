@@ -13,7 +13,33 @@ import (
 	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
+	"golang.org/x/exp/slices"
 )
+
+type List []Resource
+
+func (l List) SortByPath() List{
+	slices.SortFunc(l, func(r1, r2 Resource) bool { return strings.Compare(r1.GetPath(), r2.GetPath()) < 0})
+	return l
+}
+
+
+
+func (l List) SortByPathReverse() List {
+	slices.SortFunc(l, func(r1, r2 Resource) bool { return strings.Compare(r2.GetPath(), r1.GetPath()) < 0})
+	return l
+}
+
+func ToTyped[T Resource](l List) []T {
+	var result = make([]T, 0, len(l))
+	for _, res := range l {
+		if t, ok := res.(T); ok {
+			result = append(result, t)
+		}
+	}
+	return result
+}
+
 
 type ResourceCollection interface {
 	CanServe(path string) bool
@@ -72,7 +98,7 @@ func (this *Collection[T]) Search(term string, threshold int) link.List {
 	defer this.Unlock()
 	var links = make(link.List, 0, len(this.resources))
 	for _, res := range this.resources {
-		if res.RelevantForSearch() {
+		if res.RelevantForSearch(term) {
 			var title = res.GetTitle()
 			var icon = res.GetIconUrl()
 			var profile = res.GetProfile()
@@ -157,21 +183,6 @@ func (this *Collection[T]) FindFirst(test func(t T) bool) (T, bool) {
 	return t, false
 }
 
-func (this *Collection[T]) Find(test func(t T) bool) []T {
-	this.Lock()
-	defer this.Unlock()
-
-	var found = make([]T, 0, 5)
-
-	for _, res := range this.resources {
-		if test(res) {
-			found = append(found, res)
-		}
-	}
-
-	return found
-}
-
 func (this *Collection[T]) GetPaths() []string {
 	var res = make([]string, 0, len(this.resources))
 	for _, r := range this.resources {
@@ -187,7 +198,7 @@ func (this *Collection[T]) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			var jsonReps = make([]jsonRepresentation, 0, 500)
 			for _, res := range this.GetAll() {
 				if strings.HasPrefix(res.GetPath(), r.URL.Path) {
-				jsonReps = append(jsonReps, buildJsonRepresentation(res,""))
+				jsonReps = append(jsonReps, BuildJsonRepresentation(res,""))
 			}
 			}
 			respond.AsJson(w, jsonReps)

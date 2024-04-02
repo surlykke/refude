@@ -24,12 +24,12 @@ type Resource interface {
 	Actions() link.ActionList
 	DeleteAction() (title string, ok bool)
 	Links(searchTerm string) link.List
-	RelevantForSearch() bool
+	RelevantForSearch(term string) bool
 	GetKeywords() []string
 }
 
 type BaseResource struct {
-	Path       string
+	Path     string
 	Title    string    `json:"-"`
 	Comment  string    `json:"-"`
 	IconUrl  link.Href `json:"-"`
@@ -41,7 +41,6 @@ func (br *BaseResource) GetPath() string {
 	return br.Path
 }
 
-
 func (br *BaseResource) GetTitle() string {
 	return br.Title
 }
@@ -51,7 +50,7 @@ func (br *BaseResource) GetComment() string {
 }
 
 func (br *BaseResource) GetIconUrl() link.Href {
-	return br.IconUrl 
+	return br.IconUrl
 }
 
 func (br *BaseResource) GetProfile() string {
@@ -70,8 +69,8 @@ func (br *BaseResource) Links(searchTerm string) link.List {
 	return link.List{}
 }
 
-func (br *BaseResource) RelevantForSearch() bool {
-	return true
+func (br *BaseResource) RelevantForSearch(term string) bool {
+	return false
 }
 
 func (br *BaseResource) GetKeywords() []string {
@@ -105,11 +104,23 @@ func SingleResourceServer(res Resource, context string) func(w http.ResponseWrit
 func ServeSingleResource(w http.ResponseWriter, r *http.Request, res Resource) {
 	if r.Method == "GET" {
 		var linkSearchTerm = requests.GetSingleQueryParameter(r, "search", "")
-		respond.AsJson(w, buildJsonRepresentation(res, linkSearchTerm))
+		respond.AsJson(w, BuildJsonRepresentation(res, linkSearchTerm))
 	} else if postable, ok := res.(Postable); ok && r.Method == "POST" {
 		postable.DoPost(w, r)
 	} else if deletable, ok := res.(Deleteable); ok && r.Method == "DELETE" {
 		deletable.DoDelete(w, r)
+	} else {
+		respond.NotAllowed(w)
+	}
+}
+
+func ServeList(w http.ResponseWriter, r *http.Request, list []Resource) {
+	if r.Method == "GET" {
+		var jsonReps = make([]jsonRepresentation, 0, len(list))
+		for _, res := range list {
+			jsonReps = append(jsonReps, BuildJsonRepresentation(res, ""))
+		}
+		respond.AsJson(w, jsonReps)
 	} else {
 		respond.NotAllowed(w)
 	}
@@ -125,7 +136,7 @@ type jsonRepresentation struct {
 	Data    interface{} `json:"data"`
 }
 
-func buildJsonRepresentation(res Resource, searchTerm string) jsonRepresentation {
+func BuildJsonRepresentation(res Resource, searchTerm string) jsonRepresentation {
 	var wrapper = jsonRepresentation{}
 	wrapper.Self = link.Href(res.GetPath())
 	wrapper.Links = buildFilterAndRewriteLinks(res, searchTerm)
@@ -136,9 +147,6 @@ func buildJsonRepresentation(res Resource, searchTerm string) jsonRepresentation
 	wrapper.Profile = res.GetProfile()
 	return wrapper
 }
-
-
-
 
 func buildFilterAndRewriteLinks(res Resource, searchTerm string) link.List {
 	var list = make(link.List, 0, 10)

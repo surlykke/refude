@@ -6,12 +6,14 @@
 package notifications
 
 import (
+	"fmt"
 	"net/http"
-	"strconv"
 	"sync"
 	"time"
 
 	"github.com/surlykke/RefudeServices/icons"
+	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib/resourcerepo"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/watch"
 )
@@ -23,10 +25,10 @@ func Run() {
 }
 
 func removeNotification(id uint32, reason uint32) {
-	if n, ok := Notifications.Get(strconv.Itoa(int(id))); ok && !n.Deleted {
+	if n, ok := resourcerepo.GetTyped[*Notification](fmt.Sprintf("/notification/%d", id)); ok && !n.Deleted {
 		var copy = *n
 		copy.Deleted = true
-		Notifications.Update(&copy)
+		resourcerepo.Update(&copy)
 		conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", id, reason)
 		calculateFlash()
 	}
@@ -64,7 +66,9 @@ var flashLock sync.Mutex
 func calculateFlash() {
 	var calculatedFlash *Notification = nil
 	var now = time.Now()
-	for _, n := range Notifications.GetAll() {
+	l := resourcerepo.GetByPrefix("/notification/").SortByPathReverse()
+	notifications := resource.ToTyped[*Notification](l)
+	for _, n := range notifications {
 		if n.Deleted {
 			continue
 		}

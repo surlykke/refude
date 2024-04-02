@@ -9,7 +9,7 @@ let onKeyDown = event => {
         activate()
     } else if (key === 'Delete') {
         doDelete(ctrlKey)
-    } else if (key == 'Enter' && ctrlKey || key == "ArrowRight" || key == "l" && ctrlKey) {
+    } else if (key == 'Enter' && ctrlKey || key == "ArrowRight") {
         navigateTo(activeResource(), '')
     } else if (key.length === 1 && !ctrlKey && !altKey) {
         navigateTo(pageResource, searchTerm + key)

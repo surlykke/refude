@@ -22,10 +22,11 @@ void show_toplevel(uintptr_t);
 */
 import "C"
 import (
-	"strconv"
+	"fmt"
 	"unsafe"
 
 	"github.com/surlykke/RefudeServices/applications"
+	"github.com/surlykke/RefudeServices/lib/resourcerepo"
 )
 
 func close(handle uint64) {
@@ -48,7 +49,7 @@ func show(handle uint64) {
 func handle_title(handle C.uintptr_t, c_title *C.char) {
 	var ww = getCopy(uint64(handle))
 	ww.Title = C.GoString(c_title)
-	Windows.Put(ww)
+	resourcerepo.Put(ww)
 
 }
 
@@ -57,7 +58,7 @@ func handle_app_id(handle C.uintptr_t, c_app_id *C.char) {
 	var ww = getCopy(uint64(handle))
 	ww.AppId = C.GoString(c_app_id)
 	ww.IconUrl = applications.GetIconUrl(ww.AppId + ".desktop")
-	Windows.Put(ww)
+	resourcerepo.Put(ww)
 }
 
 //export handle_output_enter
@@ -88,7 +89,7 @@ func handle_state(handle C.uintptr_t, state C.wl_array) {
 
 	var ww = getCopy(uint64(handle))
 	ww.State = windowStateMask
-	Windows.Put(ww)
+	resourcerepo.Put(ww)
 
 }
 
@@ -100,7 +101,7 @@ func handle_parent(handle C.uintptr_t, parent C.uintptr_t) {}
 
 //export handle_closed
 func handle_closed(handle C.uintptr_t) {
-	Windows.Delete(strconv.FormatUint(uint64(handle), 10))
+	resourcerepo.Remove(fmt.Sprintf("/window/%d", handle))
 }
 
 func setupAndRunAsWaylandClient() {

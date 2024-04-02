@@ -44,6 +44,4 @@ func MakeMimetype(id string) (*Mimetype, error) {
 	}
 }
 
-var Mimetypes = resource.MakeCollection[*Mimetype]()
-
 

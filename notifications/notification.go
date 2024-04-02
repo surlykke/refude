@@ -64,7 +64,7 @@ func (n *Notification) DeleteAction() (string, bool) {
 	return "Dismiss", true
 }
 
-func (n *Notification) RelevantForSearch() bool {
+func (n *Notification) RelevantForSearch(term string) bool {
 	return !n.Deleted && time.Now().Before(time.Time(n.Expires ))
 }
 
@@ -87,4 +87,3 @@ func (n *Notification) DoDelete(w http.ResponseWriter, r *http.Request) {
 	respond.Accepted(w)
 }
 
-var Notifications = resource.MakeCollection[*Notification]()

@@ -49,6 +49,10 @@ type Device struct {
 	Batterylevel     string
 }
 
+func (d *Device) RelevantForSearch(term string) bool {
+	return len(term) >= 3 
+}
+
 func deviceTitle(devType, model string) string {
 	// Try to, with the info we have from UPower, make a meaningful Title and Comment
 	switch devType {

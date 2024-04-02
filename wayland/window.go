@@ -7,10 +7,10 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/surlykke/RefudeServices/applications"
 	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib/resourcerepo"
 	"github.com/surlykke/RefudeServices/lib/respond"
 )
 
@@ -73,7 +73,7 @@ func MakeWindow(wId uint64) *WaylandWindow {
 	}
 }
 
-func (this *WaylandWindow) RelevantForSearch() bool {
+func (this *WaylandWindow) RelevantForSearch(term string) bool {
 	return !strings.HasPrefix(this.Title, "Refude launcher")
 }
 
@@ -98,7 +98,6 @@ func (this *WaylandWindow) DoPost(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-var Windows = resource.MakeCollection[*WaylandWindow]()
 var recentMap = make(map[uint64]uint32)
 var recentCount uint32
 var recentMapLock sync.Mutex
@@ -106,7 +105,7 @@ var recentMapLock sync.Mutex
 func getCopy(wId uint64) *WaylandWindow {
 	var copy WaylandWindow
 	var path = fmt.Sprintf("/window/%d", wId)
-	if w, ok := Windows.Get(path); ok {
+	if w, ok := resourcerepo.GetTyped[*WaylandWindow](path); ok {
 		copy = *w
 	} else {
 		copy = *MakeWindow(wId)
@@ -114,22 +113,12 @@ func getCopy(wId uint64) *WaylandWindow {
 	return &copy
 }
 
-func RaiseAndFocusNamedWindow(name string) bool {
-	if w, ok := Windows.FindFirst(func(ww *WaylandWindow) bool { return ww.Title == name }); ok {
-		activate(w.Wid)
-		return true
-	} else {
-		return false
-	}
-
-}
-
 func Run() {
-	go watchApplications()
+	//go watchApplications()
 	setupAndRunAsWaylandClient()
 }
 
-func watchApplications() {
+/*func watchApplications() {
 	applications.Applications.AddListener(func() {
 		for _, w := range Windows.GetAll() {
 			var win = *w
@@ -137,27 +126,15 @@ func watchApplications() {
 			Windows.Update(&win)
 		}
 	})
-}
-
-func PurgeAndShow(applicationTitle string, focus bool) bool {
-	if w := getAndPurge(applicationTitle); w == nil {
-		return false
-	} else {
-		show(w.Wid)
-		if focus {
-			activate(w.Wid)
-		}
-		return true
-	}
-}
+}*/ // TODO
 
 var rememberedActive uint64 = 0
 var rememberedActiveLock sync.Mutex
 
 func RememberActive() {
-	if active, found := Windows.FindFirst(func(w *WaylandWindow) bool { return w.State.Is(ACTIVATED) }); found {
+	if active := resourcerepo.FindTypedUnderPrefix[*WaylandWindow]("/window/", func(w *WaylandWindow) bool {return w.State.Is(ACTIVATED) }); len(active) > 0 {
 		rememberedActiveLock.Lock()
-		rememberedActive = active.Wid
+		rememberedActive = active[0].Wid
 		rememberedActiveLock.Unlock()
 	}
 }
@@ -169,16 +146,4 @@ func ActivateRememberedActive() {
 	if copy > 0 {
 		activate(copy)
 	}
-}
-
-func getAndPurge(applicationTitle string) *WaylandWindow {
-	var result *WaylandWindow
-	for _, w := range Windows.Find(func(w *WaylandWindow) bool { return w.Title == applicationTitle }) {
-		if result == nil {
-			result = w
-		} else {
-			close(w.Wid)
-		}
-	}
-	return result
 }

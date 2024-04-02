@@ -12,7 +12,7 @@ const reportTabs = () => {
                 favIcon: t.favIconUrl
             }
         })
-        fetch("http://localhost:7938/tab/", {method: "POST", body: JSON.stringify(tabsData)})
+        fetch("http://localhost:7938/tabsink", {method: "POST", body: JSON.stringify(tabsData)})
             .then(response => {
                 if (!response.ok) {
                     throw new Error(response.status)

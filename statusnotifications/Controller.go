@@ -18,6 +18,8 @@ import (
 	"github.com/surlykke/RefudeServices/lib/dbusutils"
 	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/log"
+	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib/resourcerepo"
 )
 
 const WATCHER_SERVICE = "org.kde.StatusNotifierWatcher"
@@ -70,7 +72,7 @@ func monitorSignals() {
 }
 
 func checkItemStatus(sender string) {
-	for _, item := range Items.GetAll() {
+	for _, item := range resource.ToTyped[*Item](resourcerepo.GetByPrefix("/item/")) { 
 		if item.sender == sender {
 			if _, ok := dbuscall.GetSingleProp(conn, item.sender, item.path, ITEM_INTERFACE, "Status"); !ok {
 				events <- Event{"ItemRemoved", item.sender, item.path}
@@ -142,7 +144,7 @@ var events = make(chan Event)
 
 func updateWatcherProperties() {
 	ids := make([]string, 0, 20)
-	for _, item := range Items.GetAll() {
+	for _, item := range resource.ToTyped[*Item](resourcerepo.GetByPrefix("/item/")) {
 		ids = append(ids, item.sender+":"+string(item.path))
 	}
 	watcherProperties.Set(WATCHER_INTERFACE, "RegisteredStatusItems", dbus.MakeVariant(ids))

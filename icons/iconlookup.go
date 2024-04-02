@@ -9,19 +9,21 @@ import (
 	"math"
 	"os"
 	"strings"
+
+	"github.com/surlykke/RefudeServices/lib/resourcerepo"
 )
 
 /*
-  Somewhat based on https://specifications.freedesktop.org/icon-theme-spec/icon-theme-spec-latest.html#icon_lookup .
-  icon scale is ignored (TODO)
+Somewhat based on https://specifications.freedesktop.org/icon-theme-spec/icon-theme-spec-latest.html#icon_lookup .
+icon scale is ignored (TODO)
 
-  We prefer an icon from theme with not-matching size over icon from parent theme with matching size. This should
-  give a gui a more consistent look
+We prefer an icon from theme with not-matching size over icon from parent theme with matching size. This should
+give a gui a more consistent look
 
-  By the icon naming specification, dash ('-') seperates 'levels of specificity'. So given an icon name
-  'input-mouse-usb', the levels of specificy, and the names and order we search will be: 'input-mouse-usb',
-  'input-mouse' and 'input'. Here we prefer specificy over theme, ie. if 'input-mouse-usb' is found in an inherited theme, that
-  is preferred over 'input-mouse' in the default theme
+By the icon naming specification, dash ('-') seperates 'levels of specificity'. So given an icon name
+'input-mouse-usb', the levels of specificy, and the names and order we search will be: 'input-mouse-usb',
+'input-mouse' and 'input'. Here we prefer specificy over theme, ie. if 'input-mouse-usb' is found in an inherited theme, that
+is preferred over 'input-mouse' in the default theme
 */
 func FindIconPath(name string, size uint32) string {
 	lock.Lock()
@@ -47,9 +49,11 @@ func FindIconPath(name string, size uint32) string {
 
 func locateIcon(iconName string, size uint32) string {
 	var path = ""
-	for _, themeId := range themeSearchList {
-		if path = locateIconInTheme(iconName, size, themeMap[themeId]); path != "" {
-			break
+	for _, themePath := range themeSearchList {
+		if theme, ok := resourcerepo.GetTyped[*IconTheme](themePath); ok {
+			if path = locateIconInTheme(iconName, size, theme); path != "" {
+				break
+			}
 		}
 	}
 	if path == "" {

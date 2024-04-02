@@ -14,6 +14,7 @@ import (
 
 	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/log"
+	"github.com/surlykke/RefudeServices/lib/resourcerepo"
 	"github.com/surlykke/RefudeServices/lib/slice"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
@@ -59,25 +60,15 @@ func Collect() {
 		}
 	}
 
-	var appResources = make([]*DesktopApplication, 0, len(apps))
-	for _, app := range apps {
-		appResources = append(appResources, app)
-	}
-
-	var mimetypeResources = make([]*Mimetype, 0, len(mimetypes))
-	for _, mt := range mimetypes {
-		mimetypeResources = append(mimetypeResources, mt)
-	}
-
-	Applications.ReplaceWith(appResources)
-	Mimetypes.ReplaceWith(mimetypeResources)
+	resourcerepo.ReplacePrefixWithMap("/application/", apps)
+	resourcerepo.ReplacePrefixWithMap("/mimetype/", mimetypes)
 }
 
 func aliasTypes(mt *Mimetype) []*Mimetype {
 	var result = make([]*Mimetype, 0, len(mt.Aliases))
 	for _, id := range mt.Aliases {
 		var copy = *mt
-		copy.Path = id
+		copy.Path = "/mimetype/" + id
 		copy.Aliases = []string{}
 		result = append(result, &copy)
 	}
@@ -311,6 +302,7 @@ func readDesktopFile(path string, id string) (*DesktopApplication, error) {
 		}
 
 		da.GenericName = group.Entries["GenericName"]
+
 		da.NoDisplay = group.Entries["NoDisplay"] == "true"
 		da.Comment = group.Entries["Comment"]
 		da.IconUrl = link.IconUrl(group.Entries["Icon"])

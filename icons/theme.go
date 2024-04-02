@@ -164,5 +164,3 @@ func readUint32OrFallback(uintAsString string, fallback uint32) uint32 {
 		return fallback
 	}
 }
-
-var IconThemes = resource.MakeCollection[*IconTheme]()

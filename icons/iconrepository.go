@@ -13,6 +13,7 @@ import (
 
 	"github.com/surlykke/RefudeServices/lib/image"
 	"github.com/surlykke/RefudeServices/lib/log"
+	"github.com/surlykke/RefudeServices/lib/resourcerepo"
 	"github.com/surlykke/RefudeServices/lib/slice"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
@@ -23,9 +24,8 @@ type nameAndSize struct {
 }
 
 var (
-	lock                  sync.Mutex
-	basedirs              = make([]string, 0, 10)
-	themeMap              = make(map[string]*IconTheme)
+	lock     sync.Mutex
+	basedirs = make([]string, 0, 10)
 	themeSearchList       = []string{} // id's of themes to search. First, defaultTheme, if given, then those directly or indirectly inherited, ending with hicolor if installed
 	iconPathCache         = make(map[nameAndSize]string)
 	addedFiles            = make(map[string]struct{}) // We only serve icons by absolute path if found here
@@ -40,24 +40,17 @@ func init() {
 	}
 
 	determineBasedirs()
-	themeMap = readThemes()
-	determineDefaultIconTheme()
+	resourcerepo.ReplacePrefixWithMap("/icontheme/", readThemes())
+	var defaultThemePath = determineDefaultThemePath()
+	themeSearchList = buildSearchList(defaultThemePath)
 
-	addInheritedThemesToThemeList()
-
-	if _, ok := themeMap["hicolor"]; ok {
+	if hicolor, ok := resourcerepo.GetTyped[*IconTheme]("/icontheme/hicolor"); ok {
 		// We lay out a hicolor directory structure in sessionsdir
 		var sessionHicolorPath = refudeSessionIconsDir + "/hicolor/"
-		for _, dir := range themeMap["hicolor"].Dirs {
+		for _, dir := range hicolor.Dirs {
 			os.MkdirAll(sessionHicolorPath+dir.Path, 0700)
 		}
 	}
-
-	var iconThemeList = make([]*IconTheme, 0, len(themeMap))
-	for _, iconTheme := range themeMap {
-		iconThemeList = append(iconThemeList, iconTheme)
-	}
-	IconThemes.ReplaceWith(iconThemeList)
 }
 
 func determineBasedirs() {
@@ -77,9 +70,9 @@ func determineBasedirs() {
 }
 
 /**
- *Finds, if possible, the default theme, and places it first in themeList
+ *Finds, if possible, the default theme
  */
-func determineDefaultIconTheme() {
+func determineDefaultThemePath() string {
 	var (
 		defaultThemeName = ""
 		ok               bool
@@ -111,31 +104,38 @@ func determineDefaultIconTheme() {
 		}
 	}
 
+
 	if defaultThemeName != "" {
-		for themeId, theme := range themeMap {
-			if theme.Title == defaultThemeName {
-				themeSearchList = []string{themeId}
-				return
-			}
+		themes := resourcerepo.FindTypedUnderPrefix[*IconTheme]("/icontheme/", func(theme *IconTheme) bool {
+			return theme.Title == defaultThemeName
+		})
+		if len(themes) > 0 {
+			return themes[0].GetPath()
 		}
 	}
+	return ""
 }
 
-func addInheritedThemesToThemeList() {
-	for i := 0; i < len(themeSearchList); i++ {
-		theme := themeMap[themeSearchList[i]]
-		for _, inheritedId := range theme.Inherits {
-			if _, ok := themeMap[inheritedId]; ok {
-				themeSearchList = slice.AppendIfNotThere(themeSearchList, inheritedId)
+func buildSearchList(defaultThemePath string) []string {
+	var searchList []string
+	var added = map[string]bool{"/icontheme/hicolor": true}
+
+	var themeWalker func(string)
+	themeWalker = func(themepath string) {
+		if !added[themepath] {
+			if theme, ok := resourcerepo.GetTyped[*IconTheme](themepath); ok {
+				searchList = append(searchList, themepath)
+				added[themepath] = true
+				for _, themeId := range theme.Inherits {
+					themeWalker("/icontheme/" + themeId)
+				}
 			}
 		}
 	}
 
-	// Move hicolor to last
-	if _, ok := themeMap["hicolor"]; ok {
-		themeSearchList = slice.Remove(themeSearchList, "hicolor")
-		themeSearchList = append(themeSearchList, "hicolor")
-	}
+	themeWalker(defaultThemePath)
+
+	return append(searchList, "/icontheme/hicolor")
 }
 
 func AddX11Icon(data []uint32) (string, error) {
@@ -208,13 +208,15 @@ func AddRawImageIcon(imageData image.ImageData) string {
 }
 
 func writeSessionHicolorIcon(iconName string, size uint32, data []byte) {
-	for _, dir := range themeMap["hicolor"].Dirs {
-		if dir.Context == "converted" && dir.MinSize <= size && dir.MaxSize >= size {
-			var path = fmt.Sprintf("%s/hicolor/%s/%s.png", refudeSessionIconsDir, dir.Path, iconName)
-			if err := os.WriteFile(path, data, 0700); err != nil {
-				log.Warn("Problem writing", path, err)
+	if hicolor, ok := resourcerepo.GetTyped[*IconTheme]("/icontheme/hicolor"); ok {
+		for _, dir := range hicolor.Dirs {
+			if dir.Context == "converted" && dir.MinSize <= size && dir.MaxSize >= size {
+				var path = fmt.Sprintf("%s/hicolor/%s/%s.png", refudeSessionIconsDir, dir.Path, iconName)
+				if err := os.WriteFile(path, data, 0700); err != nil {
+					log.Warn("Problem writing", path, err)
+				}
+				return
 			}
-			return
 		}
 	}
 

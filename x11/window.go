@@ -15,6 +15,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib/resourcerepo"
 	"github.com/surlykke/RefudeServices/lib/respond"
 )
 
@@ -59,7 +60,7 @@ func (this *X11Window) DeleteAction() (string, bool) {
 	return "Close", true
 }
 
-func (this *X11Window) RelevantForSearch() bool {
+func (this *X11Window) RelevantForSearch(term string) bool {
 	return !strings.HasPrefix(this.Title, "Refude launcher") &&
 		this.State&(SKIP_TASKBAR|SKIP_PAGER|ABOVE) == 0
 }
@@ -114,33 +115,9 @@ func GetIconName(p Proxy, wId uint32) (string, error) {
 	}
 }
 
-var Windows = resource.MakeCollection[*X11Window]()
 var proxy = MakeProxy()
 
-func RaiseAndFocusNamedWindow(name string) bool {
-	if w, ok := Windows.FindFirst(func(w *X11Window) bool { return w.Title == name }); ok {
-		w.RaiseAndFocus()
-		return true
-	} else {
-		return false
-	}
-}
-
-func PurgeAndShow(applicationTitle string, focus bool) bool {
-	var found bool = false
-	for _, w := range Windows.Find(func(w *X11Window) bool { return w.Title == applicationTitle }) {
-		if found {
-			w.Close()
-		} else {
-			w.RaiseAndFocus()
-			found = true
-		}
-	}
-	return found
-}
-
 func Run() {
-
 	var proxy = MakeProxy()
 	SubscribeToEvents(proxy)
 	updateWindowList(proxy)
@@ -170,14 +147,14 @@ func updateWindowList(p Proxy) {
 			SubscribeToWindowEvents(p, wId)
 		}
 	}
-	Windows.ReplaceWith(xWins)
+	resourcerepo.ReplacePrefixWithList("/window/", xWins)
 }
 
 func updateWindow(p Proxy, wId uint32, updater func(Proxy, *X11Window) bool) {
-	if w, ok := Windows.FindFirst(func(w *X11Window) bool { return w.Wid == wId }); ok {
+	if w, ok := resourcerepo.GetTyped[*X11Window](fmt.Sprintf("/window/%d", wId)); ok {
 		var copy = *w
 		if updater(p, &copy) {
-			Windows.Put(&copy)
+			resourcerepo.Update(&copy)
 		}
 	}
 }

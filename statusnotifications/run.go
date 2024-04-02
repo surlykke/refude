@@ -10,6 +10,7 @@ import (
 
 	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib/resourcerepo"
 )
 
 func Run() {
@@ -20,12 +21,14 @@ func Run() {
 
 	for event := range events {
 		var id = pathEscape(event.sender, event.path)
+		var itemPath = "/item/" + id
+		var menuPath = "/menu/" + id
 		switch event.eventName {
 		case "ItemCreated":
 			var item = buildItem(event.sender, event.path)
-			Items.Put(item)
+			resourcerepo.Put(item)
 			if item.MenuPath != "" {
-				Menus.Put(&Menu{
+				resourcerepo.Put(&Menu{
 					BaseResource: resource.BaseResource{
 						Path: "/menu/" + pathEscape(event.sender, item.MenuPath),
 						Title: "Menu",
@@ -36,11 +39,11 @@ func Run() {
 				})
 			}
 		case "ItemRemoved":
-			Items.Delete(id)
-			Menus.Delete(id)
+			resourcerepo.Remove(itemPath)
+			resourcerepo.Remove(menuPath)
 		default:
-			if res, ok := Items.Get(id); ok {
-				var itemCopy = *res
+			if item, ok := resourcerepo.GetTyped[*Item](itemPath); ok {
+				var itemCopy = *item
 				switch event.eventName {
 				case "org.kde.StatusNotifierItem.NewTitle":
 					if v, ok := getProp(itemCopy.sender, itemCopy.path, "Title"); ok {
@@ -84,7 +87,7 @@ func Run() {
 				default:
 					continue
 				}
-				Items.Put(&itemCopy)
+				resourcerepo.Put(&itemCopy)
 			} else {
 				continue
 			}
@@ -94,4 +97,3 @@ func Run() {
 }
 
 var Items = resource.MakeCollection[*Item]()
-var Menus = resource.MakeCollection[*Menu]()

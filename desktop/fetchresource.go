@@ -1,21 +1,15 @@
 package desktop
 
 import (
-	"fmt"
 	"strings"
 
-	"github.com/surlykke/RefudeServices/applications"
-	"github.com/surlykke/RefudeServices/browsertabs"
 	"github.com/surlykke/RefudeServices/file"
 	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib/resourcerepo"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
-	"github.com/surlykke/RefudeServices/lib/xdg"
-	"github.com/surlykke/RefudeServices/power"
 	"github.com/surlykke/RefudeServices/start"
-	"github.com/surlykke/RefudeServices/wayland"
-	"github.com/surlykke/RefudeServices/x11"
 )
 
 type LinkCollection struct {
@@ -24,7 +18,6 @@ type LinkCollection struct {
 }
 
 func (lc LinkCollection) Links(profile string) link.List {
-	fmt.Println("Into 'Links'")
 	return lc.links[profile]
 }
 
@@ -80,20 +73,10 @@ func buildLinkCollection(res resource.Resource, searchTerm string) LinkCollectio
 func fetchResource(path string) resource.Resource {
 	if path == "/start" {
 		return start.Start
-	} else if strings.HasPrefix(path, "/window/") {
-		if xdg.SessionType == "x11" {
-			return fetchResourceFromCollection(x11.Windows, path)
-		} else {
-			return fetchResourceFromCollection(wayland.Windows, path)
-		}
-	} else if strings.HasPrefix(path, "/application/") {
-		return fetchResourceFromCollection(applications.Applications, path)
 	} else if strings.HasPrefix(path, "/file/") {
 		return file.FileRepo.GetResource(path[5:])
-	} else if strings.HasPrefix(path, "/device/") {
-		return fetchResourceFromCollection(power.Devices, path)
-	} else if strings.HasPrefix(path, "/tab/") {
-		return fetchResourceFromCollection(browsertabs.Tabs, path)
+	} else if res, ok := resourcerepo.Get(path); ok {
+		return res 
 	} else {
 		return nil
 	}

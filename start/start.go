@@ -8,29 +8,15 @@ package start
 import (
 	"strings"
 
-	"github.com/surlykke/RefudeServices/applications"
-	"github.com/surlykke/RefudeServices/browsertabs"
 	"github.com/surlykke/RefudeServices/file"
 	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/resource"
-	"github.com/surlykke/RefudeServices/lib/xdg"
-	"github.com/surlykke/RefudeServices/notifications"
-	"github.com/surlykke/RefudeServices/power"
+	"github.com/surlykke/RefudeServices/lib/resourcerepo"
 	"github.com/surlykke/RefudeServices/watch"
-	"github.com/surlykke/RefudeServices/wayland"
-	"github.com/surlykke/RefudeServices/x11"
 )
 
 func onResourceChange() {
 	watch.ResourceChanged("/start")
-}
-
-var Run = func() {
-	notifications.Notifications.AddListener(onResourceChange)
-	x11.Windows.AddListener(onResourceChange)
-	wayland.Windows.AddListener(onResourceChange)
-	applications.Applications.AddListener(onResourceChange)
-	power.Devices.AddListener(onResourceChange)
 }
 
 type StartResource struct {
@@ -47,16 +33,8 @@ func DoDesktopSearch(term string) link.List {
 	term = strings.ToLower(term)
 
 	// Could perhaps be done concurrently..
-	links = append(links, notifications.Notifications.Search(term, 0)...)
-	if xdg.SessionType == "x11" {
-		links = append(links, x11.Windows.Search(term, 0)...)
-	} else {
-		links = append(links, wayland.Windows.Search(term, 0)...)
-	}
-	links = append(links, applications.Applications.Search(term, 1)...)
+	links = append(links, resourcerepo.Search(term)...)
 	links = append(links, file.FileRepo.Search(term, 2)...)
-	links = append(links, power.Devices.Search(term, 3)...)
-	links = append(links, browsertabs.Tabs.Search(term, 0)...)
 
 	return links
 }

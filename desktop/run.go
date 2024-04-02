@@ -63,10 +63,9 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	case "/desktop/", "/desktop/index.html":
 		if m, ok := fetchResourceData(resourcePath, term); ok {
-			if err := mainTemplate.Execute(os.Stdout, m); err != nil {
-				fmt.Println("Template error:", err)
+			if err := mainTemplate.Execute(w, m); err != nil {
+				fmt.Fprintln(os.Stderr, "Error executing mainTemplate:", err)
 			}
-			mainTemplate.Execute(w, m)
 		} else {
 			respond.NotFound(w)
 		}

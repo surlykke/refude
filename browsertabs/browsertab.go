@@ -9,6 +9,7 @@ import (
 
 	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib/resourcerepo"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/watch"
 )
@@ -26,7 +27,7 @@ func (this *Tab) DoPost(w http.ResponseWriter, r *http.Request) {
 	respond.Accepted(w)
 }
 
-func (this *Tab) RelevantForSearch() bool {
+func (this *Tab) RelevantForSearch(term string) bool {
 	return !strings.HasPrefix(this.Title, "Refude launcher")
 }
 
@@ -35,7 +36,7 @@ var Tabs = resource.MakeCollection[*Tab]()
 
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path == "/tab/" && r.Method == "POST" {
+	if r.Method == "POST" {
 		if r.Body == nil {
 			respond.UnprocessableEntity(w, errors.New("No data"))
 		} else if bytes, err := io.ReadAll(r.Body); err != nil {
@@ -56,11 +57,11 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 							Profile: "browsertab",
 						}})
 				}
-				Tabs.ReplaceWith(tabs)
+				resourcerepo.ReplacePrefixWithList("/tab/", tabs)
 				respond.Ok(w)
 			}
 		}
 	} else {
-		Tabs.ServeHTTP(w, r)
+		respond.NotAllowed(w)
 	}
 }

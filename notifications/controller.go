@@ -19,6 +19,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib/resourcerepo"
 )
 
 const NOTIFICATIONS_SERVICE = "org.freedesktop.Notifications"
@@ -212,7 +213,7 @@ func Notify(app_name string,
 	}
 
 	notification.Expires = UnixTime(time.Now().Add(time.Duration(expire_timeout) * time.Millisecond))
-	Notifications.PutFirst(&notification)
+	resourcerepo.Put(&notification)	
 	calculateFlash()
 	return id, nil
 }
