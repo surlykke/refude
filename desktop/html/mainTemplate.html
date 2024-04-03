@@ -3,7 +3,7 @@
 
 <head>
 	<meta charset="utf-8">
-	<title>Refude</title>
+	<title>Refude Desktop</title>
 	<link rel="shortcut icon" href="favicon.ico">
 	<link rel="stylesheet" href="./style.css">
 	<script type="application/javascript" src="navigation.js"></script>
@@ -31,13 +31,11 @@
 			</tbody>
 		</table>
 		<table>
-			{{if .Term}}
 			<tr class="searchRow">
 				<td colspan="2">
 					<p>&#x1f50e;&nbsp;{{.Term}}</p>
 				</td>
 			</tr>
-			{{end}}
 			{{with $data := .}}
 				{{range $index, $heading := .Headings}}
 				<custom-tag>

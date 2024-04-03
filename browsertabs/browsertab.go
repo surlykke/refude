@@ -28,11 +28,8 @@ func (this *Tab) DoPost(w http.ResponseWriter, r *http.Request) {
 }
 
 func (this *Tab) RelevantForSearch(term string) bool {
-	return !strings.HasPrefix(this.Title, "Refude launcher")
+	return !strings.HasPrefix(this.Title, "Refude Desktop")
 }
-
-
-var Tabs = resource.MakeCollection[*Tab]()
 
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {

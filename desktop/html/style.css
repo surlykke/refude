@@ -6,6 +6,7 @@ html, body {
 
 
 .searchRow p {
+    width: 12em;
     font-size: 1.2em;
     border-bottom: solid gray 1px;
     padding-bottom: 6px;

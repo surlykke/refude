@@ -53,7 +53,7 @@ func main() {
 	http.HandleFunc("/watch", watch.ServeHTTP)
 	http.HandleFunc("/desktop/", desktop.ServeHTTP)
 	http.HandleFunc("/", resourcerepo.ServeHTTP)
-	
+
 	if err := http.ListenAndServe(":7938", nil); err != nil {
 		log.Warn("http.ListenAndServe failed:", err)
 	}
@@ -82,4 +82,3 @@ func collectPaths(prefix string) []string {
 
 	return paths[0:pos]
 }
-

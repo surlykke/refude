@@ -81,7 +81,7 @@ func (this *WaylandWindow) GetIconUrl() link.Href {
 }
 
 func (this *WaylandWindow) RelevantForSearch(term string) bool {
-	return !strings.HasPrefix(this.Title, "Refude launcher")
+	return !strings.HasPrefix(this.Title, "Refude Desktop")
 }
 
 func (this *WaylandWindow) Links(searchTerm string) link.List {

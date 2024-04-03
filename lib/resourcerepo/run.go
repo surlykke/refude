@@ -9,6 +9,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
+	"golang.org/x/exp/slices"
 )
 
 var lock sync.Mutex
@@ -48,6 +49,7 @@ func GetAll() []resource.Resource {
 
 
 func GetTyped[T resource.Resource](path string) (T, bool) {
+	// Calls Get, so no lock
 	if res, ok := Get(path); ok {
 		if t, ok := res.(T); ok {
 			return t, true
@@ -58,10 +60,10 @@ func GetTyped[T resource.Resource](path string) (T, bool) {
  }
 
 
-func GetByPrefix(prefix string) resource.List {
+func GetByPrefix(prefix string) []resource.Resource {
 	lock.Lock()
 	defer lock.Unlock()
-	var result = make(resource.List, 0, 50)
+	var result = make([]resource.Resource, 0, 50)
 	for path, res := range repo {
 		if strings.HasPrefix(path, prefix) {
 			result = append(result, res)
@@ -69,6 +71,24 @@ func GetByPrefix(prefix string) resource.List {
 	}
 	return result
 }
+
+func GetTypedAndSortedByPrefix[T resource.Resource](prefix string, reverse bool) []T {
+	var list = make([]T, 0, 20)
+	lock.Lock()
+	defer lock.Unlock()
+	for _, res := range repo {
+		if t, ok := res.(T); ok {
+			list = append(list, t)
+		}
+	}
+	if reverse {
+		slices.SortFunc(list, func(t1, t2 T) bool { return strings.Compare(t1.GetPath(), t2.GetPath()) > 0})
+	} else { 
+		slices.SortFunc(list, func(t1, t2 T) bool { return strings.Compare(t1.GetPath(), t2.GetPath()) < 0})
+	}
+	return list
+}
+
 
 func FindTypedUnderPrefix[T resource.Resource](prefix string, test func(t T) bool) []T {
 	lock.Lock()

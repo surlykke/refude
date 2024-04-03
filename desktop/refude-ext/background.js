@@ -117,9 +117,12 @@ let hideDesktop = () => {
 
 
 /*
-    Some nonsense one has to do to keep the service worker alive when on manifest version 3
-    Stupid. And there seems to be no way of keeping alive if server is down (reconnect attempts does not 
-        extend lifetime)
+    Some nonsense one has to do to keep the service worker alive when on manifest version 3.
+    
+    Stupid. 
+    
+    And there seems to be no way of keeping alive if server is down (reconnect attempts does not extend lifetime)
+
     Sticking to manifest v2 as long as possible
 
 const keepAlive = () => {

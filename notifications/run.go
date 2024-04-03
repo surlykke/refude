@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/surlykke/RefudeServices/icons"
-	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/resourcerepo"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/watch"
@@ -66,8 +65,7 @@ var flashLock sync.Mutex
 func calculateFlash() {
 	var calculatedFlash *Notification = nil
 	var now = time.Now()
-	l := resourcerepo.GetByPrefix("/notification/").SortByPathReverse()
-	notifications := resource.ToTyped[*Notification](l)
+	notifications := resourcerepo.GetTypedAndSortedByPrefix[*Notification]("/notification/", true) 
 	for _, n := range notifications {
 		if n.Deleted {
 			continue

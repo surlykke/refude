@@ -95,5 +95,3 @@ func Run() {
 		}
 	}
 }
-
-var Items = resource.MakeCollection[*Item]()
