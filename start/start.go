@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/surlykke/RefudeServices/file"
+	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/resourcerepo"
 )
@@ -32,7 +33,9 @@ func DoDesktopSearch(term string) []resource.Resource {
 }
 
 func Run() {
-	resourcerepo.Put(&StartResource{BaseResource: resource.MakeBase("/start", "Refude desktop", "", "", "start", true)})
+	var start = &StartResource{BaseResource: *resource.MakeBase("/start", "Refude desktop", "", "", "start")}
+	start.AddLink("/search", "", "", relation.Search)
+	resourcerepo.Put(start)
 }
 
 

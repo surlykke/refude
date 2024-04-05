@@ -3,21 +3,22 @@ let pageResource = new URLSearchParams(window.location.search).get('resource') |
 
 let onKeyDown = event => {
     let { key, ctrlKey, altKey, shiftKey} = event;
+    console.log(key)
     if (key === "Escape") {
         dismiss()
     } else if (key === 'Enter' && !ctrlKey) {
         activate(selected())
-    } else if (key == 'Enter' && ctrlKey || key == "ArrowRight") {
+    } else if (key === 'Enter' && ctrlKey || key === "ArrowRight" || key === "i" && ctrlKey) {
         navigateTo(selected())
+    } else if (key === "ArrowLeft" || key === 'h' && ctrlKey || key === "b" && ctrlKey) {
+        history.back()
     } else if (key.length === 1 && !ctrlKey && !altKey) {
         search(searchTerm + key)
     } else if (key === "Backspace") {
         search(searchTerm.slice(0, -1))
-    } else if (key === "ArrowLeft" || key === 'h' && ctrlKey) {
-        history.back()
-    } else if (key == "Tab" && !shiftKey || key == 'j' && ctrlKey || key == 'ArrowDown') {
+    } else if (key === "Tab" && !shiftKey || key === 'j' && ctrlKey || key === 'ArrowDown') {
         move()
-    } else if (key == "Tab" && shiftKey || key == 'k' && ctrlKey || key == 'ArrowUp') {
+    } else if (key === "Tab" && shiftKey || key === 'k' && ctrlKey || key === 'ArrowUp') {
         move(true)
     } else {
         return
@@ -49,7 +50,6 @@ let dismiss = ap => {
 }
 
 let move = up => {
-    console.log("move", up)
     let trs = selectables()
     let len = trs.length
     let pos = trs.indexOf(selected())

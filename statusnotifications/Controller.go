@@ -164,9 +164,9 @@ func buildItem(sender string, path dbus.ObjectPath) *Item {
 	}
 
 	if item.UseIconPixmap = getStringOr(props["IconName"]) == ""; item.UseIconPixmap {
-		item.IconUrl = link.IconUrl(collectPixMap(props["IconPixmap"]))
+		item.IconUrl = link.IconUrlFromName(collectPixMap(props["IconPixmap"]))
 	} else {
-		item.IconUrl = link.IconUrl(getStringOr(props["IconName"]))
+		item.IconUrl = link.IconUrlFromName(getStringOr(props["IconName"]))
 	}
 
 	if item.UseAttentionIconPixmap = getStringOr(props["AttentionIconName"]) == ""; item.UseAttentionIconPixmap {

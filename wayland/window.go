@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/surlykke/RefudeServices/applications"
+	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/resourcerepo"
@@ -65,10 +66,13 @@ type WaylandWindow struct {
 
 
 func MakeWindow(wId uint64) *WaylandWindow {
-	return &WaylandWindow{
-		BaseResource: resource.MakeBase(fmt.Sprintf("/window/%d", wId), "", "", "", "window", false),
+	var ww = &WaylandWindow{
+		BaseResource: *resource.MakeBase(fmt.Sprintf("/window/%d", wId), "", "", "", "window"),
 		Wid: wId,
 	}
+	ww.AddLink("", "Focus", "", relation.Action) 
+	ww.AddLink("", "Close", "", relation.Delete) 
+	return ww
 }
 
 func (this *WaylandWindow) GetIconUrl() string {
@@ -99,11 +103,10 @@ func retriewIconUrlsFromApps() {
 	for _, w := range  windows{
 		var copy = *w 
 		var iconUrl = applications.GetIconUrl(copy.AppId + ".desktop")
-		copy.SetIconUrl(iconUrl)
+		copy.IconUrl = iconUrl
 		resourcerepo.Update(&copy)
 	}
 }
-
 
 var recentMap = make(map[uint64]uint32)
 var recentCount uint32

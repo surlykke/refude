@@ -7,13 +7,11 @@ package resource
 
 import (
 	"net/http"
-	"net/url"
 	"strings"
 
 	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/respond"
-	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
 type Resource interface {
@@ -32,46 +30,28 @@ type BaseResource struct {
 	Keywords []string `json:"profile,omitempty"`
 }
 
-func MakeBase(path, title, comment, iconUrl, profile string, search bool) BaseResource {
+func MakeBase(path, title, comment, iconUrl, profile string) *BaseResource {
 	var br = BaseResource{
 		Path:    path,
 		Title:   title,
 		Comment: comment,
+		IconUrl: iconUrl,
 		Profile: profile,
-		Links:   make([]link.Link, 0, 5),
+		Links:   []link.Link{{Href:path, Relation:relation.Self}},
 	}
 
-	br.SetIconUrl(iconUrl)
-	br.AddLink(link.Link{Href: path, Relation: relation.Self})
-	if search {
-		br.AddLink(link.Link{Href: "/search?from=" + url.QueryEscape(path), Relation: relation.Search})
+	return &br
+}
+
+func (this *BaseResource) AddLink(href, title, iconUrl string, relation relation.Relation) {
+	if href == "" { 
+		href = this.Path
+	} else if strings.HasPrefix(href, "?") {
+		href = this.Path + href 
 	}
-
-	return br
+	this.Links = append(this.Links, link.Link{Href: href, Title: title, IconUrl: iconUrl, Relation: relation}) 
 }
 
-func (this *BaseResource) SetIconUrl(iconUrl string) {
-	if iconUrl != "" {
-		if !(strings.HasPrefix(iconUrl, "http://") || strings.HasPrefix(iconUrl, "https://")) {
-			if strings.Index(iconUrl, "/") > -1 {
-				// So its a path..
-				if strings.HasPrefix(iconUrl, "file:///") {
-					iconUrl = iconUrl[7:]
-				} else if strings.HasPrefix(iconUrl, "file://") {
-					iconUrl = xdg.Home + "/" + iconUrl[7:]
-				} else if !strings.HasPrefix(iconUrl, "/") {
-					iconUrl = xdg.Home + "/" + iconUrl
-				}
-			}
-			iconUrl = "http://localhost:7938/icon?name=" + url.QueryEscape(iconUrl)
-		}
-		this.IconUrl = iconUrl
-	}
-}
-
-func (this *BaseResource) AddLink(lnk link.Link) {
-	this.Links = append(this.Links, lnk)
-}
 
 func (this *BaseResource) Base() *BaseResource {
 	return this

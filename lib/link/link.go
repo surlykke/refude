@@ -33,7 +33,7 @@ type Link struct {
 
 // --------------------------------------------------------------------
 
-func IconUrl(name string) string {
+func IconUrlFromName(name string) string {
 	if strings.Index(name, "/") > -1 {
 		// So its a path..
 		if strings.HasPrefix(name, "file:///") {
@@ -47,7 +47,7 @@ func IconUrl(name string) string {
 		// Maybe: Check that path points to iconfile..
 	}
 	if name != "" {
-		return "/icon?name=" + url.QueryEscape(name)
+		return "http://localhost:7938/icon?name=" + url.QueryEscape(name)
 	} else {
 		return ""
 	}

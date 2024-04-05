@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/resourcerepo"
 	"github.com/surlykke/RefudeServices/lib/respond"
@@ -42,7 +43,9 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			} else {
 				var tabs = make([]*Tab, 0, len(data))
 				for _, d := range data {
-					tabs = append(tabs, &Tab{BaseResource: resource.MakeBase("/tab/" +   d["id"], d["title"], d["url"], d["favIcon"], "browsertab", false)})
+					var tab = &Tab{BaseResource: *resource.MakeBase("/tab/" +   d["id"], d["title"], d["url"], d["favIcon"], "browsertab")}
+					tab.AddLink("", "Focus", tab.IconUrl, relation.Action)
+					tabs = append(tabs, tab) 
 				}					
 				resourcerepo.ReplacePrefixWithList("/tab/", tabs)
 				respond.Ok(w)

@@ -29,7 +29,7 @@ func Run() {
 			resourcerepo.Put(item)
 			if item.MenuPath != "" {
 				resourcerepo.Put(&Menu{
-					BaseResource: resource.MakeBase("/menu/" + pathEscape(event.sender, item.MenuPath), "Menu", "", "", "menu", false),
+					BaseResource: *resource.MakeBase("/menu/" + pathEscape(event.sender, item.MenuPath), "Menu", "", "", "menu"),
 					sender: event.sender, 
 					path: item.MenuPath,
 				})
@@ -56,11 +56,11 @@ func Run() {
 				case "org.kde.StatusNotifierItem.NewIcon":
 					if itemCopy.UseIconPixmap {
 						if v, ok := getProp(itemCopy.sender, itemCopy.path, "IconPixmap"); ok {
-							itemCopy.IconUrl = link.IconUrl(collectPixMap(v))
+							itemCopy.IconUrl = link.IconUrlFromName(collectPixMap(v))
 						}
 					} else {
 						if v, ok := getProp(itemCopy.sender, itemCopy.path, "IconName"); ok {
-							itemCopy.IconUrl = link.IconUrl(getStringOr(v))
+							itemCopy.IconUrl = link.IconUrlFromName(getStringOr(v))
 						}
 					}
 				case "org.kde.StatusNotifierItem.NewIconThemePath":

@@ -163,9 +163,9 @@ func CollectMimeTypes() map[string]*Mimetype {
 			}
 
 			if tmp.Icon.Name != "" {
-				mimeType.IconUrl = link.IconUrl(tmp.Icon.Name)
+				mimeType.IconUrl = link.IconUrlFromName(tmp.Icon.Name)
 			} else {
-				mimeType.IconUrl = link.IconUrl(strings.Replace(tmp.Type, "/", "-", -1))
+				mimeType.IconUrl = link.IconUrlFromName(strings.Replace(tmp.Type, "/", "-", -1))
 			}
 
 			for _, aliasStruct := range tmp.Alias {
@@ -295,8 +295,10 @@ func readDesktopFile(path string, id string) (*DesktopApplication, error) {
 		return nil, errors.New("file must start with '[Desktop Entry]'")
 	} else {
 		group := iniFile[0]
+		var path, title, comment = "/application/" + id, group.Entries["Name"], group.Entries["Comment"]
+		var iconUrl =  link.IconUrlFromName(group.Entries["Icon"])
 		var da = DesktopApplication{
-			BaseResource: resource.MakeBase("/application/" + id, group.Entries["Name"], group.Entries["Comment"], group.Entries["Icon"], "application", false), 
+			BaseResource: *resource.MakeBase(path, title, comment, iconUrl, "application"),
 			DesktopId: id,
 		}	
 
@@ -328,6 +330,7 @@ func readDesktopFile(path string, id string) (*DesktopApplication, error) {
 		da.Mimetypes = slice.Split(group.Entries["MimeType"], ";")
 		da.DesktopFile = path
 
+		da.AddLink(da.Path, "Launch", da.IconUrl, relation.Action)
 		da.DesktopActions = []DesktopAction{}
 		var actionNames = slice.Split(group.Entries["Actions"], ";")
 		
@@ -341,14 +344,14 @@ func readDesktopFile(path string, id string) (*DesktopApplication, error) {
 				if name == "" {
 					return nil, errors.New("Desktop file invalid, action " + actionGroup.Name + " has no default 'Name'")
 				}
-
+				var iconUrl = link.IconUrlFromName(actionGroup.Entries["icon"])
 				da.DesktopActions = append(da.DesktopActions, DesktopAction{
 					id:   currentAction,
 					Name: name,
 					Exec: actionGroup.Entries["Exec"],
-					IconUrl: link.IconUrl(actionGroup.Entries["icon"]),
+					IconUrl: iconUrl,
 				})
-				da.AddLink(link.Link{Href: da.Path + "?action=" + currentAction, Title: name, Relation: relation.Action}) 
+				da.AddLink("?action=" + currentAction, name, iconUrl, relation.Action) 
 			}
 		}
 
