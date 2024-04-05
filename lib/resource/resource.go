@@ -22,13 +22,21 @@ type Resource interface {
 
 type BaseResource struct {
 	Path     string
-	Title    string `json:"-"`
-	Comment  string `json:"-"`
-	IconUrl  string `json:"-"`
-	Profile  string `json:"-"`
-	Links    []link.Link
-	Keywords []string `json:"profile,omitempty"`
+	Title    string `json:"title"`
+	Comment  string `json:"comment,omitempty"`
+	IconUrl  string `json:"icon,omitempty"`
+	Profile  string `json:"profile"`
+	Links    []link.Link `json:"links"`
+	Keywords []string `json:"-"`
 }
+/*	Links   []link.Link `json:"links"`
+	Title   string      `json:"title"`
+	Comment string      `json:"comment,omitempty"`
+	Icon    string      `json:"icon,omitempty"`
+	Profile string      `json:"profile"`
+	Data    interface{} `json:"data"`
+*/
+
 
 func MakeBase(path, title, comment, iconUrl, profile string) *BaseResource {
 	var br = BaseResource{
@@ -37,9 +45,9 @@ func MakeBase(path, title, comment, iconUrl, profile string) *BaseResource {
 		Comment: comment,
 		IconUrl: iconUrl,
 		Profile: profile,
-		Links:   []link.Link{{Href:path, Relation:relation.Self}},
+		Links:   []link.Link{{Href:"http://localhost:7938" + path, Relation:relation.Self}},
 	}
-
+	br.AddLink("", "", "", relation.Self)
 	return &br
 }
 
@@ -48,6 +56,9 @@ func (this *BaseResource) AddLink(href, title, iconUrl string, relation relation
 		href = this.Path
 	} else if strings.HasPrefix(href, "?") {
 		href = this.Path + href 
+	}
+	if strings.HasPrefix(href, "/") {
+		href = "http://localhost:7938" + href
 	}
 	this.Links = append(this.Links, link.Link{Href: href, Title: title, IconUrl: iconUrl, Relation: relation}) 
 }
@@ -94,7 +105,7 @@ type Deleteable interface {
 
 func ServeSingleResource(w http.ResponseWriter, r *http.Request, res Resource) {
 	if r.Method == "GET" {
-		respond.AsJson(w, BuildJsonRepresentation(res))
+		respond.AsJson(w, res)
 	} else if postable, ok := res.(Postable); ok && r.Method == "POST" {
 		postable.DoPost(w, r)
 	} else if deletable, ok := res.(Deleteable); ok && r.Method == "DELETE" {
@@ -106,32 +117,9 @@ func ServeSingleResource(w http.ResponseWriter, r *http.Request, res Resource) {
 
 func ServeList(w http.ResponseWriter, r *http.Request, list []Resource) {
 	if r.Method == "GET" {
-		var jsonReps = make([]jsonRepresentation, 0, len(list))
-		for _, res := range list {
-			jsonReps = append(jsonReps, BuildJsonRepresentation(res))
-		}
-		respond.AsJson(w, jsonReps)
+		respond.AsJson(w, list)
 	} else {
 		respond.NotAllowed(w)
 	}
 }
 
-type jsonRepresentation struct {
-	Links   []link.Link `json:"links"`
-	Title   string      `json:"title"`
-	Comment string      `json:"comment,omitempty"`
-	Icon    string      `json:"icon,omitempty"`
-	Profile string      `json:"profile"`
-	Data    interface{} `json:"data"`
-}
-
-func BuildJsonRepresentation(res Resource) jsonRepresentation {
-	var wrapper = jsonRepresentation{}
-	wrapper.Links = res.Base().Links
-	wrapper.Data = res
-	wrapper.Title = res.Base().Title
-	wrapper.Comment = res.Base().Comment
-	wrapper.Icon = string(res.Base().IconUrl)
-	wrapper.Profile = res.Base().Profile
-	return wrapper
-}
