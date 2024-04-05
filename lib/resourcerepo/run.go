@@ -28,7 +28,6 @@ func Update(res resource.Resource) {
 	}
 }
 
-
 func Get(path string) (resource.Resource, bool) {
 	lock.Lock()
 	defer lock.Unlock()
@@ -46,18 +45,16 @@ func GetAll() []resource.Resource {
 	return all
 }
 
-
 func GetTyped[T resource.Resource](path string) (T, bool) {
 	// Calls Get, so no lock
 	if res, ok := Get(path); ok {
 		if t, ok := res.(T); ok {
 			return t, true
 		}
- 	}
+	}
 	var t T
 	return t, false
- }
-
+}
 
 func GetByPrefix(prefix string) []resource.Resource {
 	lock.Lock()
@@ -88,13 +85,12 @@ func GetTypedByPrefix[T resource.Resource](prefix string) []T {
 func GetTypedAndSortedByPrefix[T resource.Resource](prefix string, reverse bool) []T {
 	var list = GetTypedByPrefix[T](prefix)
 	if reverse {
-		slices.SortFunc(list, func(t1, t2 T) bool { return strings.Compare(t1.Base().Path, t2.Base().Path) > 0})
-	} else { 
-		slices.SortFunc(list, func(t1, t2 T) bool { return strings.Compare(t1.Base().Path, t2.Base().Path) < 0})
+		slices.SortFunc(list, func(t1, t2 T) bool { return strings.Compare(t1.Base().Path, t2.Base().Path) > 0 })
+	} else {
+		slices.SortFunc(list, func(t1, t2 T) bool { return strings.Compare(t1.Base().Path, t2.Base().Path) < 0 })
 	}
 	return list
 }
-
 
 func FindTypedUnderPrefix[T resource.Resource](prefix string, test func(t T) bool) []T {
 	lock.Lock()
@@ -125,7 +121,7 @@ func ReplacePrefixWithList[T resource.Resource](prefix string, newResources []T)
 
 /*
  * Removes all entries having prefix as prefix of key.
- * And then adds all members of map 
+ * And then adds all members of map
  */
 func ReplacePrefixWithMap[T resource.Resource](prefix string, newResources map[string]T) {
 	lock.Lock()
@@ -144,18 +140,30 @@ func Remove(path string) {
 	lock.Lock()
 	defer lock.Unlock()
 	delete(repo, path)
-}		
+}
+
+type rankedResource struct {
+	rank int
+	res  resource.Resource
+}
 
 func Search(term string) []resource.Resource {
 	var all = GetAll()
-	var links = make([]resource.Resource, 0, len(all))
-	for _, res :=  range all {
-		if res.RelevantForSearch(term) && searchutils.Match(term, res.Base().Title) >= 0 {
-			links = append(links, res)
+	var rankedResources = make([]rankedResource, 0, len(all))
+	for _, res := range all {
+		if res.RelevantForSearch(term) {
+			if rank := searchutils.Match(term, res.Base().Title); rank >= 0 {
+				rankedResources = append(rankedResources, rankedResource{rank, res})
+			}
 		}
 	}
-	// FIXME sort by rank...
-	return links
+
+	slices.SortFunc(rankedResources, func(r1, r2 rankedResource) bool { return r1.rank < r2.rank || (r1.rank == r2.rank && r1.res.Base().Path < r2.res.Base().Path) })
+	var resources = make([]resource.Resource, 0, len(rankedResources))
+	for _, rr := range rankedResources {
+		resources = append(resources, rr.res)
+	}
+	return resources
 }
 
 func GetPaths() []string {
@@ -168,9 +176,8 @@ func GetPaths() []string {
 	return paths
 }
 
-
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	var path = r.URL.Path 
+	var path = r.URL.Path
 	if strings.HasSuffix(path, "/") {
 		resource.ServeList(w, r, GetByPrefix(path))
 	} else if res, ok := Get(path); !ok {
@@ -179,4 +186,3 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		resource.ServeSingleResource(w, r, res)
 	}
 }
-
