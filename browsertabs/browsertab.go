@@ -5,9 +5,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
-	"strings"
 
-	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/resourcerepo"
 	"github.com/surlykke/RefudeServices/lib/respond"
@@ -22,15 +20,14 @@ func (this *Tab) Id() string {
 	return this.Path[len("/tab/"):]
 }
 
+func (this *Tab) RelevantForSearch(searchTerm string) bool {
+	return true
+}
+
 func (this *Tab) DoPost(w http.ResponseWriter, r *http.Request) {
 	watch.Publish("focusTab", this.Id())
 	respond.Accepted(w)
 }
-
-func (this *Tab) RelevantForSearch(term string) bool {
-	return !strings.HasPrefix(this.Title, "Refude Desktop")
-}
-
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
@@ -45,15 +42,8 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			} else {
 				var tabs = make([]*Tab, 0, len(data))
 				for _, d := range data {
-					tabs = append(tabs, &Tab{
-						BaseResource: resource.BaseResource{
-							Path:    "/tab/" +   d["id"],
-							Title:   d["title"],
-							Comment: d["url"],
-							IconUrl: link.Href(d["favIcon"]),
-							Profile: "browsertab",
-						}})
-				}
+					tabs = append(tabs, &Tab{BaseResource: resource.MakeBase("/tab/" +   d["id"], d["title"], d["url"], d["favIcon"], "browsertab", false)})
+				}					
 				resourcerepo.ReplacePrefixWithList("/tab/", tabs)
 				respond.Ok(w)
 			}

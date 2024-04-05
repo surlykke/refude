@@ -3,11 +3,11 @@
 // This file is part of the RefudeServices project.
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
-//
 package applications
 
 import (
 	"strings"
+	"sync"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/surlykke/RefudeServices/lib/log"
@@ -40,6 +40,26 @@ func Run() {
 		}
 	}
 }
+
+var (
+	listeners    []func()
+	listenerLock sync.Mutex
+)
+
+func AddListener(listener func()) {
+	listenerLock.Lock()
+	defer listenerLock.Unlock()
+	listeners = append(listeners, listener)
+}
+
+func notifyListeners() {
+	listenerLock.Lock()
+	defer listenerLock.Unlock()
+	for _, listener := range listeners {
+		listener()
+	}
+}
+
 
 var watcher *fsnotify.Watcher
 

@@ -27,8 +27,6 @@ const reportTabs = () => {
 const watch = () => {
     let evtSource = new EventSource("http://localhost:7938/watch")
     evtSource.onopen = reportTabs
-    evtSource.addEventListener("showLauncher", showLauncher)
-    evtSource.addEventListener("hideLauncher", hideLauncher)
     evtSource.addEventListener("showDesktop", showDesktop)
     evtSource.addEventListener("hideDesktop", hideDesktop)
      evtSource.addEventListener("restoreTab", restoreTab)
@@ -45,30 +43,6 @@ const watch = () => {
 }
 
 let rememberedTab
-
-let showLauncher = () => {
-    chrome.windows.getCurrent({}, window => {
-        if (!window) {
-            chrome.windows.create({ focused: true, url: "http://localhost:7938/refude/html/launcher/" })
-        } else {
-            chrome.tabs.query({ active: true }, ([tab]) => {
-                rememberedTab = tab
-                chrome.tabs.query(
-                    { url: "http://localhost:7938/refude/html/launcher/" },
-                    tabs => {
-                        if (tabs.length == 0) {
-                            chrome.tabs.create({ active: true, index: 0, url: "http://localhost:7938/refude/html/launcher" })
-                        } else {
-                            chrome.tabs.update(tabs[0].id, {active: true})
-                            chrome.windows.update(tabs[0].windowId, {focused: true})
-                            chrome.tabs.remove(tabs.slice(1).map(t => t.id))
-                        }
-                    }
-                )
-            })
-        }
-    })
-}
 
 let showDesktop = () => {
     console.log("showDesktop")
@@ -94,7 +68,6 @@ let showDesktop = () => {
         }
     })
 }
-
 
 
 let restoreTab = () => {

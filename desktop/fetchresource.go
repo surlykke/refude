@@ -1,13 +1,10 @@
 package desktop
 
 import (
-	"strings"
-
-	"github.com/surlykke/RefudeServices/file"
 	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/resource"
-	"github.com/surlykke/RefudeServices/lib/resourcerepo"
+	"github.com/surlykke/RefudeServices/search"
 )
 
 var headingOrder = []string{"Actions", "Notifications", "Windows", "Tabs", "Applications", "Files", "Other"}
@@ -16,23 +13,30 @@ var profileHeadingMap = map[string]string{
 	"notification": "Notifications", "window": "Windows", "browsertab": "Tabs", "application": "Applications", "file": "Files",
 }
 
-func fetchResourceData(resourcePath string, term string) (map[string]any, bool) {
-	if res := fetchResource(resourcePath); res != nil {
+func collectTemplateData(resourcePath string, term string) (map[string]any, bool) {
+	if res := search.FetchResource(resourcePath); res != nil {
 		var m = map[string]any{
-			"Title": res.GetTitle(),
-			"Icon":  res.GetIconUrl(),
-			"Term":  term,
+			"Searchable": res.Base().Searchable(),
+			"Title":      res.Base().Title,
+			"Icon":       res.Base().IconUrl,
+			"Term":       term,
+			"Actions":    res.Base().ActionLinks(),
 		}
 
-		var links = make(map[string]link.List, 9)
-		for _, lnk := range res.Links(term) {
-			links[heading(lnk)] = append(links[heading(lnk)], lnk)
+		var resources = make(map[string][]resource.Resource, 9)
+		for _, subRes := range res.Search(term) {
+			var heading string
+			var ok bool
+			if heading, ok = profileHeadingMap[subRes.Base().Profile]; !ok {
+				heading = "Other"
+			}
+			resources[heading] = append(resources[heading], subRes)
 		}
-		m["Links"] = links
+		m["Resources"] = resources
 
 		var headings = make([]string, 0, 9)
 		for _, heading := range headingOrder {
-			if _, ok := links[heading]; ok {
+			if _, ok := resources[heading]; ok {
 				headings = append(headings, heading)
 			}
 		}
@@ -48,19 +52,9 @@ func fetchResourceData(resourcePath string, term string) (map[string]any, bool) 
 func heading(l link.Link) string {
 	if l.Relation == relation.Action || l.Relation == relation.Delete {
 		return "Actions"
-	} else if heading, ok := profileHeadingMap[l.Profile]; ok{
-		return heading 
-	} else { 
-		return "Other"
-	}
-}
-
-func fetchResource(path string) resource.Resource {
-	if strings.HasPrefix(path, "/file/") {
-		return file.FileRepo.GetResource(path[5:])
-	} else if res, ok := resourcerepo.Get(path); ok {
-		return res
+	} else if heading, ok := profileHeadingMap[l.Profile]; ok {
+		return heading
 	} else {
-		return nil
+		return "Other"
 	}
 }

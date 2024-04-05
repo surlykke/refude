@@ -15,6 +15,7 @@ import (
 	"github.com/rakyll/magicmime"
 	"github.com/surlykke/RefudeServices/applications"
 	"github.com/surlykke/RefudeServices/lib/link"
+	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
@@ -57,51 +58,42 @@ type File struct {
 	Apps        []string
 }
 
-func makeFile(path string) (*File, error) {
+func makeFileFromPath(path string) (*File, error) {
 	var osPath = filepath.Clean("/" + path)
 	if fileInfo, err := os.Stat(osPath); os.IsNotExist(err) {
 		return nil, nil
 	} else if err != nil {
 		return nil, err
 	} else {
+		return makeFileFromInfo(osPath, fileInfo), nil
+	}
+}
+
+
+func makeFileFromInfo(osPath string, fileInfo os.FileInfo) *File {
 		var mimetype, _ = magicmime.TypeByFile(osPath)
+		var fileType = getFileType(fileInfo.Mode())
 		var f = File{
-			BaseResource: resource.BaseResource{
-				Path:    "/file/" + osPath[1:],
-				Title:   fileInfo.Name(),
-				Comment: path,
-				IconUrl: link.IconUrl(strings.ReplaceAll(mimetype, "/", "-")),
-			},
-			Type:        getFileType(fileInfo.Mode()),
+			BaseResource: resource.MakeBase("/file/" + osPath[1:], fileInfo.Name(), osPath, strings.ReplaceAll(mimetype, "/", "-"), "file", fileType == "Directory"),
+			Type:        fileType,
 			Permissions: fileInfo.Mode().String(),
 			Mimetype:    mimetype,
 			Apps:        applications.GetAppsIds(mimetype),
 		}
 
-		return &f, nil
+	for _, app := range applications.GetApps(f.Apps...) {
+		f.AddLink(link.Link{Title: "Open with " + app.Title, IconUrl: app.IconUrl, Relation: relation.Action})
 	}
+
+	return &f
 }
 
-func (f *File) Links(searchTerm string) link.List {
-
-	var ll = make(link.List, 0, 10)
-
-	for _, app := range applications.GetApps(f.Apps...) {
-		var title = "Open with " + app.Title
-		if searchutils.Match(searchTerm, title) >= 0 {
-			ll = append(ll, link.Make(f.Path+"?action="+app.DesktopId, title, app.IconUrl, relation.Action))
-		}
-	}
-
-	if f.Type == "Directory" {
-		ll = append(ll, Search(f.Path[len("/file"):], ".", searchTerm)...)
-	}
-
-	return ll
+func (f *File) Search(searchTerm string) []resource.Resource {
+	return Search(f.Path[len("/file"):], ".", searchTerm)
 }
 
 // Assumes dir is a directory
-func Search(from, prefix, searchTerm string) link.List {
+func Search(from, prefix, searchTerm string) []resource.Resource {
 	var depth = len(searchTerm) / 3
 	if depth > 2 {
 		depth = 2
@@ -109,8 +101,8 @@ func Search(from, prefix, searchTerm string) link.List {
 	return searchRecursive(from, prefix, searchTerm, depth)
 }
 
-func searchRecursive(from, prefix, searchTerm string, depth int) link.List {
-	var ll = make(link.List, 0, 30)
+func searchRecursive(from, prefix, searchTerm string, depth int) []resource.Resource {
+	var fileList = make([]resource.Resource, 0, 30)
 	var directoriesFound = make([]fs.DirEntry, 0, 10)
 
 	if dirEntries, err := os.ReadDir(from); err == nil {
@@ -121,10 +113,11 @@ func searchRecursive(from, prefix, searchTerm string, depth int) link.List {
 				relName = prefix + "/" + relName
 			}
 			if rnk := searchutils.Match(searchTerm, dirEntry.Name()); rnk > -1 {
-				var mimetype, _ = magicmime.TypeByFile(entryPath)
-				var icon = link.IconUrl(strings.ReplaceAll(mimetype, "/", "-"))
-				ll = append(ll, link.MakeRanked(entryPath[1:], relName, icon, "file", rnk+50))
-
+				if info, err := dirEntry.Info(); err != nil {
+					log.Warn(err)
+				} else {
+					fileList = append(fileList, makeFileFromInfo(entryPath, info))
+				}
 			}
 			if depth > 0 && dirEntry.IsDir() {
 				directoriesFound = append(directoriesFound, dirEntry)
@@ -133,9 +126,9 @@ func searchRecursive(from, prefix, searchTerm string, depth int) link.List {
 	}
 
 	for _, directory := range directoriesFound {
-		ll = append(ll, searchRecursive(from+"/"+directory.Name(), prefix+"/"+directory.Name(), searchTerm, depth-1)...)
+		fileList = append(fileList, searchRecursive(from+"/"+directory.Name(), prefix+"/"+directory.Name(), searchTerm, depth-1)...)
 	}
-	return ll
+	return fileList
 }
 
 func (f *File) DoPost(w http.ResponseWriter, r *http.Request) {

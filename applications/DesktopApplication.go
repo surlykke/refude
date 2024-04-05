@@ -12,13 +12,10 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/surlykke/RefudeServices/lib/link"
-	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/resourcerepo"
 	"github.com/surlykke/RefudeServices/lib/respond"
-	"github.com/surlykke/RefudeServices/lib/searchutils"
 
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
@@ -48,19 +45,6 @@ type DesktopApplication struct {
 	DesktopFile     string
 }
 
-func (d *DesktopApplication) Links(searchTerm string) link.List {
-	var l = make(link.List, 0, 1+len(d.DesktopActions))
-	if searchutils.Match(searchTerm, "Launch") >= 0 {
-		l = append(l, link.Make(d.Path, "Launch", d.IconUrl, relation.Action))
-	}
-	for _, da := range d.DesktopActions {
-		if searchutils.Match(searchTerm, da.Name) >= 0 {
-			l = append(l, link.Make(d.Path+"?action="+da.id, da.Name, da.IconUrl, relation.Action))
-		}
-	}
-	return l
-}
-
 func (d *DesktopApplication) RelevantForSearch(term string) bool {
 	return len(term) > 0 && !d.NoDisplay
 }
@@ -73,7 +57,7 @@ type DesktopAction struct {
 	id      string
 	Name    string
 	Exec    string
-	IconUrl link.Href
+	IconUrl string
 }
 
 func (d *DesktopApplication) DoPost(w http.ResponseWriter, r *http.Request) {
@@ -101,7 +85,7 @@ func (d *DesktopApplication) DoPost(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetAppsIds(mimetypeId string) []string {
-	if mimetype, ok := resourcerepo.GetTyped[*Mimetype](fmt.Sprintf("/mimetype/%s", mimetypeId)); ok {
+	if mimetype, ok := resourcerepo.GetTyped[*Mimetype]("/mimetype/" + mimetypeId); ok {
 		return mimetype.Applications
 	} else {
 		return []string{}
@@ -125,13 +109,15 @@ func OpenFile(appId, path string) (bool, error) {
 		xdg.RunCmd("xdg-open", path)
 		return true, nil
 	} else if app, ok := resourcerepo.GetTyped[*DesktopApplication]("/application/" + appId); ok {
+		var br = app.Base()
+		fmt.Println(br.Title)
 		return true, app.Run(path)
 	} else {
 		return false, nil
 	}
 }
 
-func GetIconUrl(appId string) link.Href {
+func GetIconUrl(appId string) string {
 	if app, ok := resourcerepo.GetTyped[*DesktopApplication]("/application/" + appId); ok {
 		return app.IconUrl
 	} else {

@@ -13,12 +13,9 @@ import (
 	"github.com/godbus/dbus/v5"
 	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/image"
-	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/log"
-	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
-	"github.com/surlykke/RefudeServices/lib/searchutils"
 	"github.com/surlykke/RefudeServices/lib/slice"
 )
 
@@ -34,21 +31,11 @@ type Item struct {
 	AttentionAccessibleDesc string
 	ToolTip                 string
 	MenuPath                dbus.ObjectPath
-	Menu                    link.Href
+	Menu                   	string 
 	IconThemePath           string
 	UseIconPixmap           bool
 	UseAttentionIconPixmap  bool
 	UseOverlayIconPixmap    bool
-}
-
-func (item *Item) Links(term string) link.List {
-	var ll = make(link.List, 0, 5)
-	if item.MenuPath != "" {
-		if searchutils.Match(term, "Menu") > -1 {
-			ll = append(ll, link.Make("/itemmenu/"+pathEscape(item.sender, dbus.ObjectPath(item.MenuPath)), "Menu", "", relation.Menu))
-		}
-	}
-	return ll
 }
 
 func (item *Item) DoPost(w http.ResponseWriter, r *http.Request) {

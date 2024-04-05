@@ -22,6 +22,7 @@ import (
 	"github.com/surlykke/RefudeServices/notifications"
 	"github.com/surlykke/RefudeServices/ping"
 	"github.com/surlykke/RefudeServices/power"
+	"github.com/surlykke/RefudeServices/search"
 	"github.com/surlykke/RefudeServices/start"
 	"github.com/surlykke/RefudeServices/statusnotifications"
 	"github.com/surlykke/RefudeServices/watch"
@@ -52,6 +53,7 @@ func main() {
 	http.HandleFunc("/complete", Complete)
 	http.HandleFunc("/watch", watch.ServeHTTP)
 	http.HandleFunc("/desktop/", desktop.ServeHTTP)
+	http.HandleFunc("/search", search.Search)
 	http.HandleFunc("/", resourcerepo.ServeHTTP)
 
 	if err := http.ListenAndServe(":7938", nil); err != nil {

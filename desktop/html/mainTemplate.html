@@ -13,56 +13,60 @@
 </head>
 
 <body>
-	<div class="mainDiv">
-		{{if ne .Title "Start" }}
-		<div class="resource-header">
-			<div class="resource-icon">
+	<table>
+		<tr class="resourceRow">
+			<td>
 				{{if .Icon }}
 				<img src="{{.Icon }}" height="32" width="32">
 				{{end}}
-			</div>
-			<div>
-				<div class="resource-name">{{.Title }}</div>
-			</div>
-		</div>
-		{{end}}
-		<table class="resource-props">
-			<tbody>
-			</tbody>
-		</table>
-		<table>
-			<tr class="searchRow">
-				<td colspan="2">
-					<p>&#x1f50e;&nbsp;{{.Term}}</p>
-				</td>
-			</tr>
-			{{with $data := .}}
-				{{range $index, $heading := .Headings}}
-				<custom-tag>
-				<tr class="heading">
-					<td/>	
-					<td>
-						<p>{{$heading}}</p>
-					</td>
-				</tr>	
-					{{range index $data.Links $heading}}	
-					<tr class="searchResult"  data-resource="{{.Href}}" data-profile="{{.Profile}}">
-						<td>
-							{{if .Icon}}
-							<img class="icon" src="{{.Icon}}" height="20" width="20">
-							{{end}}
-						</td>
-						<td>
-							<p class="title">{{.Title}}</p>
-						</td>
-					</tr>
-					</custom-tag>
-					{{end}}
+			</td>
+			<td>
+				<p class="resourceName">{{.Title }}</p>
+			</td>
+		</tr>
+		{{with $data := .}}
+		{{range .Actions}}
+		<tr class="selectable" data-href="{{.Href}}" data-relation="{{.Relation}}">
+			<td>
+				{{if .IconUrl}}
+				<img src="{{.IconUrl}}" height="20" width="20">
 				{{end}}
-			{{end}}
-		</div>
-	</div>
-	<script type="application/javascript">document.getElementsByClassName('searchResult')[0]?.classList.add('active')</script>
+			</td>
+			<td>
+				<p>{{.Title}}</p>
+			</td>
+		</tr>
+		{{end}}
+		{{if .Searchable}}
+		<tr class="searchRow">
+			<td>&#x1F50E;</td>
+			<td>
+				<p>{{.Term}}</p>
+			</td>
+		</tr>
+		{{end}}
+		{{range $index, $heading := .Headings}}
+		<tr class="heading">
+			<td/>	
+			<td>
+				<p>{{$heading}}</p>
+			</td>
+		</tr>	
+		{{range index $data.Resources $heading}}	
+		<tr class="selectable"  data-href="{{.Path}}" data-relation="self" data-profile="{{.Profile}}">
+			<td>
+				{{if .IconUrl}}
+				<img class="icon" src="{{.IconUrl}}" height="20" width="20">
+				{{end}}
+			</td>
+			<td>
+				<p class="title">{{.Title}}</p>
+			</td>
+		</tr>
+		{{end}}
+		{{end}}
+		{{end}}
+	</table>
 </body>
-
+<script type="application/javascript">selectables()[0]?.classList.add('selected')</script>
 </html>

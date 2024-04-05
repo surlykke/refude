@@ -40,9 +40,6 @@ type Menu struct {
 	path   dbus.ObjectPath
 }
 
-// TODO links should contain posts
-
-
 var emptyList = []byte("[]")
 
 func (m *Menu) MarshalJSON() ([]byte, error) {

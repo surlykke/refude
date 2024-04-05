@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
@@ -21,7 +20,7 @@ type FileRepoType struct {}
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !strings.HasPrefix(r.URL.Path, "/file/") {
 		respond.NotFound(w)
-	} else if file, err := makeFile(r.URL.Path[6:]); err != nil {
+	} else if file, err := makeFileFromPath(r.URL.Path[6:]); err != nil {
 		respond.ServerError(w, err)
 	} else if file == nil {
 		respond.NotFound(w)
@@ -31,7 +30,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (fr FileRepoType) GetResource(filePath string) resource.Resource {
-	if file, err := makeFile(filePath); err != nil {
+	if file, err := makeFileFromPath(filePath); err != nil {
 		log.Warn("Could not make file from", filePath, err)
 		return nil
 	} else if file == nil {
@@ -41,9 +40,9 @@ func (fr FileRepoType) GetResource(filePath string) resource.Resource {
 	}
 }
 
-func (fr FileRepoType) Search(term string, threshold int) link.List{
+func (fr FileRepoType) Search(term string, threshold int) []resource.Resource {
 	if len(term) < threshold {
-		return link.List{}
+		return []resource.Resource{}
 	} else {
 		return Search(xdg.Home, "~", term)
 	}

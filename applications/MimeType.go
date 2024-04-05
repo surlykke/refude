@@ -17,6 +17,7 @@ const freedesktopOrgXml = "/usr/share/mime/packages/freedesktop.org.xml"
 
 type Mimetype struct {
 	resource.BaseResource
+	Id              string
 	Acronym         string `json:",omitempty"`
 	ExpandedAcronym string `json:",omitempty"`
 	Aliases         []string
@@ -34,14 +35,13 @@ func MakeMimetype(id string) (*Mimetype, error) {
 		return nil, errors.New("Incomprehensible mimetype: " + id)
 	} else {
 		var mt = Mimetype{
-			BaseResource: resource.BaseResource{Path: "/mimetype/" + id, IconUrl: "unknown"},
-			Aliases:     []string{},
-			Globs:       []string{},
-			SubClassOf:  []string{},
-			GenericIcon: "unknown",
+			BaseResource: resource.MakeBase("/mimetype/"+id, "", "", "", "mimetype", false),
+			Id:           id,
+			Aliases:      []string{},
+			Globs:        []string{},
+			SubClassOf:   []string{},
+			GenericIcon:  "unknown",
 		}
 		return &mt, nil
 	}
 }
-
-

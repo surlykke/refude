@@ -8,13 +8,10 @@ import (
 	"sync"
 
 	"github.com/surlykke/RefudeServices/applications"
-	"github.com/surlykke/RefudeServices/lib/link"
-	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/resourcerepo"
 	"github.com/surlykke/RefudeServices/lib/respond"
-	"github.com/surlykke/RefudeServices/lib/searchutils"
 )
 
 // Get current rect
@@ -66,32 +63,20 @@ type WaylandWindow struct {
 	State WindowStateMask
 }
 
+
 func MakeWindow(wId uint64) *WaylandWindow {
 	return &WaylandWindow{
-		BaseResource: resource.BaseResource{
-			Path:     fmt.Sprintf("/window/%d", wId),
-			Profile: "window",
-		},
+		BaseResource: resource.MakeBase(fmt.Sprintf("/window/%d", wId), "", "", "", "window", false),
 		Wid: wId,
 	}
 }
 
-func (this *WaylandWindow) GetIconUrl() link.Href {
+func (this *WaylandWindow) GetIconUrl() string {
 	return applications.GetIconUrl(this.AppId + ".desktop")
 }
 
 func (this *WaylandWindow) RelevantForSearch(term string) bool {
 	return !strings.HasPrefix(this.Title, "Refude Desktop")
-}
-
-func (this *WaylandWindow) Links(searchTerm string) link.List {
-	if searchutils.Match(searchTerm, "Raise and focus") >= 0 {
-		return link.List{
-			link.Make(this.Path + "?action=activate", "Raise and focus", this.IconUrl, relation.Action),
-		}
-	} else {
-		return link.List{}
-	}
 }
 
 func (this *WaylandWindow) DoDelete(w http.ResponseWriter, r *http.Request) {
@@ -109,6 +94,17 @@ func (this *WaylandWindow) DoPost(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func retriewIconUrlsFromApps() {
+	var windows = resourcerepo.GetTypedByPrefix[*WaylandWindow]("/window/")
+	for _, w := range  windows{
+		var copy = *w 
+		var iconUrl = applications.GetIconUrl(copy.AppId + ".desktop")
+		copy.SetIconUrl(iconUrl)
+		resourcerepo.Update(&copy)
+	}
+}
+
+
 var recentMap = make(map[uint64]uint32)
 var recentCount uint32
 var recentMapLock sync.Mutex
@@ -125,7 +121,7 @@ func getCopy(wId uint64) *WaylandWindow {
 }
 
 func Run() {
-	//go watchApplications()
+	applications.AddListener(retriewIconUrlsFromApps) // FIXME this is racy
 	setupAndRunAsWaylandClient()
 }
 

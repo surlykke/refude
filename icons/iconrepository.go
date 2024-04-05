@@ -40,10 +40,10 @@ func init() {
 	}
 
 	determineBasedirs()
-	resourcerepo.ReplacePrefixWithMap("/icontheme/", readThemes())
-	var defaultThemePath = determineDefaultThemePath()
-	themeSearchList = buildSearchList(defaultThemePath)
-
+	var themes = readThemes()
+	var defaultThemeId = determineDefaultThemeId(themes)
+	themeSearchList = buildSearchList(defaultThemeId, themes)
+	log.Info("themeSearchList:", themeSearchList)
 	if hicolor, ok := resourcerepo.GetTyped[*IconTheme]("/icontheme/hicolor"); ok {
 		// We lay out a hicolor directory structure in sessionsdir
 		var sessionHicolorPath = refudeSessionIconsDir + "/hicolor/"
@@ -51,6 +51,7 @@ func init() {
 			os.MkdirAll(sessionHicolorPath+dir.Path, 0700)
 		}
 	}
+	resourcerepo.ReplacePrefixWithMap("/icontheme/", themes)
 }
 
 func determineBasedirs() {
@@ -72,7 +73,7 @@ func determineBasedirs() {
 /**
  *Finds, if possible, the default theme
  */
-func determineDefaultThemePath() string {
+func determineDefaultThemeId(themes map[string]*IconTheme) string {
 	var (
 		defaultThemeName = ""
 		ok               bool
@@ -106,36 +107,35 @@ func determineDefaultThemePath() string {
 
 
 	if defaultThemeName != "" {
-		themes := resourcerepo.FindTypedUnderPrefix[*IconTheme]("/icontheme/", func(theme *IconTheme) bool {
-			return theme.Title == defaultThemeName
-		})
-		if len(themes) > 0 {
-			return themes[0].GetPath()
+		for _, theme := range themes {
+			if theme.Title == defaultThemeName {
+				return defaultThemeName
+			}
 		}
 	}
 	return ""
 }
 
-func buildSearchList(defaultThemePath string) []string {
+func buildSearchList(defaultThemePath string, themes map[string]*IconTheme) []string {
 	var searchList []string
-	var added = map[string]bool{"/icontheme/hicolor": true}
+	var added = map[string]bool{"hicolor": true}
 
-	var themeWalker func(string)
-	themeWalker = func(themepath string) {
-		if !added[themepath] {
-			if theme, ok := resourcerepo.GetTyped[*IconTheme](themepath); ok {
-				searchList = append(searchList, themepath)
-				added[themepath] = true
-				for _, themeId := range theme.Inherits {
-					themeWalker("/icontheme/" + themeId)
+	var walk func(string)
+	walk = func(themeId string) { // Consider: depth first or width first...
+		if !added[themeId] {
+			if theme, ok := themes[themeId]; ok {
+				searchList = append(searchList, themeId)
+				added[themeId] = true
+				for _, inheritedThemeId := range theme.Inherits {
+					walk(inheritedThemeId)
 				}
 			}
 		}
 	}
 
-	themeWalker(defaultThemePath)
+	walk(defaultThemePath)
 
-	return append(searchList, "/icontheme/hicolor")
+	return append(searchList, "hicolor")
 }
 
 func AddX11Icon(data []uint32) (string, error) {

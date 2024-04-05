@@ -49,6 +49,7 @@ type Device struct {
 	Batterylevel     string
 }
 
+
 func (d *Device) RelevantForSearch(term string) bool {
 	return len(term) >= 3 
 }

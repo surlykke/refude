@@ -4,19 +4,17 @@ let pageResource = new URLSearchParams(window.location.search).get('resource') |
 let onKeyDown = event => {
     let { key, ctrlKey, altKey, shiftKey} = event;
     if (key === "Escape") {
-        dismiss(true, true)
+        dismiss()
     } else if (key === 'Enter' && !ctrlKey) {
-        activate()
-    } else if (key === 'Delete') {
-        doDelete(ctrlKey)
+        activate(selected())
     } else if (key == 'Enter' && ctrlKey || key == "ArrowRight") {
-        navigateTo(activeResource(), '')
+        navigateTo(selected())
     } else if (key.length === 1 && !ctrlKey && !altKey) {
-        navigateTo(pageResource, searchTerm + key)
+        search(searchTerm + key)
     } else if (key === "Backspace") {
-        navigateTo(pageResource, searchTerm.slice(0, -1))
+        search(searchTerm.slice(0, -1))
     } else if (key === "ArrowLeft" || key === 'h' && ctrlKey) {
-        history.back() 
+        history.back()
     } else if (key == "Tab" && !shiftKey || key == 'j' && ctrlKey || key == 'ArrowDown') {
         move()
     } else if (key == "Tab" && shiftKey || key == 'k' && ctrlKey || key == 'ArrowUp') {
@@ -28,34 +26,48 @@ let onKeyDown = event => {
 }
 
 
-let activate = () => {
-    console.log('activate:', activeProfile)
-    fetch(activeResource(), {method: 'post'}).then(resp => resp.ok && dismiss())
-}
-let doDelete = keep => fetch(activeResource(), {method: 'delete'}).then(resp => resp.ok && !keep && dismiss(true, true))
-let navigateTo = (resource, search) => window.location.search = `resource=${encodeURIComponent(resource)}&search=${encodeURIComponent(search)}`
-
-
-let dismiss = (restoreWindow, restoreTab) => {  
-    restoreWindow = undefined === restoreWindow ? ['window', 'browsertab'].indexOf(activeProfile()) < 0 : restoreWindow
-    restoreTab = undefined === restoreTab ? 'browsertab' !== activeProfile() : restoreTab
-    let searchParams = [restoreWindow && "restore=window", restoreTab && "restore=tab"].filter(e => e).join('&')
-    fetch("http://localhost:7938/desktop/hide?" + searchParams, {method: 'post'})
+let activate = tr => {
+    if (!tr || !method(tr)) return 
+    console.log("activate, tr", tr, ",method", method, "href", tr.dataset?.href)
+    fetch(tr.dataset.href, {method: method(tr)}) .then(resp => resp.ok && dismiss(tr.dataset.profile))
 }
 
-let activeResource = () => document.getElementsByClassName('active')[0]?.dataset?.resource
-let activeProfile = () => document.getElementsByClassName('active')[0]?.dataset?.profile
+let navigateTo = tr => {
+    if (!tr || !tr.dataset.href || !canGet(tr)) return
+    window.location.search = "resource=" + encodeURIComponent(tr.dataset.href)
+}
+    
+let search = searchTerm => {
+    let url = new URL(window.location)
+    url.searchParams.set("search", searchTerm)
+    window.location.replace(url)
+}
+
+let dismiss = ap => {  
+    let restore = ap !== 'browsertab' ? (ap !== 'window' ? "window" : "tab") : ""
+    fetch("http://localhost:7938/desktop/hide?restore=" + restore, {method: 'post'})
+}
 
 let move = up => {
     console.log("move", up)
-    let trs = Array.from(document.getElementsByClassName('searchResult'))
+    let trs = selectables()
     let len = trs.length
-    if (len > 0) {
-        let activeTr = document.getElementsByClassName('active')[0]
-        let pos = trs.findIndex(e => e === activeTr) 
-        let newPos = (pos + len + (up ? -1 : 1)) % len
-        console.log("len", len, "activeTr", activeTr, "pos", pos, "newPos", newPos)
-        trs.forEach((tr, i) => i === newPos ? tr.classList.add('active') : tr.classList.remove('active'))
-    }
+    let pos = trs.indexOf(selected())
+    pos = pos < 0 ? 0 : (pos + len + (up ? -1 : 1)) % len
+    trs.forEach((tr, i) => i === pos ? tr.classList.add('selected') : tr.classList.remove('selected'))
 }
 
+let selectables = () => Array.from(document.getElementsByClassName('selectable'))
+let selected = () => document.getElementsByClassName('selected')[0]
+let method = tr => {
+    let rel = tr.dataset.relation || ""
+    let prof = tr.dataset.profile
+    return rel === "org.refude.delete" ? "delete" : 
+           rel === "org.refude.action" || ["window", "browsertab", "application", "notification"].includes(prof) ? "post" :
+           "none"
+}
+
+let canDelete = tr => ["window" /*TODO*/].includes(tr.dataset.profile)
+let canGet = tr => tr.dataset.relation === "self"
+
+selectables()[0]?.classList.add('selected')

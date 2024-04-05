@@ -29,11 +29,7 @@ func Run() {
 			resourcerepo.Put(item)
 			if item.MenuPath != "" {
 				resourcerepo.Put(&Menu{
-					BaseResource: resource.BaseResource{
-						Path: "/menu/" + pathEscape(event.sender, item.MenuPath),
-						Title: "Menu",
-						Profile: "menu",
-					},
+					BaseResource: resource.MakeBase("/menu/" + pathEscape(event.sender, item.MenuPath), "Menu", "", "", "menu", false),
 					sender: event.sender, 
 					path: item.MenuPath,
 				})

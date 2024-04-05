@@ -7,66 +7,101 @@ package resource
 
 import (
 	"net/http"
+	"net/url"
+	"strings"
 
 	"github.com/surlykke/RefudeServices/lib/link"
-	"github.com/surlykke/RefudeServices/lib/requests"
+	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/respond"
+	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
 type Resource interface {
-	GetPath() string
-	GetTitle() string
-	GetComment() string
-	GetIconUrl() link.Href
-	GetProfile() string
-	Links(searchTerm string) link.List
+	Base() *BaseResource
+	Search(searchTerm string) []Resource
 	RelevantForSearch(term string) bool
-	GetKeywords() []string
 }
 
 type BaseResource struct {
 	Path     string
-	Title    string    `json:"-"`
-	Comment  string    `json:"-"`
-	IconUrl  link.Href `json:"-"`
-	Profile  string    `json:"-"`
-	Keywords []string
+	Title    string `json:"-"`
+	Comment  string `json:"-"`
+	IconUrl  string `json:"-"`
+	Profile  string `json:"-"`
+	Links    []link.Link
+	Keywords []string `json:"profile,omitempty"`
 }
 
-func (br *BaseResource) GetPath() string {
-	return br.Path
+func MakeBase(path, title, comment, iconUrl, profile string, search bool) BaseResource {
+	var br = BaseResource{
+		Path:    path,
+		Title:   title,
+		Comment: comment,
+		Profile: profile,
+		Links:   make([]link.Link, 0, 5),
+	}
+
+	br.SetIconUrl(iconUrl)
+	br.AddLink(link.Link{Href: path, Relation: relation.Self})
+	if search {
+		br.AddLink(link.Link{Href: "/search?from=" + url.QueryEscape(path), Relation: relation.Search})
+	}
+
+	return br
 }
 
-func (br *BaseResource) GetTitle() string {
-	return br.Title
+func (this *BaseResource) SetIconUrl(iconUrl string) {
+	if iconUrl != "" {
+		if !(strings.HasPrefix(iconUrl, "http://") || strings.HasPrefix(iconUrl, "https://")) {
+			if strings.Index(iconUrl, "/") > -1 {
+				// So its a path..
+				if strings.HasPrefix(iconUrl, "file:///") {
+					iconUrl = iconUrl[7:]
+				} else if strings.HasPrefix(iconUrl, "file://") {
+					iconUrl = xdg.Home + "/" + iconUrl[7:]
+				} else if !strings.HasPrefix(iconUrl, "/") {
+					iconUrl = xdg.Home + "/" + iconUrl
+				}
+			}
+			iconUrl = "http://localhost:7938/icon?name=" + url.QueryEscape(iconUrl)
+		}
+		this.IconUrl = iconUrl
+	}
 }
 
-func (br *BaseResource) GetComment() string {
-	return br.Comment
+func (this *BaseResource) AddLink(lnk link.Link) {
+	this.Links = append(this.Links, lnk)
 }
 
-func (br *BaseResource) GetIconUrl() link.Href {
-	return br.IconUrl
+func (this *BaseResource) Base() *BaseResource {
+	return this
 }
 
-func (br *BaseResource) GetProfile() string {
-	return br.Profile
-}
-
-func (br *BaseResource) Links(searchTerm string) link.List {
-	return link.List{}
+func (this *BaseResource) Search(searchTerm string) []Resource {
+	return []Resource{}
 }
 
 func (br *BaseResource) RelevantForSearch(term string) bool {
 	return false
 }
 
-func (br *BaseResource) GetKeywords() []string {
-	return br.Keywords
+func (br *BaseResource) ActionLinks() []link.Link {
+	var filtered = make([]link.Link, 0, len(br.Links))
+	for _, lnk := range br.Links {
+		if lnk.Relation == relation.Action || lnk.Relation == relation.Delete {
+			filtered = append(filtered, lnk)
+		}
+	}
+	return filtered
 }
 
-func LinkTo(res Resource, context string, rank int) link.Link {
-	return link.MakeRanked(res.GetPath(), res.GetTitle(), res.GetIconUrl(), res.GetProfile(), rank)
+func (br *BaseResource) Searchable() bool {
+	for _, lnk := range br.Links {
+		if lnk.Relation == relation.Search {
+			return true
+		}
+	}
+	return false
 }
 
 type Postable interface {
@@ -77,22 +112,9 @@ type Deleteable interface {
 	DoDelete(w http.ResponseWriter, r *http.Request)
 }
 
-type ResourceRepo interface {
-	GetResources() []Resource
-	GetResource(path string) Resource
-	Search(term string, threshold int) link.List
-}
-
-func SingleResourceServer(res Resource, context string) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		ServeSingleResource(w, r, res)
-	}
-}
-
 func ServeSingleResource(w http.ResponseWriter, r *http.Request, res Resource) {
 	if r.Method == "GET" {
-		var linkSearchTerm = requests.GetSingleQueryParameter(r, "search", "")
-		respond.AsJson(w, BuildJsonRepresentation(res, linkSearchTerm))
+		respond.AsJson(w, BuildJsonRepresentation(res))
 	} else if postable, ok := res.(Postable); ok && r.Method == "POST" {
 		postable.DoPost(w, r)
 	} else if deletable, ok := res.(Deleteable); ok && r.Method == "DELETE" {
@@ -106,7 +128,7 @@ func ServeList(w http.ResponseWriter, r *http.Request, list []Resource) {
 	if r.Method == "GET" {
 		var jsonReps = make([]jsonRepresentation, 0, len(list))
 		for _, res := range list {
-			jsonReps = append(jsonReps, BuildJsonRepresentation(res, ""))
+			jsonReps = append(jsonReps, BuildJsonRepresentation(res))
 		}
 		respond.AsJson(w, jsonReps)
 	} else {
@@ -115,33 +137,21 @@ func ServeList(w http.ResponseWriter, r *http.Request, list []Resource) {
 }
 
 type jsonRepresentation struct {
-	Self    link.Href   `json:"self"`
-	Links   link.List   `json:"links"`
+	Links   []link.Link `json:"links"`
 	Title   string      `json:"title"`
 	Comment string      `json:"comment,omitempty"`
-	Icon    link.Href   `json:"icon,omitempty"`
+	Icon    string      `json:"icon,omitempty"`
 	Profile string      `json:"profile"`
 	Data    interface{} `json:"data"`
 }
 
-func BuildJsonRepresentation(res Resource, searchTerm string) jsonRepresentation {
+func BuildJsonRepresentation(res Resource) jsonRepresentation {
 	var wrapper = jsonRepresentation{}
-	wrapper.Self = link.Href(res.GetPath())
-	wrapper.Links = buildFilterAndRewriteLinks(res, searchTerm)
+	wrapper.Links = res.Base().Links
 	wrapper.Data = res
-	wrapper.Title = res.GetTitle()
-	wrapper.Comment = res.GetComment()
-	wrapper.Icon = res.GetIconUrl()
-	wrapper.Profile = res.GetProfile()
+	wrapper.Title = res.Base().Title
+	wrapper.Comment = res.Base().Comment
+	wrapper.Icon = string(res.Base().IconUrl)
+	wrapper.Profile = res.Base().Profile
 	return wrapper
-}
-
-func buildFilterAndRewriteLinks(res Resource, searchTerm string) link.List {
-	var list = make(link.List, 0, 10)
-
-	for _, lnk := range res.Links(searchTerm) {
-		list = append(list, lnk)
-	}
-
-	return list
 }

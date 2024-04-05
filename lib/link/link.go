@@ -6,16 +6,12 @@
 package link
 
 import (
-	"bytes"
 	"net/url"
 	"strings"
 
 	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/xdg"
-	"golang.org/x/exp/slices"
 )
-
-type Href string
 
 var httpLocalHost7838 = []byte("http://localhost:7938")
 var controlEscape = [][]byte{
@@ -27,69 +23,17 @@ var controlEscape = [][]byte{
 var quoteEscape = []byte(`\"`)
 var backslashEscape = []byte(`\\`)
 
-func (href Href) MarshalJSON() ([]byte, error) {
-	var buf = &bytes.Buffer{}
-	buf.WriteByte('"')
-	if strings.HasPrefix(string(href), "/") {
-		buf.Write(httpLocalHost7838)
-	}
-	for _, b := range []byte(href) {
-		if b <= 0x1F {
-			buf.Write(controlEscape[b])
-		} else if b == '\\' {
-			buf.Write(backslashEscape)
-		} else if b == '"' {
-			buf.Write(quoteEscape)
-		} else {
-			buf.WriteByte(b)
-		}
-	}
-	buf.WriteByte('"')
-	return buf.Bytes(), nil
-}
-
 type Link struct {
-	Href     Href              `json:"href"`
+	Href     string            `json:"href"`
 	Title    string            `json:"title,omitempty"`
-	Icon     Href              `json:"icon,omitempty"`
+	IconUrl  string            `json:"icon,omitempty"`
 	Relation relation.Relation `json:"rel,omitempty"`
 	Profile  string            `json:"profile,omitempty"`
-	Rank     int               `json:"-"` // Used when searching
-}
-
-func Make(href string, title string, iconUrl Href, rel relation.Relation) Link {
-	return Link{
-		Href:     Href(href),
-		Title:    title,
-		Icon:     iconUrl,
-		Relation: rel,
-	}
-}
-
-func MakeRanked(href string, title string, iconUrl Href, profile string, rank int) Link {
-	return MakeRanked2(Href(href), title, iconUrl, profile, rank)
-}
-
-func MakeRanked2(href Href, title string, icon Href, profile string, rank int) Link {
-	return Link{
-		Href:     Href(href),
-		Title:    title,
-		Icon:     icon,
-		Relation: relation.Related,
-		Profile:  profile,
-		Rank:     rank,
-	}
-}
-
-type List []Link
-
-func (l List) SortByRank() {
-	slices.SortFunc(l, func(l1, l2 Link) bool { return l1.Rank < l2.Rank })
 }
 
 // --------------------------------------------------------------------
 
-func IconUrl(name string) Href {
+func IconUrl(name string) string {
 	if strings.Index(name, "/") > -1 {
 		// So its a path..
 		if strings.HasPrefix(name, "file:///") {
@@ -103,7 +47,7 @@ func IconUrl(name string) Href {
 		// Maybe: Check that path points to iconfile..
 	}
 	if name != "" {
-		return Href("/icon?name=" + url.QueryEscape(name))
+		return "/icon?name=" + url.QueryEscape(name)
 	} else {
 		return ""
 	}
@@ -112,11 +56,10 @@ func IconUrl(name string) Href {
 type Action struct {
 	Name    string
 	Title   string
-	IconUrl Href
-	
+	IconUrl string
 }
 
-func MkAction(name string, title string, iconUrl Href) Action {
+func MkAction(name string, title string, iconUrl string) Action {
 	return Action{Name: name, Title: title, IconUrl: iconUrl}
 }
 

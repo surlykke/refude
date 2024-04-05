@@ -16,7 +16,6 @@ import (
 	"github.com/godbus/dbus/v5/introspect"
 	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/image"
-	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/resourcerepo"
@@ -174,14 +173,11 @@ func Notify(app_name string,
 		}
 	}
 
+	var title = sanitize(summary, []string{}, []string{})
+	body = sanitize(body, allowedTags, allowedEscapes)
+
 	notification := Notification{
-		BaseResource: resource.BaseResource{
-			Path:    fmt.Sprintf("/notification/%d", id),
-			Title:   sanitize(summary, []string{}, []string{}),
-			Comment: sanitize(body, allowedTags, allowedEscapes),
-			IconUrl: link.IconUrl(iconName),
-			Profile: "notification",
-		},
+		BaseResource: resource.MakeBase(fmt.Sprintf("/notification/%d", id), title, body, iconName, "notification", false),
 		NotificationId: id,
 		Sender:         app_name,
 		Created:        UnixTime(time.Now()),

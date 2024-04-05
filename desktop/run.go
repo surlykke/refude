@@ -15,7 +15,6 @@ import (
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/respond"
-	"github.com/surlykke/RefudeServices/lib/slice"
 	"github.com/surlykke/RefudeServices/watch"
 	"github.com/surlykke/RefudeServices/wayland"
 )
@@ -61,7 +60,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 
 	case "/desktop/", "/desktop/index.html":
-		if m, ok := fetchResourceData(resourcePath, term); ok {
+		if m, ok := collectTemplateData(resourcePath, term); ok {
 			if err := mainTemplate.Execute(w, m); err != nil {
 				log.Warn("Error executing mainTemplate:", err)
 			}
@@ -80,9 +79,12 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
 			respond.NotAllowed(w)
 		} else {
-			var restore = r.URL.Query()["restore"]
-			if slice.Contains(restore, "window") {
+			switch requests.GetSingleQueryParameter(r, "restore", "") {
+			case "window":
 				wayland.ActivateRememberedActive()
+				fallthrough
+			case "tab":
+				watch.Publish("restoreTab", "")
 			}
 			watch.Publish("hideDesktop", "")
 			respond.Accepted(w)

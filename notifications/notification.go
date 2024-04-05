@@ -10,12 +10,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/surlykke/RefudeServices/lib/link"
-	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
-	"github.com/surlykke/RefudeServices/lib/searchutils"
 )
 
 type Urgency uint8
@@ -46,23 +43,6 @@ type Notification struct {
 	Hints          map[string]interface{}
 	iconName       string
 	IconSize       uint32 `json:",omitempty"`
-}
-
-func (n *Notification) Links(searchTerm string) link.List {
-	var l = make(link.List, 0, 5)
-	if actionDesc, ok := n.NActions["default"]; ok && searchutils.Match(searchTerm, actionDesc) >= 0 {
-		l = append(l, link.Make(n.Path + "?action=default", actionDesc, "", relation.Action))
-	}
-	for actionId, actionDesc := range n.NActions {
-		if actionId != "default"  && searchutils.Match(searchTerm, actionDesc) >= 0 {
-			l = append(l, link.Make(n.Path + "?action=" + actionId, actionDesc, "", relation.Action))
-		}
-	}
-	if searchutils.Match(searchTerm, "Dismiss") >= 0 {
-		l = append(l, link.Make(n.Path, "Dismiss", "", relation.Delete))
-	}
-	
-	return l
 }
 
 func (n *Notification) RelevantForSearch(term string) bool {

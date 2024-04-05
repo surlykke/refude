@@ -8,12 +8,15 @@ package applications
 import (
 	"encoding/xml"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/log"
+	"github.com/surlykke/RefudeServices/lib/relation"
+	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/resourcerepo"
 	"github.com/surlykke/RefudeServices/lib/slice"
 	"github.com/surlykke/RefudeServices/lib/xdg"
@@ -32,7 +35,9 @@ func Collect() {
 		}
 	}
 	// ----
+	// Keyed by apps DeskoptId, ie. 'firefox.desktop' not '/application/firefox.desktop'
 	var apps = make(map[string]*DesktopApplication)
+	// Mimetype id (ie. 'text/html' not '/mimetype/text/html') to list of DesktopIds 
 	var defaultApps = make(map[string][]string)
 
 	for i := len(xdg.DataDirs) - 1; i >= 0; i-- {
@@ -46,6 +51,8 @@ func Collect() {
 	for _, dir := range append(xdg.ConfigDirs, xdg.ConfigHome) {
 		readMimeappsList(dir+"/mimeapps.list", apps, defaultApps)
 	}
+
+	fmt.Println("defaultApps:\n", defaultApps)
 
 	for mimetypeId, defaultAppIds := range defaultApps {
 		if mimetype, ok := mimetypes[mimetypeId]; ok {
@@ -62,6 +69,7 @@ func Collect() {
 
 	resourcerepo.ReplacePrefixWithMap("/application/", apps)
 	resourcerepo.ReplacePrefixWithMap("/mimetype/", mimetypes)
+	notifyListeners()
 }
 
 func aliasTypes(mt *Mimetype) []*Mimetype {
@@ -179,7 +187,7 @@ func CollectMimeTypes() map[string]*Mimetype {
 				mimeType.GenericIcon = tmp.Type[:slashPos] + "-x-generic"
 			}
 
-			res[mimeType.Path] = mimeType
+			res[mimeType.Id] = mimeType
 		}
 	}
 
@@ -225,7 +233,7 @@ func collectApplications(appdir string, apps map[string]*DesktopApplication) {
 		}
 		app.Keywords = append(app.Keywords, executableName)
 
-		apps[app.Path] = app
+		apps[app.DesktopId] = app
 
 		return nil
 	}
@@ -286,27 +294,23 @@ func readDesktopFile(path string, id string) (*DesktopApplication, error) {
 	} else if len(iniFile) == 0 || iniFile[0].Name != "Desktop Entry" {
 		return nil, errors.New("file must start with '[Desktop Entry]'")
 	} else {
-		var da = DesktopApplication{ DesktopId: id}
-		da.Path = "/application/" + id 
-		da.Profile = "application"
-		da.DesktopActions = []DesktopAction{}
-		var actionNames = []string{}
 		group := iniFile[0]
+		var da = DesktopApplication{
+			BaseResource: resource.MakeBase("/application/" + id, group.Entries["Name"], group.Entries["Comment"], group.Entries["Icon"], "application", false), 
+			DesktopId: id,
+		}	
+
+		if da.Title  == "" {
+			return nil, errors.New("desktop file invalid, no 'Name' given")
+		}
+
 
 		if da.Type = group.Entries["Type"]; da.Type == "" {
 			return nil, errors.New("desktop file invalid, no 'Type' given")
 		}
 		da.Version = group.Entries["Version"]
-		if da.Title = group.Entries["Name"]; da.Title == "" {
-			return nil, errors.New("desktop file invalid, no 'Name' given")
-		}
-
 		da.GenericName = group.Entries["GenericName"]
-
 		da.NoDisplay = group.Entries["NoDisplay"] == "true"
-		da.Comment = group.Entries["Comment"]
-		da.IconUrl = link.IconUrl(group.Entries["Icon"])
-
 		da.Hidden = group.Entries["Hidden"] == "true"
 		da.OnlyShowIn = slice.Split(group.Entries["OnlyShowIn"], ";")
 		da.NotShowIn = slice.Split(group.Entries["NotShowIn"], ";")
@@ -315,7 +319,6 @@ func readDesktopFile(path string, id string) (*DesktopApplication, error) {
 		da.Exec = group.Entries["Exec"]
 		da.WorkingDir = group.Entries["Path"]
 		da.Terminal = group.Entries["Terminal"] == "true"
-		actionNames = slice.Split(group.Entries["Actions"], ";")
 		da.Categories = slice.Split(group.Entries["Categories"], ";")
 		da.Implements = slice.Split(group.Entries["Implements"], ";")
 		da.Keywords = slice.Split(group.Entries["Keywords"], ";")
@@ -325,6 +328,9 @@ func readDesktopFile(path string, id string) (*DesktopApplication, error) {
 		da.Mimetypes = slice.Split(group.Entries["MimeType"], ";")
 		da.DesktopFile = path
 
+		da.DesktopActions = []DesktopAction{}
+		var actionNames = slice.Split(group.Entries["Actions"], ";")
+		
 		for _, actionGroup := range iniFile[1:] {
 			if !strings.HasPrefix(actionGroup.Name, "Desktop Action ") {
 				log.Warn(path, ", ", "Unknown group type: ", actionGroup.Name, " - ignoring\n")
@@ -342,6 +348,7 @@ func readDesktopFile(path string, id string) (*DesktopApplication, error) {
 					Exec: actionGroup.Entries["Exec"],
 					IconUrl: link.IconUrl(actionGroup.Entries["icon"]),
 				})
+				da.AddLink(link.Link{Href: da.Path + "?action=" + currentAction, Title: name, Relation: relation.Action}) 
 			}
 		}
 

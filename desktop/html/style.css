@@ -4,8 +4,13 @@ html, body {
     color:  darkgray;
 }
 
+.resourceName {
+    padding-left: 12px;
+    font-size: 1.6em;
+}
 
-.searchRow p {
+.searchRow p:last-child {
+    min-height: 1.2em;
     width: 12em;
     font-size: 1.2em;
     border-bottom: solid gray 1px;
@@ -14,34 +19,32 @@ html, body {
 }
 
 
-.searchResult {
+.selectable {
     padding-bottom: 20px;
 }
 
-.searchResult.active {
+.selectable.selected {
     font-size: 1.1em;
-    /*color: #fefefe; */
-    /*color:#8A865D;*/
     color:   beige;
 }
-.searchResult.active td:last-child p {
+.selectable.selected td:last-child p {
     border-left: solid darkgray 1px;
     padding-left: 8px;
 }
 
-.searchResult td:first-child {
+.selectable td:first-child {
     vertical-align: top;
     padding: 6px 6px 0 6px;
 }
 
-.searchResult td {
+.selectable td {
     padding-bottom: 8px;
 }
 
-.searchResult p:first-child {
+.selectable p:first-child {
     font-size: 1.2em;
 }
 
-.searchResult p {
+.selectable p {
     margin: 0;
 }

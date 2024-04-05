@@ -20,10 +20,10 @@ import (
 
 type IconTheme struct {
 	resource.BaseResource
+	Id       string
 	Inherits []string
 	Dirs     []IconDir
 }
-
 
 type IconDir struct {
 	Path    string
@@ -34,11 +34,11 @@ type IconDir struct {
 
 func readThemes() map[string]*IconTheme {
 	var themeMap = make(map[string]*IconTheme)
-/*
-var id string = func (this *IconTheme) Id() string {
-	return this.GetPath()[len("/icontheme/"):]
-}
-*/
+	/*
+	   var id string = func (this *IconTheme) Id() string {
+	   	return this.GetPath()[len("/icontheme/"):]
+	   }
+	*/
 
 	for _, basedir := range basedirs {
 		if indexFilePaths, err := filepath.Glob(basedir + "/*/index.theme"); err != nil {
@@ -47,8 +47,8 @@ var id string = func (this *IconTheme) Id() string {
 			for _, indexFilePath := range indexFilePaths {
 				if theme, ok := readTheme(indexFilePath); !ok {
 					log.Warn("Could not read", indexFilePath)
-				} else if _, ok := themeMap[theme.Path]; !ok {
-					themeMap[theme.Path] = theme
+				} else if _, ok := themeMap[theme.Id]; !ok {
+					themeMap[theme.Id] = theme
 				}
 			}
 		}
@@ -71,7 +71,7 @@ func readTheme(indexThemeFilePath string) (*IconTheme, bool) {
 	}
 
 	if len(iniFile) < 1 || iniFile[0].Name != "Icon Theme" {
-		log.Warn("Error")	
+		log.Warn("Error")
 		//log.Warn("Error reading %s , expected 'Icon Theme' at start", indexThemeFilePath)
 		return nil, false
 	}
@@ -79,7 +79,8 @@ func readTheme(indexThemeFilePath string) (*IconTheme, bool) {
 	themeGroup := iniFile[0]
 
 	theme := IconTheme{}
-	theme.Path = "/icontheme/"  + themeId
+	theme.Path = "/icontheme/" + themeId
+	theme.Id = themeId
 	theme.Title = themeGroup.Entries["Name"]
 	theme.Comment = themeGroup.Entries["Comment"]
 	theme.Inherits = slice.Split(themeGroup.Entries["Inherits"], ",")

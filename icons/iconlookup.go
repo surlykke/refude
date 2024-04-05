@@ -49,8 +49,8 @@ func FindIconPath(name string, size uint32) string {
 
 func locateIcon(iconName string, size uint32) string {
 	var path = ""
-	for _, themePath := range themeSearchList {
-		if theme, ok := resourcerepo.GetTyped[*IconTheme](themePath); ok {
+	for _, themeId := range themeSearchList {
+		if theme, ok := resourcerepo.GetTyped[*IconTheme]("/icontheme/" + themeId); ok {
 			if path = locateIconInTheme(iconName, size, theme); path != "" {
 				break
 			}

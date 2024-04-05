@@ -5,7 +5,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
@@ -18,14 +17,14 @@ var repo = make(map[string]resource.Resource)
 func Put(res resource.Resource) {
 	lock.Lock()
 	defer lock.Unlock()
-	repo[res.GetPath()] = res
+	repo[res.Base().Path] = res
 }
 
 func Update(res resource.Resource) {
 	lock.Lock()
 	defer lock.Unlock()
-	if _, ok := repo[res.GetPath()]; ok {
-		repo[res.GetPath()] = res
+	if _, ok := repo[res.Base().Path]; ok {
+		repo[res.Base().Path] = res
 	}
 }
 
@@ -72,19 +71,26 @@ func GetByPrefix(prefix string) []resource.Resource {
 	return result
 }
 
-func GetTypedAndSortedByPrefix[T resource.Resource](prefix string, reverse bool) []T {
+func GetTypedByPrefix[T resource.Resource](prefix string) []T {
 	var list = make([]T, 0, 20)
 	lock.Lock()
 	defer lock.Unlock()
-	for _, res := range repo {
-		if t, ok := res.(T); ok {
-			list = append(list, t)
+	for path, res := range repo {
+		if strings.HasPrefix(path, prefix) {
+			if t, ok := res.(T); ok {
+				list = append(list, t)
+			}
 		}
 	}
+	return list
+}
+
+func GetTypedAndSortedByPrefix[T resource.Resource](prefix string, reverse bool) []T {
+	var list = GetTypedByPrefix[T](prefix)
 	if reverse {
-		slices.SortFunc(list, func(t1, t2 T) bool { return strings.Compare(t1.GetPath(), t2.GetPath()) > 0})
+		slices.SortFunc(list, func(t1, t2 T) bool { return strings.Compare(t1.Base().Path, t2.Base().Path) > 0})
 	} else { 
-		slices.SortFunc(list, func(t1, t2 T) bool { return strings.Compare(t1.GetPath(), t2.GetPath()) < 0})
+		slices.SortFunc(list, func(t1, t2 T) bool { return strings.Compare(t1.Base().Path, t2.Base().Path) < 0})
 	}
 	return list
 }
@@ -113,10 +119,14 @@ func ReplacePrefixWithList[T resource.Resource](prefix string, newResources []T)
 		}
 	}
 	for _, res := range newResources {
-		repo[res.GetPath()] = res
+		repo[res.Base().Path] = res
 	}
 }
 
+/*
+ * Removes all entries having prefix as prefix of key.
+ * And then adds all members of map 
+ */
 func ReplacePrefixWithMap[T resource.Resource](prefix string, newResources map[string]T) {
 	lock.Lock()
 	defer lock.Unlock()
@@ -126,7 +136,7 @@ func ReplacePrefixWithMap[T resource.Resource](prefix string, newResources map[s
 		}
 	}
 	for _, res := range newResources {
-		repo[res.GetPath()] = res
+		repo[res.Base().Path] = res
 	}
 }
 
@@ -136,20 +146,15 @@ func Remove(path string) {
 	delete(repo, path)
 }		
 
-func Search(term string) link.List {
+func Search(term string) []resource.Resource {
 	var all = GetAll()
-	var links = make(link.List, 0, len(all))
-	for _, res := range all {
-		if res.RelevantForSearch(term) {
-			var title = res.GetTitle()
-			var icon = res.GetIconUrl()
-			var profile = res.GetProfile()
-			if rnk := searchutils.Match(term, title, res.GetKeywords()...); rnk > -1 {
-				links = append(links, link.MakeRanked(res.GetPath(), title, icon, profile, rnk))
-			}
+	var links = make([]resource.Resource, 0, len(all))
+	for _, res :=  range all {
+		if res.RelevantForSearch(term) && searchutils.Match(term, res.Base().Title) >= 0 {
+			links = append(links, res)
 		}
 	}
-	links.SortByRank()
+	// FIXME sort by rank...
 	return links
 }
 
