@@ -20,7 +20,7 @@ func collectTemplateData(resourcePath string, term string) (map[string]any, bool
 			"Title":      res.Base().Title,
 			"Icon":       res.Base().IconUrl,
 			"Term":       term,
-			"Actions":    res.Base().ActionLinks(),
+			"Actions":    res.Base().ActionLinks(term),
 		}
 
 		var resources = make(map[string][]resource.Resource, 9)

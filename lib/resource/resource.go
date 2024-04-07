@@ -12,6 +12,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/respond"
+	"github.com/surlykke/RefudeServices/lib/searchutils"
 )
 
 type Resource interface {
@@ -76,10 +77,10 @@ func (br *BaseResource) RelevantForSearch(term string) bool {
 	return false
 }
 
-func (br *BaseResource) ActionLinks() []link.Link {
+func (br *BaseResource) ActionLinks(searchTerm string) []link.Link {
 	var filtered = make([]link.Link, 0, len(br.Links))
 	for _, lnk := range br.Links {
-		if lnk.Relation == relation.Action || lnk.Relation == relation.Delete {
+		if (lnk.Relation == relation.Action || lnk.Relation == relation.Delete) && searchutils.Match(searchTerm, lnk.Title) >= 0 {
 			filtered = append(filtered, lnk)
 		}
 	}
