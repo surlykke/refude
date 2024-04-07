@@ -9,6 +9,10 @@ html, body {
     font-size: 1.6em;
 }
 
+.searchRow td:first-child {
+    min-width: 30px;
+}
+
 .searchRow p:last-child {
     min-height: 1.2em;
     width: 12em;

@@ -25,6 +25,14 @@
 			</td>
 		</tr>
 		{{with $data := .}}
+		{{if .Searchable}}
+		<tr class="searchRow">
+			<td>&#x1F50E;</td>
+			<td>
+				<p>{{.Term}}</p>
+			</td>
+		</tr>
+		{{end}}
 		{{range .Actions}}
 		<tr class="selectable" data-href="{{.Href}}" data-relation="{{.Relation}}">
 			<td>
@@ -34,14 +42,6 @@
 			</td>
 			<td>
 				<p>{{.Title}}</p>
-			</td>
-		</tr>
-		{{end}}
-		{{if .Searchable}}
-		<tr class="searchRow">
-			<td>&#x1F50E;</td>
-			<td>
-				<p>{{.Term}}</p>
 			</td>
 		</tr>
 		{{end}}

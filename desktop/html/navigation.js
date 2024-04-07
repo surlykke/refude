@@ -63,11 +63,11 @@ let method = tr => {
     let rel = tr.dataset.relation || ""
     let prof = tr.dataset.profile
     return rel === "org.refude.delete" ? "delete" : 
-           rel === "org.refude.action" || ["window", "browsertab", "application", "notification"].includes(prof) ? "post" :
+           rel === "org.refude.action" || ["window", "browsertab", "application", "notification", "file"].includes(prof) ? "post" :
            "none"
 }
 
 let canDelete = tr => ["window" /*TODO*/].includes(tr.dataset.profile)
 let canGet = tr => tr.dataset.relation === "self"
 
-selectables()[0]?.classList.add('selected')
+
