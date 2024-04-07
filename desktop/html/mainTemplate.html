@@ -13,7 +13,7 @@
 </head>
 
 <body>
-	<table>
+	<table id="table" data-prev="{{.Prev}}" data-next="{{.Next}}">
 		<tr class="resourceRow">
 			<td>
 				{{if .Icon }}
@@ -24,7 +24,6 @@
 				<p class="resourceName">{{.Title }}</p>
 			</td>
 		</tr>
-		{{with $data := .}}
 		{{if .Searchable}}
 		<tr class="searchRow">
 			<td>&#x1F50E;</td>
@@ -33,8 +32,16 @@
 			</td>
 		</tr>
 		{{end}}
-		{{range .Actions}}
-		<tr class="selectable" data-href="{{.Href}}" data-relation="{{.Relation}}">
+		{{range .Rows}}
+		{{if ne "" .Heading}}
+		<tr class="heading">
+			<td/>	
+			<td>
+				<p>{{.Heading}}</p>
+			</td>
+		</tr>	
+		{{end}}
+		<tr class={{.Class}} data-href="{{.Href}}" data-relation="{{.Relation}}" data-profile="{{.Profile}}">
 			<td>
 				{{if .IconUrl}}
 				<img src="{{.IconUrl}}" height="20" width="20">
@@ -45,28 +52,6 @@
 			</td>
 		</tr>
 		{{end}}
-		{{range $index, $heading := .Headings}}
-		<tr class="heading">
-			<td/>	
-			<td>
-				<p>{{$heading}}</p>
-			</td>
-		</tr>	
-		{{range index $data.Resources $heading}}	
-		<tr class="selectable"  data-href="{{.Path}}" data-relation="self" data-profile="{{.Profile}}">
-			<td>
-				{{if .IconUrl}}
-				<img class="icon" src="{{.IconUrl}}" height="20" width="20">
-				{{end}}
-			</td>
-			<td>
-				<p class="title">{{.Title}}</p>
-			</td>
-		</tr>
-		{{end}}
-		{{end}}
-		{{end}}
 	</table>
 </body>
-<script type="application/javascript">selectables()[0]?.classList.add('selected')</script>
 </html>
