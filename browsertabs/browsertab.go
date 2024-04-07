@@ -22,7 +22,7 @@ func (this *Tab) Id() string {
 }
 
 func (this *Tab) RelevantForSearch(searchTerm string) bool {
-	return true
+	return this.Title != "Refude Desktop"
 }
 
 func (this *Tab) DoPost(w http.ResponseWriter, r *http.Request) {
