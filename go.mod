@@ -9,9 +9,9 @@ require (
 	github.com/r3labs/sse/v2 v2.10.0
 	github.com/rakyll/magicmime v0.1.0
 	golang.org/x/exp v0.0.0-20220428152302-39d4317da171
-	golang.org/x/net v0.17.0
+	golang.org/x/net v0.23.0
 	gopkg.in/cenkalti/backoff.v1 v1.1.0
 	gopkg.in/yaml.v2 v2.4.0
 )
 
-require golang.org/x/sys v0.13.0 // indirect
+require golang.org/x/sys v0.18.0 // indirect
