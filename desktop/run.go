@@ -152,7 +152,6 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			case "tab":
 				watch.Publish("restoreTab", "")
 			}
-			watch.Publish("hideDesktop", "")
 			respond.Accepted(w)
 		}
 	case "mainTemplate.html":

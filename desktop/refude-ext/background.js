@@ -28,8 +28,7 @@ const watch = () => {
     let evtSource = new EventSource("http://localhost:7938/watch")
     evtSource.onopen = reportTabs
     evtSource.addEventListener("showDesktop", showDesktop)
-    evtSource.addEventListener("hideDesktop", hideDesktop)
-     evtSource.addEventListener("restoreTab", restoreTab)
+    evtSource.addEventListener("restoreTab", restoreTab)
     evtSource.addEventListener("focusTab", ({data}) => {
         let tabId = parseInt(data)
         tabId && chrome.tabs.update(tabId, { 'active': true }, (tab) => { }) 
@@ -53,7 +52,7 @@ let showDesktop = () => {
             chrome.tabs.query({ active: true }, ([tab]) => {
                 rememberedTab = tab
                 chrome.tabs.query(
-                    { url: "http://localhost:7938/desktop/" },
+                    { url: "http://localhost:7938/desktop/*" },
                     tabs => {
                         if (tabs.length == 0) {
                             chrome.tabs.create({ active: true, index: 0, url: "http://localhost:7938/desktop/" })
@@ -73,20 +72,6 @@ let showDesktop = () => {
 let restoreTab = () => {
     rememberedTab && chrome.tabs.update(rememberedTab.id, { active: true })
 }
-
-let hideLauncher = () => {
-    chrome.tabs.query(
-        { url: "http://localhost:7938/refude/html/launcher/" }, tabs => chrome.tabs.remove(tabs.map(t => t.id))
-    )
-}
-
-let hideDesktop = () => {
-    console.log("hideDesktop")
-    chrome.tabs.query(
-        { url: "http://localhost:7938/desktop/*" }, tabs => chrome.tabs.remove(tabs.map(t => t.id))
-    )
-}
-
 
 
 /*
