@@ -11,11 +11,14 @@ import (
 	"io/fs"
 	"net/http"
 	"os"
+	"time"
 
+	"github.com/surlykke/RefudeServices/browsertabs"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/respond"
+	"github.com/surlykke/RefudeServices/notifications"
 	"github.com/surlykke/RefudeServices/search"
 	"github.com/surlykke/RefudeServices/watch"
 	"github.com/surlykke/RefudeServices/wayland"
@@ -34,18 +37,18 @@ var profileHeadingMap = map[string]string{
 //go:embed html
 var sources embed.FS
 
-var mainTemplate *template.Template
+var bodyTemplate *template.Template
 var StaticServer http.Handler
 
 func init() {
 	var bytes []byte
 	var err error
 
-	if bytes, err = sources.ReadFile("html/mainTemplate.html"); err != nil {
+	if bytes, err = sources.ReadFile("html/bodyTemplate.html"); err != nil {
 		log.Panic(err)
 	}
 
-	mainTemplate = template.Must(template.New("mainTemplate").Funcs(template.FuncMap{"trClass": trClass}).Parse(string(bytes)))
+	bodyTemplate = template.Must(template.New("bodyTemplate").Funcs(template.FuncMap{"trClass": trClass}).Parse(string(bytes)))
 }
 
 type trRow struct {
@@ -76,63 +79,66 @@ func init() {
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch r.URL.Path {
-	case "/desktop/", "/desktop/index.html":
-		var resourcePath = requests.GetSingleQueryParameter(r, "resource", "/start")
-
-		if res := search.FetchResource(resourcePath); res != nil {
-			var (
-				term         = requests.GetSingleQueryParameter(r, "search", "")
-				selected, _  = requests.GetPosInt(r, "selected")
-				actions      = res.Base().ActionLinks(term)
-				subresources = res.Search(term)
-				trRows       = make([]trRow, 0, len(actions)+len(subresources))
-			)
-
-			for _, a := range actions {
-				trRows = append(trRows, trRow{Heading: "Action", IconUrl: a.IconUrl, Title: a.Title, Href: a.Href, Relation: a.Relation, Class: "selectable"})
-			}
-			for _, sr := range subresources {
-				var row = trRow{IconUrl: sr.Base().IconUrl, Title: sr.Base().Title, Href: sr.Base().Path, Relation: relation.Self, Profile: sr.Base().Profile, Class: "selectable"}
-				if heading, ok := profileHeadingMap[sr.Base().Profile]; ok {
-					row.Heading = heading
-				} else {
-					row.Heading = "Other"
-				}
-				trRows = append(trRows, row)
-			}
-			slices.SortFunc(trRows, func(r1, r2 trRow) bool { return headingOrder[r1.Heading] < headingOrder[r2.Heading] })
-
-			if len(trRows) > 0 {
-				var lastHeading string
-
-				for i := 0; i < len(trRows); i++ {
-					if trRows[i].Heading != lastHeading {
-						lastHeading = trRows[i].Heading
-					} else {
-						trRows[i].Heading = ""
-					}
-				}
-				if int(selected) >= len(trRows) {
-					selected = 0
-				}
-				trRows[selected].Class = trRows[selected].Class + " selected"
-			}
-			var m = map[string]any{
-				"Searchable": res.Base().Searchable(),
-				"Title":      res.Base().Title,
-				"Icon":       res.Base().IconUrl,
-				"Term":       term,
-				"Rows":       trRows,
-			}
-
-			if err := mainTemplate.Execute(w, m); err != nil {
-				log.Warn("Error executing mainTemplate:", err)
-			}
-
+	case "/desktop/body":
+		if r.Method != "GET" {
+			respond.NotAllowed(w)
 		} else {
-			respond.NotFound(w)
-		}
+			var resourcePath = requests.GetSingleQueryParameter(r, "resource", "/start")
+			if res := search.FetchResource(resourcePath); res != nil {
+				var (
+					term         = requests.GetSingleQueryParameter(r, "search", "")
+					selected, _  = requests.GetPosInt(r, "selected")
+					actions      = res.Base().ActionLinks(term)
+					subresources = res.Search(term)
+					trRows       = make([]trRow, 0, len(actions)+len(subresources))
+				)
 
+				for _, a := range actions {
+					trRows = append(trRows, trRow{Heading: "Action", IconUrl: a.IconUrl, Title: a.Title, Href: a.Href, Relation: a.Relation, Class: "selectable"})
+				}
+				for _, sr := range subresources {
+					var row = trRow{IconUrl: sr.Base().IconUrl, Title: sr.Base().Title, Href: sr.Base().Path, Relation: relation.Self, Profile: sr.Base().Profile, Class: "selectable"}
+					if heading, ok := profileHeadingMap[sr.Base().Profile]; ok {
+						row.Heading = heading
+					} else {
+						row.Heading = "Other"
+					}
+					trRows = append(trRows, row)
+				}
+				slices.SortFunc(trRows, func(r1, r2 trRow) bool { return headingOrder[r1.Heading] < headingOrder[r2.Heading] })
+
+				if len(trRows) > 0 {
+					var lastHeading string
+
+					for i := 0; i < len(trRows); i++ {
+						if trRows[i].Heading != lastHeading {
+							lastHeading = trRows[i].Heading
+						} else {
+							trRows[i].Heading = ""
+						}
+					}
+					if int(selected) >= len(trRows) {
+						selected = 0
+					}
+					trRows[selected].Class = trRows[selected].Class + " selected"
+				}
+				var m = map[string]any{
+					"Searchable": res.Base().Searchable(),
+					"Title":      res.Base().Title,
+					"Icon":       res.Base().IconUrl,
+					"Term":       term,
+					"Rows":       trRows,
+					"Updated":    time.Now().UnixMicro(),
+				}
+
+				if err := bodyTemplate.Execute(w, m); err != nil {
+					log.Warn("Error executing bodyTemplate:", err)
+				}
+
+			} else {
+				respond.NotFound(w)
+			}
+		}
 	case "/desktop/show":
 		if r.Method != "POST" {
 			respond.NotAllowed(w)
@@ -140,6 +146,19 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			wayland.RememberActive()
 			watch.Publish("showDesktop", "")
 			respond.Accepted(w)
+		}
+	case "/desktop/lastupdate": 
+		if r.Method == "GET" {
+			updated := browsertabs.Updated.Load()
+			if tmp := wayland.Updated.Load(); tmp > updated {
+				updated = tmp
+			}
+			if tmp := notifications.Updated.Load(); tmp > updated {
+				updated = tmp
+			}
+			respond.AsJson(w, updated)
+		} else {
+			respond.NotAllowed(w)
 		}
 	case "/desktop/hide":
 		if r.Method != "POST" {
@@ -154,7 +173,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 			respond.Accepted(w)
 		}
-	case "mainTemplate.html":
+	case "bodyTemplate.html":
 		respond.NotFound(w)
 	default:
 		StaticServer.ServeHTTP(w, r)
@@ -168,3 +187,4 @@ func trClass(selected string, pathOrHref string) string {
 		return "selectable"
 	}
 }
+

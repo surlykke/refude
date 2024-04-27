@@ -8,6 +8,7 @@ package notifications
 import (
 	"net/http"
 	"strconv"
+	"sync/atomic"
 	"time"
 
 	"github.com/surlykke/RefudeServices/lib/requests"
@@ -67,4 +68,7 @@ func (n *Notification) DoDelete(w http.ResponseWriter, r *http.Request) {
 	removeNotification(n.NotificationId, Dismissed)
 	respond.Accepted(w)
 }
+
+
+var Updated atomic.Int64 
 

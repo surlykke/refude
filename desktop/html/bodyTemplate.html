@@ -1,0 +1,36 @@
+	<table id="table" data-updated="{{.Updated}}">
+		<tr class="resourceRow">
+			<td>
+				{{if .Icon }}
+				<img src="{{.Icon }}" height="32" width="32">
+				{{end}}
+			</td>
+			<td>
+				<span>{{.Title }}</span>
+				{{if .Searchable}}
+				<span>&#x1F50E;</span>
+				<span>{{.Term}}</span>
+				{{end}}
+			</td>
+		</tr>
+		{{range .Rows}}
+		{{if ne "" .Heading}}
+		<tr class="heading">
+			<td/>	
+			<td>
+				<p>{{.Heading}}</p>
+			</td>
+		</tr>	
+		{{end}}
+		<tr class={{.Class}} data-href="{{.Href}}" data-relation="{{.Relation}}" data-profile="{{.Profile}}">
+			<td>
+				{{if .IconUrl}}
+				<img src="{{.IconUrl}}" height="20" width="20">
+				{{end}}
+			</td>
+			<td>
+				<p>{{.Title}}</p>
+			</td>
+		</tr>
+		{{end}}
+	</table>

@@ -8,6 +8,7 @@ package resource
 import (
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/relation"
@@ -19,6 +20,7 @@ type Resource interface {
 	Base() *BaseResource
 	Search(searchTerm string) []Resource
 	RelevantForSearch(term string) bool
+	UpdatedSince(t time.Time) bool
 }
 
 type BaseResource struct {
@@ -30,14 +32,6 @@ type BaseResource struct {
 	Links    []link.Link `json:"links"`
 	Keywords []string `json:"-"`
 }
-/*	Links   []link.Link `json:"links"`
-	Title   string      `json:"title"`
-	Comment string      `json:"comment,omitempty"`
-	Icon    string      `json:"icon,omitempty"`
-	Profile string      `json:"profile"`
-	Data    interface{} `json:"data"`
-*/
-
 
 func MakeBase(path, title, comment, iconUrl, profile string) *BaseResource {
 	var br = BaseResource{
@@ -74,6 +68,10 @@ func (this *BaseResource) Search(searchTerm string) []Resource {
 }
 
 func (br *BaseResource) RelevantForSearch(term string) bool {
+	return false
+}
+
+func (br *BaseResource) UpdatedSince(t time.Time) bool {
 	return false
 }
 

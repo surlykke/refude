@@ -148,9 +148,10 @@ type rankedResource struct {
 }
 
 func Search(term string) []resource.Resource {
-	var all = GetAll()
-	var rankedResources = make([]rankedResource, 0, len(all))
-	for _, res := range all {
+	lock.Lock()
+	defer lock.Unlock()
+	var rankedResources = make([]rankedResource, 0, 30)
+	for _, res := range repo {
 		if res.RelevantForSearch(term) {
 			if rank := searchutils.Match(term, res.Base().Title); rank >= 0 {
 				rankedResources = append(rankedResources, rankedResource{rank, res})
@@ -158,7 +159,9 @@ func Search(term string) []resource.Resource {
 		}
 	}
 
-	slices.SortFunc(rankedResources, func(r1, r2 rankedResource) bool { return r1.rank < r2.rank || (r1.rank == r2.rank && r1.res.Base().Path < r2.res.Base().Path) })
+	slices.SortFunc(rankedResources, func(r1, r2 rankedResource) bool {
+		return r1.rank < r2.rank || (r1.rank == r2.rank && r1.res.Base().Path < r2.res.Base().Path)
+	})
 	var resources = make([]resource.Resource, 0, len(rankedResources))
 	for _, rr := range rankedResources {
 		resources = append(resources, rr.res)

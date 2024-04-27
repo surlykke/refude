@@ -60,3 +60,4 @@ type dataHolder[T any] struct {
 	data T
 }
 
+var Desktop = MakePublisher[struct{}]()

@@ -17,7 +17,6 @@ import (
 	"github.com/surlykke/RefudeServices/watch"
 )
 
-var notificationExpireryHints = make(chan struct{})
 
 func Run() {
 	go DoDBus()

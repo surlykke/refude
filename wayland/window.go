@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/surlykke/RefudeServices/applications"
 	"github.com/surlykke/RefudeServices/lib/relation"
@@ -147,3 +148,5 @@ func ActivateRememberedActive() {
 		activate(copy)
 	}
 }
+
+var Updated atomic.Int64

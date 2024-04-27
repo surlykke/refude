@@ -212,6 +212,7 @@ func Notify(app_name string,
 	notification.Expires = UnixTime(time.Now().Add(time.Duration(expire_timeout) * time.Millisecond))
 	resourcerepo.Put(&notification)	
 	calculateFlash()
+	Updated.Store(time.Now().UnixMicro())	
 	return id, nil
 }
 
