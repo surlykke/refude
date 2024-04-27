@@ -11,14 +11,12 @@ import (
 	"io/fs"
 	"net/http"
 	"os"
-	"time"
 
-	"github.com/surlykke/RefudeServices/browsertabs"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/requests"
+	"github.com/surlykke/RefudeServices/lib/resourcerepo"
 	"github.com/surlykke/RefudeServices/lib/respond"
-	"github.com/surlykke/RefudeServices/notifications"
 	"github.com/surlykke/RefudeServices/search"
 	"github.com/surlykke/RefudeServices/watch"
 	"github.com/surlykke/RefudeServices/wayland"
@@ -128,7 +126,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					"Icon":       res.Base().IconUrl,
 					"Term":       term,
 					"Rows":       trRows,
-					"Updated":    time.Now().UnixMicro(),
+					"Hash":       resourcerepo.RepoHash(),
 				}
 
 				if err := bodyTemplate.Execute(w, m); err != nil {
@@ -147,16 +145,9 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			watch.Publish("showDesktop", "")
 			respond.Accepted(w)
 		}
-	case "/desktop/lastupdate": 
+	case "/desktop/hash":
 		if r.Method == "GET" {
-			updated := browsertabs.Updated.Load()
-			if tmp := wayland.Updated.Load(); tmp > updated {
-				updated = tmp
-			}
-			if tmp := notifications.Updated.Load(); tmp > updated {
-				updated = tmp
-			}
-			respond.AsJson(w, updated)
+			respond.AsJson(w, resourcerepo.RepoHash())
 		} else {
 			respond.NotAllowed(w)
 		}
@@ -173,8 +164,10 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 			respond.Accepted(w)
 		}
-	case "bodyTemplate.html":
+	case "/desktop/bodyTemplate.html":
 		respond.NotFound(w)
+	case "/desktop/repohash":
+		respond.AsJson(w, resourcerepo.RepoHash())
 	default:
 		StaticServer.ServeHTTP(w, r)
 	}
@@ -187,4 +180,3 @@ func trClass(selected string, pathOrHref string) string {
 		return "selectable"
 	}
 }
-

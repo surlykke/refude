@@ -23,7 +23,6 @@ void show_toplevel(uintptr_t);
 import "C"
 import (
 	"fmt"
-	"time"
 	"unsafe"
 
 	"github.com/surlykke/RefudeServices/lib/resourcerepo"
@@ -50,7 +49,6 @@ func handle_title(handle C.uintptr_t, c_title *C.char) {
 	var ww = getCopy(uint64(handle))
 	ww.Title = C.GoString(c_title)
 	resourcerepo.Put(ww)
-	Updated.Store(time.Now().UnixMicro())
 }
 
 //export handle_app_id
@@ -58,7 +56,6 @@ func handle_app_id(handle C.uintptr_t, c_app_id *C.char) {
 	var ww = getCopy(uint64(handle))
 	ww.AppId = C.GoString(c_app_id)
 	resourcerepo.Put(ww)
-	Updated.Store(time.Now().UnixMicro())
 }
 
 //export handle_output_enter
@@ -102,7 +99,6 @@ func handle_parent(handle C.uintptr_t, parent C.uintptr_t) {}
 //export handle_closed
 func handle_closed(handle C.uintptr_t) {
 	resourcerepo.Remove(fmt.Sprintf("/window/%d", handle))
-	Updated.Store(time.Now().UnixMicro())
 }
 
 func setupAndRunAsWaylandClient() {

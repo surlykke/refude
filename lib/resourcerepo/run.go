@@ -8,6 +8,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
+	"github.com/surlykke/RefudeServices/lib/stringhash"
 	"golang.org/x/exp/slices"
 )
 
@@ -141,6 +142,17 @@ func Remove(path string) {
 	defer lock.Unlock()
 	delete(repo, path)
 }
+
+func RepoHash() uint64 {
+	var hash uint64 = 0
+	for _, res := range GetAll() {
+		if res.RelevantForSearch("") {
+			hash = hash ^ stringhash.FNV1a(res.Base().Title, res.Base().IconUrl) 
+		}
+	}
+	return hash
+}
+
 
 type rankedResource struct {
 	rank int

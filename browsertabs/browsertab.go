@@ -6,14 +6,11 @@ import (
 	"io"
 	"net/http"
 	"strings"
-	"sync/atomic"
-	"time"
 
 	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/resourcerepo"
 	"github.com/surlykke/RefudeServices/lib/respond"
-	"github.com/surlykke/RefudeServices/lib/stringhash"
 	"github.com/surlykke/RefudeServices/watch"
 )
 
@@ -54,7 +51,6 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					tabs = append(tabs, tab) 
 				}					
 				resourcerepo.ReplacePrefixWithList("/tab/", tabs)
-				checkForUpdate(tabs) 
 				respond.Ok(w)
 			}
 		}
@@ -62,19 +58,4 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		respond.NotAllowed(w)
 	}
 }
-
-var Updated atomic.Int64
-
-var hash  atomic.Uint64
-
-func checkForUpdate(tabs []*Tab) {
-	var newHash uint64 = 0
-	for _, tab := range tabs {
-		newHash = newHash ^ stringhash.FNV1a(tab.Base().Title, tab.Base().IconUrl)
-	}
-	if hash.Swap(newHash) != newHash {
-		Updated.Store(time.Now().UnixMicro())
-	}
-}
-
 

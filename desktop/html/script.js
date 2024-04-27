@@ -1,9 +1,9 @@
 const selectables = document.getElementsByClassName('selectable')
 const selected = document.getElementsByClassName('selected')
 
-let state = {res: "/start", term: "",  pos: 0}
+let state = { res: "/start", term: "", pos: 0 }
 let history = []
-let updated 
+let hash = ""
 
 
 let load = () => {
@@ -13,7 +13,7 @@ let load = () => {
         .then(text => {
             document.body.innerHTML = text
             highlightSelected()
-            updated = parseInt(document.getElementById('table')?.dataset?.updated)
+            hash = document.getElementById('table')?.dataset?.hash
         })
 }
 
@@ -24,13 +24,13 @@ let gotoResource = newResource => {
     console.log("gotoResource:", newResource)
     if (newResource) {
         history.push(state)
-        state = {res: newResource, term: '', pos: 0}
+        state = { res: newResource, term: '', pos: 0 }
         load()
     }
 }
 
 let goBack = () => {
-    state = history.pop() || {res: '/start', term: "", pos: 0}
+    state = history.pop() || { res: '/start', term: "", pos: 0 }
     load()
 }
 
@@ -44,7 +44,7 @@ let setTerm = newTerm => {
 let selectedDataset = () => selected.item(0)?.dataset
 
 let activateSelected = () => {
-    if (!selectedDataset()) return 
+    if (!selectedDataset()) return
     let method = selectedDataset().relation === "org.refude.delete" ? "delete" : "post"
     let profile = selectedDataset().profile
     fetch(selectedDataset().href, { method: method }).then(resp => resp.ok && dismiss(profile))
@@ -92,10 +92,10 @@ let dismiss = actionProfile => {
 document.addEventListener("keydown", onKeyDown)
 load()
 
-let watch = () => {
-    if (document.visibilityState === 'hidden') return
-    fetch("/desktop/lastupdate")
+let check = () => {
+    if (document.visibilityState === 'visible') fetch("/desktop/hash")
         .then(r => r.ok && r.json())
-        .then(upd => upd > updated && load())
+        .then(newHash => hash !== newHash && load())
 }
-setInterval(watch, 300)
+setInterval(check, 500)
+
