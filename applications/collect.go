@@ -205,19 +205,19 @@ func CollectMimeTypes() map[string]*Mimetype {
 	return res
 }
 
-func collectApplications(appdir string, apps map[string]*DesktopApplication) {
-	var visitor = func(path string, info os.FileInfo, err error) error {
+func collectApplications(applicationsDir string, apps map[string]*DesktopApplication) {
+	var visitor = func(filePath string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
-		if info.IsDir() || !strings.HasSuffix(path, ".desktop") {
+		if info.IsDir() || !strings.HasSuffix(filePath, ".desktop") {
 			return nil
 		}
 
-		var id = strings.Replace(path[len(appdir) + 1:], "/", "-", -1)
-		app, err := readDesktopFile(path, id)
+		var id = strings.Replace(filePath[len(applicationsDir) + 1:], "/", "-", -1)
+		app, err := readDesktopFile(filePath, id)
 		if err != nil {
-			log.Warn("Error processing ", path, ":\n\t", err)
+			log.Warn("Error processing ", filePath, ":\n\t", err)
 			return nil
 		}
 
@@ -238,8 +238,8 @@ func collectApplications(appdir string, apps map[string]*DesktopApplication) {
 		return nil
 	}
 
-	if xdg.DirOrFileExists(appdir) {
-		_ = filepath.Walk(appdir, visitor)
+	if xdg.DirOrFileExists(applicationsDir) {
+		_ = filepath.Walk(applicationsDir, visitor)
 	}
 }
 
@@ -288,8 +288,8 @@ func readMimeappsList(path string, apps map[string]*DesktopApplication, defaultA
 
 }
 
-func readDesktopFile(path string, id string) (*DesktopApplication, error) {
-	if iniFile, err := xdg.ReadIniFile(path); err != nil {
+func readDesktopFile(filePath string, id string) (*DesktopApplication, error) {
+	if iniFile, err := xdg.ReadIniFile(filePath); err != nil {
 		return nil, err
 	} else if len(iniFile) == 0 || iniFile[0].Name != "Desktop Entry" {
 		return nil, errors.New("file must start with '[Desktop Entry]'")
@@ -328,7 +328,7 @@ func readDesktopFile(path string, id string) (*DesktopApplication, error) {
 		da.StartupWmClass = group.Entries["StartupWMClass"]
 		da.Url = group.Entries["URL"]
 		da.Mimetypes = slice.Split(group.Entries["MimeType"], ";")
-		da.DesktopFile = path
+		da.DesktopFile = filePath 
 
 		da.AddLink(da.Path, "Launch", da.IconUrl, relation.Action)
 		da.DesktopActions = []DesktopAction{}

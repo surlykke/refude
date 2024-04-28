@@ -11,26 +11,19 @@ import (
 	"io/fs"
 	"net/http"
 	"os"
+	"strconv"
 
+	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/requests"
+	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/resourcerepo"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/search"
 	"github.com/surlykke/RefudeServices/watch"
 	"github.com/surlykke/RefudeServices/wayland"
-	"golang.org/x/exp/slices"
 )
-
-// Constants
-var headingOrder = map[string]int{"Actions": 0, "Notifications": 1, "Windows": 2, "Tabs": 3, "Applications": 4, "Files": 5, "Other": 6}
-
-var profileHeadingMap = map[string]string{
-	"notification": "Notifications", "window": "Windows", "browsertab": "Tabs", "application": "Applications", "file": "Files",
-}
-
-//
 
 //go:embed html
 var sources embed.FS
@@ -46,18 +39,36 @@ func init() {
 		log.Panic(err)
 	}
 
-	bodyTemplate = template.Must(template.New("bodyTemplate").Funcs(template.FuncMap{"trClass": trClass}).Parse(string(bytes)))
+	bodyTemplate = template.Must(template.New("bodyTemplate").Parse(string(bytes)))
 }
 
-type trRow struct {
-	Heading  string
+type row struct {
+//	Heading  string
 	Class    string
 	IconUrl  string
 	Title    string
+	Comment  string
 	Href     string
 	Relation relation.Relation
 	Profile  string
 }
+
+func headingRow(heading string) row {
+	return row{Title: heading, Class: "heading"}
+}
+
+func actionRow(action link.Link) row {
+	return row{IconUrl: action.IconUrl, Title: action.Title, Href: action.Href, Relation: action.Relation, Class: "selectable"}
+}
+
+func resourceRow(sr resource.Resource) row {
+	var comment string 
+	if sr.GetComment() != "" {
+		comment = sr.GetProfile() + ": " + sr.GetComment()
+	}
+	return row{IconUrl: sr.GetIconUrl(), Title: sr.GetTitle(), Comment: comment, Href: sr.GetPath(), Relation: relation.Self, Profile: sr.GetProfile(), Class: "selectable"}
+}
+
 
 func init() {
 	var tmp http.Handler
@@ -85,48 +96,31 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			if res := search.FetchResource(resourcePath); res != nil {
 				var (
 					term         = requests.GetSingleQueryParameter(r, "search", "")
-					selected, _  = requests.GetPosInt(r, "selected")
-					actions      = res.Base().ActionLinks(term)
+					actions      = res.ActionLinks(term)
 					subresources = res.Search(term)
-					trRows       = make([]trRow, 0, len(actions)+len(subresources))
+					rows       = make([]row, 0, len(actions)+len(subresources) + 2)
 				)
 
+				if (len(actions) > 0) {
+					rows = append(rows, headingRow("Actions"))
+				}
 				for _, a := range actions {
-					trRows = append(trRows, trRow{Heading: "Action", IconUrl: a.IconUrl, Title: a.Title, Href: a.Href, Relation: a.Relation, Class: "selectable"})
+					rows = append(rows, actionRow(a))
+				}
+				if (len(actions) > 0 && len(subresources) > 0) {
+					rows = append(rows, headingRow("Related"))
 				}
 				for _, sr := range subresources {
-					var row = trRow{IconUrl: sr.Base().IconUrl, Title: sr.Base().Title, Href: sr.Base().Path, Relation: relation.Self, Profile: sr.Base().Profile, Class: "selectable"}
-					if heading, ok := profileHeadingMap[sr.Base().Profile]; ok {
-						row.Heading = heading
-					} else {
-						row.Heading = "Other"
-					}
-					trRows = append(trRows, row)
+					rows = append(rows, resourceRow(sr))
 				}
-				slices.SortFunc(trRows, func(r1, r2 trRow) bool { return headingOrder[r1.Heading] < headingOrder[r2.Heading] })
 
-				if len(trRows) > 0 {
-					var lastHeading string
-
-					for i := 0; i < len(trRows); i++ {
-						if trRows[i].Heading != lastHeading {
-							lastHeading = trRows[i].Heading
-						} else {
-							trRows[i].Heading = ""
-						}
-					}
-					if int(selected) >= len(trRows) {
-						selected = 0
-					}
-					trRows[selected].Class = trRows[selected].Class + " selected"
-				}
 				var m = map[string]any{
-					"Searchable": res.Base().Searchable(),
-					"Title":      res.Base().Title,
-					"Icon":       res.Base().IconUrl,
+					"Searchable": res.Searchable(),
+					"Title":      res.GetTitle(),
+					"Icon":       res.GetIconUrl(),
 					"Term":       term,
-					"Rows":       trRows,
-					"Hash":       resourcerepo.RepoHash(),
+					"Rows":       rows,
+					"Hash":       strconv.FormatUint(resourcerepo.RepoHash(), 10), // cf. /desktop/hash below
 				}
 
 				if err := bodyTemplate.Execute(w, m); err != nil {
@@ -147,7 +141,8 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	case "/desktop/hash":
 		if r.Method == "GET" {
-			respond.AsJson(w, resourcerepo.RepoHash())
+			// Go Json cannot handle uint64, so we convert to string
+			respond.AsJson(w, strconv.FormatUint(resourcerepo.RepoHash(), 10))
 		} else {
 			respond.NotAllowed(w)
 		}
@@ -173,10 +168,3 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func trClass(selected string, pathOrHref string) string {
-	if selected == pathOrHref {
-		return "selectable selected"
-	} else {
-		return "selectable"
-	}
-}

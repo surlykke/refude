@@ -17,20 +17,26 @@ import (
 )
 
 type Resource interface {
-	Base() *BaseResource
 	Search(searchTerm string) []Resource
 	RelevantForSearch(term string) bool
-	UpdatedSince(t time.Time) bool
+	Searchable() bool
+	ActionLinks(term string) []link.Link	
+	GetPath() string
+	GetTitle() string
+	GetComment() string
+	GetIconUrl() string
+	GetProfile() string
+
 }
 
 type BaseResource struct {
 	Path     string
-	Title    string `json:"title"`
-	Comment  string `json:"comment,omitempty"`
-	IconUrl  string `json:"icon,omitempty"`
-	Profile  string `json:"profile"`
+	Title    string      `json:"title"`
+	Comment  string      `json:"comment,omitempty"`
+	IconUrl  string      `json:"icon,omitempty"`
+	Profile  string      `json:"profile"`
 	Links    []link.Link `json:"links"`
-	Keywords []string `json:"-"`
+	Keywords []string    `json:"-"`
 }
 
 func MakeBase(path, title, comment, iconUrl, profile string) *BaseResource {
@@ -40,28 +46,24 @@ func MakeBase(path, title, comment, iconUrl, profile string) *BaseResource {
 		Comment: comment,
 		IconUrl: iconUrl,
 		Profile: profile,
-		Links:   []link.Link{{Href:"http://localhost:7938" + path, Relation:relation.Self}},
+		Links:   []link.Link{{Href: "http://localhost:7938" + path, Relation: relation.Self}},
 	}
-	br.AddLink("", "", "", relation.Self)
 	return &br
 }
 
 func (this *BaseResource) AddLink(href, title, iconUrl string, relation relation.Relation) {
-	if href == "" { 
+	if href == "" {
 		href = this.Path
 	} else if strings.HasPrefix(href, "?") {
-		href = this.Path + href 
+		href = this.Path + href
 	}
 	if strings.HasPrefix(href, "/") {
 		href = "http://localhost:7938" + href
 	}
-	this.Links = append(this.Links, link.Link{Href: href, Title: title, IconUrl: iconUrl, Relation: relation}) 
+	this.Links = append(this.Links, link.Link{Href: href, Title: title, IconUrl: iconUrl, Relation: relation})
 }
 
-
-func (this *BaseResource) Base() *BaseResource {
-	return this
-}
+// ------------ Implement Resource --------------------------
 
 func (this *BaseResource) Search(searchTerm string) []Resource {
 	return []Resource{}
@@ -74,6 +76,28 @@ func (br *BaseResource) RelevantForSearch(term string) bool {
 func (br *BaseResource) UpdatedSince(t time.Time) bool {
 	return false
 }
+
+func (br *BaseResource) GetPath() string {
+	return br.Path
+}
+
+func (br *BaseResource) GetTitle() string {
+	return br.Title
+}
+
+func (br *BaseResource) GetComment() string {
+	return br.Comment
+}
+
+func (br *BaseResource) GetIconUrl() string {
+	return br.IconUrl
+}
+
+func (br *BaseResource) GetProfile() string {
+	return br.Profile
+}
+
+// -----------------------------------------------------
 
 func (br *BaseResource) ActionLinks(searchTerm string) []link.Link {
 	var filtered = make([]link.Link, 0, len(br.Links))
@@ -121,4 +145,3 @@ func ServeList(w http.ResponseWriter, r *http.Request, list []Resource) {
 		respond.NotAllowed(w)
 	}
 }
-

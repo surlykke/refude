@@ -109,8 +109,6 @@ func OpenFile(appId, path string) (bool, error) {
 		xdg.RunCmd("xdg-open", path)
 		return true, nil
 	} else if app, ok := resourcerepo.GetTyped[*DesktopApplication]("/application/" + appId); ok {
-		var br = app.Base()
-		fmt.Println(br.Title)
 		return true, app.Run(path)
 	} else {
 		return false, nil

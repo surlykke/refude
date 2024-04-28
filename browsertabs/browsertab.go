@@ -46,7 +46,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			} else {
 				var tabs = make([]*Tab, 0, len(data))
 				for _, d := range data {
-					var tab = &Tab{BaseResource: *resource.MakeBase("/tab/" +   d["id"], d["title"], d["url"], d["favIcon"], "browsertab")}
+					var tab = &Tab{BaseResource: *resource.MakeBase("/tab/" +   d["id"], d["title"], d["url"], d["favIcon"], "tab")}
 					tab.AddLink("", "Focus", tab.IconUrl, relation.Action)
 					tabs = append(tabs, tab) 
 				}					

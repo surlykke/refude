@@ -4,6 +4,9 @@ html, body {
     color:  darkgray;
 }
 
+.resourceRow td{
+    padding-bottom: 1.3em;
+}
 .resourceRow span:first-child {
     padding-left: 12px;
     font-size: 1.6em;
@@ -21,8 +24,13 @@ html, body {
 .selectable {
     padding-bottom: 20px;
 }
-
-.selectable.selected {
+.selectable td:last-child p:last-child {
+    font-size: 0.9em;
+    font-style: italic;
+    padding-top: 6px;
+    margin-bottom: 8px;
+}
+.selectable.selected td:last-child p:first-child{
     font-size: 1.1em;
     color:   beige;
 }

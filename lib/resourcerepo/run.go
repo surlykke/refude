@@ -15,17 +15,18 @@ import (
 var lock sync.Mutex
 var repo = make(map[string]resource.Resource)
 
+
 func Put(res resource.Resource) {
 	lock.Lock()
 	defer lock.Unlock()
-	repo[res.Base().Path] = res
+	repo[res.GetPath()] = res
 }
 
 func Update(res resource.Resource) {
 	lock.Lock()
 	defer lock.Unlock()
-	if _, ok := repo[res.Base().Path]; ok {
-		repo[res.Base().Path] = res
+	if _, ok := repo[res.GetPath()]; ok {
+		repo[res.GetPath()] = res
 	}
 }
 
@@ -86,9 +87,9 @@ func GetTypedByPrefix[T resource.Resource](prefix string) []T {
 func GetTypedAndSortedByPrefix[T resource.Resource](prefix string, reverse bool) []T {
 	var list = GetTypedByPrefix[T](prefix)
 	if reverse {
-		slices.SortFunc(list, func(t1, t2 T) bool { return strings.Compare(t1.Base().Path, t2.Base().Path) > 0 })
+		slices.SortFunc(list, func(t1, t2 T) bool { return strings.Compare(t1.GetPath(), t2.GetPath()) > 0 })
 	} else {
-		slices.SortFunc(list, func(t1, t2 T) bool { return strings.Compare(t1.Base().Path, t2.Base().Path) < 0 })
+		slices.SortFunc(list, func(t1, t2 T) bool { return strings.Compare(t1.GetPath(), t2.GetPath()) < 0 })
 	}
 	return list
 }
@@ -116,7 +117,7 @@ func ReplacePrefixWithList[T resource.Resource](prefix string, newResources []T)
 		}
 	}
 	for _, res := range newResources {
-		repo[res.Base().Path] = res
+		repo[res.GetPath()] = res
 	}
 }
 
@@ -133,7 +134,7 @@ func ReplacePrefixWithMap[T resource.Resource](prefix string, newResources map[s
 		}
 	}
 	for _, res := range newResources {
-		repo[res.Base().Path] = res
+		repo[res.GetPath()] = res
 	}
 }
 
@@ -147,7 +148,7 @@ func RepoHash() uint64 {
 	var hash uint64 = 0
 	for _, res := range GetAll() {
 		if res.RelevantForSearch("") {
-			hash = hash ^ stringhash.FNV1a(res.Base().Title, res.Base().IconUrl) 
+			hash = hash ^ stringhash.FNV1a(res.GetTitle(), res.GetIconUrl()) 
 		}
 	}
 	return hash
@@ -165,14 +166,14 @@ func Search(term string) []resource.Resource {
 	var rankedResources = make([]rankedResource, 0, 30)
 	for _, res := range repo {
 		if res.RelevantForSearch(term) {
-			if rank := searchutils.Match(term, res.Base().Title); rank >= 0 {
+			if rank := searchutils.Match(term, res.GetTitle()); rank >= 0 {
 				rankedResources = append(rankedResources, rankedResource{rank, res})
 			}
 		}
 	}
 
 	slices.SortFunc(rankedResources, func(r1, r2 rankedResource) bool {
-		return r1.rank < r2.rank || (r1.rank == r2.rank && r1.res.Base().Path < r2.res.Base().Path)
+		return r1.rank < r2.rank || (r1.rank == r2.rank && r1.res.GetPath() < r2.res.GetPath())
 	})
 	var resources = make([]resource.Resource, 0, len(rankedResources))
 	for _, rr := range rankedResources {

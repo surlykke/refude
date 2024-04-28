@@ -14,14 +14,6 @@
 			</td>
 		</tr>
 		{{range .Rows}}
-		{{if ne "" .Heading}}
-		<tr class="heading">
-			<td/>	
-			<td>
-				<p>{{.Heading}}</p>
-			</td>
-		</tr>	
-		{{end}}
 		<tr class={{.Class}} data-href="{{.Href}}" data-relation="{{.Relation}}" data-profile="{{.Profile}}">
 			<td>
 				{{if .IconUrl}}
@@ -30,6 +22,9 @@
 			</td>
 			<td>
 				<p>{{.Title}}</p>
+				{{if .Comment}}
+				<p>{{.Comment}}</p>
+				{{end}}
 			</td>
 		</tr>
 		{{end}}

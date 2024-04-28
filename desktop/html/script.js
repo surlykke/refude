@@ -17,11 +17,12 @@ let load = () => {
         })
 }
 
-let highlightSelected = () => Array.from(selectables).forEach((e, i) => i === state.pos ? e.classList.add('selected') : e.classList.remove('selected'))
-
+let highlightSelected = () => {
+    Array.from(selectables).forEach(e => e.classList.remove('selected'))
+    selectables.item(state.pos)?.classList.add('selected')
+}
 
 let gotoResource = newResource => {
-    console.log("gotoResource:", newResource)
     if (newResource) {
         history.push(state)
         state = { res: newResource, term: '', pos: 0 }
@@ -58,7 +59,6 @@ let onKeyDown = event => {
     } else if (key === "Enter") {
         activateSelected()
     } else if (altKey && key === "l" || key === "ArrowRight") {
-        console.log("rel:", selectedDataset()?.relation)
         selectedDataset()?.relation === "self" && gotoResource(selectedDataset().href)
     } else if (altKey && key === "h" || key === "ArrowLeft") {
         goBack()
@@ -85,17 +85,16 @@ let move = up => {
 
 let dismiss = actionProfile => {
     window.location.search = ''
-    let restore = actionProfile !== 'browsertab' ? (actionProfile !== 'window' ? "window" : "tab") : ""
+    let restore = actionProfile !== 'tab' ? (actionProfile !== 'window' ? "window" : "tab") : ""
     fetch("http://localhost:7938/desktop/hide?restore=" + restore, { method: 'post' })
 }
 
 document.addEventListener("keydown", onKeyDown)
 load()
 
-let check = () => {
-    if (document.visibilityState === 'visible') fetch("/desktop/hash")
-        .then(r => r.ok && r.json())
-        .then(newHash => hash !== newHash && load())
+let reloadOnChange = () => {
+    if (document.visibilityState === 'visible') {
+        fetch("/desktop/hash").then(r => r.ok && r.json()).then(newHash => newHash === hash ||  load())
+    }
 }
-setInterval(check, 500)
-
+setInterval(reloadOnChange, 500)
