@@ -16,7 +16,7 @@ import (
 const freedesktopOrgXml = "/usr/share/mime/packages/freedesktop.org.xml"
 
 type Mimetype struct {
-	resource.BaseResource
+	resource.ResourceData
 	Id              string
 	Acronym         string `json:",omitempty"`
 	ExpandedAcronym string `json:",omitempty"`
@@ -35,7 +35,7 @@ func MakeMimetype(id string) (*Mimetype, error) {
 		return nil, errors.New("Incomprehensible mimetype: " + id)
 	} else {
 		var mt = Mimetype{
-			BaseResource: *resource.MakeBase("/mimetype/"+id, "", "", "", "mimetype"),
+			ResourceData: *resource.MakeBase("/mimetype/"+id, "", "", "", "mimetype"),
 			Id:           id,
 			Aliases:      []string{},
 			Globs:        []string{},

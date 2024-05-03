@@ -20,6 +20,7 @@ let load = () => {
 let highlightSelected = () => {
     Array.from(selectables).forEach(e => e.classList.remove('selected'))
     selectables.item(state.pos)?.classList.add('selected')
+    selectables.item(state.pos)?.scrollIntoView()
 }
 
 let gotoResource = newResource => {

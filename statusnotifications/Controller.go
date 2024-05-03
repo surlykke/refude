@@ -71,7 +71,7 @@ func monitorSignals() {
 }
 
 func checkItemStatus(sender string) {
-	for _, item := range resourcerepo.GetTypedAndSortedByPrefix[*Item]("/item/", false) { 
+	for _, item := range resourcerepo.GetTypedByPrefix[*Item]("/item/") { 
 		if item.sender == sender {
 			if _, ok := dbuscall.GetSingleProp(conn, item.sender, item.path, ITEM_INTERFACE, "Status"); !ok {
 				events <- Event{"ItemRemoved", item.sender, item.path}
@@ -143,7 +143,7 @@ var events = make(chan Event)
 
 func updateWatcherProperties() {
 	ids := make([]string, 0, 20)
-	for _, item := range resourcerepo.GetTypedAndSortedByPrefix[*Item]("/item/", false) {
+	for _, item := range resourcerepo.GetTypedByPrefix[*Item]("/item/") {
 		ids = append(ids, item.sender+":"+string(item.path))
 	}
 	watcherProperties.Set(WATCHER_INTERFACE, "RegisteredStatusItems", dbus.MakeVariant(ids))

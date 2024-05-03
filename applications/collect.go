@@ -298,7 +298,7 @@ func readDesktopFile(filePath string, id string) (*DesktopApplication, error) {
 		var path, title, comment = "/application/" + id, group.Entries["Name"], group.Entries["Comment"]
 		var iconUrl =  link.IconUrlFromName(group.Entries["Icon"])
 		var da = DesktopApplication{
-			BaseResource: *resource.MakeBase(path, title, comment, iconUrl, "application"),
+			ResourceData: *resource.MakeBase(path, title, comment, iconUrl, "application"),
 			DesktopId: id,
 		}	
 

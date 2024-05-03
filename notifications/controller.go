@@ -177,7 +177,7 @@ func Notify(app_name string,
 	body = sanitize(body, allowedTags, allowedEscapes)
 
 	notification := Notification{
-		BaseResource: *resource.MakeBase(fmt.Sprintf("/notification/%d", id), title, body, iconName, "notification"),
+		ResourceData: *resource.MakeBase(fmt.Sprintf("/notification/%d", id), title, body, iconName, "notification"),
 		NotificationId: id,
 		Sender:         app_name,
 		Created:        UnixTime(time.Now()),

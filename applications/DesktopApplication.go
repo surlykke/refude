@@ -21,7 +21,7 @@ import (
 )
 
 type DesktopApplication struct {
-	resource.BaseResource
+	resource.ResourceData
 	Type            string
 	Version         string `json:",omitempty"`
 	GenericName     string `json:",omitempty"`

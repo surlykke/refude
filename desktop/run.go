@@ -43,7 +43,7 @@ func init() {
 }
 
 type row struct {
-//	Heading  string
+	//	Heading  string
 	Class    string
 	IconUrl  string
 	Title    string
@@ -62,13 +62,12 @@ func actionRow(action link.Link) row {
 }
 
 func resourceRow(sr resource.Resource) row {
-	var comment string 
-	if sr.GetComment() != "" {
-		comment = sr.GetProfile() + ": " + sr.GetComment()
+	var comment string
+	if sr.Data().Comment != "" {
+		comment = sr.Data().Profile + ": " + sr.Data().Comment
 	}
-	return row{IconUrl: sr.GetIconUrl(), Title: sr.GetTitle(), Comment: comment, Href: sr.GetPath(), Relation: relation.Self, Profile: sr.GetProfile(), Class: "selectable"}
+	return row{IconUrl: sr.Data().IconUrl, Title: sr.Data().Title, Comment: comment, Href: sr.Data().Path, Relation: relation.Self, Profile: sr.Data().Profile, Class: "selectable"}
 }
-
 
 func init() {
 	var tmp http.Handler
@@ -95,19 +94,22 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			var resourcePath = requests.GetSingleQueryParameter(r, "resource", "/start")
 			if res := search.FetchResource(resourcePath); res != nil {
 				var (
-					term         = requests.GetSingleQueryParameter(r, "search", "")
-					actions      = res.ActionLinks(term)
-					subresources = res.Search(term)
-					rows       = make([]row, 0, len(actions)+len(subresources) + 2)
+					term           = requests.GetSingleQueryParameter(r, "search", "")
+					actions        = res.Data().ActionLinks(term)
+					sf, searchable = res.(resource.Searchable)
+					subresources   = []resource.Resource{}
+					rows           = make([]row, 0, len(actions)+len(subresources)+2)
 				)
-
-				if (len(actions) > 0) {
+				if searchable {
+					subresources = sf.Search(term)
+				}
+				if len(actions) > 0 {
 					rows = append(rows, headingRow("Actions"))
 				}
 				for _, a := range actions {
 					rows = append(rows, actionRow(a))
 				}
-				if (len(actions) > 0 && len(subresources) > 0) {
+				if len(actions) > 0 && len(subresources) > 0 {
 					rows = append(rows, headingRow("Related"))
 				}
 				for _, sr := range subresources {
@@ -115,9 +117,9 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				}
 
 				var m = map[string]any{
-					"Searchable": res.Searchable(),
-					"Title":      res.GetTitle(),
-					"Icon":       res.GetIconUrl(),
+					"Searchable": searchable,
+					"Title":      res.Data().Title,
+					"Icon":       res.Data().IconUrl,
 					"Term":       term,
 					"Rows":       rows,
 					"Hash":       strconv.FormatUint(resourcerepo.RepoHash(), 10), // cf. /desktop/hash below
@@ -167,4 +169,3 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		StaticServer.ServeHTTP(w, r)
 	}
 }
-

@@ -11,6 +11,9 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/surlykke/RefudeServices/lib/log"
+	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib/resourcerepo"
+	"github.com/surlykke/RefudeServices/lib/searchutils"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
@@ -41,6 +44,18 @@ func Run() {
 	}
 }
 
+func Search(list *resource.RRList, term string) {
+	if len(term) > 0 {
+		for _, da := range resourcerepo.GetTypedByPrefix[*DesktopApplication]("/application/") {
+			if rnk := searchutils.Match(term, da.Title, da.Keywords...); rnk >= 0 {
+				if !da.Hidden {
+					*list = append(*list, resource.RankedResource{Res: da, Rank: rnk})
+				}
+			}
+		}
+	}
+}
+
 var (
 	listeners    []func()
 	listenerLock sync.Mutex
@@ -59,7 +74,6 @@ func notifyListeners() {
 		listener()
 	}
 }
-
 
 var watcher *fsnotify.Watcher
 

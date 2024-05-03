@@ -12,7 +12,6 @@ import (
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
-	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
 type FileRepoType struct {}
@@ -37,14 +36,6 @@ func (fr FileRepoType) GetResource(filePath string) resource.Resource {
 		return nil
 	} else {
 		return file
-	}
-}
-
-func (fr FileRepoType) Search(term string, threshold int) []resource.Resource {
-	if len(term) < threshold {
-		return []resource.Resource{}
-	} else {
-		return Search(xdg.Home, "~", term)
 	}
 }
 

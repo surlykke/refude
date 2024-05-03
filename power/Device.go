@@ -13,7 +13,7 @@ import (
 )
 
 type Device struct {
-	resource.BaseResource
+	resource.ResourceData
 	// Properies of our making
 	DbusPath      dbus.ObjectPath
 	DisplayDevice bool

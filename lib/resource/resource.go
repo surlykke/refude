@@ -7,8 +7,8 @@ package resource
 
 import (
 	"net/http"
+	"slices"
 	"strings"
-	"time"
 
 	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/relation"
@@ -17,30 +17,47 @@ import (
 )
 
 type Resource interface {
-	Search(searchTerm string) []Resource
-	RelevantForSearch(term string) bool
-	Searchable() bool
-	ActionLinks(term string) []link.Link	
-	GetPath() string
-	GetTitle() string
-	GetComment() string
-	GetIconUrl() string
-	GetProfile() string
-
+	Data() *ResourceData
 }
 
-type BaseResource struct {
-	Path     string
-	Title    string      `json:"title"`
-	Comment  string      `json:"comment,omitempty"`
-	IconUrl  string      `json:"icon,omitempty"`
-	Profile  string      `json:"profile"`
-	Links    []link.Link `json:"links"`
-	Keywords []string    `json:"-"`
+type RankedResource struct {
+	Rank int
+	Res  Resource
 }
 
-func MakeBase(path, title, comment, iconUrl, profile string) *BaseResource {
-	var br = BaseResource{
+type RRList []RankedResource
+
+func (rrList RRList) GetResourcesSorted() []Resource {
+	slices.SortFunc(rrList, cmp)
+	var resList = make([]Resource, 0, len(rrList))
+	for _, rr := range rrList {
+		resList = append(resList, rr.Res)
+	}
+	return resList
+}
+
+func cmp(r1, r2 RankedResource) int {
+	if r1.Rank != r2.Rank {
+		return r1.Rank - r2.Rank
+	} else {
+		return strings.Compare(r1.Res.Data().Path, r2.Res.Data().Path)
+	}
+}
+
+
+type ResourceData struct {
+	Path           string
+	Title          string      `json:"title"`
+	Comment        string      `json:"comment,omitempty"`
+	IconUrl        string      `json:"icon,omitempty"`
+	Profile        string      `json:"profile"`
+	Links          []link.Link `json:"links"`
+	Keywords       []string    `json:"-"`
+	HideFromSearch bool        `json:"-"`
+}
+
+func MakeBase(path, title, comment, iconUrl, profile string) *ResourceData {
+	var br = ResourceData{
 		Path:    path,
 		Title:   title,
 		Comment: comment,
@@ -51,7 +68,11 @@ func MakeBase(path, title, comment, iconUrl, profile string) *BaseResource {
 	return &br
 }
 
-func (this *BaseResource) AddLink(href, title, iconUrl string, relation relation.Relation) {
+func (this *ResourceData) Data() *ResourceData {
+	return this
+}
+
+func (this *ResourceData) AddLink(href, title, iconUrl string, relation relation.Relation) {
 	if href == "" {
 		href = this.Path
 	} else if strings.HasPrefix(href, "?") {
@@ -63,43 +84,9 @@ func (this *BaseResource) AddLink(href, title, iconUrl string, relation relation
 	this.Links = append(this.Links, link.Link{Href: href, Title: title, IconUrl: iconUrl, Relation: relation})
 }
 
-// ------------ Implement Resource --------------------------
-
-func (this *BaseResource) Search(searchTerm string) []Resource {
-	return []Resource{}
-}
-
-func (br *BaseResource) RelevantForSearch(term string) bool {
-	return false
-}
-
-func (br *BaseResource) UpdatedSince(t time.Time) bool {
-	return false
-}
-
-func (br *BaseResource) GetPath() string {
-	return br.Path
-}
-
-func (br *BaseResource) GetTitle() string {
-	return br.Title
-}
-
-func (br *BaseResource) GetComment() string {
-	return br.Comment
-}
-
-func (br *BaseResource) GetIconUrl() string {
-	return br.IconUrl
-}
-
-func (br *BaseResource) GetProfile() string {
-	return br.Profile
-}
-
 // -----------------------------------------------------
 
-func (br *BaseResource) ActionLinks(searchTerm string) []link.Link {
+func (br *ResourceData) ActionLinks(searchTerm string) []link.Link {
 	var filtered = make([]link.Link, 0, len(br.Links))
 	for _, lnk := range br.Links {
 		if (lnk.Relation == relation.Action || lnk.Relation == relation.Delete) && searchutils.Match(searchTerm, lnk.Title) >= 0 {
@@ -109,21 +96,16 @@ func (br *BaseResource) ActionLinks(searchTerm string) []link.Link {
 	return filtered
 }
 
-func (br *BaseResource) Searchable() bool {
-	for _, lnk := range br.Links {
-		if lnk.Relation == relation.Search {
-			return true
-		}
-	}
-	return false
-}
-
 type Postable interface {
 	DoPost(w http.ResponseWriter, r *http.Request)
 }
 
 type Deleteable interface {
 	DoDelete(w http.ResponseWriter, r *http.Request)
+}
+
+type Searchable interface {
+	Search(term string) []Resource
 }
 
 func ServeSingleResource(w http.ResponseWriter, r *http.Request, res Resource) {

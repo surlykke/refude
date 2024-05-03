@@ -13,6 +13,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/resourcerepo"
 	"github.com/surlykke/RefudeServices/lib/respond"
+	"github.com/surlykke/RefudeServices/lib/searchutils"
 )
 
 // Get current rect
@@ -58,20 +59,19 @@ func (wsm WindowStateMask) MarshalJSON() ([]byte, error) {
 }
 
 type WaylandWindow struct {
-	resource.BaseResource
+	resource.ResourceData
 	Wid   uint64 `json:"-"`
 	AppId string `json:"app_id"`
 	State WindowStateMask
 }
 
-
 func MakeWindow(wId uint64) *WaylandWindow {
 	var ww = &WaylandWindow{
-		BaseResource: *resource.MakeBase(fmt.Sprintf("/window/%d", wId), "", "", "", "window"),
-		Wid: wId,
+		ResourceData: *resource.MakeBase(fmt.Sprintf("/window/%d", wId), "", "", "", "window"),
+		Wid:          wId,
 	}
-	ww.AddLink("", "Focus", "", relation.Action) 
-	ww.AddLink("", "Close", "", relation.Delete) 
+	ww.AddLink("", "Focus", "", relation.Action)
+	ww.AddLink("", "Close", "", relation.Delete)
 	return ww
 }
 
@@ -100,8 +100,8 @@ func (this *WaylandWindow) DoPost(w http.ResponseWriter, r *http.Request) {
 
 func retriewIconUrlsFromApps() {
 	var windows = resourcerepo.GetTypedByPrefix[*WaylandWindow]("/window/")
-	for _, w := range  windows{
-		var copy = *w 
+	for _, w := range windows {
+		var copy = *w
 		var iconUrl = applications.GetIconUrl(copy.AppId + ".desktop")
 		copy.IconUrl = iconUrl
 		resourcerepo.Update(&copy)
@@ -132,10 +132,13 @@ var rememberedActive uint64 = 0
 var rememberedActiveLock sync.Mutex
 
 func RememberActive() {
-	if active := resourcerepo.FindTypedUnderPrefix[*WaylandWindow]("/window/", func(w *WaylandWindow) bool {return w.State.Is(ACTIVATED) }); len(active) > 0 {
-		rememberedActiveLock.Lock()
-		rememberedActive = active[0].Wid
-		rememberedActiveLock.Unlock()
+	for _, w := range resourcerepo.GetTypedByPrefix[*WaylandWindow]("/window/") {
+		if w.State.Is(ACTIVATED) {
+			rememberedActiveLock.Lock()
+			rememberedActive = w.Wid
+			rememberedActiveLock.Unlock()
+			return
+		}
 	}
 }
 
@@ -147,3 +150,12 @@ func ActivateRememberedActive() {
 		activate(copy)
 	}
 }
+
+func Search(list *resource.RRList, term string) {
+	for _, w := range resourcerepo.GetTypedByPrefix[*WaylandWindow]("/window/") {
+		if rnk := searchutils.Match(term, w.Title); rnk >= 0 {
+			*list = append(*list, resource.RankedResource{Res: w, Rank: rnk})
+		}
+	}
+}
+

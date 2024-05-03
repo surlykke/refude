@@ -23,6 +23,25 @@ const (
 	Critical         = 2
 )
 
+var (
+	LowBytes      = []byte(`"low"`)
+	NormalBytes   = []byte(`"normal"`)
+	CriticalBytes = []byte(`"critical"`)
+)
+
+func (u Urgency) MarshalJSON() ([]byte, error) {
+	switch u {
+	case Low:
+		return LowBytes, nil
+	case Normal:
+		return NormalBytes, nil
+	case Critical:
+		return CriticalBytes, nil
+	default:
+		panic("unknown urgency")
+	}
+}
+
 type UnixTime time.Time // Behaves like Time, but json-marshalls to milliseconds since epoch
 
 func (ut UnixTime) MarshalJSON() ([]byte, error) {
@@ -32,7 +51,7 @@ func (ut UnixTime) MarshalJSON() ([]byte, error) {
 }
 
 type Notification struct {
-	resource.BaseResource
+	resource.ResourceData
 	NotificationId uint32
 	Sender         string
 	Created        UnixTime
@@ -46,7 +65,7 @@ type Notification struct {
 }
 
 func (n *Notification) RelevantForSearch(term string) bool {
-	return !n.Deleted && time.Now().Before(time.Time(n.Expires ))
+	return !n.Deleted && time.Now().Before(time.Time(n.Expires))
 }
 
 func (n *Notification) DoPost(w http.ResponseWriter, r *http.Request) {

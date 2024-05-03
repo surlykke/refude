@@ -21,6 +21,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
+	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
 func init() {
@@ -50,7 +51,7 @@ func getFileType(m os.FileMode) string {
 }
 
 type File struct {
-	resource.BaseResource
+	resource.ResourceData
 	Name        string
 	Type        string
 	Permissions string
@@ -71,68 +72,81 @@ func makeFileFromPath(path string) (*File, error) {
 
 func makeFileFromInfo(osPath string, fileInfo os.FileInfo) *File {
 	var fileType = getFileType(fileInfo.Mode())
+	var comment = osPath
 	var mimetype, _ = magicmime.TypeByFile(osPath)
 	var iconUrl = link.IconUrlFromName(strings.ReplaceAll(mimetype, "/", "-"))
 	var f = File{
-		BaseResource: *resource.MakeBase("/file/"+osPath[1:], fileInfo.Name(),  osPath, iconUrl, "file"),
+		ResourceData: *resource.MakeBase("/file/"+osPath[1:], fileInfo.Name(), comment, iconUrl, "file"),
 		Type:         fileType,
 		Permissions:  fileInfo.Mode().String(),
 		Mimetype:     mimetype,
 		Apps:         applications.GetAppsIds(mimetype),
 	}
 
-    if fileType == "Directory" {
-		f.AddLink("/search?from=" + f.Path, "", "", relation.Search)
-	}	
+	if fileType == "Directory" {
+		f.AddLink("/search?from="+f.Path, "", "", relation.Search)
+	}
 
 	for _, app := range applications.GetApps(f.Apps...) {
-		f.AddLink("?action=" + app.DesktopId, "Open with " + app.Title, app.IconUrl, relation.Action)
+		f.AddLink("?action="+app.DesktopId, "Open with "+app.Title, app.IconUrl, relation.Action)
 	}
 
 	return &f
 }
 
-func (f *File) Search(searchTerm string) []resource.Resource {
-	return Search(f.Path[len("/file"):], ".", searchTerm)
-}
-
-// Assumes dir is a directory
-func Search(from, prefix, searchTerm string) []resource.Resource {
-	var depth = len(searchTerm) / 3
-	if depth > 2 {
-		depth = 2
+func (f *File) Search(term string) []resource.Resource {
+	var terms = strings.Split(term, "/")
+	if f.Type == "Directory" {
+		var rrList = make(resource.RRList, 0, 30)
+		var osPath = f.Path[len("/file"):]
+		Search(&rrList, osPath, terms...)
+		return rrList.GetResourcesSorted()
+	} else {
+		return []resource.Resource{}
 	}
-	return searchRecursive(from, prefix, searchTerm, depth)
 }
 
-func searchRecursive(from, prefix, searchTerm string, depth int) []resource.Resource {
-	var fileList = make([]resource.Resource, 0, 30)
-	var directoriesFound = make([]fs.DirEntry, 0, 10)
-
-	if dirEntries, err := os.ReadDir(from); err == nil {
-		for _, dirEntry := range dirEntries {
-			var entryPath = from + "/" + dirEntry.Name()
-			var relName = dirEntry.Name()
-			if prefix != "." {
-				relName = prefix + "/" + relName
-			}
-			if rnk := searchutils.Match(searchTerm, dirEntry.Name()); rnk > -1 {
-				if info, err := dirEntry.Info(); err != nil {
-					log.Warn(err)
+// Assumes that dir is a directory an that len(terms) > 0
+func Search(collector *resource.RRList, dir string, terms ...string) {
+	if file, err := os.Open(dir); err != nil {
+		log.Warn(err)
+	} else if entries, err := file.ReadDir(-1); err != nil {
+		log.Warn(err)
+	} else {
+		for _, entry := range entries {
+			if rnk := searchutils.Match(terms[0], entry.Name()); rnk > -1 {
+				if len(terms) > 1 {
+					if entry.IsDir() {
+						Search(collector, dir+"/"+entry.Name(), terms[1:]...)
+					}
 				} else {
-					fileList = append(fileList, makeFileFromInfo(entryPath, info))
+					fileInfo, _ := entry.Info()
+					var file = makeFileFromInfo(dir+"/"+entry.Name(), fileInfo)
+					*collector = append(*collector, resource.RankedResource{Res: file, Rank: rnk})
 				}
-			}
-			if depth > 0 && dirEntry.IsDir() {
-				directoriesFound = append(directoriesFound, dirEntry)
 			}
 		}
 	}
+}
 
-	for _, directory := range directoriesFound {
-		fileList = append(fileList, searchRecursive(from+"/"+directory.Name(), prefix+"/"+directory.Name(), searchTerm, depth-1)...)
+func SearchDesktop(term string, collector *resource.RRList) {
+	var terms = strings.Split(term, "/")
+	if len(terms[0]) >= 3 {
+		if rnk := searchutils.Match(term, xdg.Home); rnk >= 0 {
+			if info, err := os.Stat(xdg.Home); err != nil {
+				log.Warn(err)
+			} else {
+				var file = makeFileFromInfo(xdg.Home, info)
+				*collector = append(*collector, resource.RankedResource{Res: file, Rank: rnk})
+			}
+		}
+		Search(collector, xdg.Home, terms...)
+		Search(collector, xdg.ConfigHome, terms...)
+		Search(collector, xdg.DownloadDir, terms...)
+		Search(collector, xdg.DocumentsDir, terms...)
+		Search(collector, xdg.MusicDir, terms...)
+		Search(collector, xdg.VideosDir, terms...)
 	}
-	return fileList
 }
 
 func (f *File) DoPost(w http.ResponseWriter, r *http.Request) {

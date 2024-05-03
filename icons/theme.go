@@ -19,7 +19,7 @@ import (
 )
 
 type IconTheme struct {
-	resource.BaseResource
+	resource.ResourceData
 	Id       string
 	Inherits []string
 	Dirs     []IconDir
@@ -36,7 +36,7 @@ func readThemes() map[string]*IconTheme {
 	var themeMap = make(map[string]*IconTheme)
 	/*
 	   var id string = func (this *IconTheme) Id() string {
-	   	return this.GetPath()[len("/icontheme/"):]
+	   	return this.Path[len("/icontheme/"):]
 	   }
 	*/
 

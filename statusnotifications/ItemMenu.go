@@ -35,7 +35,7 @@ type MenuEntry struct {
 }
 
 type Menu struct {
-	resource.BaseResource
+	resource.ResourceData
 	sender string
 	path   dbus.ObjectPath
 }

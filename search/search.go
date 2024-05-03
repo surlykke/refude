@@ -20,7 +20,11 @@ func Search(w http.ResponseWriter, r *http.Request) {
 			respond.NotFound(w)
 		} else {
 			var searchTerm = requests.GetSingleQueryParameter(r, "search", "")
-			resource.ServeList(w, r, res.Search(searchTerm))
+			if searchable, ok := res.(resource.Searchable); ok {
+				resource.ServeList(w, r, searchable.Search(searchTerm))
+			} else {
+				resource.ServeList(w, r, []resource.Resource{})
+			}
 		}
 	}
 }

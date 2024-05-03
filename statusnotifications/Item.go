@@ -20,7 +20,7 @@ import (
 )
 
 type Item struct {
-	resource.BaseResource
+	resource.ResourceData
 	sender                  string
 	path                    dbus.ObjectPath
 	ItemId                  string

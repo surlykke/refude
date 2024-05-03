@@ -9,12 +9,14 @@ import (
 	"github.com/godbus/dbus/v5"
 
 	"github.com/surlykke/RefudeServices/lib/log"
+	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/resourcerepo"
+	"github.com/surlykke/RefudeServices/lib/searchutils"
 )
 
 func Run() {
 	var signals = subscribe()
-	
+
 	resourcerepo.Put(retrieveDevice(displayDeviceDbusPath))
 	showOnDesktop()
 
@@ -25,7 +27,7 @@ func Run() {
 	for signal := range signals {
 		if signal.Name == "org.freedesktop.DBus.Properties.PropertiesChanged" {
 			resourcerepo.Update(retrieveDevice(signal.Path))
-			if (displayDeviceDbusPath == signal.Path) {
+			if displayDeviceDbusPath == signal.Path {
 				showOnDesktop()
 			}
 		} else if signal.Name == "org.freedesktop.UPower.DeviceAdded" {
@@ -42,7 +44,16 @@ func Run() {
 			log.Warn("Update on unknown device: ", signal.Path)
 		}
 	}
+}
 
+func Search(list *resource.RRList, term string) {
+	if len(term) > 2 {
+		for _, d := range resourcerepo.GetTypedByPrefix[*Device]("/device/") {
+			if rnk := searchutils.Match(term, d.Title); rnk >= 0 {
+				*list = append(*list, resource.RankedResource{Res: d, Rank: rnk})
+			}
+		}
+	}
 }
 
 func getAddedRemovedPath(signal *dbus.Signal) (dbus.ObjectPath, bool) {

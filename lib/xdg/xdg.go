@@ -63,6 +63,8 @@ func init() {
 	MusicDir = clean(notEmptyOr(userDirs["XDG_MUSIC_DIR"], Home+"/MUSIC"))
 	PicturesDir = clean(notEmptyOr(userDirs["XDG_PICTURES_DIR"], Home+"/PICTURES"))
 	VideosDir = clean(notEmptyOr(userDirs["XDG_VIDEOS_DIR"], Home+"/VIDEOS"))
+
+	
 }
 
 func RunCmd(argv ...string) error {
@@ -108,4 +110,3 @@ func cleanS(dirs []string) []string {
 	}
 	return cleaned
 }
-

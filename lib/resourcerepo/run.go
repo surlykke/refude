@@ -2,31 +2,29 @@ package resourcerepo
 
 import (
 	"net/http"
+	"slices"
 	"strings"
 	"sync"
 
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
-	"github.com/surlykke/RefudeServices/lib/searchutils"
 	"github.com/surlykke/RefudeServices/lib/stringhash"
-	"golang.org/x/exp/slices"
 )
 
 var lock sync.Mutex
 var repo = make(map[string]resource.Resource)
 
-
 func Put(res resource.Resource) {
 	lock.Lock()
 	defer lock.Unlock()
-	repo[res.GetPath()] = res
+	repo[res.Data().Path] = res
 }
 
 func Update(res resource.Resource) {
 	lock.Lock()
 	defer lock.Unlock()
-	if _, ok := repo[res.GetPath()]; ok {
-		repo[res.GetPath()] = res
+	if _, ok := repo[res.Data().Path]; ok {
+		repo[res.Data().Path] = res
 	}
 }
 
@@ -37,77 +35,46 @@ func Get(path string) (resource.Resource, bool) {
 	return res, ok
 }
 
-func GetAll() []resource.Resource {
-	lock.Lock()
-	defer lock.Unlock()
-	var all = make([]resource.Resource, 0, len(repo))
-	for _, res := range repo {
-		all = append(all, res)
-	}
-	return all
-}
-
 func GetTyped[T resource.Resource](path string) (T, bool) {
 	// Calls Get, so no lock
 	if res, ok := Get(path); ok {
-		if t, ok := res.(T); ok {
-			return t, true
-		}
+		return res.(T), true
 	}
 	var t T
 	return t, false
 }
 
-func GetByPrefix(prefix string) []resource.Resource {
+func GetByPrefixes(prefixes ...string) []resource.Resource {
 	lock.Lock()
 	defer lock.Unlock()
 	var result = make([]resource.Resource, 0, 50)
 	for path, res := range repo {
-		if strings.HasPrefix(path, prefix) {
-			result = append(result, res)
+		for _, prefix := range prefixes {
+			if strings.HasPrefix(path, prefix) {
+				result = append(result, res)
+				break
+			}
 		}
 	}
+	slices.SortFunc(result, func(r1, r2 resource.Resource) int { return strings.Compare(r1.Data().Path, r2.Data().Path)})
 	return result
+
 }
 
 func GetTypedByPrefix[T resource.Resource](prefix string) []T {
-	var list = make([]T, 0, 20)
-	lock.Lock()
-	defer lock.Unlock()
-	for path, res := range repo {
-		if strings.HasPrefix(path, prefix) {
-			if t, ok := res.(T); ok {
-				list = append(list, t)
-			}
-		}
+	var resources = GetByPrefixes(prefix) 
+	var typed = make([]T, 0, len(resources))
+	for _, res := range resources {
+		typed = append(typed, res.(T))
 	}
-	return list
+	return typed	
 }
 
-func GetTypedAndSortedByPrefix[T resource.Resource](prefix string, reverse bool) []T {
-	var list = GetTypedByPrefix[T](prefix)
-	if reverse {
-		slices.SortFunc(list, func(t1, t2 T) bool { return strings.Compare(t1.GetPath(), t2.GetPath()) > 0 })
-	} else {
-		slices.SortFunc(list, func(t1, t2 T) bool { return strings.Compare(t1.GetPath(), t2.GetPath()) < 0 })
-	}
-	return list
-}
 
-func FindTypedUnderPrefix[T resource.Resource](prefix string, test func(t T) bool) []T {
-	lock.Lock()
-	defer lock.Unlock()
-	var result = []T{}
-	for path, res := range repo {
-		if strings.HasPrefix(path, prefix) {
-			if t, ok := res.(T); ok && test(t) {
-				result = append(result, t)
-			}
-		}
-	}
-	return result
-}
-
+/*
+ * Removes all entries having prefix as prefix of key.
+ * And then adds all members of list 
+ */
 func ReplacePrefixWithList[T resource.Resource](prefix string, newResources []T) {
 	lock.Lock()
 	defer lock.Unlock()
@@ -117,13 +84,12 @@ func ReplacePrefixWithList[T resource.Resource](prefix string, newResources []T)
 		}
 	}
 	for _, res := range newResources {
-		repo[res.GetPath()] = res
+		repo[res.Data().Path] = res
 	}
 }
 
 /*
- * Removes all entries having prefix as prefix of key.
- * And then adds all members of map
+ * As above
  */
 func ReplacePrefixWithMap[T resource.Resource](prefix string, newResources map[string]T) {
 	lock.Lock()
@@ -134,7 +100,7 @@ func ReplacePrefixWithMap[T resource.Resource](prefix string, newResources map[s
 		}
 	}
 	for _, res := range newResources {
-		repo[res.GetPath()] = res
+		repo[res.Data().Path] = res
 	}
 }
 
@@ -146,40 +112,15 @@ func Remove(path string) {
 
 func RepoHash() uint64 {
 	var hash uint64 = 0
-	for _, res := range GetAll() {
-		if res.RelevantForSearch("") {
-			hash = hash ^ stringhash.FNV1a(res.GetTitle(), res.GetIconUrl()) 
+	lock.Lock()
+	defer lock.Unlock()
+
+	for _, res := range repo {
+		if !res.Data().HideFromSearch {
+			hash = hash ^ stringhash.FNV1a(res.Data().Title, res.Data().IconUrl)
 		}
 	}
 	return hash
-}
-
-
-type rankedResource struct {
-	rank int
-	res  resource.Resource
-}
-
-func Search(term string) []resource.Resource {
-	lock.Lock()
-	defer lock.Unlock()
-	var rankedResources = make([]rankedResource, 0, 30)
-	for _, res := range repo {
-		if res.RelevantForSearch(term) {
-			if rank := searchutils.Match(term, res.GetTitle()); rank >= 0 {
-				rankedResources = append(rankedResources, rankedResource{rank, res})
-			}
-		}
-	}
-
-	slices.SortFunc(rankedResources, func(r1, r2 rankedResource) bool {
-		return r1.rank < r2.rank || (r1.rank == r2.rank && r1.res.GetPath() < r2.res.GetPath())
-	})
-	var resources = make([]resource.Resource, 0, len(rankedResources))
-	for _, rr := range rankedResources {
-		resources = append(resources, rr.res)
-	}
-	return resources
 }
 
 func GetPaths() []string {
@@ -195,7 +136,7 @@ func GetPaths() []string {
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var path = r.URL.Path
 	if strings.HasSuffix(path, "/") {
-		resource.ServeList(w, r, GetByPrefix(path))
+		resource.ServeList(w, r, GetByPrefixes(path))
 	} else if res, ok := Get(path); !ok {
 		respond.NotFound(w)
 	} else {
