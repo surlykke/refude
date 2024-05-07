@@ -2,26 +2,69 @@
 html, body {
     background-color:#002b36;
     color:  darkgray;
+    height: calc(100% - 20px);
 }
 
-.resourceRow td{
+.resourceRow{
+    display: flex;
+    gap: 16px; 
     padding-bottom: 1.3em;
 }
-.resourceRow span:first-child {
-    padding-left: 12px;
-    font-size: 1.6em;
+.resourceRow div:first-child {
+    width: 36px;
+    height:  36px;
 }
 
-.resourceRow span:nth-child(2) {
-    padding-left: 1.3em;
+.resourceRow div:nth-child(2) {
+    font-size: 28px;
 }
 
-.resourceRow span:nth-child(3) {
-    padding-left: 0.3em; 
-    font-size: 1.3em;
+.resourceRow div:nth-child(3) {
+    font-size: 22px;
+}
+.resourceRow div {
+    vertical-align: middle;
+}
+
+.rows {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    max-height: calc(100% - 60px);
+    overflow: hidden;
 }
 
 .selectable {
+    display: flex;
+    gap: 8px;
+}
+
+.selectable div:first-child {
+    width: 24px;
+    height: 24px;
+}
+
+.selectable div:nth-child(2) {
+    display: flex;
+    flex-direction: column;
+    gap: 10px; 
+}
+
+.selectable p {
+    margin: 0;
+}
+
+.selectable p:first-child {
+    font-size: 22px;
+}
+.selected p:first-child {
+    color:   beige;
+}
+.selectable p:nth-child(2) {
+    font-size: 16px;
+    font-style: italic;
+}
+/*.selectable {
     padding-bottom: 20px;
 }
 .selectable td:last-child p:last-child {
@@ -55,3 +98,4 @@ html, body {
 .selectable p {
     margin: 0;
 }
+*/

@@ -1,31 +1,34 @@
-	<table id="table" data-hash="{{.Hash}}">
-		<tr class="resourceRow">
-			<td>
+	<table >
+		<div  class="resourceRow" data-hash="{{.Hash}}">
+			<div>
 				{{if .Icon }}
 				<img src="{{.Icon }}" height="32" width="32">
 				{{end}}
-			</td>
-			<td>
-				<span>{{.Title }}</span>
+			</div>
+			<div>
+				{{.Title }}
+			</div>
+			<div>
 				{{if .Searchable}}
-				<span>&#x1F50E;</span>
-				<span>{{.Term}}</span>
+				&#x1F50E;
+				{{.Term}}
 				{{end}}
-			</td>
-		</tr>
+			</div>
+		</div>
+		<div class="rows">
 		{{range .Rows}}
-		<tr class={{.Class}} data-href="{{.Href}}" data-relation="{{.Relation}}" data-profile="{{.Profile}}">
-			<td>
+		<div class={{.Class}} data-href="{{.Href}}" data-relation="{{.Relation}}" data-profile="{{.Profile}}">
+			<div>
 				{{if .IconUrl}}
 				<img src="{{.IconUrl}}" height="20" width="20">
 				{{end}}
-			</td>
-			<td>
+			</div>
+			<div>
 				<p>{{.Title}}</p>
 				{{if .Comment}}
 				<p>{{.Comment}}</p>
 				{{end}}
-			</td>
-		</tr>
+			</div>
+		</div>
 		{{end}}
-	</table>
+		</div>
