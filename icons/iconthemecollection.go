@@ -129,7 +129,7 @@ func buildSearchList(defaultThemePath string, themes map[string]*IconTheme, hico
 }
 
 func (ic *iconThemeCollection) hicolor() *IconTheme {
-	return ic.themeSearchList[len(ic.themeSearchList)]
+	return ic.themeSearchList[len(ic.themeSearchList) - 1]
 }
 
 func (ic *iconThemeCollection) writeSessionHicolorIcon(iconName string, size uint32, png []byte) {
