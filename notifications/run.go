@@ -7,116 +7,110 @@ package notifications
 
 import (
 	"fmt"
-	"net/http"
-	"sync/atomic"
+	"strings"
 	"time"
 
 	"github.com/surlykke/RefudeServices/icons"
+	"github.com/surlykke/RefudeServices/lib/repo"
 	"github.com/surlykke/RefudeServices/lib/resource"
-	"github.com/surlykke/RefudeServices/lib/resourcerepo"
-	"github.com/surlykke/RefudeServices/lib/respond"
-	"github.com/surlykke/RefudeServices/lib/searchutils"
 	"github.com/surlykke/RefudeServices/watch"
 )
 
+var notificationRepo = repo.MakeRepoWithFilter[*Notification](searchFilter)
+var Requests = repo.MakeAndRegisterRequestChan()
+
+var added = make(chan *Notification)
+var removals = make(chan notificationRemoval)
+
 func Run() {
 	go DoDBus()
-}
-
-func removeNotification(id uint32, reason uint32) {
-	if n, ok := resourcerepo.GetTyped[*Notification](fmt.Sprintf("/notification/%d", id)); ok && !n.Deleted {
-		var copy = *n
-		copy.Deleted = true
-		resourcerepo.Update(&copy)
-		conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", id, reason)
-		calculateFlash()
-	}
-}
-
-func Search(list *resource.RRList, term string) {
-	for _, n := range resourcerepo.GetTypedByPrefix[*Notification]("/notification/") {
-		if len(term) > 2 {
-			if _, ok := n.NActions["default"]; ok {
-				if rnk := searchutils.Match(term, n.Title, "notification"); rnk >= 0 {
-					*list = append(*list, resource.RankedResource{Res: n, Rank: rnk})
-				}
+	for {
+		select {
+		case req := <-Requests:
+			if fn := getFlash(req); fn != nil {
+				req.Replies <- resource.RankedResource{Rank: 0, Res: fn}
 			}
+			notificationRepo.DoRequest(req)
+		case n := <-added:
+			notificationRepo.Put(n)
+		watch.Publish("resourceChanged", "/flash")	
+			if n.Urgency == Low {
+				time.AfterFunc(2050*time.Millisecond, func() { watch.Publish("resourceChanged", "/flash")})
+			} else if n.Urgency == Normal {
+				time.AfterFunc(10050*time.Millisecond, func() { watch.Publish("resourceChanged", "/flash")})
+			}
+		case removal := <-removals:
+			removeNotification(removal)
+			watch.Publish("/notification/", "")
 		}
 	}
 }
 
+type notificationRemoval struct {
+	id     uint32
+	reason uint32
+}
+
+func removeNotification(removal notificationRemoval) {
+	if n, ok := notificationRepo.Get(fmt.Sprintf("/notification/%d", removal.id)); ok && !n.Deleted {
+		var copy = *n
+		copy.Deleted = true
+		notificationRepo.Put(&copy)
+		conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", removal.id, removal.reason)
+	}
+}
+
+func searchFilter(term string, n *Notification) bool {
+	if len(term) > 0 {
+		return true
+	} else if _, ok := n.NActions["default"]; ok {
+		return true
+	} else {
+		return false
+	}
+}
+
 type Flash struct {
-	valid        bool
+	resource.ResourceData
 	Subject      string `json:"subject"`
 	Body         string `json:"body"`
 	IconFilePath string `json:"iconFilePath"`
 	Urgency      Urgency
 }
 
-func MakeFlash(n *Notification) Flash {
-	return Flash{valid: true, Subject: n.Title, Body: n.Comment, IconFilePath: icons.FindIconPath(n.iconName, 64), Urgency: n.Urgency}
-}
+func getFlash(req repo.ResourceRequest) *Flash {
+	var fn *Notification = nil
+	if req.ReqType == repo.ByPath && req.Data == "/flash" || req.ReqType == repo.ByPathPrefix && strings.HasPrefix("/flash", req.Data) {
 
-var currentFlash atomic.Pointer[Flash]
+		var now = time.Now()
+		var notifications = notificationRepo.GetAll()
 
-func init() {
-	currentFlash.Store(&Flash{})
-}
+		for i := len(notifications) - 1; i >= 0; i-- {
+			var n = notifications[i]
+			if n.Deleted {
+				continue
+			}
 
-func ServeFlash(w http.ResponseWriter, r *http.Request) {
-	var f = currentFlash.Load()
-	if f.valid {
-		respond.AsJson(w, f)
-	} else {
-		respond.NotFound(w)
-	}
-}
-
-func calculateFlash() {
-	var now = time.Now()
-	notifications := resourcerepo.GetTypedByPrefix[*Notification]("/notification/")
-	var pos = -1
-	for i := len(notifications) - 1; i >= 0; i-- {
-		var n = notifications[i]
-		if n.Deleted {
-			continue
-		}
-
-		if n.Urgency == Critical {
-			pos = i
-			break
-		} else if n.Urgency == Normal {
-			if pos == -1 || notifications[i].Urgency < Normal {
-				if now.Before(time.Time(n.Created).Add(6 * time.Second)) {
-					pos = i
+			if n.Urgency == Critical {
+				fn = n
+				break
+			} else if n.Urgency == Normal {
+				if fn == nil || fn.Urgency < Normal {
+					if now.Before(time.Time(n.Created).Add(6 * time.Second)) {
+						fn = n
+					}
+				}
+			} else { /* n.Urgency == Low */
+				if fn == nil && now.Before(time.Time(n.Created).Add(2*time.Second)) {
+					fn = n
 				}
 			}
-		} else { /* n.Urgency == Low */
-			if pos == -i && now.Before(time.Time(n.Created).Add(2*time.Second)) {
-				pos = i
-			}
 		}
 	}
-
-	var newFlash Flash
-	if pos > -1 {
-		var n = notifications[pos]
-		newFlash = MakeFlash(n)
-		if newFlash.Urgency != Critical {
-			var timeout = time.Time(n.Created).Sub(time.Now()) + 50*time.Millisecond
-			if newFlash.Urgency == Normal {
-				timeout = timeout + 6*time.Second
-			} else {
-				timeout = timeout + 2*time.Second
-			}
-			time.AfterFunc(timeout, calculateFlash)
-		}
+	var flash *Flash = nil
+	if fn != nil {
+		flash = &Flash{Subject: fn.Title, Body: fn.Comment, IconFilePath: icons.FindIconPath(fn.iconName, 64), Urgency: fn.Urgency}
 	}
 
-	var oldFlash = currentFlash.Swap(&newFlash)
-
-	if *oldFlash != newFlash {
-		watch.ResourceChanged("/flash")
-	}
-
+	return flash
 }

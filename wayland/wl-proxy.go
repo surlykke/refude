@@ -22,10 +22,7 @@ void show_toplevel(uintptr_t);
 */
 import "C"
 import (
-	"fmt"
 	"unsafe"
-
-	"github.com/surlykke/RefudeServices/lib/resourcerepo"
 )
 
 func close(handle uint64) {
@@ -46,18 +43,14 @@ func show(handle uint64) {
 
 //export handle_title
 func handle_title(handle C.uintptr_t, c_title *C.char) {
-	var ww = getCopy(uint64(handle))
-	ww.Title = C.GoString(c_title)
-	resourcerepo.Put(ww)
+	windowUpdates <- windowUpdate{wId:uint64(handle), title:C.GoString(c_title)}
 }
 
 //export handle_app_id
 func handle_app_id(handle C.uintptr_t, c_app_id *C.char) {
-	var ww = getCopy(uint64(handle))
-	ww.AppId = C.GoString(c_app_id)
-	ww.Comment = ww.AppId
-	resourcerepo.Put(ww)
+	windowUpdates <- windowUpdate{wId: uint64(handle), appId:C.GoString(c_app_id)}
 }
+
 
 //export handle_output_enter
 func handle_output_enter(handle C.uintptr_t, output C.uintptr_t) {
@@ -84,11 +77,7 @@ func handle_state(handle C.uintptr_t, state C.wl_array) {
 		}
 
 	}
-
-	var ww = getCopy(uint64(handle))
-	ww.State = windowStateMask
-	resourcerepo.Put(ww)
-
+	windowUpdates <- windowUpdate{wId:uint64(handle), state:windowStateMask + 1}
 }
 
 //export handle_done
@@ -99,7 +88,7 @@ func handle_parent(handle C.uintptr_t, parent C.uintptr_t) {}
 
 //export handle_closed
 func handle_closed(handle C.uintptr_t) {
-	resourcerepo.Remove(fmt.Sprintf("/window/%d", handle))
+	removals <- uint64(handle)	
 }
 
 func setupAndRunAsWaylandClient() {

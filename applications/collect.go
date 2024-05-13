@@ -8,7 +8,6 @@ package applications
 import (
 	"encoding/xml"
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -17,7 +16,6 @@ import (
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/resource"
-	"github.com/surlykke/RefudeServices/lib/resourcerepo"
 	"github.com/surlykke/RefudeServices/lib/slice"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
@@ -52,7 +50,6 @@ func Collect() {
 		readMimeappsList(dir+"/mimeapps.list", apps, defaultApps)
 	}
 
-	fmt.Println("defaultApps:\n", defaultApps)
 
 	for mimetypeId, defaultAppIds := range defaultApps {
 		if mimetype, ok := mimetypes[mimetypeId]; ok {
@@ -67,9 +64,36 @@ func Collect() {
 		}
 	}
 
-	resourcerepo.ReplacePrefixWithMap("/application/", apps)
-	resourcerepo.ReplacePrefixWithMap("/mimetype/", mimetypes)
-	notifyListeners()
+	var appIdAppDataMap = make(map[string]AppData)
+
+	for appId, app := range apps {
+		appIdAppDataMap[appId] = AppData{DesktopId: appId, Title: app.Title, IconUrl: app.IconUrl}
+	}
+
+
+	var mimetypeAppDataMap = make(map[string][]AppData)
+
+	for _, mt := range mimetypes {
+		var apps = make([]AppData, 0, len(mt.Applications))
+		for _, appId := range mt.Applications {
+			if appData, ok := appIdAppDataMap[appId]; ok {
+				apps = append(apps, appData)
+			}
+		}	
+		mimetypeAppDataMap[mt.Id] = apps
+	}
+
+	for _, ach := range appIdAppDataChans {
+		ach <- appIdAppDataMap 
+	}
+
+	for _, mtCh := range mimetypeAppDataChans {
+		mtCh <- mimetypeAppDataMap
+	}
+
+	foundMimetypes <- mimetypes
+	foundApps <- apps
+	
 }
 
 func aliasTypes(mt *Mimetype) []*Mimetype {
@@ -296,9 +320,8 @@ func readDesktopFile(filePath string, id string) (*DesktopApplication, error) {
 	} else {
 		group := iniFile[0]
 		var path, title, comment = "/application/" + id, group.Entries["Name"], group.Entries["Comment"]
-		var iconUrl =  link.IconUrlFromName(group.Entries["Icon"])
-		var da = DesktopApplication{
-			ResourceData: *resource.MakeBase(path, title, comment, iconUrl, "application"),
+	var da = DesktopApplication{
+			ResourceData: *resource.MakeBase(path, title, comment, "", "application"),
 			DesktopId: id,
 		}	
 
@@ -312,6 +335,7 @@ func readDesktopFile(filePath string, id string) (*DesktopApplication, error) {
 		}
 		da.Version = group.Entries["Version"]
 		da.GenericName = group.Entries["GenericName"]
+		da.IconUrl =  link.IconUrlFromName(group.Entries["Icon"])
 		da.NoDisplay = group.Entries["NoDisplay"] == "true"
 		da.Hidden = group.Entries["Hidden"] == "true"
 		da.OnlyShowIn = slice.Split(group.Entries["OnlyShowIn"], ";")

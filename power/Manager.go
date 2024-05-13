@@ -12,7 +12,6 @@ import (
 	"github.com/surlykke/RefudeServices/config"
 	dbuscall "github.com/surlykke/RefudeServices/lib/dbusutils"
 	"github.com/surlykke/RefudeServices/lib/link"
-	"github.com/surlykke/RefudeServices/lib/resourcerepo"
 	"github.com/surlykke/RefudeServices/notifications"
 )
 
@@ -127,13 +126,10 @@ func retrieveDevice(path dbus.ObjectPath) *Device {
 
 var previousPercentage = 101
 
+// Sufficiently random 
 const notificationId uint32 = 1152165262
 
 func showOnDesktop() {
-	if config.Notifications.BatteryNotifications {
-		notifyOnLow()
-	}
-
 	/* if ! config.Notifications.BatteryDisabled {
 		updateTrayIcon()
 	}*/
@@ -144,7 +140,11 @@ func updateTrayIcon() {
 }
 
 func notifyOnLow() {
-	if displayDevice, ok := resourcerepo.GetTyped[*Device](fmt.Sprintf("/device/%s", path2id(displayDeviceDbusPath))); ok {
+	if !config.Notifications.BatteryNotifications {
+		return
+	}
+
+	if displayDevice, ok := deviceRepo.Get(fmt.Sprintf("/device/%s", path2id(displayDeviceDbusPath))); ok {
 		var percentage = int(displayDevice.Percentage)
 		if displayDevice.State == "Discharging" {
 			if percentage <= 5 {

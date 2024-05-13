@@ -7,17 +7,100 @@ package applications
 
 import (
 	"strings"
-	"sync"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/surlykke/RefudeServices/lib/log"
-	"github.com/surlykke/RefudeServices/lib/resource"
-	"github.com/surlykke/RefudeServices/lib/resourcerepo"
-	"github.com/surlykke/RefudeServices/lib/searchutils"
+	"github.com/surlykke/RefudeServices/lib/repo"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
+type AppData struct {
+	DesktopId string
+	Title     string
+	IconUrl   string
+}
+
+type openFileRequest struct {
+	appId string
+	path  string
+}
+
+// f.AddLink("?action="+app.DesktopId, "Open with "+app.Title, app.IconUrl, relation.Action)
+
+type MimetypeAppDataChan chan map[string][]AppData
+
+var mimetypeAppDataChans []MimetypeAppDataChan
+
+func MakeMimetypeAppDataChan() MimetypeAppDataChan {
+	mimetypeAppDataChans = append(mimetypeAppDataChans, make(MimetypeAppDataChan))
+	return mimetypeAppDataChans[len(mimetypeAppDataChans)-1]
+}
+
+type AppIdAppDataChan chan map[string]AppData
+
+var appIdAppDataChans []AppIdAppDataChan
+
+func MakeAppdIdAppDataChan() AppIdAppDataChan {
+	appIdAppDataChans = append(appIdAppDataChans, make(AppIdAppDataChan))
+	return appIdAppDataChans[len(appIdAppDataChans)-1]
+}
+
+var foundApps = make(chan map[string]*DesktopApplication)
+var foundMimetypes = make(chan map[string]*Mimetype)
+var appRequests = repo.MakeAndRegisterRequestChan()
+var appRepo = repo.MakeRepoWithFilter[*DesktopApplication](filter)
+var mtRequests = repo.MakeAndRegisterRequestChan()
+var mimetypeRepo = repo.MakeRepo[*Mimetype]()
+
+var openFileRequests = make(chan openFileRequest)
+
 func Run() {
+	go watch()
+	go appLoop()
+	go mtLoop()
+}
+
+func OpenFile(appId, path string) {
+	if appId == "" {
+		xdg.RunCmd("xdg-open", path)
+	} else {
+		openFileRequests <- openFileRequest{appId: appId, path: path}
+	}
+}
+
+func appLoop() {
+	for {
+		select {
+		case apps := <-foundApps:
+			appRepo.RemoveAll()
+			for _, app := range apps {
+				appRepo.Put(app)
+			}
+		case req := <-appRequests:
+			appRepo.DoRequest(req)
+		case ofr := <-openFileRequests:
+			if da, ok := appRepo.Get("/application/" + ofr.appId); ok {
+				da.Run(ofr.path)
+			}
+		}
+	}
+}
+
+func mtLoop() {
+	for {
+		select {
+		case mimetypes := <-foundMimetypes:
+			mimetypeRepo.RemoveAll()
+			for _, mt := range mimetypes {
+				mimetypeRepo.Put(mt)
+			}
+		case req := <-mtRequests:
+			mimetypeRepo.DoRequest(req)
+		}
+	}
+}
+
+func watch() {
 	var err error
 	watcher, err = fsnotify.NewWatcher()
 	if err != nil {
@@ -32,47 +115,17 @@ func Run() {
 	watchDir(xdg.ConfigHome)
 
 	Collect()
-	for {
-		select {
-		case event := <-watcher.Events:
-			if isRelevant(event) {
-				Collect()
-			}
-		case err := <-watcher.Errors:
-			log.Warn(err)
+
+	for event := range watcher.Events {
+		if isRelevant(event) {
+			Collect()
 		}
 	}
+
 }
 
-func Search(list *resource.RRList, term string) {
-	if len(term) > 0 {
-		for _, da := range resourcerepo.GetTypedByPrefix[*DesktopApplication]("/application/") {
-			if rnk := searchutils.Match(term, da.Title, da.Keywords...); rnk >= 0 {
-				if !da.Hidden {
-					*list = append(*list, resource.RankedResource{Res: da, Rank: rnk})
-				}
-			}
-		}
-	}
-}
-
-var (
-	listeners    []func()
-	listenerLock sync.Mutex
-)
-
-func AddListener(listener func()) {
-	listenerLock.Lock()
-	defer listenerLock.Unlock()
-	listeners = append(listeners, listener)
-}
-
-func notifyListeners() {
-	listenerLock.Lock()
-	defer listenerLock.Unlock()
-	for _, listener := range listeners {
-		listener()
-	}
+func filter(term string, app *DesktopApplication) bool {
+	return len(term) > 0 && !app.Hidden
 }
 
 var watcher *fsnotify.Watcher

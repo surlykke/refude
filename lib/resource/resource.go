@@ -20,6 +20,10 @@ type Resource interface {
 	Data() *ResourceData
 }
 
+type HasBase interface {
+	ResourceData
+}
+
 type RankedResource struct {
 	Rank int
 	Res  Resource
@@ -127,3 +131,5 @@ func ServeList(w http.ResponseWriter, r *http.Request, list []Resource) {
 		respond.NotAllowed(w)
 	}
 }
+
+

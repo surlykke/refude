@@ -83,6 +83,6 @@ func (n *Notification) DoPost(w http.ResponseWriter, r *http.Request) {
 }
 
 func (n *Notification) DoDelete(w http.ResponseWriter, r *http.Request) {
-	removeNotification(n.NotificationId, Dismissed)
+	removals <- notificationRemoval{id: n.NotificationId, reason: Dismissed}	
 	respond.Accepted(w)
 }

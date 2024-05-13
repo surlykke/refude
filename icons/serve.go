@@ -17,13 +17,7 @@ import (
 )
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path == "/iconthemes" {
-		if r.Method == "GET" {
-			respond.AsJson(w, themeSearchList)
-		} else {
-			respond.NotAllowed(w)
-		}
-	} else if r.URL.Path == "/icon" {
+	if r.URL.Path == "/icon" {
 		if r.Method == "GET" {
 			if name := requests.GetSingleQueryParameter(r, "name", ""); name == "" {
 				respond.UnprocessableEntity(w, fmt.Errorf("Query parameter 'name' must be given, and not empty"))

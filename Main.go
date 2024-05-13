@@ -16,18 +16,17 @@ import (
 	"github.com/surlykke/RefudeServices/file"
 	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/log"
+	"github.com/surlykke/RefudeServices/lib/repo"
 	"github.com/surlykke/RefudeServices/lib/requests"
-	"github.com/surlykke/RefudeServices/lib/resourcerepo"
+	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/notifications"
 	"github.com/surlykke/RefudeServices/ping"
 	"github.com/surlykke/RefudeServices/power"
-	"github.com/surlykke/RefudeServices/search"
 	"github.com/surlykke/RefudeServices/start"
 	"github.com/surlykke/RefudeServices/statusnotifications"
 	"github.com/surlykke/RefudeServices/watch"
 	"github.com/surlykke/RefudeServices/wayland"
-	"golang.org/x/exp/slices"
 
 	_ "net/http/pprof"
 )
@@ -36,8 +35,12 @@ func main() {
 	log.Info("Running")
 
 	go start.Run()
+	go icons.Run()
+	go file.Run()
+
 	go wayland.Run()
 	go applications.Run()
+	go browsertabs.Run()
 	if config.Notifications.Enabled {
 		go notifications.Run()
 	}
@@ -45,42 +48,65 @@ func main() {
 	go statusnotifications.Run()
 
 	http.Handle("/ping", ping.WebsocketHandler)
-
 	http.HandleFunc("/tabsink", browsertabs.ServeHTTP)
-	http.HandleFunc("/flash", notifications.ServeFlash)
-	http.HandleFunc("/file/", file.ServeHTTP)
 	http.HandleFunc("/icon", icons.ServeHTTP)
-	http.HandleFunc("/complete", Complete)
-	http.HandleFunc("/watch", watch.ServeHTTP)
 	http.HandleFunc("/desktop/", desktop.ServeHTTP)
-	http.HandleFunc("/search", search.Search)
-	http.HandleFunc("/", resourcerepo.ServeHTTP)
+	http.HandleFunc("/watch", watch.ServeHTTP)
+
+	http.HandleFunc("/complete", complete)
+	http.HandleFunc("/search", search)
+	http.HandleFunc("/", serveResources)
 
 	if err := http.ListenAndServe(":7938", nil); err != nil {
 		log.Warn("http.ListenAndServe failed:", err)
 	}
 }
 
-func Complete(w http.ResponseWriter, r *http.Request) {
+func serveResources(w http.ResponseWriter, r *http.Request) {
+	var path = r.URL.Path
+	if strings.HasSuffix(path, "/") {
+		resource.ServeList(w, r, repo.FindList(path))
+	} else {
+		if res := repo.FindSingle(path); res != nil {
+			resource.ServeSingleResource(w, r, res)
+		} else {
+			respond.NotFound(w)
+		}
+	}
+}
+
+func search(w http.ResponseWriter, r *http.Request) {
+	var term = strings.ToLower(requests.GetSingleQueryParameter(r, "term", ""))
+	if r.URL.Query().Has("from") {
+		if from := repo.FindSingle(r.URL.Query().Get("from")); from != nil {
+			if searcable, ok := from.(resource.Searchable); ok {
+				resource.ServeList(w, r, searcable.Search(term))
+				return 
+			}
+		}
+		respond.NotFound(w)
+	} else {
+		resource.ServeList(w, r, repo.DoSearch(term))
+	}
+}
+
+func complete(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		respond.AsJson(w, collectPaths(requests.GetSingleQueryParameter(r, "prefix", "")))
+		var prefix = requests.GetSingleQueryParameter(r, "prefix", "")
+		var paths = make([]string, 0, 1000)
+		for _, p := range []string{"/flash", "/icon?name=", "/desktop/", "/complete?prefix=", "/search?", "/watch"} {
+			if strings.HasPrefix(p, prefix) {
+				paths = append(paths, p)
+			}
+		}
+
+		for _, res := range repo.FindList(prefix) {
+			paths = append(paths, res.Data().Path)
+		}
+
+		respond.AsJson(w, paths)
 	} else {
 		respond.NotAllowed(w)
 	}
 }
 
-func collectPaths(prefix string) []string {
-	var paths = make([]string, 0, 1000)
-	paths = append(paths, "/icon?name=", "/complete?prefix=", "/watch")
-	paths = append(paths, resourcerepo.GetPaths()...)
-	slices.Sort(paths)
-	var pos = 0
-	for _, path := range paths {
-		if strings.HasPrefix(path, prefix) {
-			paths[pos] = path
-			pos = pos + 1
-		}
-	}
-
-	return paths[0:pos]
-}

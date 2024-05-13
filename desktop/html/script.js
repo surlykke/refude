@@ -98,4 +98,4 @@ let reloadOnChange = () => {
         fetch("/desktop/hash").then(r => r.ok && r.json()).then(newHash => newHash === hash ||  load())
     }
 }
-//setInterval(reloadOnChange, 500)
+setInterval(reloadOnChange, 500)

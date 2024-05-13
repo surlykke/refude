@@ -9,51 +9,62 @@ import (
 	"github.com/godbus/dbus/v5"
 
 	"github.com/surlykke/RefudeServices/lib/log"
-	"github.com/surlykke/RefudeServices/lib/resource"
-	"github.com/surlykke/RefudeServices/lib/resourcerepo"
-	"github.com/surlykke/RefudeServices/lib/searchutils"
+	"github.com/surlykke/RefudeServices/lib/repo"
 )
 
+var deviceRepo = repo.MakeRepoWithFilter(searchFilter)
+var requests = repo.MakeAndRegisterRequestChan()
+
+var updates = make(chan *Device)
+var removals = make(chan string)
+
 func Run() {
+	go dbusLoop()
+
+	for {
+		select {
+		case req := <-requests:
+			deviceRepo.DoRequest(req)
+		case device := <-updates:
+			deviceRepo.Put(device)
+			if device.Path == "/device/DisplayDevice" {
+				showOnDesktop()
+			}
+		case path := <-removals:
+			deviceRepo.Remove(path)
+		}
+	}
+}
+
+func dbusLoop() {
 	var signals = subscribe()
 
-	resourcerepo.Put(retrieveDevice(displayDeviceDbusPath))
-	showOnDesktop()
+	updates <- retrieveDevice(displayDeviceDbusPath)
 
 	for _, dbusPath := range retrieveDevicePaths() {
-		resourcerepo.Put(retrieveDevice(dbusPath))
+		updates <- retrieveDevice(dbusPath)
 	}
 
 	for signal := range signals {
 		if signal.Name == "org.freedesktop.DBus.Properties.PropertiesChanged" {
-			resourcerepo.Update(retrieveDevice(signal.Path))
-			if displayDeviceDbusPath == signal.Path {
-				showOnDesktop()
-			}
+			updates <- retrieveDevice(signal.Path)
 		} else if signal.Name == "org.freedesktop.UPower.DeviceAdded" {
 			if path, ok := getAddedRemovedPath(signal); ok {
-				log.Info("Adding device:", path)
-				resourcerepo.Put(retrieveDevice(path))
+				updates <- retrieveDevice(path)
 			}
 		} else if signal.Name == "org.freedesktop.UPower.DeviceRemoved" {
 			if path, ok := signal.Body[0].(dbus.ObjectPath); ok {
-				log.Info("Deleting device:", path)
-				resourcerepo.Remove(path2id(path))
+				removals <- "/device/" + path2id(path)
 			}
 		} else {
 			log.Warn("Update on unknown device: ", signal.Path)
 		}
 	}
+
 }
 
-func Search(list *resource.RRList, term string) {
-	if len(term) > 2 {
-		for _, d := range resourcerepo.GetTypedByPrefix[*Device]("/device/") {
-			if rnk := searchutils.Match(term, d.Title); rnk >= 0 {
-				*list = append(*list, resource.RankedResource{Res: d, Rank: rnk})
-			}
-		}
-	}
+func searchFilter(term string, device *Device) bool {
+	return len(term) > 2
 }
 
 func getAddedRemovedPath(signal *dbus.Signal) (dbus.ObjectPath, bool) {

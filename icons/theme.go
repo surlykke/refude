@@ -32,7 +32,7 @@ type IconDir struct {
 	Context string
 }
 
-func readThemes() map[string]*IconTheme {
+func readThemes(basedirs []string) map[string]*IconTheme {
 	var themeMap = make(map[string]*IconTheme)
 	/*
 	   var id string = func (this *IconTheme) Id() string {

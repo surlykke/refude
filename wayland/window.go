@@ -5,28 +5,92 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"sync"
 
 	"github.com/surlykke/RefudeServices/applications"
 	"github.com/surlykke/RefudeServices/lib/relation"
+	"github.com/surlykke/RefudeServices/lib/repo"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
-	"github.com/surlykke/RefudeServices/lib/resourcerepo"
 	"github.com/surlykke/RefudeServices/lib/respond"
-	"github.com/surlykke/RefudeServices/lib/searchutils"
 )
 
-// Get current rect
-//swaymsg -t get_tree | jq '.nodes[1].nodes[].floating_nodes[] | select(.name="org.refude.panel") | (.rect)'
+var appIdAppDataChan = applications.MakeAppdIdAppDataChan()
 
-// focus
-// swaymsg '[title=org.refude.panel] focus'
+var windowRepo = repo.MakeRepoWithFilter[*WaylandWindow](filter)
+var repoRequests = repo.MakeAndRegisterRequestChan()
 
-// Move to
-// swaymsg '[title=org.refude.panel] move absolute position 1200 0'
+var windowUpdates = make(chan windowUpdate)
+var removals = make(chan uint64)
+var otherCommands = make(chan uint8)
 
-//
-// swaymsg "[title=org.refude.panel] resize set width 200" (or height)
+type windowUpdate struct {
+	wId   uint64
+	title string
+	appId string
+	state WindowStateMask
+}
+
+func Run() {
+	go setupAndRunAsWaylandClient()
+
+	var appIdAppDataMap map[string]applications.AppData
+	var rememberedActive uint64 = 0
+
+	for {
+		select {
+		case req := <-repoRequests:
+			windowRepo.DoRequest(req)
+		case upd := <-windowUpdates:
+			var path = fmt.Sprintf("/window/%d", upd.wId)
+			var w WaylandWindow
+			if tmp, ok := windowRepo.Get(path); ok {
+				w = *tmp
+			} else {
+				w = *MakeWindow(upd.wId)
+			}
+
+			if upd.title != "" {
+				w.Title = upd.title
+			} else if upd.appId != "" {
+				w.AppId = upd.appId
+				w.Comment = upd.appId
+				if appData, ok := appIdAppDataMap[upd.appId+".desktop"]; ok {
+					w.IconUrl = appData.IconUrl
+				}
+			} else if upd.state > 0 {
+				w.State = upd.state - 1
+			}
+
+			windowRepo.Put(&w)
+		case id := <-removals:
+			var path = fmt.Sprintf("/window/%d", id)
+			windowRepo.Remove(path)
+		case i := <-otherCommands:
+			switch i {
+			case 0:
+				rememberedActive = 0
+				for _, w := range windowRepo.GetAll() {
+					if w.State&ACTIVATED > 0 {
+						rememberedActive = w.Wid
+						break
+					}
+				}
+			case 1:
+				if rememberedActive != 0 {
+					activate(rememberedActive)
+				}
+			}
+		case appIdAppDataMap = <-appIdAppDataChan:
+			for _, ww := range windowRepo.GetAll() {
+				if ww.AppId != "" {
+					if appData, ok := appIdAppDataMap[ww.AppId+".desktop"]; ok {
+						ww.IconUrl = appData.IconUrl
+					}
+				}
+			}
+		}
+	}
+}
 
 type WindowStateMask uint8
 
@@ -75,14 +139,6 @@ func MakeWindow(wId uint64) *WaylandWindow {
 	return ww
 }
 
-func (this *WaylandWindow) GetIconUrl() string {
-	return applications.GetIconUrl(this.AppId + ".desktop")
-}
-
-func (this *WaylandWindow) RelevantForSearch(term string) bool {
-	return !strings.HasPrefix(this.Title, "Refude Desktop")
-}
-
 func (this *WaylandWindow) DoDelete(w http.ResponseWriter, r *http.Request) {
 	close(this.Wid)
 	respond.Accepted(w)
@@ -98,64 +154,14 @@ func (this *WaylandWindow) DoPost(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func retriewIconUrlsFromApps() {
-	var windows = resourcerepo.GetTypedByPrefix[*WaylandWindow]("/window/")
-	for _, w := range windows {
-		var copy = *w
-		var iconUrl = applications.GetIconUrl(copy.AppId + ".desktop")
-		copy.IconUrl = iconUrl
-		resourcerepo.Update(&copy)
-	}
-}
-
-var recentMap = make(map[uint64]uint32)
-var recentCount uint32
-var recentMapLock sync.Mutex
-
-func getCopy(wId uint64) *WaylandWindow {
-	var copy WaylandWindow
-	var path = fmt.Sprintf("/window/%d", wId)
-	if w, ok := resourcerepo.GetTyped[*WaylandWindow](path); ok {
-		copy = *w
-	} else {
-		copy = *MakeWindow(wId)
-	}
-	return &copy
-}
-
-func Run() {
-	applications.AddListener(retriewIconUrlsFromApps) // FIXME this is racy
-	setupAndRunAsWaylandClient()
-}
-
-var rememberedActive uint64 = 0
-var rememberedActiveLock sync.Mutex
-
 func RememberActive() {
-	for _, w := range resourcerepo.GetTypedByPrefix[*WaylandWindow]("/window/") {
-		if w.State.Is(ACTIVATED) {
-			rememberedActiveLock.Lock()
-			rememberedActive = w.Wid
-			rememberedActiveLock.Unlock()
-			return
-		}
-	}
+	otherCommands <- 0
 }
 
 func ActivateRememberedActive() {
-	rememberedActiveLock.Lock()
-	var copy = rememberedActive
-	rememberedActiveLock.Unlock()
-	if copy > 0 {
-		activate(copy)
-	}
+	otherCommands <- 1
 }
 
-func Search(list *resource.RRList, term string) {
-	for _, w := range resourcerepo.GetTypedByPrefix[*WaylandWindow]("/window/") {
-		if rnk := searchutils.Match(term, w.Title); rnk >= 0 {
-			*list = append(*list, resource.RankedResource{Res: w, Rank: rnk})
-		}
-	}
+func filter(term string, ww *WaylandWindow) bool {
+	return !strings.HasPrefix(ww.Title, "Refude Desktop")
 }
-

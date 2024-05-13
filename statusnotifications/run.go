@@ -6,88 +6,74 @@
 package statusnotifications
 
 import (
-	"github.com/surlykke/RefudeServices/icons"
-
-	"github.com/surlykke/RefudeServices/lib/link"
+	"github.com/surlykke/RefudeServices/lib/repo"
 	"github.com/surlykke/RefudeServices/lib/resource"
-	"github.com/surlykke/RefudeServices/lib/resourcerepo"
 )
 
+var itemRepo = repo.MakeRepo[*Item]()
+var menuRepo = repo.MakeRepo[*Menu]()
+var itemRequests = repo.MakeAndRegisterRequestChan()
+var menuRequests = repo.MakeAndRegisterRequestChan()
+var items = make(chan *Item)
+var menus = make(chan *Menu)
+var itemRemovals = make(chan string)
+var menuRemovals = make(chan string)
+
 func Run() {
+	go dbusLoop()
+	go itemLoop()
+	go menuLoop()
+}
+
+func itemLoop() {
+	for {
+		select {
+		case req := <-itemRequests:
+			itemRepo.DoRequest(req)
+		case item := <-items:
+			itemRepo.Put(item)
+		case path := <-itemRemovals:
+			itemRepo.Remove(path)
+		}
+	}
+}
+
+func menuLoop() {
+	for {
+		select {
+		case req := <-menuRequests:
+			menuRepo.DoRequest(req)
+		case menu := <-menus:
+			menuRepo.Put(menu)
+		case path := <-menuRemovals:
+			menuRepo.Remove(path)
+		}
+	}
+}
+
+func dbusLoop() {
 	getOnTheBus()
 	go monitorSignals()
-
-	// TODO After a restart, pick up those that where?
 
 	for event := range events {
 		var id = pathEscape(event.sender, event.path)
 		var itemPath = "/item/" + id
 		var menuPath = "/menu/" + id
-		switch event.eventName {
-		case "ItemCreated":
+		if  event.eventName == "ItemRemoved" {
+			itemRemovals <- itemPath
+			menuRemovals <- menuPath
+		} else { // Assume it's ItemCreated or property update 
+			 // A bit bruteforce - if it's a propertychange we could just 
+			// retrieve that propery. This is simpler, and probably not too bad
 			var item = buildItem(event.sender, event.path)
-			resourcerepo.Put(item)
+			items <- item	
 			if item.MenuPath != "" {
-				resourcerepo.Put(&Menu{
-					ResourceData: *resource.MakeBase("/menu/" + pathEscape(event.sender, item.MenuPath), "Menu", "", "", "menu"),
-					sender: event.sender, 
-					path: item.MenuPath,
+				menus <- (&Menu{
+					ResourceData: *resource.MakeBase("/menu/"+pathEscape(event.sender, item.MenuPath), "Menu", "", "", "menu"),
+					sender:       event.sender,
+					path:         item.MenuPath,
 				})
 			}
-		case "ItemRemoved":
-			resourcerepo.Remove(itemPath)
-			resourcerepo.Remove(menuPath)
-		default:
-			if item, ok := resourcerepo.GetTyped[*Item](itemPath); ok {
-				var itemCopy = *item
-				switch event.eventName {
-				case "org.kde.StatusNotifierItem.NewTitle":
-					if v, ok := getProp(itemCopy.sender, itemCopy.path, "Title"); ok {
-						itemCopy.Title = getStringOr(v)
-					}
-				case "org.kde.StatusNotifierItem.NewStatus":
-					if v, ok := getProp(itemCopy.sender, itemCopy.path, "Status"); ok {
-						itemCopy.Status = getStringOr(v)
-					}
-				case "org.kde.StatusNotifierItem.NewToolTip":
-					if v, ok := getProp(itemCopy.sender, itemCopy.path, "ToolTip"); ok {
-						itemCopy.ToolTip = getStringOr(v)
-					}
-				case "org.kde.StatusNotifierItem.NewIcon":
-					if itemCopy.UseIconPixmap {
-						if v, ok := getProp(itemCopy.sender, itemCopy.path, "IconPixmap"); ok {
-							itemCopy.IconUrl = link.IconUrlFromName(collectPixMap(v))
-						}
-					} else {
-						if v, ok := getProp(itemCopy.sender, itemCopy.path, "IconName"); ok {
-							itemCopy.IconUrl = link.IconUrlFromName(getStringOr(v))
-						}
-					}
-				case "org.kde.StatusNotifierItem.NewIconThemePath":
-					if v, ok := getProp(itemCopy.sender, itemCopy.path, "IconThemePath"); ok {
-						itemCopy.IconThemePath = getStringOr(v)
-						icons.AddBasedir(itemCopy.IconThemePath)
-					}
-				case "org.kde.StatusNotifierItem.NewAttentionIcon":
-					if itemCopy.UseAttentionIconPixmap {
-						if v, ok := getProp(itemCopy.sender, itemCopy.path, "AttentionIconPixmap"); ok {
-							itemCopy.AttentionIconName = collectPixMap(v)
-						}
-					} else {
-						if v, ok := getProp(itemCopy.sender, itemCopy.path, "AttentionIconName"); ok {
-							itemCopy.AttentionIconName = getStringOr(v)
-						}
-					}
-				case "org.kde.StatusNotifierItem.NewOverlayIcon":
-					// TODO
-				default:
-					continue
-				}
-				resourcerepo.Put(&itemCopy)
-			} else {
-				continue
-			}
-
 		}
 	}
 }

@@ -18,7 +18,6 @@ import (
 	"github.com/surlykke/RefudeServices/lib/image"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/resource"
-	"github.com/surlykke/RefudeServices/lib/resourcerepo"
 )
 
 const NOTIFICATIONS_SERVICE = "org.freedesktop.Notifications"
@@ -145,7 +144,6 @@ func Notify(app_name string,
 	actions []string,
 	hints map[string]dbus.Variant,
 	expire_timeout int32) (uint32, *dbus.Error) {
-
 	var id uint32
 	if replaces_id != 0 {
 		id = replaces_id
@@ -210,8 +208,7 @@ func Notify(app_name string,
 	}
 
 	notification.Expires = UnixTime(time.Now().Add(time.Duration(expire_timeout) * time.Millisecond))
-	resourcerepo.Put(&notification)	
-	calculateFlash()
+	added <-&notification
 	return id, nil
 }
 
@@ -269,7 +266,7 @@ func installFileIcon(hints map[string]dbus.Variant, key string) (string, bool) {
 }
 
 func CloseNotification(id uint32) {
-	removeNotification(id, Closed)
+	removals <- notificationRemoval{id: id, reason: Closed}
 }
 
 func GetServerInformation() (string, string, string, string, *dbus.Error) {
@@ -347,4 +344,6 @@ func DoDBus() {
 		NOTIFICATIONS_INTERFACE,
 	)
 	_ = conn.Export(introspect.Introspectable(INTROSPECT_XML), NOTIFICATIONS_PATH, INTROSPECT_INTERFACE)
+
+	fmt.Println("On the bus...")
 }

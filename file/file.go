@@ -6,6 +6,7 @@
 package file
 
 import (
+	"fmt"
 	"io/fs"
 	"net/http"
 	"os"
@@ -80,15 +81,23 @@ func makeFileFromInfo(osPath string, fileInfo os.FileInfo) *File {
 		Type:         fileType,
 		Permissions:  fileInfo.Mode().String(),
 		Mimetype:     mimetype,
-		Apps:         applications.GetAppsIds(mimetype),
+		Apps:         nil, // FIXMEapplications.GetAppsIds(mimetype),
 	}
+
 
 	if fileType == "Directory" {
 		f.AddLink("/search?from="+f.Path, "", "", relation.Search)
 	}
 
-	for _, app := range applications.GetApps(f.Apps...) {
-		f.AddLink("?action="+app.DesktopId, "Open with "+app.Title, app.IconUrl, relation.Action)
+	fmt.Print("makefromInfo looking for '", mimetype, "'\n")
+
+	var appDatas, ok = mimetypeAppDataMap[mimetype]
+	fmt.Println("Got:", appDatas)
+	if ok {
+		for _, appData := range appDatas {
+			f.Apps = append(f.Apps, appData.DesktopId)
+			f.AddLink("?action="+appData.DesktopId, "Open with "+appData.Title, appData.IconUrl, relation.Action)
+		}
 	}
 
 	return &f
@@ -99,15 +108,49 @@ func (f *File) Search(term string) []resource.Resource {
 	if f.Type == "Directory" {
 		var rrList = make(resource.RRList, 0, 30)
 		var osPath = f.Path[len("/file"):]
-		Search(&rrList, osPath, terms...)
+		search(&rrList, osPath, terms...)
 		return rrList.GetResourcesSorted()
 	} else {
 		return []resource.Resource{}
 	}
 }
 
+
+func searchFrom(dir, term string) resource.RRList {
+	var collector = make(resource.RRList, 0, 100)
+	var terms = strings.Split(term, "/")
+	search(&collector, dir, terms...)
+	return collector
+}
+
+
+func searchDesktop(term string) resource.RRList {
+	var collector = make(resource.RRList, 0, 100)
+	var terms = strings.Split(term, "/")
+	if len(terms[0]) >= 3 {
+		if rnk := searchutils.Match(term, xdg.Home); rnk >= 0 {
+			if info, err := os.Stat(xdg.Home); err != nil {
+				log.Warn(err)
+			} else {
+				var file = makeFileFromInfo(xdg.Home, info)
+				collector = append(collector, resource.RankedResource{Res: file, Rank: rnk})
+			}
+		}
+		search(&collector, xdg.Home, terms...)
+		search(&collector, xdg.ConfigHome, terms...)
+		search(&collector, xdg.DownloadDir, terms...)
+		search(&collector, xdg.DocumentsDir, terms...)
+		search(&collector, xdg.MusicDir, terms...)
+		search(&collector, xdg.VideosDir, terms...)
+	}
+	return collector
+}
+
+
+
+
 // Assumes that dir is a directory an that len(terms) > 0
-func Search(collector *resource.RRList, dir string, terms ...string) {
+func search(collector *resource.RRList, dir string, terms ...string) {
 	if file, err := os.Open(dir); err != nil {
 		log.Warn(err)
 	} else if entries, err := file.ReadDir(-1); err != nil {
@@ -117,7 +160,7 @@ func Search(collector *resource.RRList, dir string, terms ...string) {
 			if rnk := searchutils.Match(terms[0], entry.Name()); rnk > -1 {
 				if len(terms) > 1 {
 					if entry.IsDir() {
-						Search(collector, dir+"/"+entry.Name(), terms[1:]...)
+						search(collector, dir+"/"+entry.Name(), terms[1:]...)
 					}
 				} else {
 					fileInfo, _ := entry.Info()
@@ -129,40 +172,13 @@ func Search(collector *resource.RRList, dir string, terms ...string) {
 	}
 }
 
-func SearchDesktop(term string, collector *resource.RRList) {
-	var terms = strings.Split(term, "/")
-	if len(terms[0]) >= 3 {
-		if rnk := searchutils.Match(term, xdg.Home); rnk >= 0 {
-			if info, err := os.Stat(xdg.Home); err != nil {
-				log.Warn(err)
-			} else {
-				var file = makeFileFromInfo(xdg.Home, info)
-				*collector = append(*collector, resource.RankedResource{Res: file, Rank: rnk})
-			}
-		}
-		Search(collector, xdg.Home, terms...)
-		Search(collector, xdg.ConfigHome, terms...)
-		Search(collector, xdg.DownloadDir, terms...)
-		Search(collector, xdg.DocumentsDir, terms...)
-		Search(collector, xdg.MusicDir, terms...)
-		Search(collector, xdg.VideosDir, terms...)
-	}
-}
-
 func (f *File) DoPost(w http.ResponseWriter, r *http.Request) {
 	var defaultAppId = ""
 	if len(f.Apps) > 0 {
 		defaultAppId = f.Apps[0]
 	}
 	var appId = requests.GetSingleQueryParameter(r, "action", defaultAppId)
-	var ok, err = applications.OpenFile(appId, f.Path[len("/file"):])
-	if ok {
-		if err != nil {
-			respond.ServerError(w, err)
-		} else {
-			respond.Accepted(w)
-		}
-	} else {
-		respond.NotFound(w)
-	}
+	applications.OpenFile(appId, f.Path[len("/file"):])
+	
+	respond.Accepted(w)
 }

@@ -14,7 +14,6 @@ import (
 
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
-	"github.com/surlykke/RefudeServices/lib/resourcerepo"
 	"github.com/surlykke/RefudeServices/lib/respond"
 
 	"github.com/surlykke/RefudeServices/lib/xdg"
@@ -81,45 +80,6 @@ func (d *DesktopApplication) DoPost(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		respond.NotFound(w)
-	}
-}
-
-func GetAppsIds(mimetypeId string) []string {
-	if mimetype, ok := resourcerepo.GetTyped[*Mimetype]("/mimetype/" + mimetypeId); ok {
-		return mimetype.Applications
-	} else {
-		return []string{}
-	}
-}
-
-func GetApps(appIds ...string) []*DesktopApplication {
-	var apps = make([]*DesktopApplication, 0, len(appIds))
-	for _, appId := range appIds {
-		var path = "/application/" + appId
-
-		if app, ok := resourcerepo.GetTyped[*DesktopApplication](path); ok {
-			apps = append(apps, app)
-		}
-	}
-	return apps
-}
-
-func OpenFile(appId, path string) (bool, error) {
-	if appId == "" {
-		xdg.RunCmd("xdg-open", path)
-		return true, nil
-	} else if app, ok := resourcerepo.GetTyped[*DesktopApplication]("/application/" + appId); ok {
-		return true, app.Run(path)
-	} else {
-		return false, nil
-	}
-}
-
-func GetIconUrl(appId string) string {
-	if app, ok := resourcerepo.GetTyped[*DesktopApplication]("/application/" + appId); ok {
-		return app.IconUrl
-	} else {
-		return ""
 	}
 }
 

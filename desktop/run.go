@@ -11,16 +11,14 @@ import (
 	"io/fs"
 	"net/http"
 	"os"
-	"strconv"
 
 	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/relation"
+	"github.com/surlykke/RefudeServices/lib/repo"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
-	"github.com/surlykke/RefudeServices/lib/resourcerepo"
 	"github.com/surlykke/RefudeServices/lib/respond"
-	"github.com/surlykke/RefudeServices/search"
 	"github.com/surlykke/RefudeServices/watch"
 	"github.com/surlykke/RefudeServices/wayland"
 )
@@ -92,7 +90,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			respond.NotAllowed(w)
 		} else {
 			var resourcePath = requests.GetSingleQueryParameter(r, "resource", "/start")
-			if res := search.FetchResource(resourcePath); res != nil {
+			if res := repo.FindSingle(resourcePath); res != nil {
 				var (
 					term           = requests.GetSingleQueryParameter(r, "search", "")
 					actions        = res.Data().ActionLinks(term)
@@ -122,7 +120,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					"Icon":       res.Data().IconUrl,
 					"Term":       term,
 					"Rows":       rows,
-					"Hash":       strconv.FormatUint(resourcerepo.RepoHash(), 10), // cf. /desktop/hash below
+//					"Hash":       strconv.FormatUint(resourcerepo.RepoHash(), 10), // cf. /desktop/hash below
 				}
 
 				if err := bodyTemplate.Execute(w, m); err != nil {
@@ -144,7 +142,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case "/desktop/hash":
 		if r.Method == "GET" {
 			// Go Json cannot handle uint64, so we convert to string
-			respond.AsJson(w, strconv.FormatUint(resourcerepo.RepoHash(), 10))
+			respond.AsJson(w, "")
 		} else {
 			respond.NotAllowed(w)
 		}
@@ -163,9 +161,8 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	case "/desktop/bodyTemplate.html":
 		respond.NotFound(w)
-	case "/desktop/repohash":
-		respond.AsJson(w, resourcerepo.RepoHash())
 	default:
 		StaticServer.ServeHTTP(w, r)
 	}
 }
+
