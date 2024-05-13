@@ -6,7 +6,6 @@
 package file
 
 import (
-	"fmt"
 	"io/fs"
 	"net/http"
 	"os"
