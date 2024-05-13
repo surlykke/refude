@@ -89,10 +89,7 @@ func makeFileFromInfo(osPath string, fileInfo os.FileInfo) *File {
 		f.AddLink("/search?from="+f.Path, "", "", relation.Search)
 	}
 
-	fmt.Print("makefromInfo looking for '", mimetype, "'\n")
-
 	var appDatas, ok = mimetypeAppDataMap[mimetype]
-	fmt.Println("Got:", appDatas)
 	if ok {
 		for _, appData := range appDatas {
 			f.Apps = append(f.Apps, appData.DesktopId)
