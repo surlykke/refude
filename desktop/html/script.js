@@ -1,5 +1,6 @@
 const selectables = document.getElementsByClassName('selectable')
 const selected = document.getElementsByClassName('selected')
+let etag = '""'
 
 let state = { res: "/start", term: "", pos: 0 }
 let history = []
@@ -8,13 +9,20 @@ let hash = ""
 
 let load = () => {
     let url = `/desktop/body?resource=${state.res}&search=${state.term}`
-    fetch(url)
-        .then(r => r.ok ? r.text() : Promise.reject())
+    fetch(url, {headers: {"If-None-Match": etag }})
+        .then(response => {
+            if (response.ok) {
+                etag = response.headers.get("ETag");
+                return response.text() 
+            } else {
+                return Promise.reject()
+            }})
         .then(text => {
             document.body.innerHTML = text
             highlightSelected()
             hash = document.getElementById('table')?.dataset?.hash
         })
+        .catch (e =>   {})
 }
 
 let highlightSelected = () => {
@@ -95,7 +103,7 @@ load()
 
 let reloadOnChange = () => {
     if (document.visibilityState === 'visible') {
-        fetch("/desktop/hash").then(r => r.ok && r.json()).then(newHash => newHash === hash ||  load())
+        load()
     }
 }
-//setInterval(reloadOnChange, 500)
+setInterval(reloadOnChange, 500)

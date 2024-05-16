@@ -7,6 +7,7 @@ package desktop
 
 import (
 	"embed"
+	"fmt"
 	"html/template"
 	"io/fs"
 	"net/http"
@@ -19,6 +20,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
+	"github.com/surlykke/RefudeServices/lib/stringhash"
 	"github.com/surlykke/RefudeServices/watch"
 	"github.com/surlykke/RefudeServices/wayland"
 )
@@ -120,8 +122,13 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					"Icon":       res.Data().IconUrl,
 					"Term":       term,
 					"Rows":       rows,
-//					"Hash":       strconv.FormatUint(resourcerepo.RepoHash(), 10), // cf. /desktop/hash below
 				}
+				var etag = buildETag(res.Data().Title, res.Data().IconUrl, rows)
+				if r.Header.Get("if-none-match") == etag {
+					respond.NotModified(w)
+					return
+				}
+				w.Header().Set("ETag", etag)
 
 				if err := bodyTemplate.Execute(w, m); err != nil {
 					log.Warn("Error executing bodyTemplate:", err)
@@ -166,3 +173,12 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+
+func buildETag(title, icon string, rows []row) string {
+	var hash uint64 = 0
+	hash = stringhash.FNV1a(title, icon)
+	for _, row := range rows {
+		hash = hash ^ stringhash.FNV1a(row.Title, row.Comment, row.Href, row.IconUrl, row.Profile, string(row.Relation))
+	}
+	return fmt.Sprintf(`"%X"`, hash)
+}

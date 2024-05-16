@@ -103,7 +103,7 @@ func readMimeappsList(path string, apps map[string]*DesktopApplication, defaultA
 		if addedAssociations := iniFile.FindGroup("Added Associations"); addedAssociations != nil {
 			for mimetypeId, appIds := range addedAssociations.Entries {
 				for _, appId := range slice.Split(appIds, ";") {
-					
+					appId = stripDesktopSuffix(appId)
 					if app, ok := apps[appId]; ok {
 						app.Mimetypes = slice.AppendIfNotThere(app.Mimetypes, mimetypeId)
 					}
