@@ -6,7 +6,6 @@
 package file
 
 import (
-	"fmt"
 	"io/fs"
 	"net/http"
 	"os"
@@ -86,8 +85,6 @@ func makeFileFromInfo(osPath string, fileInfo os.FileInfo) *File {
 	if fileType == "Directory" {
 		f.AddLink("/search?from="+f.Path, "", "", relation.Search)
 	}
-
-	fmt.Println("Looking for", mimetype, "in", mimetypeHandlers)
 
 	for _, appId := range mimetypeHandlers[mimetype] {
 		if appSummary, ok := appSummaryMap[appId]; ok {

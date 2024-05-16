@@ -136,14 +136,17 @@ func GetCapabilities() ([]string, *dbus.Error) {
 		nil
 }
 
-func Notify(app_name string,
+func Notify(
+	app_name string,
 	replaces_id uint32,
 	app_icon string,
 	summary string,
 	body string,
 	actions []string,
 	hints map[string]dbus.Variant,
-	expire_timeout int32) (uint32, *dbus.Error) {
+	expire_timeout int32) (uint32,
+	*dbus.Error) {
+
 	var id uint32
 	if replaces_id != 0 {
 		id = replaces_id
@@ -175,7 +178,7 @@ func Notify(app_name string,
 	body = sanitize(body, allowedTags, allowedEscapes)
 
 	notification := Notification{
-		ResourceData: *resource.MakeBase(fmt.Sprintf("/notification/%d", id), title, body, iconName, "notification"),
+		ResourceData:   *resource.MakeBase(fmt.Sprintf("/notification/%d", id), title, body, iconName, "notification"),
 		NotificationId: id,
 		Sender:         app_name,
 		Created:        UnixTime(time.Now()),
@@ -207,8 +210,19 @@ func Notify(app_name string,
 		}
 	}
 
+	if expire_timeout <= 0 {
+		if notification.Urgency == Low {
+			expire_timeout = 10_000
+		} else if notification.Urgency == Normal {
+			expire_timeout = 60_000
+		} else {
+			expire_timeout = 3_600_000
+		}
+	}
+		
+
 	notification.Expires = UnixTime(time.Now().Add(time.Duration(expire_timeout) * time.Millisecond))
-	added <-&notification
+	added <- &notification
 	return id, nil
 }
 

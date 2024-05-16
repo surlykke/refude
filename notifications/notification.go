@@ -64,8 +64,8 @@ type Notification struct {
 	IconSize       uint32 `json:",omitempty"`
 }
 
-func (n *Notification) RelevantForSearch(term string) bool {
-	return !n.Deleted && time.Now().Before(time.Time(n.Expires))
+func (n *Notification) NotExpired() bool {
+	return time.Now().Before(time.Time(n.Expires))
 }
 
 func (n *Notification) DoPost(w http.ResponseWriter, r *http.Request) {

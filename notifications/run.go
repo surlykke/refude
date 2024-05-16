@@ -61,9 +61,9 @@ func removeNotification(removal notificationRemoval) {
 }
 
 func searchFilter(term string, n *Notification) bool {
-	if len(term) > 0 {
+	if len(term) >= 3 {
 		return true
-	} else if _, ok := n.NActions["default"]; ok {
+	} else if _, ok := n.NActions["default"]; ok && n.NotExpired() {
 		return true
 	} else {
 		return false
