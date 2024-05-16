@@ -6,6 +6,7 @@
 package file
 
 import (
+	"fmt"
 	"io/fs"
 	"net/http"
 	"os"
@@ -56,7 +57,6 @@ type File struct {
 	Type        string
 	Permissions string
 	Mimetype    string
-	Apps        []string
 }
 
 func makeFileFromPath(path string) (*File, error) {
@@ -80,7 +80,6 @@ func makeFileFromInfo(osPath string, fileInfo os.FileInfo) *File {
 		Type:         fileType,
 		Permissions:  fileInfo.Mode().String(),
 		Mimetype:     mimetype,
-		Apps:         nil, // FIXMEapplications.GetAppsIds(mimetype),
 	}
 
 
@@ -88,14 +87,13 @@ func makeFileFromInfo(osPath string, fileInfo os.FileInfo) *File {
 		f.AddLink("/search?from="+f.Path, "", "", relation.Search)
 	}
 
-	var appDatas, ok = mimetypeAppDataMap[mimetype]
-	if ok {
-		for _, appData := range appDatas {
-			f.Apps = append(f.Apps, appData.DesktopId)
-			f.AddLink("?action="+appData.DesktopId, "Open with "+appData.Title, appData.IconUrl, relation.Action)
+	fmt.Println("Looking for", mimetype, "in", mimetypeHandlers)
+
+	for _, appId := range mimetypeHandlers[mimetype] {
+		if appSummary, ok := appSummaryMap[appId]; ok {
+			f.AddLink("?action="+appSummary.DesktopId, "Open with "+appSummary.Title, appSummary.IconUrl, relation.Action)
 		}
 	}
-
 	return &f
 }
 
@@ -169,12 +167,11 @@ func search(collector *resource.RRList, dir string, terms ...string) {
 }
 
 func (f *File) DoPost(w http.ResponseWriter, r *http.Request) {
-	var defaultAppId = ""
-	if len(f.Apps) > 0 {
-		defaultAppId = f.Apps[0]
+	var appId = requests.GetSingleQueryParameter(r, "action", "")
+	if appId == ""{
+		xdg.RunCmd("xdg-open " + f.Path)
+	} else {
+		applications.Launch(appId, f.Path[5:])
 	}
-	var appId = requests.GetSingleQueryParameter(r, "action", defaultAppId)
-	applications.OpenFile(appId, f.Path[len("/file"):])
-	
 	respond.Accepted(w)
 }

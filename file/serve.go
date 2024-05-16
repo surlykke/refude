@@ -7,7 +7,6 @@ package file
 
 import (
 	"strings"
-	"sync"
 
 	"github.com/surlykke/RefudeServices/applications"
 	"github.com/surlykke/RefudeServices/lib/log"
@@ -15,17 +14,14 @@ import (
 	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
-type searchRequest struct {
-	dir     string
-	term    string
-	replies chan resource.RankedResource
-	wg      *sync.WaitGroup
-}
+var mimetypeHandlers map[string][]string
+var appSummaryMap map[string]applications.AppSummary
+
+var mimetypeHandlerSubscription = applications.SubscribeToMimetypeHandlers()
+var appSummarySubscription = applications.SubscribeToAppSummary()
 
 var repoRequests = repo.MakeAndRegisterRequestChan()
-var searchRequests = make(chan searchRequest)
-var mimetypeAppDataChan = applications.MakeMimetypeAppDataChan()
-var mimetypeAppDataMap map[string][]applications.AppData
+var mimetypeAppDataMap map[string][]applications.AppSummary
 
 func Run() {
 	for {
@@ -44,13 +40,12 @@ func Run() {
 				}
 			}
 			req.Wg.Done()
-		case req := <-searchRequests:
-			for _, rr := range searchFrom(req.dir, req.term) {
-				req.replies <- rr
+		case mimetypeHandlers = <- mimetypeHandlerSubscription:
+		case appSummaries := <- appSummarySubscription:
+			appSummaryMap = make(map[string]applications.AppSummary)
+			for _, appSummary := range appSummaries {
+				appSummaryMap[appSummary.DesktopId] = appSummary
 			}
-			req.wg.Done()
-		case mimetypeAppDataMap = <-mimetypeAppDataChan:
-
 		}
 
 	}

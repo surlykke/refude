@@ -14,7 +14,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/respond"
 )
 
-var appIdAppDataChan = applications.MakeAppdIdAppDataChan()
+var appSummarySubscription = applications.SubscribeToAppSummary()
 
 var windowRepo = repo.MakeRepoWithFilter[*WaylandWindow](filter)
 var repoRequests = repo.MakeAndRegisterRequestChan()
@@ -33,7 +33,7 @@ type windowUpdate struct {
 func Run() {
 	go setupAndRunAsWaylandClient()
 
-	var appIdAppDataMap map[string]applications.AppData
+	var iconMap map[string]string
 	var rememberedActive uint64 = 0
 
 	for {
@@ -54,8 +54,8 @@ func Run() {
 			} else if upd.appId != "" {
 				w.AppId = upd.appId
 				w.Comment = upd.appId
-				if appData, ok := appIdAppDataMap[upd.appId+".desktop"]; ok {
-					w.IconUrl = appData.IconUrl
+				if iconUrl, ok := iconMap[upd.appId]; ok {
+					w.IconUrl = iconUrl
 				}
 			} else if upd.state > 0 {
 				w.State = upd.state - 1
@@ -80,11 +80,18 @@ func Run() {
 					activate(rememberedActive)
 				}
 			}
-		case appIdAppDataMap = <-appIdAppDataChan:
+		case appSummarys := <-appSummarySubscription:
+			iconMap = make(map[string]string) 
+			for _, appData := range appSummarys {
+				if appData.IconUrl != "" {
+					iconMap[appData.DesktopId] = appData.IconUrl
+				}
+			}
+			
 			for _, ww := range windowRepo.GetAll() {
 				if ww.AppId != "" {
-					if appData, ok := appIdAppDataMap[ww.AppId+".desktop"]; ok {
-						ww.IconUrl = appData.IconUrl
+					if iconUrl, ok := iconMap[ww.AppId]; ok {
+						ww.IconUrl = iconUrl
 					}
 				}
 			}

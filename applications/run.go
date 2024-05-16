@@ -6,6 +6,7 @@
 package applications
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/fsnotify/fsnotify"
@@ -14,130 +15,80 @@ import (
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
-type AppData struct {
+type AppSummary struct {
 	DesktopId string
 	Title     string
 	IconUrl   string
 }
 
-type openFileRequest struct {
-	appId string
-	path  string
+var appSummarySubscribers []chan []AppSummary
+var mimetypeHandlerSubscribers []chan map[string][]string
+var launchRequests = make(chan []string)
+
+func SubscribeToAppSummary() chan []AppSummary {
+	appSummarySubscribers = append(appSummarySubscribers, make(chan []AppSummary))
+	return appSummarySubscribers[len(appSummarySubscribers)-1]
 }
 
-// f.AddLink("?action="+app.DesktopId, "Open with "+app.Title, app.IconUrl, relation.Action)
-
-type MimetypeAppDataChan chan map[string][]AppData
-
-var mimetypeAppDataChans []MimetypeAppDataChan
-
-func MakeMimetypeAppDataChan() MimetypeAppDataChan {
-	mimetypeAppDataChans = append(mimetypeAppDataChans, make(MimetypeAppDataChan))
-	return mimetypeAppDataChans[len(mimetypeAppDataChans)-1]
+func SubscribeToMimetypeHandlers() chan map[string][]string {
+	mimetypeHandlerSubscribers = append(mimetypeHandlerSubscribers, make(chan map[string][]string))
+	return mimetypeHandlerSubscribers[len(mimetypeHandlerSubscribers)-1]
 }
 
-type AppIdAppDataChan chan map[string]AppData
-
-var appIdAppDataChans []AppIdAppDataChan
-
-func MakeAppdIdAppDataChan() AppIdAppDataChan {
-	appIdAppDataChans = append(appIdAppDataChans, make(AppIdAppDataChan))
-	return appIdAppDataChans[len(appIdAppDataChans)-1]
+func Launch(appId string, args ...string) {
+	var s = []string{appId}
+	s = append(s, args...)
+	launchRequests <- s
 }
 
-var foundApps = make(chan map[string]*DesktopApplication)
-var foundMimetypes = make(chan map[string]*Mimetype)
 var appRequests = repo.MakeAndRegisterRequestChan()
 var appRepo = repo.MakeRepoWithFilter[*DesktopApplication](filter)
-var mtRequests = repo.MakeAndRegisterRequestChan()
-var mimetypeRepo = repo.MakeRepo[*Mimetype]()
-
-var openFileRequests = make(chan openFileRequest)
 
 func Run() {
-	go watch()
-	go appLoop()
-	go mtLoop()
-}
 
-func OpenFile(appId, path string) {
-	if appId == "" {
-		xdg.RunCmd("xdg-open", path)
-	} else {
-		openFileRequests <- openFileRequest{appId: appId, path: path}
-	}
-}
-
-func appLoop() {
-	for {
-		select {
-		case apps := <-foundApps:
-			appRepo.RemoveAll()
-			for _, app := range apps {
-				appRepo.Put(app)
-			}
-		case req := <-appRequests:
-			appRepo.DoRequest(req)
-		case ofr := <-openFileRequests:
-			if da, ok := appRepo.Get("/application/" + ofr.appId); ok {
-				da.Run(ofr.path)
-			}
-		}
-	}
-}
-
-func mtLoop() {
-	for {
-		select {
-		case mimetypes := <-foundMimetypes:
-			mimetypeRepo.RemoveAll()
-			for _, mt := range mimetypes {
-				mimetypeRepo.Put(mt)
-			}
-		case req := <-mtRequests:
-			mimetypeRepo.DoRequest(req)
-		}
-	}
-}
-
-func watch() {
-	var err error
-	watcher, err = fsnotify.NewWatcher()
+	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		panic(err)
 	}
 
-	defer watcher.Close()
-
 	for _, dataDir := range append(xdg.DataDirs, xdg.DataHome) {
-		watchDir(dataDir + "/applications")
+		watchDir(watcher, dataDir+"/applications")
 	}
-	watchDir(xdg.ConfigHome)
+	watchDir(watcher, xdg.ConfigHome)
 
-	Collect()
+	collect()
 
-	for event := range watcher.Events {
-		if isRelevant(event) {
-			Collect()
+	for {
+		select {
+		case event := <-watcher.Events:
+			if strings.HasSuffix(event.Name, ".desktop") {
+				collect()
+			}
+		case req := <-appRequests:
+			appRepo.DoRequest(req)
+		case req := <-launchRequests:
+			fmt.Println("Launch request:", req)
+			if len(req) > 0 {
+				var path = "/application/" + req[0]
+				fmt.Println("Looking for", path)
+				if da, ok := appRepo.Get(path); ok {
+					fmt.Println("Try to run ", strings.Join(req[1:], " "))
+					da.Run(strings.Join(req[1:], " "))
+				}
+			}
 		}
-	}
 
+	}
 }
 
 func filter(term string, app *DesktopApplication) bool {
 	return len(term) > 0 && !app.Hidden
 }
 
-var watcher *fsnotify.Watcher
-
-func watchDir(dir string) {
+func watchDir(watcher *fsnotify.Watcher, dir string) {
 	if xdg.DirOrFileExists(dir) {
 		if err := watcher.Add(dir); err != nil {
 			log.Warn("Could not watch:", dir, ":", err)
 		}
 	}
-}
-
-func isRelevant(event fsnotify.Event) bool {
-	return strings.HasSuffix(event.Name, ".desktop") || strings.HasSuffix(event.Name, "/mimeapps.list")
 }
