@@ -13,7 +13,6 @@ import (
 )
 
 var deviceRepo = repo.MakeRepoWithFilter(searchFilter)
-var requests = repo.MakeAndRegisterRequestChan()
 
 var updates = make(chan *Device)
 var removals = make(chan string)
@@ -21,6 +20,7 @@ var removals = make(chan string)
 func Run() {
 	go dbusLoop()
 
+	var requests = repo.MakeAndRegisterRequestChan()
 	for {
 		select {
 		case req := <-requests:

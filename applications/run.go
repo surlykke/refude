@@ -6,7 +6,6 @@
 package applications
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/fsnotify/fsnotify"
@@ -41,10 +40,10 @@ func Launch(appId string, args ...string) {
 	launchRequests <- s
 }
 
-var appRequests = repo.MakeAndRegisterRequestChan()
 var appRepo = repo.MakeRepoWithFilter[*DesktopApplication](filter)
 
 func Run() {
+	var appRequests = repo.MakeAndRegisterRequestChan()
 
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
@@ -67,12 +66,9 @@ func Run() {
 		case req := <-appRequests:
 			appRepo.DoRequest(req)
 		case req := <-launchRequests:
-			fmt.Println("Launch request:", req)
 			if len(req) > 0 {
 				var path = "/application/" + req[0]
-				fmt.Println("Looking for", path)
 				if da, ok := appRepo.Get(path); ok {
-					fmt.Println("Try to run ", strings.Join(req[1:], " "))
 					da.Run(strings.Join(req[1:], " "))
 				}
 			}

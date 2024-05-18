@@ -12,8 +12,6 @@ import (
 
 var itemRepo = repo.MakeRepo[*Item]()
 var menuRepo = repo.MakeRepo[*Menu]()
-var itemRequests = repo.MakeAndRegisterRequestChan()
-var menuRequests = repo.MakeAndRegisterRequestChan()
 var items = make(chan *Item)
 var menus = make(chan *Menu)
 var itemRemovals = make(chan string)
@@ -26,6 +24,7 @@ func Run() {
 }
 
 func itemLoop() {
+	var itemRequests = repo.MakeAndRegisterRequestChan()
 	for {
 		select {
 		case req := <-itemRequests:
@@ -39,6 +38,7 @@ func itemLoop() {
 }
 
 func menuLoop() {
+	var menuRequests = repo.MakeAndRegisterRequestChan()
 	for {
 		select {
 		case req := <-menuRequests:

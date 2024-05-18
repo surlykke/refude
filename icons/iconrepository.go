@@ -32,8 +32,6 @@ type iconFilePathRequest struct {
 }
 
 var themeRepo = repo.MakeRepo[*IconTheme]()
-var repoRequests = repo.MakeAndRegisterRequestChan()
-
 var addIconRequests = make(chan addIconRequest)
 var addIconFileRequests = make(chan string)
 var addBaseDirRequests = make(chan string)
@@ -60,6 +58,7 @@ func Run() {
 	}
 	fmt.Println("")
 
+	var repoRequests = repo.MakeAndRegisterRequestChan()
 	for {
 		select {
 		case req := <-repoRequests:

@@ -10,7 +10,6 @@ require (
 	github.com/rakyll/magicmime v0.1.0
 	golang.org/x/net v0.23.0
 	gopkg.in/cenkalti/backoff.v1 v1.1.0
-	gopkg.in/yaml.v2 v2.4.0
 )
 
 require golang.org/x/sys v0.18.0 // indirect

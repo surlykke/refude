@@ -17,13 +17,13 @@ import (
 )
 
 var notificationRepo = repo.MakeRepoWithFilter[*Notification](searchFilter)
-var Requests = repo.MakeAndRegisterRequestChan()
 
 var added = make(chan *Notification)
 var removals = make(chan notificationRemoval)
 
 func Run() {
 	go DoDBus()
+	var Requests = repo.MakeAndRegisterRequestChan()
 	for {
 		select {
 		case req := <-Requests:

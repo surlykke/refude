@@ -15,10 +15,10 @@ import (
 )
 
 var tabRepo = repo.MakeRepoWithFilter[*Tab](filter)
-var tabRequests = repo.MakeAndRegisterRequestChan()
 var tabLists = make(chan []*Tab)
 
 func Run() {
+	var tabRequests = repo.MakeAndRegisterRequestChan()
 	for {
 		select {
 		case req := <-tabRequests:

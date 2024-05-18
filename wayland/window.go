@@ -17,8 +17,6 @@ import (
 var appSummarySubscription = applications.SubscribeToAppSummary()
 
 var windowRepo = repo.MakeRepoWithFilter[*WaylandWindow](filter)
-var repoRequests = repo.MakeAndRegisterRequestChan()
-
 var windowUpdates = make(chan windowUpdate)
 var removals = make(chan uint64)
 var otherCommands = make(chan uint8)
@@ -31,6 +29,8 @@ type windowUpdate struct {
 }
 
 func Run() {
+	var repoRequests = repo.MakeAndRegisterRequestChan()
+
 	go setupAndRunAsWaylandClient()
 
 	var iconMap map[string]string
@@ -81,13 +81,13 @@ func Run() {
 				}
 			}
 		case appSummarys := <-appSummarySubscription:
-			iconMap = make(map[string]string) 
+			iconMap = make(map[string]string)
 			for _, appData := range appSummarys {
 				if appData.IconUrl != "" {
 					iconMap[appData.DesktopId] = appData.IconUrl
 				}
 			}
-			
+
 			for _, ww := range windowRepo.GetAll() {
 				if ww.AppId != "" {
 					if iconUrl, ok := iconMap[ww.AppId]; ok {

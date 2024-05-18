@@ -20,10 +20,10 @@ var appSummaryMap map[string]applications.AppSummary
 var mimetypeHandlerSubscription = applications.SubscribeToMimetypeHandlers()
 var appSummarySubscription = applications.SubscribeToAppSummary()
 
-var repoRequests = repo.MakeAndRegisterRequestChan()
 var mimetypeAppDataMap map[string][]applications.AppSummary
 
 func Run() {
+	var repoRequests = repo.MakeAndRegisterRequestChan()
 	for {
 		select {
 		case req := <-repoRequests:

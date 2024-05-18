@@ -6,12 +6,14 @@
 package main
 
 import (
+	"flag"
+	"fmt"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/surlykke/RefudeServices/applications"
 	"github.com/surlykke/RefudeServices/browsertabs"
-	"github.com/surlykke/RefudeServices/config"
 	"github.com/surlykke/RefudeServices/desktop"
 	"github.com/surlykke/RefudeServices/file"
 	"github.com/surlykke/RefudeServices/icons"
@@ -33,8 +35,7 @@ import (
 )
 
 func main() {
-	log.Info("Running")
-
+	var runNotifications, runTray = getFlags()
 	go start.Run()
 	go icons.Run()
 	go file.Run()
@@ -43,11 +44,14 @@ func main() {
 	go mimetypes.Run()
 	go applications.Run()
 	go browsertabs.Run()
-	if config.Notifications.Enabled {
+	if runNotifications {
 		go notifications.Run()
 	}
 	go power.Run()
-	go statusnotifications.Run()
+	if runTray {
+		go statusnotifications.Run()
+	}
+	go repo.Run()
 
 	http.Handle("/ping", ping.WebsocketHandler)
 	http.HandleFunc("/tabsink", browsertabs.ServeHTTP)
@@ -63,6 +67,28 @@ func main() {
 		log.Warn("http.ListenAndServe failed:", err)
 	}
 }
+
+func getFlags() (runNotifications bool, runTray bool) {
+	flag.Usage = func() {
+		var out = flag.CommandLine.Output()
+		fmt.Fprintln(out, "usage:")
+		fmt.Fprintln(out, "  RefudeServices [option]... ")
+		fmt.Fprintln(out, "options:")
+		flag.PrintDefaults()
+	}
+
+	
+	var noNotifications = flag.Bool("no-notifications", false, "Dont run notifications module")
+	var noTray = flag.Bool("no-tray", false, "Dont run statusnotifications")
+	flag.Parse()
+	if len(flag.Args()) > 0 {
+		flag.Usage()
+		os.Exit(1)
+	}
+	return !*noNotifications, !*noTray
+}
+
+
 
 func serveResources(w http.ResponseWriter, r *http.Request) {
 	var path = r.URL.Path
@@ -83,7 +109,7 @@ func search(w http.ResponseWriter, r *http.Request) {
 		if from := repo.FindSingle(r.URL.Query().Get("from")); from != nil {
 			if searcable, ok := from.(resource.Searchable); ok {
 				resource.ServeList(w, r, searcable.Search(term))
-				return 
+				return
 			}
 		}
 		respond.NotFound(w)
@@ -111,4 +137,3 @@ func complete(w http.ResponseWriter, r *http.Request) {
 		respond.NotAllowed(w)
 	}
 }
-

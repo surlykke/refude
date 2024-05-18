@@ -23,10 +23,10 @@ type StartResource struct {
 }
 
 var startResource = StartResource{ResourceData: *resource.MakeBase("/start", "Refude desktop", "", "", "start")}
-var startRequests = repo.MakeAndRegisterRequestChan()
 
 
 func Run() {
+	var startRequests = repo.MakeAndRegisterRequestChan()
 	startResource.AddLink("/search", "", "", relation.Search)
 	for req := range startRequests {
 		if req.ReqType == repo.ByPath && req.Data == "/start" || req.ReqType == repo.ByPathPrefix && strings.HasPrefix("/start", req.Data) {

@@ -9,7 +9,6 @@ import (
 	"fmt"
 
 	"github.com/godbus/dbus/v5"
-	"github.com/surlykke/RefudeServices/config"
 	dbuscall "github.com/surlykke/RefudeServices/lib/dbusutils"
 	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/notifications"
@@ -140,10 +139,6 @@ func updateTrayIcon() {
 }
 
 func notifyOnLow() {
-	if !config.Notifications.BatteryNotifications {
-		return
-	}
-
 	if displayDevice, ok := deviceRepo.Get(fmt.Sprintf("/device/%s", path2id(displayDeviceDbusPath))); ok {
 		var percentage = int(displayDevice.Percentage)
 		if displayDevice.State == "Discharging" {
