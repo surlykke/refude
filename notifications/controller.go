@@ -16,6 +16,7 @@ import (
 	"github.com/godbus/dbus/v5/introspect"
 	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/image"
+	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/resource"
 )
@@ -176,12 +177,12 @@ func Notify(
 
 	var title = sanitize(summary, []string{}, []string{})
 	body = sanitize(body, allowedTags, allowedEscapes)
-
+	var iconUrl = link.IconUrlFromName(iconName)
 	notification := Notification{
-		ResourceData:   *resource.MakeBase(fmt.Sprintf("/notification/%d", id), title, body, iconName, "notification"),
+		ResourceData:   *resource.MakeBase(fmt.Sprintf("/notification/%d", id), title, body, iconUrl, "notification"),
 		NotificationId: id,
 		Sender:         app_name,
-		Created:        UnixTime(time.Now()),
+		Created:        time.Now(),
 		Urgency:        Normal,
 		NActions:       map[string]string{},
 		Hints:          map[string]interface{}{},
@@ -221,7 +222,7 @@ func Notify(
 	}
 		
 
-	notification.Expires = UnixTime(time.Now().Add(time.Duration(expire_timeout) * time.Millisecond))
+	notification.Expires = time.Now().Add(time.Duration(expire_timeout) * time.Millisecond)
 	added <- &notification
 	return id, nil
 }

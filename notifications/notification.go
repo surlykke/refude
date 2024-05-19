@@ -54,8 +54,8 @@ type Notification struct {
 	resource.ResourceData
 	NotificationId uint32
 	Sender         string
-	Created        UnixTime
-	Expires        UnixTime
+	Created        time.Time
+	Expires        time.Time
 	Deleted        bool
 	Urgency        Urgency
 	NActions       map[string]string `json:"actions"`
