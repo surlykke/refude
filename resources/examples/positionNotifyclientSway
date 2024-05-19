@@ -1,0 +1,21 @@
+#!/usr/bin/bash
+# Example of how to control position of notifyclient. In my  ~/.config/sway/config:
+#
+# for_window [title="Refude notifier"] border pixel 1
+# for_window [title="Refude notifier"] floating enable 
+# for_window [title="Refude notifier"] exec positionNotifyclientSway
+# 
+#
+# As it takes a noticable time to determine width and height with swaymsg and jq, we start by moving the window out of view. 
+
+swaymsg "[class=\"Refude notifier\"] move position -1000 -1000"
+
+width=$(swaymsg -t get_tree | jq -r '..| try select(.type=="floating_con" and .name=="Refude notifier") | .window_rect | .width')
+height=$(swaymsg -t get_tree | jq -r '..| try select(.type=="floating_con" and .name=="Refude notifier") | .window_rect | .height')
+x=$(( 1920 - $width - 10 ))
+y=$(( 1080 - $height - 40 ))
+
+echo width, height, x, y: $width, $height, $x, $y
+
+swaymsg "[class=\"Refude notifier\"] move position $x $y"
+
