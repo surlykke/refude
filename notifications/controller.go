@@ -227,7 +227,7 @@ func Notify(
 	notification.Expires = time.Now().Add(time.Duration(expire_timeout) * time.Millisecond)
 	added <- &notification
 	fmt.Println("run notifyclient")
-	go xdg.RunCmd("runNotifyclient", strconv.Itoa(int(id)))
+	go xdg.RunCmd("notifyclient", strconv.Itoa(int(id)))
 	return id, nil
 }
 
