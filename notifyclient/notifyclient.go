@@ -77,7 +77,7 @@ func getDataOrExit(imgContainer, textContainer *fyne.Container, nId string) {
 			}
 			textContainer.RemoveAll()
 			var subject = canvas.NewText(n.Title, color.White)
-			subject.TextSize = 24
+			subject.TextSize = 20
 			textContainer.Add(subject)
 			var body = canvas.NewText(n.Coment, color.White)
 			textContainer.Add(body)
