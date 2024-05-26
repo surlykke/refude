@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
-	"strconv"
 	"strings"
 	"time"
 
@@ -20,7 +19,6 @@ import (
 	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/resource"
-	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
 const NOTIFICATIONS_SERVICE = "org.freedesktop.Notifications"
@@ -226,8 +224,6 @@ func Notify(
 
 	notification.Expires = time.Now().Add(time.Duration(expire_timeout) * time.Millisecond)
 	added <- &notification
-	fmt.Println("run notifyclient")
-	go xdg.RunCmd("notifyclient", strconv.Itoa(int(id)))
 	return id, nil
 }
 

@@ -1,96 +1,67 @@
 package main
 
+//  #cgo pkg-config: gtk4 gtk4-layer-shell-0
+// #include <stdio.h>
+// #include <stdlib.h>
+// #include "notifyclient.h"
+import "C"
 import (
 	"encoding/json"
-	"fmt"
-	"image/color"
+	"io"
 	"net/http"
-	"os"
 	"time"
 
-	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/canvas"
-	"fyne.io/fyne/v2/container"
+	"github.com/r3labs/sse/v2"
+	"gopkg.in/cenkalti/backoff.v1"
 )
 
-var a fyne.App
-
 func main() {
-	a = app.New()
-	var window = a.NewWindow("Refude notifier")
-	var	imgContainer = container.NewVBox()
-	var textContainer = container.NewVBox()
-	window.SetContent(container.NewHBox(imgContainer, textContainer))
-	go watchNotification(imgContainer, textContainer, os.Args[1])
-	window.ShowAndRun()
+	go followFlash()
+	C.run()
 }
 
+func followFlash() {
+	var client *sse.Client
+ 	client = sse.NewClient("http://localhost:7938/watch")
+	client.ReconnectStrategy = backoff.NewConstantBackOff(2*time.Second)
 
-func watchNotification(imgContainer, textContainer *fyne.Container, notificationId string) {
-	fmt.Println("watch..")
-	getDataOrExit(imgContainer, textContainer, notificationId)
-	for range time.Tick(time.Second) {
-		getDataOrExit(imgContainer, textContainer, notificationId)
-	}
-
+	client.Subscribe("resourceChanged", func(evt *sse.Event) {
+		if "resourceChanged" == string(evt.Event) && "/flash" == string(evt.Data) { // Subscribe doesn't filter on Event ??
+			getFlash()
+		}
+	})
 }
 
-type notification struct {
-	Title   string `json:"title"`
-	Coment  string `json:"comment"`
-	Dummy   string `json:"dummy"`
-	Icon    string `json:"icon"`
-	Expires time.Time
-	Created time.Time
-	Deleted bool
-	Urgency string 
-}
-
-func getDataOrExit(imgContainer, textContainer *fyne.Container, nId string) {
-	fmt.Println("getData")
-	var n notification
-	var client = &http.Client{Timeout: 1 * time.Second}
-	if response, err := client.Get("http://localhost:7938/notification/" + nId); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+func getFlash() {
+	if resp, err := http.Get("http://localhost:7938/flash"); err != nil {
+		closeNotification("Error getting flash", err)
 	} else {
-		defer response.Body.Close()
-		if response.StatusCode > 299 {
-			os.Exit(0)
-		} else if err := json.NewDecoder(response.Body).Decode(&n); err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		} else if stale(n) {
-			os.Exit(0)
+		defer resp.Body.Close()
+		if body, err := io.ReadAll(resp.Body); err != nil {
+			closeNotification("Error reading response", err)
 		} else {
-			fmt.Println("Have notification:", n)
-			imgContainer.RemoveAll()
-			if n.Icon != "" {
-				if iconResource, err := fyne.LoadResourceFromURLString(n.Icon); err == nil {
-					var icon = canvas.NewImageFromResource(iconResource)
-					icon.FillMode = canvas.ImageFillContain
-					icon.SetMinSize(fyne.NewSize(32, 32))
-					fmt.Println("Add icon")
-					imgContainer.Add(icon)
+			defer resp.Body.Close()
+			if len(body) == 0 {
+				closeNotification("", nil)
+			} else {
+				var m = make(map[string]string)
+				if err := json.Unmarshal(body, &m); err != nil {
+					closeNotification("Error unmarshalling json", err)
+				} else {
+					var iconFilePath = m["iconFilePath"]
+					if "" == iconFilePath {
+						C.update(1, C.CString(m["subject"]), C.CString(m["body"]), nil)
+					} else {
+						C.update(1, C.CString(m["subject"]), C.CString(m["body"]), C.CString(iconFilePath))
+					}
+
 				}
 			}
-			textContainer.RemoveAll()
-			var subject = canvas.NewText(n.Title, color.White)
-			subject.TextSize = 20
-			textContainer.Add(subject)
-			var body = canvas.NewText(n.Coment, color.White)
-			textContainer.Add(body)
-			fmt.Println("Done")
 		}
 	}
 }
 
-func stale(n notification) bool {
-	fmt.Println("stale, urgency:", n.Urgency, ", created:", n.Created)
-	return n.Deleted ||
-		time.Now().After(n.Expires) ||
-		n.Urgency == "low" && time.Now().After(n.Created.Add(4*time.Second)) ||
-		n.Urgency == "normal" && time.Now().After(n.Created.Add(10*time.Second))
+func closeNotification(msg string, err error) {
+	C.update(0, C.CString(""), C.CString(""), nil)
+	time.AfterFunc(200*time.Millisecond, func() { C.hide() })
 }
-
