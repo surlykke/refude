@@ -12,6 +12,7 @@ import (
 	"io/fs"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/log"
@@ -94,7 +95,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			var resourcePath = requests.GetSingleQueryParameter(r, "resource", "/start")
 			if res := repo.FindSingle(resourcePath); res != nil {
 				var (
-					term           = requests.GetSingleQueryParameter(r, "search", "")
+					term           = strings.ToLower(requests.GetSingleQueryParameter(r, "search", ""))
 					actions        = res.Data().ActionLinks(term)
 					sf, searchable = res.(resource.Searchable)
 					subresources   = []resource.Resource{}
@@ -123,13 +124,12 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					"Term":       term,
 					"Rows":       rows,
 				}
-				var etag = buildETag(res.Data().Title, res.Data().IconUrl, rows)
+				var etag = buildETag(term, res.Data().Title, res.Data().IconUrl, rows)
 				if r.Header.Get("if-none-match") == etag {
 					respond.NotModified(w)
 					return
 				}
 				w.Header().Set("ETag", etag)
-
 				if err := bodyTemplate.Execute(w, m); err != nil {
 					log.Warn("Error executing bodyTemplate:", err)
 				}
@@ -174,9 +174,9 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 
-func buildETag(title, icon string, rows []row) string {
+func buildETag(term string, title, icon string, rows []row) string {
 	var hash uint64 = 0
-	hash = stringhash.FNV1a(title, icon)
+	hash = stringhash.FNV1a(term, title, icon)
 	for _, row := range rows {
 		hash = hash ^ stringhash.FNV1a(row.Title, row.Comment, row.Href, row.IconUrl, row.Profile, string(row.Relation))
 	}
