@@ -6,9 +6,11 @@
 package file
 
 import (
+	"fmt"
 	"io/fs"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -81,7 +83,6 @@ func makeFileFromInfo(osPath string, fileInfo os.FileInfo) *File {
 		Mimetype:     mimetype,
 	}
 
-
 	if fileType == "Directory" {
 		f.AddLink("/search?from="+f.Path, "", "", relation.Search)
 	}
@@ -96,16 +97,24 @@ func makeFileFromInfo(osPath string, fileInfo os.FileInfo) *File {
 
 func (f *File) Search(term string) []resource.Resource {
 	var terms = strings.Split(term, "/")
+	var osPath = f.Path[len("/file"):]
 	if f.Type == "Directory" {
 		var rrList = make(resource.RRList, 0, 30)
-		var osPath = f.Path[len("/file"):]
 		search(&rrList, osPath, terms...)
 		return rrList.GetResourcesSorted()
 	} else {
+		var parentDirOsPath = path.Dir(osPath)
+		var parentDirName = path.Base(parentDirOsPath)
+		if searchutils.Match(term, parentDirName) > -1 {
+			if f, err := makeFileFromPath(parentDirOsPath); err == nil {
+				return []resource.Resource{f}
+			} else {
+				fmt.Println(err)
+			}
+		}
 		return []resource.Resource{}
 	}
 }
-
 
 func searchFrom(dir, term string) resource.RRList {
 	var collector = make(resource.RRList, 0, 100)
@@ -113,7 +122,6 @@ func searchFrom(dir, term string) resource.RRList {
 	search(&collector, dir, terms...)
 	return collector
 }
-
 
 func searchDesktop(term string) resource.RRList {
 	var collector = make(resource.RRList, 0, 100)
@@ -136,9 +144,6 @@ func searchDesktop(term string) resource.RRList {
 	}
 	return collector
 }
-
-
-
 
 // Assumes that dir is a directory an that len(terms) > 0
 func search(collector *resource.RRList, dir string, terms ...string) {
@@ -165,7 +170,7 @@ func search(collector *resource.RRList, dir string, terms ...string) {
 
 func (f *File) DoPost(w http.ResponseWriter, r *http.Request) {
 	var appId = requests.GetSingleQueryParameter(r, "action", "")
-	if appId == ""{
+	if appId == "" {
 		xdg.RunCmd("xdg-open " + f.Path)
 	} else {
 		applications.Launch(appId, f.Path[5:])
