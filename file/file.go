@@ -87,9 +87,11 @@ func makeFileFromInfo(osPath string, fileInfo os.FileInfo) *File {
 		f.AddLink("/search?from="+f.Path, "", "", relation.Search)
 	}
 
-	for _, appId := range mimetypeHandlers[mimetype] {
-		if appSummary, ok := appSummaryMap[appId]; ok {
-			f.AddLink("?action="+appSummary.DesktopId, "Open with "+appSummary.Title, appSummary.IconUrl, relation.Action)
+	if mt, ok := mimetypes[mimetype]; ok {
+		for _, appId := range mt.Applications {
+			if da, ok := apps[appId]; ok {
+				f.AddLink("?action="+da.DesktopId, "Open with "+da.Title, da.IconUrl, relation.Action)
+			}
 		}
 	}
 	return &f

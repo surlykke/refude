@@ -14,9 +14,9 @@ import (
 	"github.com/surlykke/RefudeServices/lib/respond"
 )
 
-var appSummarySubscription = applications.SubscribeToAppSummary()
+var appCollections = applications.SubscribeToCollections()
 
-var windowRepo = repo.MakeRepoWithFilter[*WaylandWindow](filter)
+var windowRepo = repo.MakeRepoWithFilter(filter)
 var windowUpdates = make(chan windowUpdate)
 var removals = make(chan uint64)
 var otherCommands = make(chan uint8)
@@ -80,11 +80,11 @@ func Run() {
 					activate(rememberedActive)
 				}
 			}
-		case appSummarys := <-appSummarySubscription:
+		case collection := <-appCollections:
 			iconMap = make(map[string]string)
-			for _, appData := range appSummarys {
-				if appData.IconUrl != "" {
-					iconMap[appData.DesktopId] = appData.IconUrl
+			for _, app := range collection.Apps {
+				if app.IconUrl != "" {
+					iconMap[app.DesktopId] = app.IconUrl
 				}
 			}
 

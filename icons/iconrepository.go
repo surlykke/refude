@@ -6,8 +6,6 @@
 package icons
 
 import (
-	"fmt"
-
 	"github.com/surlykke/RefudeServices/lib/image"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/repo"
@@ -51,12 +49,6 @@ func Run() {
 		themeRepo.Put(theme)
 	}
 	// -------------------
-
-	fmt.Print("themelist:")
-	for _, t := range itc.themeSearchList {
-		fmt.Print(t.Id, " ")
-	}
-	fmt.Println("")
 
 	var repoRequests = repo.MakeAndRegisterRequestChan()
 	for {

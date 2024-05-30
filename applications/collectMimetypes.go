@@ -1,55 +1,17 @@
-package mimetypes
+package applications
 
 import (
 	"encoding/xml"
 	"os"
 	"strings"
 
-	"github.com/fsnotify/fsnotify"
-	"github.com/surlykke/RefudeServices/applications"
 	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/log"
-	"github.com/surlykke/RefudeServices/lib/repo"
 	"github.com/surlykke/RefudeServices/lib/slice"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
-var handlerSubscription = applications.SubscribeToMimetypeHandlers()
-
-
-func Run() {
-	var mtRequests = repo.MakeAndRegisterRequestChan()
-	var mimetypeRepo = repo.MakeRepo[*Mimetype]()
-	var mtMap = collect()
-	for _, mt := range mtMap {
-		mimetypeRepo.Put(mt)
-	}
-
-	for {
-		select {
-		case req := <-mtRequests:
-			mimetypeRepo.DoRequest(req)
-		case handlers := <- handlerSubscription: 
-			for mtId, apps := range handlers {
-				var path = "/mimetype/" + mtId
-				if mt, ok := mimetypeRepo.Get(path); ok {
-					mt.Applications = apps
-				}
-			}
-		}
-	}
-
-}
-
-func watchDir(watcher *fsnotify.Watcher, dir string) {
-	if xdg.DirOrFileExists(dir) {
-		if err := watcher.Add(dir); err != nil {
-			log.Warn("Could not watch:", dir, ":", err)
-		}
-	}
-}
-
-func collect() map[string]*Mimetype {
+func collectMimetypes() map[string]*Mimetype {
 	res := make(map[string]*Mimetype)
 
 	for id, comment := range schemeHandlers {
@@ -168,40 +130,18 @@ func collect() map[string]*Mimetype {
 	}
 
 	for _, mt := range res {
-		for _, alias := range aliasTypes(mt) {
-			if _, ok := res[alias.Path]; !ok {
-				res[alias.Path] = alias
+		for _, aliasId := range mt.Aliases  {
+			if _, ok := res[aliasId]; !ok {
+				var copy = *mt
+				copy.Path = "/mimetype/" + aliasId
+				copy.Id = aliasId
+				copy.Aliases = []string{}
+				res[aliasId] = & copy
 			}
 		}
 	}
 
 	return res
 
-	/* FIXME 	for mimetypeId, defaultAppIds := range defaultApps {
-		if mimetype, ok := mimetypes[mimetypeId]; ok {
-			mimetype.Applications = append(mimetype.Applications, defaultAppIds...)
-		}
-	}
-	for appId, app := range apps {
-		for _, mimetypeId := range app.Mimetypes {
-			if mimetype, ok := mimetypes[mimetypeId]; ok {
-				mimetype.Applications = slice.AppendIfNotThere(mimetype.Applications, appId)
-			}
-		}
-	}*/
 
 }
-
-func aliasTypes(mt *Mimetype) []*Mimetype {
-	var result = make([]*Mimetype, 0, len(mt.Aliases))
-	for _, id := range mt.Aliases {
-		var copy = *mt
-		copy.Path = "/mimetype/" + id
-		copy.Aliases = []string{}
-		result = append(result, &copy)
-	}
-
-	return result
-}
-
-

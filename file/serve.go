@@ -14,13 +14,10 @@ import (
 	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
-var mimetypeHandlers map[string][]string
-var appSummaryMap map[string]applications.AppSummary
+var collections = applications.SubscribeToCollections()
 
-var mimetypeHandlerSubscription = applications.SubscribeToMimetypeHandlers()
-var appSummarySubscription = applications.SubscribeToAppSummary()
-
-var mimetypeAppDataMap map[string][]applications.AppSummary
+var apps = make(map[string]*applications.DesktopApplication)
+var mimetypes = make(map[string]*applications.Mimetype)
 
 func Run() {
 	var repoRequests = repo.MakeAndRegisterRequestChan()
@@ -40,12 +37,9 @@ func Run() {
 				}
 			}
 			req.Wg.Done()
-		case mimetypeHandlers = <- mimetypeHandlerSubscription:
-		case appSummaries := <- appSummarySubscription:
-			appSummaryMap = make(map[string]applications.AppSummary)
-			for _, appSummary := range appSummaries {
-				appSummaryMap[appSummary.DesktopId] = appSummary
-			}
+		case collection := <-collections:
+			apps = collection.Apps
+			mimetypes = collection.Mimetypes
 		}
 
 	}

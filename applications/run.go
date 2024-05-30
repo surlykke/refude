@@ -14,25 +14,15 @@ import (
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
-type AppSummary struct {
-	DesktopId string
-	Title     string
-	IconUrl   string
+var subscribtions = make([]chan Collection, 0, 10)
+
+func SubscribeToCollections() chan Collection {
+	var subscription = make(chan Collection)
+	subscribtions = append(subscribtions, subscription)
+	return subscription
 }
 
-var appSummarySubscribers []chan []AppSummary
-var mimetypeHandlerSubscribers []chan map[string][]string
 var launchRequests = make(chan []string)
-
-func SubscribeToAppSummary() chan []AppSummary {
-	appSummarySubscribers = append(appSummarySubscribers, make(chan []AppSummary))
-	return appSummarySubscribers[len(appSummarySubscribers)-1]
-}
-
-func SubscribeToMimetypeHandlers() chan map[string][]string {
-	mimetypeHandlerSubscribers = append(mimetypeHandlerSubscribers, make(chan map[string][]string))
-	return mimetypeHandlerSubscribers[len(mimetypeHandlerSubscribers)-1]
-}
 
 func Launch(appId string, args ...string) {
 	var s = []string{appId}
@@ -40,31 +30,40 @@ func Launch(appId string, args ...string) {
 	launchRequests <- s
 }
 
-var appRepo = repo.MakeRepoWithFilter[*DesktopApplication](filter)
-
 func Run() {
-	var appRequests = repo.MakeAndRegisterRequestChan()
+	var appMaps = make(chan map[string]*DesktopApplication)
+	go runAppRepo(appMaps)
 
-	watcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		panic(err)
-	}
+	var mtMaps = make(chan map[string]*Mimetype)
+	go runMimetypeRepo(mtMaps)
 
-	for _, dataDir := range append(xdg.DataDirs, xdg.DataHome) {
-		watchDir(watcher, dataDir+"/applications")
-	}
-	watchDir(watcher, xdg.ConfigHome)
-
-	collect()
+	var desktopFileEvents = make(chan struct{})
+	go watchForDesktopFiles(desktopFileEvents)
 
 	for {
+		var collection Collection = collect()
+		appMaps <- collection.Apps
+		mtMaps <- collection.Mimetypes
+		for _, subscription := range subscribtions {
+			subscription <- collection
+		}
+		<-desktopFileEvents
+	}
+
+}
+
+func runAppRepo(appMaps chan map[string]*DesktopApplication) {
+	var appRepo = repo.MakeRepoWithFilter(filter)
+	var appRequests = repo.MakeAndRegisterRequestChan()
+	for {
 		select {
-		case event := <-watcher.Events:
-			if strings.HasSuffix(event.Name, ".desktop") {
-				collect()
+		case appMap := <-appMaps:
+			appRepo.RemoveAll()
+			for _, app := range appMap {
+				appRepo.Put(app)
 			}
-		case req := <-appRequests:
-			appRepo.DoRequest(req)
+		case appRequest := <-appRequests:
+			appRepo.DoRequest(appRequest)
 		case req := <-launchRequests:
 			if len(req) > 0 {
 				var path = "/application/" + req[0]
@@ -72,6 +71,24 @@ func Run() {
 					da.Run(strings.Join(req[1:], " "))
 				}
 			}
+		
+		}
+
+	}
+}
+
+func runMimetypeRepo(mimetypeMaps chan map[string]*Mimetype) {
+	var mimetypeRepo = repo.MakeRepo[*Mimetype]()
+	var requests = repo.MakeAndRegisterRequestChan()
+	for {
+		select {
+		case mimetypeMap := <-mimetypeMaps:
+			mimetypeRepo.RemoveAll()
+			for _, mt := range mimetypeMap {
+				mimetypeRepo.Put(mt)
+			}
+		case req := <-requests:
+			mimetypeRepo.DoRequest(req)
 		}
 
 	}
@@ -81,10 +98,25 @@ func filter(term string, app *DesktopApplication) bool {
 	return len(term) > 0 && !app.Hidden
 }
 
-func watchDir(watcher *fsnotify.Watcher, dir string) {
-	if xdg.DirOrFileExists(dir) {
-		if err := watcher.Add(dir); err != nil {
-			log.Warn("Could not watch:", dir, ":", err)
+func watchForDesktopFiles(events chan struct{}) {
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		panic(err)
+	}
+
+	for _, dir := range append(xdg.DataDirs, xdg.DataHome) {
+		if xdg.DirOrFileExists(dir) {
+			if err := watcher.Add(dir); err != nil {
+				log.Warn("Could not watch:", dir, ":", err)
+			}
 		}
 	}
+
+	for event := range watcher.Events {
+		if strings.HasSuffix(event.Name, ".desktop") {
+			events <- struct{}{}
+		}
+	}
+
 }
+

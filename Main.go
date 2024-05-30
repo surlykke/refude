@@ -22,7 +22,6 @@ import (
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
-	"github.com/surlykke/RefudeServices/mimetypes"
 	"github.com/surlykke/RefudeServices/notifications"
 	"github.com/surlykke/RefudeServices/ping"
 	"github.com/surlykke/RefudeServices/power"
@@ -41,7 +40,6 @@ func main() {
 	go file.Run()
 
 	go wayland.Run()
-	go mimetypes.Run()
 	go applications.Run()
 	go browsertabs.Run()
 	if runNotifications {

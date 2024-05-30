@@ -1,5 +1,5 @@
 /* _nolicense _*/
-package mimetypes
+package applications
 
 /**
  * Theese are the uri schemes from https://www.iana.org/assignments/uri-schemes/uri-schemes.xhtml, marked 'Permanent'.
