@@ -22,12 +22,15 @@ func SubscribeToCollections() chan Collection {
 	return subscription
 }
 
-var launchRequests = make(chan []string)
+type openFileRequest struct {
+	appId    string
+	filePath string
+}
 
-func Launch(appId string, args ...string) {
-	var s = []string{appId}
-	s = append(s, args...)
-	launchRequests <- s
+var openFileRequests = make(chan openFileRequest)
+
+func OpenFile(appId string, filePath string) {
+	openFileRequests <- openFileRequest{appId, filePath}
 }
 
 func Run() {
@@ -64,16 +67,11 @@ func runAppRepo(appMaps chan map[string]*DesktopApplication) {
 			}
 		case appRequest := <-appRequests:
 			appRepo.DoRequest(appRequest)
-		case req := <-launchRequests:
-			if len(req) > 0 {
-				var path = "/application/" + req[0]
-				if da, ok := appRepo.Get(path); ok {
-					da.Run(strings.Join(req[1:], " "))
-				}
+		case req := <-openFileRequests:
+			if da, ok := appRepo.Get("/application/" + req.appId); ok {
+				da.Run(req.filePath)
 			}
-		
 		}
-
 	}
 }
 
@@ -119,4 +117,3 @@ func watchForDesktopFiles(events chan struct{}) {
 	}
 
 }
-

@@ -12,6 +12,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/rakyll/magicmime"
@@ -58,6 +59,7 @@ type File struct {
 	Type        string
 	Permissions string
 	Mimetype    string
+	apps        []string
 }
 
 func makeFileFromPath(path string) (*File, error) {
@@ -83,15 +85,17 @@ func makeFileFromInfo(osPath string, fileInfo os.FileInfo) *File {
 		Mimetype:     mimetype,
 	}
 
+	if mt, ok := mimetypes[mimetype]; ok {
+		f.apps = mt.Applications
+	}
+
 	if fileType == "Directory" {
 		f.AddLink("/search?from="+f.Path, "", "", relation.Search)
 	}
 
-	if mt, ok := mimetypes[mimetype]; ok {
-		for _, appId := range mt.Applications {
-			if da, ok := apps[appId]; ok {
-				f.AddLink("?action="+da.DesktopId, "Open with "+da.Title, da.IconUrl, relation.Action)
-			}
+	for _, appId := range f.apps {
+		if da, ok := apps[appId]; ok {
+			f.AddLink("?action="+da.DesktopId, "Open with "+da.Title, da.IconUrl, relation.Action)
 		}
 	}
 	return &f
@@ -172,10 +176,13 @@ func search(collector *resource.RRList, dir string, terms ...string) {
 
 func (f *File) DoPost(w http.ResponseWriter, r *http.Request) {
 	var appId = requests.GetSingleQueryParameter(r, "action", "")
-	if appId == "" {
-		xdg.RunCmd("xdg-open " + f.Path)
-	} else {
-		applications.Launch(appId, f.Path[5:])
+	if appId == "" && len(f.apps) > 0 {
+		appId = f.apps[0]
 	}
-	respond.Accepted(w)
+	if appId == "" || !slices.Contains(f.apps, appId) {
+		respond.NotFound(w)
+	} else {
+		applications.OpenFile(appId, f.Path[5:])
+		respond.Accepted(w)
+	}
 }
