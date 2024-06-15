@@ -3,7 +3,7 @@ const selected = document.getElementsByClassName('selected')
 let etag = '""'
 
 let state = { res: "/start", term: "", pos: 0 }
-let history = []
+let pageHistory = []
 let hash = ""
 
 
@@ -33,14 +33,14 @@ let highlightSelected = () => {
 
 let gotoResource = newResource => {
     if (newResource) {
-        history.push(state)
+        pageHistory.push(state)
         state = { res: newResource, term: '', pos: 0 }
         load()
     }
 }
 
 let goBack = () => {
-    state = history.pop() || { res: '/start', term: "", pos: 0 }
+    state = pageHistory.pop() || { res: '/start', term: "", pos: 0 }
     load()
 }
 
@@ -62,14 +62,13 @@ let activateSelected = () => {
 
 let onKeyDown = event => {
     let { key, ctrlKey, altKey, shiftKey } = event;
-
     if (key === "Escape") {
         dismiss()
-    } else if (key === "Enter") {
+    } else if (key === "Enter" && !ctrlKey && !shiftKey && !altKey) {
         activateSelected()
-    } else if (altKey && key === "l" || key === "ArrowRight") {
+    } else if (altKey && key === "l" || key === "ArrowRight" || key === " " && ctrlKey) {
         selectedDataset()?.relation === "self" && gotoResource(selectedDataset().href)
-    } else if (altKey && key === "h" || key === "ArrowLeft") {
+    } else if (altKey && key === "h" || key === "ArrowLeft" || key === "o" && ctrlKey) {
         goBack()
     } else if (key.length === 1 && !ctrlKey && !altKey) {
         setTerm(state.term + key)
