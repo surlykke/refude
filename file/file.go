@@ -107,7 +107,7 @@ func (f *File) Search(term string) []resource.Resource {
 	if f.Type == "Directory" {
 		var rrList = make(resource.RRList, 0, 30)
 		search(&rrList, osPath, terms...)
-		return rrList.GetResourcesSorted()
+		return rrList.GetResources()
 	} else {
 		var parentDirOsPath = path.Dir(osPath)
 		var parentDirName = path.Base(parentDirOsPath)

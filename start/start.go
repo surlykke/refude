@@ -24,7 +24,6 @@ type StartResource struct {
 
 var startResource = StartResource{ResourceData: *resource.MakeBase("/start", "Refude desktop", "", "", "start")}
 
-
 func Run() {
 	var startRequests = repo.MakeAndRegisterRequestChan()
 	startResource.AddLink("/search", "", "", relation.Search)
@@ -38,7 +37,4 @@ func Run() {
 
 func (s *StartResource) Search(term string) []resource.Resource {
 	return repo.DoSearch(term)
-} 
-
-
-
+}

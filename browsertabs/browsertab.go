@@ -14,7 +14,7 @@ import (
 	"github.com/surlykke/RefudeServices/watch"
 )
 
-var tabRepo = repo.MakeRepoWithFilter[*Tab](filter)
+var tabRepo = repo.MakeRepoWithFilter(filter)
 var tabLists = make(chan []*Tab)
 
 func Run() {

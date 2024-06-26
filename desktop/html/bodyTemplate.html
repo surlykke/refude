@@ -15,6 +15,11 @@
 				{{end}}
 			</div>
 		</div>
+			{{if .Data}} 
+				<pre>
+					{{.Data}}
+				</pre>
+			{{end}}
 		<div class="rows">
 		{{range .Rows}}
 		<div class={{.Class}} data-href="{{.Href}}" data-relation="{{.Relation}}" data-profile="{{.Profile}}">

@@ -31,7 +31,7 @@ type RankedResource struct {
 
 type RRList []RankedResource
 
-func (rrList RRList) GetResourcesSorted() []Resource {
+func (rrList RRList) GetResources() []Resource {
 	slices.SortFunc(rrList, cmp)
 	var resList = make([]Resource, 0, len(rrList))
 	for _, rr := range rrList {
@@ -47,7 +47,6 @@ func cmp(r1, r2 RankedResource) int {
 		return strings.Compare(r1.Res.Data().Path, r2.Res.Data().Path)
 	}
 }
-
 
 type ResourceData struct {
 	Path           string
@@ -131,5 +130,3 @@ func ServeList(w http.ResponseWriter, r *http.Request, list []Resource) {
 		respond.NotAllowed(w)
 	}
 }
-
-

@@ -75,7 +75,6 @@ func getFlags() (runNotifications bool, runTray bool) {
 		flag.PrintDefaults()
 	}
 
-	
 	var noNotifications = flag.Bool("no-notifications", false, "Dont run notifications module")
 	var noTray = flag.Bool("no-tray", false, "Dont run statusnotifications")
 	flag.Parse()
@@ -85,8 +84,6 @@ func getFlags() (runNotifications bool, runTray bool) {
 	}
 	return !*noNotifications, !*noTray
 }
-
-
 
 func serveResources(w http.ResponseWriter, r *http.Request) {
 	var path = r.URL.Path

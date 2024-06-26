@@ -12,6 +12,7 @@ import (
 	"io/fs"
 	"net/http"
 	"os"
+	"reflect"
 	"strings"
 
 	"github.com/surlykke/RefudeServices/lib/link"
@@ -101,9 +102,6 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					subresources   = []resource.Resource{}
 					rows           = make([]row, 0, len(actions)+len(subresources)+2)
 				)
-				if searchable {
-					subresources = sf.Search(term)
-				}
 				if len(actions) > 0 {
 					rows = append(rows, headingRow("Actions"))
 				}
@@ -112,6 +110,16 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				}
 				if len(actions) > 0 && len(subresources) > 0 {
 					rows = append(rows, headingRow("Related"))
+				}
+				if searchable {
+					for _, subresGroup := range arrange(sf.Search(term)) {
+						if len(subresGroup.resources) > 0 {
+							rows = append(rows, headingRow(subresGroup.heading))
+							for _, subres := range subresGroup.resources {
+								rows = append(rows, resourceRow(subres))
+							}
+						}
+					}
 				}
 				for _, sr := range subresources {
 					rows = append(rows, resourceRow(sr))
@@ -173,6 +181,27 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func defaultData(res resource.Resource) string {
+	var structAsMap = make(map[string]interface{})
+	var Type = reflect.TypeOf(res)
+	if Type.Kind() != reflect.Struct {
+		panic("Resource not a struct")
+	}
+	var structVal = reflect.ValueOf(res)
+outer:
+	for i := 0; i < Type.NumField(); i++ {
+		if Type.Field(i).IsExported() {
+			var fieldName = Type.Field(i).Name
+			for _, omitted := range []string{"Title", "Comment"} {
+				if fieldName == omitted {
+					continue outer
+				}
+			}
+			structAsMap[fieldName] = structVal.Field(i)
+		}
+	}
+	return string(respond.ToJson(structAsMap))
+}
 
 func buildETag(term string, title, icon string, rows []row) string {
 	var hash uint64 = 0
@@ -181,4 +210,29 @@ func buildETag(term string, title, icon string, rows []row) string {
 		hash = hash ^ stringhash.FNV1a(row.Title, row.Comment, row.Href, row.IconUrl, row.Profile, string(row.Relation))
 	}
 	return fmt.Sprintf(`"%X"`, hash)
+}
+
+type resourceGroup struct {
+	heading   string
+	resources []resource.Resource
+}
+
+func arrange(resources []resource.Resource) []resourceGroup {
+	var groups = []resourceGroup{{"Notifications", nil}, {"Windows and Tabs", nil}, {"Applications", nil}, {"Files", nil}, {"Devices", nil}, {"Other", nil}}
+	for _, res := range resources {
+		if res.Data().Profile == "notification" {
+			groups[0].resources = append(groups[0].resources, res)
+		} else if res.Data().Profile == "window" || res.Data().Profile == "tab" {
+			groups[1].resources = append(groups[1].resources, res)
+		} else if res.Data().Profile == "application" {
+			groups[2].resources = append(groups[2].resources, res)
+		} else if res.Data().Profile == "file" {
+			groups[3].resources = append(groups[3].resources, res)
+		} else if res.Data().Profile == "device" {
+			groups[4].resources = append(groups[4].resources, res)
+		} else {
+			groups[5].resources = append(groups[5].resources, res)
+		}
+	}
+	return groups
 }
