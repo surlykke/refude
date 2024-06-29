@@ -31,7 +31,9 @@ html, body {
     flex-direction: column;
     gap: 16px;
     max-height: calc(100% - 60px);
-    overflow: hidden;
+    overflow-y: auto;
+	overflow-x: hidden;
+	scrollbar-color: grey #00151b;
 }
 
 .selectable {
