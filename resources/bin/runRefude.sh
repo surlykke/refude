@@ -14,5 +14,5 @@ for i in {1..10}; do
 done
 
 LOGFILE=${XDG_RUNTIME_DIR:-/tmp}/RefudeServices.log
-nohup RefudeServices >$LOGFILE 2>$LOGFILE &
+nohup RefudeServices $REFUDE_SWITCHES >$LOGFILE 2>$LOGFILE &
 
