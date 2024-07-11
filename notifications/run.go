@@ -33,14 +33,15 @@ func Run() {
 			notificationRepo.DoRequest(req)
 		case n := <-added:
 			notificationRepo.Put(n)
-		watch.Publish("resourceChanged", "/flash")	
+			watch.Publish("resourceChanged", "/flash")
 			if n.Urgency == Low {
-				time.AfterFunc(2050*time.Millisecond, func() { watch.Publish("resourceChanged", "/flash")})
+				time.AfterFunc(2050*time.Millisecond, func() { watch.Publish("resourceChanged", "/flash") })
 			} else if n.Urgency == Normal {
-				time.AfterFunc(10050*time.Millisecond, func() { watch.Publish("resourceChanged", "/flash")})
+				time.AfterFunc(10050*time.Millisecond, func() { watch.Publish("resourceChanged", "/flash") })
 			}
 		case removal := <-removals:
 			removeNotification(removal)
+			watch.Publish("resourceChanged", "/flash")
 			watch.Publish("/notification/", "")
 		}
 	}

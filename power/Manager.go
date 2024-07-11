@@ -125,13 +125,12 @@ func retrieveDevice(path dbus.ObjectPath) *Device {
 
 var previousPercentage = 101
 
-// Sufficiently random 
+// Sufficiently random
 const notificationId uint32 = 1152165262
 
 func showOnDesktop() {
-	/* if ! config.Notifications.BatteryDisabled {
-		updateTrayIcon()
-	}*/
+	notifyOnLow()
+	updateTrayIcon()
 }
 
 func updateTrayIcon() {
