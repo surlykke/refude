@@ -18,7 +18,7 @@ type iconThemeCollection struct {
 	themeSearchList       []*IconTheme //  themes to search. First, defaultTheme, if given, then those directly or indirectly inherited, ending with hicolor
 	allThemes             map[string]*IconTheme
 	iconPathCache         map[nameAndSize]string
-refudeSessionIconsDir string
+	refudeSessionIconsDir string
 }
 
 func buildIconThemeCollection() (*iconThemeCollection, error) {
@@ -129,7 +129,7 @@ func buildSearchList(defaultThemePath string, themes map[string]*IconTheme, hico
 }
 
 func (ic *iconThemeCollection) hicolor() *IconTheme {
-	return ic.themeSearchList[len(ic.themeSearchList) - 1]
+	return ic.themeSearchList[len(ic.themeSearchList)-1]
 }
 
 func (ic *iconThemeCollection) writeSessionHicolorIcon(iconName string, size uint32, png []byte) {

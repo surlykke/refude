@@ -22,7 +22,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			if name := requests.GetSingleQueryParameter(r, "name", ""); name == "" {
 				respond.UnprocessableEntity(w, fmt.Errorf("Query parameter 'name' must be given, and not empty"))
 			} else if strings.HasPrefix(name, "/") {
-				http.ServeFile(w, r, name)
+				http.ServeFile(w, r, name) // FIXME
 			} else if size, err := extractSize(r); err != nil {
 				respond.UnprocessableEntity(w, err)
 			} else if iconFilePath := FindIconPath(name, size); iconFilePath == "" {

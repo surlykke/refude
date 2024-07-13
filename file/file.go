@@ -8,11 +8,9 @@ package file
 import (
 	"fmt"
 	"io/fs"
-	"net/http"
 	"os"
 	"path"
 	"path/filepath"
-	"slices"
 	"strings"
 
 	"github.com/rakyll/magicmime"
@@ -20,9 +18,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/relation"
-	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
-	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
@@ -85,19 +81,14 @@ func makeFileFromInfo(osPath string, fileInfo os.FileInfo) *File {
 		Mimetype:     mimetype,
 	}
 
-	if mt, ok := mimetypes[mimetype]; ok {
-		f.apps = mt.Applications
+	for _, app := range applications.GetHandlers(f.Mimetype) {
+		f.AddLink(app.Path+"?arg="+f.Path[5:], "Open with "+app.Title, app.IconUrl, relation.Action)
 	}
 
 	if fileType == "Directory" {
 		f.AddLink("/search?from="+f.Path, "", "", relation.Search)
 	}
 
-	for _, appId := range f.apps {
-		if da, ok := apps[appId]; ok {
-			f.AddLink("?action="+da.DesktopId, "Open with "+da.Title, da.IconUrl, relation.Action)
-		}
-	}
 	return &f
 }
 
@@ -129,7 +120,7 @@ func searchFrom(dir, term string) resource.RRList {
 	return collector
 }
 
-func searchDesktop(term string) resource.RRList {
+func SearchDesktop(term string) resource.RRList {
 	var collector = make(resource.RRList, 0, 100)
 	var terms = strings.Split(term, "/")
 	if len(terms[0]) >= 3 {
@@ -174,7 +165,7 @@ func search(collector *resource.RRList, dir string, terms ...string) {
 	}
 }
 
-func (f *File) DoPost(w http.ResponseWriter, r *http.Request) {
+/* FIXME func (f *File) DoPost(w http.ResponseWriter, r *http.Request) {
 	var appId = requests.GetSingleQueryParameter(r, "action", "")
 	if appId == "" && len(f.apps) > 0 {
 		appId = f.apps[0]
@@ -185,4 +176,4 @@ func (f *File) DoPost(w http.ResponseWriter, r *http.Request) {
 		applications.OpenFile(appId, f.Path[5:])
 		respond.Accepted(w)
 	}
-}
+} */

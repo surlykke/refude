@@ -18,6 +18,7 @@ import (
 
 type Resource interface {
 	Data() *ResourceData
+	OmitFromSearch() bool
 }
 
 type HasBase interface {
@@ -73,6 +74,10 @@ func MakeBase(path, title, comment, iconUrl, profile string) *ResourceData {
 
 func (this *ResourceData) Data() *ResourceData {
 	return this
+}
+
+func (this *ResourceData) OmitFromSearch() bool {
+	return false
 }
 
 func (this *ResourceData) AddLink(href, title, iconUrl string, relation relation.Relation) {

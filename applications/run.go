@@ -6,94 +6,59 @@
 package applications
 
 import (
+	"fmt"
 	"strings"
+	"time"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/repo"
+	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
-var subscribtions = make([]chan Collection, 0, 10)
-
-func SubscribeToCollections() chan Collection {
-	var subscription = make(chan Collection)
-	subscribtions = append(subscribtions, subscription)
-	return subscription
-}
-
-type openFileRequest struct {
-	appId    string
-	filePath string
-}
-
-var openFileRequests = make(chan openFileRequest)
-
-func OpenFile(appId string, filePath string) {
-	openFileRequests <- openFileRequest{appId, filePath}
-}
-
 func Run() {
-	var appMaps = make(chan map[string]*DesktopApplication)
-	go runAppRepo(appMaps)
-
-	var mtMaps = make(chan map[string]*Mimetype)
-	go runMimetypeRepo(mtMaps)
-
 	var desktopFileEvents = make(chan struct{})
 	go watchForDesktopFiles(desktopFileEvents)
 
 	for {
+		fmt.Println(">>>> Load apps and mimetypes")
 		var collection Collection = collect()
-		appMaps <- collection.Apps
-		mtMaps <- collection.Mimetypes
-		for _, subscription := range subscribtions {
-			subscription <- collection
+		var apps = make([]resource.Resource, 0, len(collection.Apps))
+		for _, app := range collection.Apps {
+			apps = append(apps, app)
 		}
+		repo.Replace(apps, "/application/")
+
+		var mts = make([]resource.Resource, 0, len(collection.Mimetypes))
+		for _, mt := range collection.Mimetypes {
+			mts = append(mts, mt)
+		}
+		repo.Replace(mts, "/mimetype/")
+
 		<-desktopFileEvents
 	}
 
 }
 
-func runAppRepo(appMaps chan map[string]*DesktopApplication) {
-	var appRepo = repo.MakeRepoWithFilter(filter)
-	var appRequests = repo.MakeAndRegisterRequestChan()
-	for {
-		select {
-		case appMap := <-appMaps:
-			appRepo.RemoveAll()
-			for _, app := range appMap {
-				appRepo.Put(app)
-			}
-		case appRequest := <-appRequests:
-			appRepo.DoRequest(appRequest)
-		case req := <-openFileRequests:
-			if da, ok := appRepo.Get("/application/" + req.appId); ok {
-				da.Run(req.filePath)
+func GetHandlers(mimetype string) []*DesktopApplication {
+	var apps = make([]*DesktopApplication, 0, 10)
+	if mt, ok := repo.Get[*Mimetype]("/mimetype/" + mimetype); ok {
+		for _, appId := range mt.Applications {
+			if app, ok := repo.Get[*DesktopApplication]("/application/" + appId); ok {
+				apps = append(apps, app)
 			}
 		}
 	}
+	return apps
 }
 
-func runMimetypeRepo(mimetypeMaps chan map[string]*Mimetype) {
-	var mimetypeRepo = repo.MakeRepo[*Mimetype]()
-	var requests = repo.MakeAndRegisterRequestChan()
-	for {
-		select {
-		case mimetypeMap := <-mimetypeMaps:
-			mimetypeRepo.RemoveAll()
-			for _, mt := range mimetypeMap {
-				mimetypeRepo.Put(mt)
-			}
-		case req := <-requests:
-			mimetypeRepo.DoRequest(req)
-		}
-
+func GetIconUrl(appId string) string {
+	if app, ok := repo.Get[*DesktopApplication]("/application/" + appId); ok {
+		return app.IconUrl
+	} else {
+		return ""
 	}
-}
-
-func filter(term string, app *DesktopApplication) bool {
-	return len(term) > 0 && !app.Hidden
 }
 
 func watchForDesktopFiles(events chan struct{}) {
@@ -102,18 +67,41 @@ func watchForDesktopFiles(events chan struct{}) {
 		panic(err)
 	}
 
-	for _, dir := range append(xdg.DataDirs, xdg.DataHome) {
-		if xdg.DirOrFileExists(dir) {
-			if err := watcher.Add(dir); err != nil {
-				log.Warn("Could not watch:", dir, ":", err)
+	var filesToWatch = make([]string, 0, 20)
+	for _, s := range append(xdg.DataDirs, xdg.DataHome) {
+		filesToWatch = append(filesToWatch, s+"/applications")
+	}
+	filesToWatch = append(filesToWatch, xdg.ConfigHome+"/mimeapps.list")
+
+	for _, f := range filesToWatch {
+		if xdg.DirOrFileExists(f) {
+			if err := watcher.Add(f); err != nil {
+				log.Warn("Could not watch:", f, ":", err)
+			} else {
+				fmt.Println("Watch: " + f)
 			}
 		}
 	}
 
-	for event := range watcher.Events {
-		if strings.HasSuffix(event.Name, ".desktop") {
+	var gracePeriodEnded = make(chan struct{})
+	var reloadScheduled = false
+	for {
+		select {
+		// When the user reinstalls something it will create a number of inotify events. We collect for a couple of seconds
+		// before doing a reload.
+		case event := <-watcher.Events:
+			fmt.Println("file event:", event.Name)
+			if !reloadScheduled && strings.HasSuffix(event.Name, ".desktop") || strings.HasSuffix(event.Name, "/mimeapps.list") {
+				reloadScheduled = true
+				go func() {
+					fmt.Println("Gracing...")
+					time.Sleep(2 * time.Second)
+					gracePeriodEnded <- struct{}{}
+				}()
+			}
+		case _ = <-gracePeriodEnded:
+			reloadScheduled = false
 			events <- struct{}{}
 		}
 	}
-
 }

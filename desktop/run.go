@@ -15,6 +15,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/surlykke/RefudeServices/file"
 	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/relation"
@@ -94,13 +95,19 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			respond.NotAllowed(w)
 		} else {
 			var resourcePath = requests.GetSingleQueryParameter(r, "resource", "/start")
-			if res := repo.FindSingle(resourcePath); res != nil {
+			var res resource.Resource = nil
+			if strings.HasPrefix(resourcePath, "/file/") {
+				res = file.GetResource(resourcePath)
+			} else {
+				res = repo.GetUntyped(resourcePath)
+			}
+
+			if res != nil {
 				var (
 					term           = strings.ToLower(requests.GetSingleQueryParameter(r, "search", ""))
 					actions        = res.Data().ActionLinks(term)
 					sf, searchable = res.(resource.Searchable)
-					subresources   = []resource.Resource{}
-					rows           = make([]row, 0, len(actions)+len(subresources)+2)
+					rows           = make([]row, 0, len(actions)+4)
 				)
 				if len(actions) > 0 {
 					rows = append(rows, headingRow("Actions"))
@@ -108,7 +115,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				for _, a := range actions {
 					rows = append(rows, actionRow(a))
 				}
-				if len(actions) > 0 && len(subresources) > 0 {
+				if len(actions) > 0 {
 					rows = append(rows, headingRow("Related"))
 				}
 				if searchable {
@@ -120,9 +127,6 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 							}
 						}
 					}
-				}
-				for _, sr := range subresources {
-					rows = append(rows, resourceRow(sr))
 				}
 
 				var m = map[string]any{

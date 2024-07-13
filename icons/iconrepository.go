@@ -29,7 +29,6 @@ type iconFilePathRequest struct {
 	result chan string
 }
 
-var themeRepo = repo.MakeRepo[*IconTheme]()
 var addIconRequests = make(chan addIconRequest)
 var addIconFileRequests = make(chan string)
 var addBaseDirRequests = make(chan string)
@@ -44,17 +43,13 @@ func Run() {
 		panic(err)
 	}
 
-	themeRepo.RemoveAll()
 	for _, theme := range itc.allThemes {
-		themeRepo.Put(theme)
+		repo.Put(theme)
 	}
 	// -------------------
 
-	var repoRequests = repo.MakeAndRegisterRequestChan()
 	for {
 		select {
-		case req := <-repoRequests:
-			themeRepo.DoRequest(req)
 		case req := <-addIconRequests:
 			if req.size > 0 {
 				itc.writeSessionHicolorIcon(req.name, req.size, req.png)

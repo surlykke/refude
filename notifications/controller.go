@@ -8,6 +8,7 @@ package notifications
 import (
 	"errors"
 	"fmt"
+	"net/http"
 	"reflect"
 	"strings"
 	"time"
@@ -18,7 +19,10 @@ import (
 	"github.com/surlykke/RefudeServices/lib/image"
 	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/log"
+	"github.com/surlykke/RefudeServices/lib/repo"
 	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib/respond"
+	"github.com/surlykke/RefudeServices/watch"
 )
 
 const NOTIFICATIONS_SERVICE = "org.freedesktop.Notifications"
@@ -114,8 +118,6 @@ const (
 	Dismissed        = 2
 	Closed           = 3
 )
-
-type removal struct{ id, reason uint32 }
 
 var conn *dbus.Conn
 var ids = make(chan uint32, 0)
@@ -220,10 +222,18 @@ func Notify(
 			expire_timeout = 3_600_000
 		}
 	}
-		
 
 	notification.Expires = time.Now().Add(time.Duration(expire_timeout) * time.Millisecond)
-	added <- &notification
+
+	repo.Put(&notification)
+	watch.Publish("resourceChanged", "/flash")
+
+	if notification.Urgency == Low {
+		time.AfterFunc(2050*time.Millisecond, func() { watch.Publish("resourceChanged", "/flash") })
+	} else if notification.Urgency == Normal {
+		time.AfterFunc(6050*time.Millisecond, func() { watch.Publish("resourceChanged", "/flash") })
+	}
+
 	return id, nil
 }
 
@@ -281,7 +291,7 @@ func installFileIcon(hints map[string]dbus.Variant, key string) (string, bool) {
 }
 
 func CloseNotification(id uint32) {
-	removals <- notificationRemoval{id: id, reason: Closed}
+	removeNotification(id, Closed)
 }
 
 func GetServerInformation() (string, string, string, string, *dbus.Error) {
@@ -323,7 +333,7 @@ func helper(src *string, dest *string, allowedPrefixes []string, endMarker strin
 	*src = (*src)[endMarkerPos+1:]
 }
 
-func DoDBus() {
+func Run() {
 	var err error
 	var reply dbus.RequestNameReply
 
@@ -361,4 +371,17 @@ func DoDBus() {
 	_ = conn.Export(introspect.Introspectable(INTROSPECT_XML), NOTIFICATIONS_PATH, INTROSPECT_INTERFACE)
 
 	fmt.Println("On the bus...")
+}
+
+func ServeFlash(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/flash" {
+		respond.NotFound(w)
+	} else if r.Method != "GET" {
+		respond.NotAllowed(w)
+	} else if flash, ok := getFlash(); !ok {
+		respond.NotFound(w)
+	} else {
+		respond.AsJson(w, flash)
+	}
+
 }

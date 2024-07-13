@@ -35,13 +35,10 @@ import (
 
 func main() {
 	var runNotifications, runTray = getFlags()
-	go start.Run()
 	go icons.Run()
-	go file.Run()
 
 	go wayland.Run()
 	go applications.Run()
-	go browsertabs.Run()
 	if runNotifications {
 		go notifications.Run()
 	}
@@ -49,7 +46,7 @@ func main() {
 	if runTray {
 		go statusnotifications.Run()
 	}
-	go repo.Run()
+	go start.Run()
 
 	http.Handle("/ping", ping.WebsocketHandler)
 	http.HandleFunc("/tabsink", browsertabs.ServeHTTP)
@@ -59,7 +56,9 @@ func main() {
 
 	http.HandleFunc("/complete", complete)
 	http.HandleFunc("/search", search)
-	http.HandleFunc("/", serveResources)
+	http.HandleFunc("/file/", file.ServeHTTP)
+	http.HandleFunc("/flash", notifications.ServeFlash)
+	http.HandleFunc("/", repo.ServeHTTP)
 
 	if err := http.ListenAndServe(":7938", nil); err != nil {
 		log.Warn("http.ListenAndServe failed:", err)
@@ -85,32 +84,16 @@ func getFlags() (runNotifications bool, runTray bool) {
 	return !*noNotifications, !*noTray
 }
 
-func serveResources(w http.ResponseWriter, r *http.Request) {
-	var path = r.URL.Path
-	if strings.HasSuffix(path, "/") {
-		resource.ServeList(w, r, repo.FindList(path))
-	} else {
-		if res := repo.FindSingle(path); res != nil {
-			resource.ServeSingleResource(w, r, res)
-		} else {
-			respond.NotFound(w)
-		}
-	}
-}
-
 func search(w http.ResponseWriter, r *http.Request) {
 	var term = strings.ToLower(requests.GetSingleQueryParameter(r, "term", ""))
-	if r.URL.Query().Has("from") {
-		if from := repo.FindSingle(r.URL.Query().Get("from")); from != nil {
-			if searcable, ok := from.(resource.Searchable); ok {
-				resource.ServeList(w, r, searcable.Search(term))
-				return
-			}
+	var fromPath = requests.GetSingleQueryParameter(r, "from", "/start")
+	if from := repo.GetUntyped(fromPath); from != nil {
+		if searcable, ok := from.(resource.Searchable); ok {
+			resource.ServeList(w, r, searcable.Search(term))
+			return
 		}
-		respond.NotFound(w)
-	} else {
-		resource.ServeList(w, r, repo.DoSearch(term))
 	}
+	respond.NotFound(w)
 }
 
 func complete(w http.ResponseWriter, r *http.Request) {
@@ -123,7 +106,7 @@ func complete(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		for _, res := range repo.FindList(prefix) {
+		for _, res := range repo.GetListUntyped(prefix) {
 			paths = append(paths, res.Data().Path)
 		}
 

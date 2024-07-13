@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"sync/atomic"
 
 	"github.com/surlykke/RefudeServices/applications"
 	"github.com/surlykke/RefudeServices/lib/relation"
@@ -14,12 +15,8 @@ import (
 	"github.com/surlykke/RefudeServices/lib/respond"
 )
 
-var appCollections = applications.SubscribeToCollections()
-
-var windowRepo = repo.MakeRepoWithFilter(filter)
 var windowUpdates = make(chan windowUpdate)
 var removals = make(chan uint64)
-var otherCommands = make(chan uint8)
 
 type windowUpdate struct {
 	wId   uint64
@@ -29,21 +26,15 @@ type windowUpdate struct {
 }
 
 func Run() {
-	var repoRequests = repo.MakeAndRegisterRequestChan()
 
 	go setupAndRunAsWaylandClient()
 
-	var iconMap map[string]string
-	var rememberedActive uint64 = 0
-
 	for {
 		select {
-		case req := <-repoRequests:
-			windowRepo.DoRequest(req)
 		case upd := <-windowUpdates:
 			var path = fmt.Sprintf("/window/%d", upd.wId)
 			var w WaylandWindow
-			if tmp, ok := windowRepo.Get(path); ok {
+			if tmp, ok := repo.Get[*WaylandWindow](path); ok {
 				w = *tmp
 			} else {
 				w = *MakeWindow(upd.wId)
@@ -54,47 +45,15 @@ func Run() {
 			} else if upd.appId != "" {
 				w.AppId = upd.appId
 				w.Comment = upd.appId
-				if iconUrl, ok := iconMap[upd.appId]; ok {
-					w.IconUrl = iconUrl
-				}
+				w.IconUrl = applications.GetIconUrl(upd.appId)
 			} else if upd.state > 0 {
 				w.State = upd.state - 1
 			}
 
-			windowRepo.Put(&w)
+			repo.Put(&w)
 		case id := <-removals:
 			var path = fmt.Sprintf("/window/%d", id)
-			windowRepo.Remove(path)
-		case i := <-otherCommands:
-			switch i {
-			case 0:
-				rememberedActive = 0
-				for _, w := range windowRepo.GetAll() {
-					if w.State&ACTIVATED > 0 {
-						rememberedActive = w.Wid
-						break
-					}
-				}
-			case 1:
-				if rememberedActive != 0 {
-					activate(rememberedActive)
-				}
-			}
-		case collection := <-appCollections:
-			iconMap = make(map[string]string)
-			for _, app := range collection.Apps {
-				if app.IconUrl != "" {
-					iconMap[app.DesktopId] = app.IconUrl
-				}
-			}
-
-			for _, ww := range windowRepo.GetAll() {
-				if ww.AppId != "" {
-					if iconUrl, ok := iconMap[ww.AppId]; ok {
-						ww.IconUrl = iconUrl
-					}
-				}
-			}
+			repo.Remove(path)
 		}
 	}
 }
@@ -151,6 +110,10 @@ func (this *WaylandWindow) DoDelete(w http.ResponseWriter, r *http.Request) {
 	respond.Accepted(w)
 }
 
+func (this *WaylandWindow) OmitFromSearch() bool {
+	return strings.HasPrefix(this.Title, "Refude Desktop")
+}
+
 func (this *WaylandWindow) DoPost(w http.ResponseWriter, r *http.Request) {
 	var action = requests.GetSingleQueryParameter(r, "action", "activate")
 	if "activate" == action {
@@ -161,14 +124,19 @@ func (this *WaylandWindow) DoPost(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+var remembered atomic.Uint64
+
 func RememberActive() {
-	otherCommands <- 0
+	for _, w := range repo.GetList[*WaylandWindow]("/window/") {
+		if w.State.Is(ACTIVATED) {
+			remembered.Store(w.Wid)
+			break
+		}
+	}
 }
 
 func ActivateRememberedActive() {
-	otherCommands <- 1
-}
-
-func filter(term string, ww *WaylandWindow) bool {
-	return !strings.HasPrefix(ww.Title, "Refude Desktop")
+	if wId := remembered.Load(); wId > 0 {
+		activate(wId)
+	}
 }

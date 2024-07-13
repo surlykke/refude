@@ -14,24 +14,6 @@ import (
 	"github.com/surlykke/RefudeServices/watch"
 )
 
-var tabRepo = repo.MakeRepoWithFilter(filter)
-var tabLists = make(chan []*Tab)
-
-func Run() {
-	var tabRequests = repo.MakeAndRegisterRequestChan()
-	for {
-		select {
-		case req := <-tabRequests:
-			tabRepo.DoRequest(req)
-		case tabList := <-tabLists:
-			tabRepo.RemoveAll()
-			for _, tab := range tabList {
-				tabRepo.Put(tab)
-			}
-		}
-	}
-}
-
 type Tab struct {
 	resource.ResourceData
 }
@@ -45,10 +27,11 @@ func (this *Tab) DoPost(w http.ResponseWriter, r *http.Request) {
 	respond.Accepted(w)
 }
 
-func filter(term string, tab *Tab) bool {
-	return !strings.HasPrefix(tab.Comment, "http://localhost:7938/desktop")
+func (this *Tab) OmitFromSearch() bool {
+	return strings.HasPrefix(this.Comment, "http://localhost:7938/desktop")
 }
 
+// This is the api that the browserextensions use
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		if r.Body == nil {
@@ -60,7 +43,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			if err := json.Unmarshal(bytes, &data); err != nil {
 				respond.UnprocessableEntity(w, err)
 			} else {
-				var tabs = make([]*Tab, 0, len(data))
+				var tabs = make([]resource.Resource, 0, len(data))
 				for _, d := range data {
 					var title = d["title"]
 					if len(title) > 60 { // Shorten title a bit
@@ -82,7 +65,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					tabs = append(tabs, tab)
 				}
 				respond.Ok(w)
-				tabLists <- tabs
+				repo.Replace(tabs, "/tab/")
 			}
 		}
 	} else {

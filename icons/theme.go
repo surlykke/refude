@@ -34,11 +34,6 @@ type IconDir struct {
 
 func readThemes(basedirs []string) map[string]*IconTheme {
 	var themeMap = make(map[string]*IconTheme)
-	/*
-	   var id string = func (this *IconTheme) Id() string {
-	   	return this.Path[len("/icontheme/"):]
-	   }
-	*/
 
 	for _, basedir := range basedirs {
 		if indexFilePaths, err := filepath.Glob(basedir + "/*/index.theme"); err != nil {
@@ -62,6 +57,7 @@ func readTheme(indexThemeFilePath string) (*IconTheme, bool) {
 
 	if themeId == "." || themeId == ".." || themeId == "/" {
 		log.Warn("Could not figure theme id from path:", indexThemeFilePath)
+		return nil, false
 	}
 
 	iniFile, err := xdg.ReadIniFile(indexThemeFilePath)

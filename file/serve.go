@@ -6,42 +6,19 @@
 package file
 
 import (
+	"net/http"
 	"strings"
 
-	"github.com/surlykke/RefudeServices/applications"
 	"github.com/surlykke/RefudeServices/lib/log"
-	"github.com/surlykke/RefudeServices/lib/repo"
 	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib/respond"
 )
 
-var collections = applications.SubscribeToCollections()
-
-var apps = make(map[string]*applications.DesktopApplication)
-var mimetypes = make(map[string]*applications.Mimetype)
-
-func Run() {
-	var repoRequests = repo.MakeAndRegisterRequestChan()
-	for {
-		select {
-		case req := <-repoRequests:
-			switch req.ReqType {
-			case repo.ByPath:
-				if strings.HasPrefix(req.Data, "/file") {
-					if f := GetResource(req.Data); f != nil {
-						req.Replies <- resource.RankedResource{Res: f}
-					}
-				}
-			case repo.Search:
-				for _, rr := range searchDesktop(req.Data) {
-					req.Replies <- rr
-				}
-			}
-			req.Wg.Done()
-		case collection := <-collections:
-			apps = collection.Apps
-			mimetypes = collection.Mimetypes
-		}
-
+func ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if f := GetResource(r.URL.Path); f == nil {
+		respond.NotFound(w)
+	} else {
+		resource.ServeSingleResource(w, r, f)
 	}
 }
 

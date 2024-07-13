@@ -22,8 +22,8 @@ func main() {
 
 func followFlash() {
 	var client *sse.Client
- 	client = sse.NewClient("http://localhost:7938/watch")
-	client.ReconnectStrategy = backoff.NewConstantBackOff(2*time.Second)
+	client = sse.NewClient("http://localhost:7938/watch")
+	client.ReconnectStrategy = backoff.NewConstantBackOff(2 * time.Second)
 
 	client.Subscribe("resourceChanged", func(evt *sse.Event) {
 		if "resourceChanged" == string(evt.Event) && "/flash" == string(evt.Data) { // Subscribe doesn't filter on Event ??

@@ -44,8 +44,8 @@ type DesktopApplication struct {
 	DesktopFile     string
 }
 
-func (d *DesktopApplication) RelevantForSearch(term string) bool {
-	return len(term) > 0 && !d.NoDisplay
+func (d *DesktopApplication) OmitFromSearch() bool {
+	return d.NoDisplay
 }
 
 func (d *DesktopApplication) Run(arg string) error {
@@ -63,6 +63,7 @@ func (d *DesktopApplication) DoPost(w http.ResponseWriter, r *http.Request) {
 	var exec string
 	var terminal bool
 	var action = requests.GetSingleQueryParameter(r, "action", "")
+	var args = r.URL.Query()["arg"]
 	if action == "" {
 		exec, terminal = d.Exec, d.Terminal
 	} else {
@@ -73,7 +74,7 @@ func (d *DesktopApplication) DoPost(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if exec != "" {
-		if err := run(exec, "", terminal); err != nil {
+		if err := run(exec, strings.Join(args, " "), terminal); err != nil {
 			respond.ServerError(w, err)
 		} else {
 			respond.Accepted(w)

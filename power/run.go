@@ -12,59 +12,35 @@ import (
 	"github.com/surlykke/RefudeServices/lib/repo"
 )
 
-var deviceRepo = repo.MakeRepoWithFilter(searchFilter)
-
-var updates = make(chan *Device)
-var removals = make(chan string)
-
 func Run() {
-	go dbusLoop()
-
-	var requests = repo.MakeAndRegisterRequestChan()
-	for {
-		select {
-		case req := <-requests:
-			deviceRepo.DoRequest(req)
-		case device := <-updates:
-			deviceRepo.Put(device)
-			if device.Path == "/device/DisplayDevice" {
-				showOnDesktop()
-			}
-		case path := <-removals:
-			deviceRepo.Remove(path)
-		}
-	}
-}
-
-func dbusLoop() {
 	var signals = subscribe()
 
-	updates <- retrieveDevice(displayDeviceDbusPath)
+	repo.Put(retrieveDevice(displayDeviceDbusPath))
+	showOnDesktop()
 
 	for _, dbusPath := range retrieveDevicePaths() {
-		updates <- retrieveDevice(dbusPath)
+		repo.Put(retrieveDevice(dbusPath))
 	}
 
 	for signal := range signals {
 		if signal.Name == "org.freedesktop.DBus.Properties.PropertiesChanged" {
-			updates <- retrieveDevice(signal.Path)
+			var device = retrieveDevice(signal.Path)
+			repo.Put(device)
+			if device.Path == "/device/DisplayDevice" {
+				showOnDesktop()
+			}
 		} else if signal.Name == "org.freedesktop.UPower.DeviceAdded" {
 			if path, ok := getAddedRemovedPath(signal); ok {
-				updates <- retrieveDevice(path)
+				repo.Put(retrieveDevice(path))
 			}
 		} else if signal.Name == "org.freedesktop.UPower.DeviceRemoved" {
 			if path, ok := signal.Body[0].(dbus.ObjectPath); ok {
-				removals <- "/device/" + path2id(path)
+				repo.Remove("/device/" + path2id(path))
 			}
 		} else {
 			log.Warn("Update on unknown device: ", signal.Path)
 		}
 	}
-
-}
-
-func searchFilter(term string, device *Device) bool {
-	return len(term) > 2
 }
 
 func getAddedRemovedPath(signal *dbus.Signal) (dbus.ObjectPath, bool) {

@@ -64,8 +64,17 @@ type Notification struct {
 	IconSize       uint32 `json:",omitempty"`
 }
 
-func (n *Notification) NotExpired() bool {
-	return time.Now().Before(time.Time(n.Expires))
+func (n *Notification) Expired() bool {
+	return time.Now().After(time.Time(n.Expires))
+}
+
+func (n *Notification) SoftExpired() bool {
+	return n.Urgency == Normal && n.Created.Add(6*time.Second).Before(time.Now()) ||
+		n.Urgency == Low && n.Created.Add(2*time.Second).Before(time.Now())
+}
+
+func (this *Notification) OmitFromSearch() bool {
+	return this.NActions["default"] == "" && this.SoftExpired()
 }
 
 func (n *Notification) DoPost(w http.ResponseWriter, r *http.Request) {
@@ -83,6 +92,6 @@ func (n *Notification) DoPost(w http.ResponseWriter, r *http.Request) {
 }
 
 func (n *Notification) DoDelete(w http.ResponseWriter, r *http.Request) {
-	removals <- notificationRemoval{id: n.NotificationId, reason: Dismissed}	
-	respond.Accepted(w)
+	removeNotification(n.NotificationId, Dismissed)
+	respond.Ok(w)
 }
