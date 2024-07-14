@@ -8,24 +8,33 @@ package icons
 import (
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 
+	"github.com/surlykke/RefudeServices/lib/image"
+	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/respond"
 )
+
+func Run() {
+	collectThemes()
+	collectIcons()
+
+	// TODO Recollect on changes
+}
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == "/icon" {
 		if r.Method == "GET" {
 			if name := requests.GetSingleQueryParameter(r, "name", ""); name == "" {
 				respond.UnprocessableEntity(w, fmt.Errorf("Query parameter 'name' must be given, and not empty"))
-			} else if strings.HasPrefix(name, "/") {
-				http.ServeFile(w, r, name) // FIXME
 			} else if size, err := extractSize(r); err != nil {
 				respond.UnprocessableEntity(w, err)
-			} else if iconFilePath := FindIconPath(name, size); iconFilePath == "" {
+			} else if iconFilePath := FindIcon(name, size); iconFilePath == "" {
 				respond.NotFound(w)
 			} else {
 				http.ServeFile(w, r, iconFilePath)
@@ -37,6 +46,104 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	} else {
 		respond.NotFound(w)
 	}
+}
+
+func FindIcon(iconName string, size uint32) string {
+	if iconPaths, ok := getThemedIconPaths(iconName); ok {
+		return bestSizeMatch(iconPaths, size)
+	} else if path, ok := getOtherIconPath(iconName); ok {
+		return path
+	} else if lastDash := strings.LastIndex(iconName, "-"); lastDash > -1 {
+		/*
+		   By the icon naming specification, dash ('-') seperates 'levels of specificity'. So given an icon name
+		   'input-mouse-usb', the levels of specificy, and the names and order we search will be: 'input-mouse-usb',
+		   'input-mouse' and 'input'. Here we prefer specificy over theme, ie. if 'input-mouse-usb' is found in an inherited theme, that
+		   is preferred over 'input-mouse' in the default theme
+		*/
+		return FindIcon(iconName[0:lastDash], size)
+	} else {
+		return ""
+	}
+
+}
+
+func AddARGBIcon(argbIcon image.ARGBIcon) string {
+	var iconName = image.ARGBIconHashName(argbIcon)
+	var iconPaths = make([]IconPath, 0, len(argbIcon.Images))
+	for _, pixMap := range argbIcon.Images {
+		if pixMap.Width == pixMap.Height { // else ignore
+			if png, err := pixMap.AsPng(); err != nil {
+				log.Warn("Unable to convert image", err)
+			} else {
+				var (
+					size = pixMap.Width
+					path = fmt.Sprintf("%s/%s_%d.png", sessionIconsDir, iconName, size)
+				)
+				if err := os.WriteFile(path, png, 0700); err != nil {
+					log.Warn("Could not write", path, err)
+				} else {
+					iconPaths = append(iconPaths, IconPath{Path: path, MinSize: size, MaxSize: size})
+				}
+			}
+		}
+	}
+	if len(iconPaths) > 0 {
+		putThemedIcon(iconName, iconPaths)
+		return iconName
+	} else {
+		return ""
+	}
+}
+
+func AddFileIcon(filePath string) {
+	putOtherIcon(filePath, filePath)
+}
+
+func AddRawImageIcon(imageData image.ImageData) string {
+	iconName := image.ImageDataHashName(imageData)
+	if png, err := imageData.AsPng(); err != nil {
+		log.Warn("Error converting image", err)
+		return ""
+	} else {
+		var path = fmt.Sprintf("%s.png", iconName)
+		if err := os.WriteFile(path, png, 0700); err != nil {
+			log.Warn("Could not write", path, err)
+			return ""
+		} else {
+			putOtherIcon(iconName, path)
+		}
+	}
+	return iconName
+}
+
+func AddBasedir(path string) {
+	// FIXME
+}
+
+func bestSizeMatch(iconPaths []IconPath, size uint32) string {
+	var shortestDistanceSoFar = uint32(math.MaxUint32)
+	var path = ""
+	for _, iconPath := range iconPaths {
+		var distance uint32
+
+		if iconPath.MinSize > size {
+			distance = iconPath.MinSize - size
+		} else if iconPath.MaxSize < size {
+			distance = size - iconPath.MaxSize
+		} else {
+			distance = 0
+		}
+
+		if distance < shortestDistanceSoFar {
+			shortestDistanceSoFar = distance
+			path = iconPath.Path
+			shortestDistanceSoFar = distance
+		}
+		if shortestDistanceSoFar == 0 {
+			break
+		}
+	}
+	return path
 }
 
 func extractSize(r *http.Request) (uint32, error) {

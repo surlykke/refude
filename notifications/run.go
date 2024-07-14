@@ -34,7 +34,7 @@ func getFlash() (map[string]string, bool) {
 			return map[string]string{
 				"subject":      n.Title,
 				"body":         n.Comment,
-				"iconFilePath": icons.FindIconPath(n.iconName, 64),
+				"iconFilePath": icons.FindIcon(n.iconName, uint32(64)),
 			}, true
 		}
 	}

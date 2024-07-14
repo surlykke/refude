@@ -21,6 +21,8 @@ var ConfigDirs []string
 var CacheHome string
 var DataHome string
 var DataDirs []string
+var IconBasedirs []string
+var PixmapDir string
 var RuntimeDir string
 var CurrentDesktop []string
 var Locale string
@@ -43,9 +45,17 @@ func init() {
 	DataHome = clean(notEmptyOr(os.Getenv("XDG_DATA_HOME"), Home+"/.local/share"))
 	DataDirs = cleanS(slice.Split(notEmptyOr(os.Getenv("XDG_DATA_DIRS"), "/usr/local/share:/usr/share"), ":"))
 	DataDirs = slice.Remove(DataDirs, DataHome)
+
+	IconBasedirs = []string{Home + "/.icons", DataHome + "/icons"} // Weirdly icontheme specification does not mention ~/.local/share/icons, which I consider to be an error
+	for _, dataDir := range DataDirs {
+		IconBasedirs = append(IconBasedirs, dataDir+"/icons")
+	}
+	PixmapDir = "/usr/share/pixmaps"
+
 	RuntimeDir = clean(notEmptyOr(os.Getenv("XDG_RUNTIME_DIR"), "/tmp"))
 	CurrentDesktop = slice.Split(notEmptyOr(os.Getenv("XDG_CURRENT_DESKTOP"), ""), ":")
 	Locale = notEmptyOr(os.Getenv("LANG"), "") // TODO Look at other env variables too
+
 	// Strip away encoding part (ie. '.UTF-8')
 	if index := strings.Index(Locale, "."); index > -1 {
 		Locale = Locale[0:index]
@@ -64,7 +74,6 @@ func init() {
 	PicturesDir = clean(notEmptyOr(userDirs["XDG_PICTURES_DIR"], Home+"/PICTURES"))
 	VideosDir = clean(notEmptyOr(userDirs["XDG_VIDEOS_DIR"], Home+"/VIDEOS"))
 
-	
 }
 
 func RunCmd(argv ...string) error {

@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/surlykke/RefudeServices/lib/log"
+	"github.com/surlykke/RefudeServices/lib/repo"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/slice"
 	"github.com/surlykke/RefudeServices/lib/xdg"
@@ -30,6 +31,19 @@ type IconDir struct {
 	MinSize uint32
 	MaxSize uint32
 	Context string
+}
+
+func collectThemes() {
+	var themeMap = readThemes(xdg.IconBasedirs)
+	if _, ok := themeMap["hicolor"]; !ok {
+		log.Warn("Found no hicolor theme - unable to serve icons")
+		return
+	}
+	var themeList = make([]resource.Resource, 0, len(themeMap))
+	for _, theme := range themeMap {
+		themeList = append(themeList, theme)
+	}
+	repo.Replace(themeList, "/icontheme/")
 }
 
 func readThemes(basedirs []string) map[string]*IconTheme {
@@ -67,8 +81,7 @@ func readTheme(indexThemeFilePath string) (*IconTheme, bool) {
 	}
 
 	if len(iniFile) < 1 || iniFile[0].Name != "Icon Theme" {
-		log.Warn("Error")
-		//log.Warn("Error reading %s , expected 'Icon Theme' at start", indexThemeFilePath)
+		log.Warn("Error reading %s , expected 'Icon Theme' at start", indexThemeFilePath)
 		return nil, false
 	}
 
@@ -129,21 +142,6 @@ func readTheme(indexThemeFilePath string) (*IconTheme, bool) {
 
 		theme.Dirs = append(theme.Dirs, IconDir{iniGroup.Name, minSize, maxSize, iniGroup.Entries["Context"]})
 		addedDirs[iniGroup.Name] = true
-	}
-
-	if themeId == "hicolor" {
-		// We have icons from other sources than the various icon directories.. x11, statusnotifications, notifications. In order to serve those in
-		// a way similar to ordinary icons - we add them either as not-themed icons or as icons in the hicolor theme.
-		// Here we create an extra set of directories for hicolor - context 'converted' - where we put those
-		var lowerBound uint32 = 0
-		for _, upperBound := range []uint32{16, 22, 24, 32, 36, 48, 64, 72, 96, 128, 192, 256, 512, 1024, 2048} {
-			var path = fmt.Sprintf("converted/%d", upperBound)
-			if addedDirs[path] {
-				panic(path + " in use")
-			}
-			theme.Dirs = append(theme.Dirs, IconDir{path, lowerBound, upperBound, "converted"})
-			lowerBound = upperBound + 1
-		}
 	}
 
 	return &theme, true
