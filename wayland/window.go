@@ -29,6 +29,10 @@ func Run() {
 
 	go setupAndRunAsWaylandClient()
 
+	var appIcons = make(map[string]string)
+	var appIconChan = make(chan map[string]string)
+	go watchAppCollections(appIconChan)
+
 	for {
 		select {
 		case upd := <-windowUpdates:
@@ -45,7 +49,7 @@ func Run() {
 			} else if upd.appId != "" {
 				w.AppId = upd.appId
 				w.Comment = upd.appId
-				w.IconUrl = applications.GetIconUrl(upd.appId)
+				w.IconUrl = appIcons[w.AppId]
 			} else if upd.state > 0 {
 				w.State = upd.state - 1
 			}
@@ -54,7 +58,29 @@ func Run() {
 		case id := <-removals:
 			var path = fmt.Sprintf("/window/%d", id)
 			repo.Remove(path)
+		case appIcons = <-appIconChan:
+			for _, w := range repo.GetList[*WaylandWindow]("/window/") {
+				var copy = *w
+				if iconUrl, ok := appIcons[w.AppId]; ok {
+					copy.IconUrl = iconUrl
+					repo.Put(&copy)
+				}
+			}
 		}
+	}
+}
+
+func watchAppCollections(sink chan map[string]string) {
+	var subscription = applications.SubscribeToCollection()
+	for {
+		var collection = subscription.Next()
+		var appIcons = make(map[string]string)
+		for _, app := range collection.Apps {
+			if app.IconUrl != "" {
+				appIcons[app.DesktopId] = app.IconUrl
+			}
+		}
+		sink <- appIcons
 	}
 }
 

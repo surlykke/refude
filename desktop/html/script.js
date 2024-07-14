@@ -133,4 +133,4 @@ let reloadOnChange = () => {
 		load()
 	}
 }
-//setInterval(reloadOnChange, 500)
+setInterval(reloadOnChange, 500)

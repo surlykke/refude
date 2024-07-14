@@ -12,10 +12,17 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/surlykke/RefudeServices/lib/log"
+	"github.com/surlykke/RefudeServices/lib/pubsub"
 	"github.com/surlykke/RefudeServices/lib/repo"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
+
+var appCollections = pubsub.MakePublisher[Collection]()
+
+func SubscribeToCollection() *pubsub.Subscription[Collection] {
+	return appCollections.Subscribe()
+}
 
 func Run() {
 	var desktopFileEvents = make(chan struct{})
@@ -24,6 +31,7 @@ func Run() {
 	for {
 		fmt.Println(">>>> Load apps and mimetypes")
 		var collection Collection = collect()
+
 		var apps = make([]resource.Resource, 0, len(collection.Apps))
 		for _, app := range collection.Apps {
 			apps = append(apps, app)
@@ -35,6 +43,8 @@ func Run() {
 			mts = append(mts, mt)
 		}
 		repo.Replace(mts, "/mimetype/")
+
+		appCollections.Publish(collection)
 
 		<-desktopFileEvents
 	}

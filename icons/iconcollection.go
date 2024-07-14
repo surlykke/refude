@@ -38,7 +38,7 @@ func getThemedIconPaths(iconName string) ([]IconPath, bool) {
 func replaceThemedIcons(icons map[string][]IconPath) {
 	iconLock.Lock()
 	defer iconLock.Unlock()
-	for name, _ := range themedIcons {
+	for name := range themedIcons {
 		delete(themedIcons, name)
 	}
 	for name, iconPaths := range icons {
