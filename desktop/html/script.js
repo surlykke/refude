@@ -75,7 +75,7 @@ let activateSelected = () => {
 		console.warn("Unexpected profile", relation)
 		return
 	}
-	fetch(dataset.href, { method: "post" }).then(resp => resp.ok && dismiss(relation))
+	fetch(dataset.href, { method: "post" }).then(resp => resp.ok && dismiss(profile))
 }
 
 let onKeyDown = event => {
