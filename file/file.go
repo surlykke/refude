@@ -8,9 +8,11 @@ package file
 import (
 	"fmt"
 	"io/fs"
+	"net/http"
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/rakyll/magicmime"
@@ -18,7 +20,9 @@ import (
 	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/relation"
+	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
@@ -82,7 +86,8 @@ func makeFileFromInfo(osPath string, fileInfo os.FileInfo) *File {
 	}
 
 	for _, app := range applications.GetHandlers(f.Mimetype) {
-		f.AddLink(app.Path+"?arg="+f.Path[5:], "Open with "+app.Title, app.IconUrl, relation.Action)
+		f.apps = append(f.apps, app.DesktopId)
+		f.AddLink("?action="+app.DesktopId, "Open with "+app.Title, app.IconUrl, relation.Action)
 	}
 
 	if fileType == "Directory" {
@@ -165,7 +170,8 @@ func search(collector *resource.RRList, dir string, terms ...string) {
 	}
 }
 
-/* FIXME func (f *File) DoPost(w http.ResponseWriter, r *http.Request) {
+func (f *File) DoPost(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("File#DoPost", r.URL.Query())
 	var appId = requests.GetSingleQueryParameter(r, "action", "")
 	if appId == "" && len(f.apps) > 0 {
 		appId = f.apps[0]
@@ -173,7 +179,10 @@ func search(collector *resource.RRList, dir string, terms ...string) {
 	if appId == "" || !slices.Contains(f.apps, appId) {
 		respond.NotFound(w)
 	} else {
-		applications.OpenFile(appId, f.Path[5:])
-		respond.Accepted(w)
+		if applications.OpenFile(appId, f.Path[5:]) {
+			respond.Accepted(w)
+		} else {
+			respond.NotFound(w)
+		}
 	}
-} */
+}

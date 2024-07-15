@@ -18,11 +18,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
-var appCollections = pubsub.MakePublisher[Collection]()
-
-func SubscribeToCollection() *pubsub.Subscription[Collection] {
-	return appCollections.Subscribe()
-}
+var AppEvents = pubsub.MakePublisher[struct{}]()
 
 func Run() {
 	var desktopFileEvents = make(chan struct{})
@@ -44,7 +40,7 @@ func Run() {
 		}
 		repo.Replace(mts, "/mimetype/")
 
-		appCollections.Publish(collection)
+		AppEvents.Publish(struct{}{})
 
 		<-desktopFileEvents
 	}
@@ -64,11 +60,19 @@ func GetHandlers(mimetype string) []*DesktopApplication {
 }
 
 func GetIconUrl(appId string) string {
-	if app, ok := repo.Get[*DesktopApplication]("/application/" + appId); ok {
-		return app.IconUrl
-	} else {
-		return ""
+	if da, ok := repo.Get[*DesktopApplication]("/application/" + appId); ok {
+		return da.IconUrl
 	}
+	return ""
+}
+
+func OpenFile(appId, path string) bool {
+	fmt.Println("Openfile looking for", "/application/"+appId)
+	if app, ok := repo.Get[*DesktopApplication]("/application/" + appId); ok {
+		app.Run(path)
+		return true
+	}
+	return false
 }
 
 func watchForDesktopFiles(events chan struct{}) {

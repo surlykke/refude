@@ -65,27 +65,17 @@ let selectedDataset = () => selected.item(0)?.dataset
 let activateSelected = () => {
 	let dataset = selected.item(0)?.dataset
 	if (!dataset) return
-	let profile = dataset.profile
-	switch (dataset.relation) {
-		case "self":
-			console.log("Fetch", dataset.href)
-			fetch(dataset.href)
-				.then(resp => resp.json())
-				.then(jsonMap => {
-					let defaultAction = jsonMap?.links?.find(l => l.rel === "org.refude.action")
-					if (defaultAction) {
-						fetch(defaultAction.href, { method: "post" }).then(resp => resp.ok && dismiss(profile))
-						console.log(defaultAction)
-					}
-				})
-			break
-		case "org.refude.action":
-			fetch(dataset.href, { method: "post" }).then(resp => resp.ok && dismiss(profile))
-			break
-		case "org.refude.delete":
-			fetch(dataset.href, { method: "delete" }).then(resp => resp.ok && dismiss(profile))
-			break
+	let relation = dataset.relation
+	let method
+	if (relation === "self" || relation === "org.refude.action") {
+		method = "post"
+	} else if (relation === "org.refude.delete") {
+		method = "delete"
+	} else {
+		console.warn("Unexpected profile", relation)
+		return
 	}
+	fetch(dataset.href, { method: "post" }).then(resp => resp.ok && dismiss(relation))
 }
 
 let onKeyDown = event => {
