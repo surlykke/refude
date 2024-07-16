@@ -27,6 +27,11 @@ func (this *Tab) DoPost(w http.ResponseWriter, r *http.Request) {
 	respond.Accepted(w)
 }
 
+func (this *Tab) DoDelete(w http.ResponseWriter, r *http.Request) {
+	watch.Publish("closeTab", this.Id())
+	respond.Accepted(w)
+}
+
 func (this *Tab) OmitFromSearch() bool {
 	return strings.HasPrefix(this.Comment, "http://localhost:7938/desktop")
 }
