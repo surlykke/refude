@@ -74,7 +74,7 @@ func (n *Notification) SoftExpired() bool {
 }
 
 func (this *Notification) OmitFromSearch() bool {
-	return this.NActions["default"] == "" && this.SoftExpired()
+	return this.Deleted || (this.NActions["default"] == "" && this.SoftExpired())
 }
 
 func (n *Notification) DoPost(w http.ResponseWriter, r *http.Request) {

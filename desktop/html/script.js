@@ -60,22 +60,22 @@ let setTerm = newTerm => {
 }
 
 
-let selectedDataset = () => selected.item(0)?.dataset
+let selectedDataset = () => selected.item(0)?.dataset || {}
+
+let deleteSelected = () => {
+	let { href, relation } = selectedDataset()
+	if (relation === "self" || relation === "org.refude.delete") {
+		fetch(href, { method: "delete" })
+	}
+}
 
 let activateSelected = () => {
-	let dataset = selected.item(0)?.dataset
-	if (!dataset) return
-	let relation = dataset.relation
-	let method
+	let { href, relation, profile } = selectedDataset()
 	if (relation === "self" || relation === "org.refude.action") {
-		method = "post"
+		fetch(href, { method: "post" }).then(resp => resp.ok && dismiss(profile))
 	} else if (relation === "org.refude.delete") {
-		method = "delete"
-	} else {
-		console.warn("Unexpected profile", relation)
-		return
+		fetch(href, { method: "delete" }).then(resp => resp.ok && dismiss(profile))
 	}
-	fetch(dataset.href, { method: "post" }).then(resp => resp.ok && dismiss(profile))
 }
 
 let onKeyDown = event => {
@@ -84,6 +84,8 @@ let onKeyDown = event => {
 		dismiss()
 	} else if (key === "Enter" && !ctrlKey && !shiftKey && !altKey) {
 		activateSelected()
+	} else if (key === "Delete") {
+		deleteSelected()
 	} else if (altKey && key === "l" || key === "ArrowRight" || key === " " && ctrlKey) {
 		selectedDataset()?.relation === "self" && gotoResource(selectedDataset().href)
 	} else if (altKey && key === "h" || key === "ArrowLeft" || key === "o" && ctrlKey) {
