@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/surlykke/RefudeServices/lib/link"
+	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/slice"
 	"github.com/surlykke/RefudeServices/lib/xdg"
@@ -90,9 +90,9 @@ func collectMimetypes() map[string]*Mimetype {
 			}
 
 			if tmp.Icon.Name != "" {
-				mimeType.IconUrl = link.IconUrlFromName(tmp.Icon.Name)
+				mimeType.IconUrl = icons.UrlFromName(tmp.Icon.Name)
 			} else {
-				mimeType.IconUrl = link.IconUrlFromName(strings.Replace(tmp.Type, "/", "-", -1))
+				mimeType.IconUrl = icons.UrlFromName(strings.Replace(tmp.Type, "/", "-", -1))
 			}
 
 			for _, aliasStruct := range tmp.Alias {
@@ -130,18 +130,17 @@ func collectMimetypes() map[string]*Mimetype {
 	}
 
 	for _, mt := range res {
-		for _, aliasId := range mt.Aliases  {
+		for _, aliasId := range mt.Aliases {
 			if _, ok := res[aliasId]; !ok {
 				var copy = *mt
 				copy.Path = "/mimetype/" + aliasId
 				copy.Id = aliasId
 				copy.Aliases = []string{}
-				res[aliasId] = & copy
+				res[aliasId] = &copy
 			}
 		}
 	}
 
 	return res
-
 
 }

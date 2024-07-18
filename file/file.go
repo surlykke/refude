@@ -17,7 +17,7 @@ import (
 
 	"github.com/rakyll/magicmime"
 	"github.com/surlykke/RefudeServices/applications"
-	"github.com/surlykke/RefudeServices/lib/link"
+	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/requests"
@@ -77,7 +77,7 @@ func makeFileFromInfo(osPath string, fileInfo os.FileInfo) *File {
 	var fileType = getFileType(fileInfo.Mode())
 	var comment = osPath
 	var mimetype, _ = magicmime.TypeByFile(osPath)
-	var iconUrl = link.IconUrlFromName(strings.ReplaceAll(mimetype, "/", "-"))
+	var iconUrl = icons.UrlFromName(strings.ReplaceAll(mimetype, "/", "-"))
 	var f = File{
 		ResourceData: *resource.MakeBase("/file/"+osPath[1:], fileInfo.Name(), comment, iconUrl, "file"),
 		Type:         fileType,

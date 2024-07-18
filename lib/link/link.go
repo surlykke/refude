@@ -6,12 +6,10 @@
 package link
 
 import (
-	"net/url"
 	"slices"
 	"strings"
 
 	"github.com/surlykke/RefudeServices/lib/relation"
-	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
 var httpLocalHost7838 = []byte("http://localhost:7938")
@@ -81,23 +79,3 @@ func normalizeHref(href string) string {
 }
 
 // --------------------------------------------------------------------
-
-func IconUrlFromName(name string) string {
-	if strings.Index(name, "/") > -1 {
-		// So its a path..
-		if strings.HasPrefix(name, "file:///") {
-			name = name[7:]
-		} else if strings.HasPrefix(name, "file://") {
-			name = xdg.Home + "/" + name[7:]
-		} else if !strings.HasPrefix(name, "/") {
-			name = xdg.Home + "/" + name
-		}
-
-		// Maybe: Check that path points to iconfile..
-	}
-	if name != "" {
-		return "http://localhost:7938/icon?name=" + url.QueryEscape(name)
-	} else {
-		return ""
-	}
-}

@@ -9,8 +9,8 @@ import (
 	"fmt"
 
 	"github.com/godbus/dbus/v5"
+	"github.com/surlykke/RefudeServices/icons"
 	dbuscall "github.com/surlykke/RefudeServices/lib/dbusutils"
-	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/repo"
 	"github.com/surlykke/RefudeServices/notifications"
 )
@@ -114,7 +114,7 @@ func retrieveDevice(path dbus.ObjectPath) *Device {
 		case "BatteryLevel":
 			device.Batterylevel = deviceBatteryLevel(variant.Value().(uint32))
 		case "IconName":
-			device.IconUrl = link.IconUrlFromName(variant.Value().(string))
+			device.IconUrl = icons.UrlFromName(variant.Value().(string))
 		}
 	}
 	device.Path = "/device/" + path2id(device.DbusPath)

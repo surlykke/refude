@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -18,6 +19,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/respond"
+	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
 func Run() {
@@ -118,6 +120,27 @@ func AddRawImageIcon(imageData image.ImageData) string {
 
 func AddBasedir(path string) {
 	// FIXME
+}
+
+func UrlFromName(name string) string {
+	if strings.Index(name, "/") > -1 {
+		// So its a path..
+		if strings.HasPrefix(name, "file:///") {
+			name = name[7:]
+		} else if strings.HasPrefix(name, "file://") {
+			name = xdg.Home + "/" + name[7:]
+		} else if !strings.HasPrefix(name, "/") {
+			name = xdg.Home + "/" + name
+		}
+
+		AddFileIcon(name)
+		// Maybe: Check that path points to iconfile..
+	}
+	if name != "" {
+		return "http://localhost:7938/icon?name=" + url.QueryEscape(name)
+	} else {
+		return ""
+	}
 }
 
 func bestSizeMatch(iconPaths []IconPath, size uint32) string {

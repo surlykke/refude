@@ -16,7 +16,6 @@ import (
 	"github.com/godbus/dbus/v5/introspect"
 	"github.com/godbus/dbus/v5/prop"
 	dbuscall "github.com/surlykke/RefudeServices/lib/dbusutils"
-	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/repo"
 )
@@ -156,9 +155,9 @@ func buildItem(sender string, path dbus.ObjectPath) *Item {
 	}
 
 	if item.UseIconPixmap = getStringOr(props["IconName"]) == ""; item.UseIconPixmap {
-		item.IconUrl = link.IconUrlFromName(collectPixMap(props["IconPixmap"]))
+		item.IconUrl = icons.UrlFromName(collectPixMap(props["IconPixmap"]))
 	} else {
-		item.IconUrl = link.IconUrlFromName(getStringOr(props["IconName"]))
+		item.IconUrl = icons.UrlFromName(getStringOr(props["IconName"]))
 	}
 
 	if item.UseAttentionIconPixmap = getStringOr(props["AttentionIconName"]) == ""; item.UseAttentionIconPixmap {

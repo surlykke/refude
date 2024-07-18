@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/surlykke/RefudeServices/lib/link"
+	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/resource"
@@ -146,7 +146,7 @@ func readDesktopFile(filePath string, id string) (*DesktopApplication, error) {
 		}
 		da.Version = group.Entries["Version"]
 		da.GenericName = group.Entries["GenericName"]
-		da.IconUrl = link.IconUrlFromName(group.Entries["Icon"])
+		da.IconUrl = icons.UrlFromName(group.Entries["Icon"])
 		da.NoDisplay = group.Entries["NoDisplay"] == "true"
 		da.Hidden = group.Entries["Hidden"] == "true"
 		da.OnlyShowIn = slice.Split(group.Entries["OnlyShowIn"], ";")
@@ -179,7 +179,7 @@ func readDesktopFile(filePath string, id string) (*DesktopApplication, error) {
 				if name == "" {
 					return nil, errors.New("Desktop file invalid, action " + actionGroup.Name + " has no default 'Name'")
 				}
-				var iconUrl = link.IconUrlFromName(actionGroup.Entries["icon"])
+				var iconUrl = icons.UrlFromName(actionGroup.Entries["icon"])
 				da.DesktopActions = append(da.DesktopActions, DesktopAction{
 					id:      currentAction,
 					Name:    name,

@@ -17,7 +17,6 @@ import (
 	"github.com/godbus/dbus/v5/introspect"
 	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/image"
-	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/repo"
 	"github.com/surlykke/RefudeServices/lib/resource"
@@ -179,7 +178,7 @@ func Notify(
 
 	var title = sanitize(summary, []string{}, []string{})
 	body = sanitize(body, allowedTags, allowedEscapes)
-	var iconUrl = link.IconUrlFromName(iconName)
+	var iconUrl = icons.UrlFromName(iconName)
 	notification := Notification{
 		ResourceData:   *resource.MakeBase(fmt.Sprintf("/notification/%d", id), title, body, iconUrl, "notification"),
 		NotificationId: id,
