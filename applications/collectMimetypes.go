@@ -89,11 +89,10 @@ func collectMimetypes() map[string]*Mimetype {
 				}
 			}
 
-			if tmp.Icon.Name != "" {
-				mimeType.IconUrl = icons.UrlFromName(tmp.Icon.Name)
-			} else {
-				mimeType.IconUrl = icons.UrlFromName(strings.Replace(tmp.Type, "/", "-", -1))
+			if tmp.Icon.Name == "" {
+				tmp.Icon.Name = strings.Replace(tmp.Type, "/", "-", -1)
 			}
+			mimeType.SetIconHref(icons.UrlFromName(tmp.Icon.Name))
 
 			for _, aliasStruct := range tmp.Alias {
 				mimeType.Aliases = slice.AppendIfNotThere(mimeType.Aliases, aliasStruct.Type)

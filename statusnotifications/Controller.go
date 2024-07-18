@@ -154,10 +154,14 @@ func buildItem(sender string, path dbus.ObjectPath) *Item {
 		icons.AddBasedir(item.IconThemePath)
 	}
 
+	var iconUrl = ""
 	if item.UseIconPixmap = getStringOr(props["IconName"]) == ""; item.UseIconPixmap {
-		item.IconUrl = icons.UrlFromName(collectPixMap(props["IconPixmap"]))
+		iconUrl = icons.UrlFromName(collectPixMap(props["IconPixmap"]))
 	} else {
-		item.IconUrl = icons.UrlFromName(getStringOr(props["IconName"]))
+		iconUrl = icons.UrlFromName(getStringOr(props["IconName"]))
+	}
+	if iconUrl != "" {
+		item.SetIconHref(iconUrl)
 	}
 
 	if item.UseAttentionIconPixmap = getStringOr(props["AttentionIconName"]) == ""; item.UseAttentionIconPixmap {

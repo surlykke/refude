@@ -87,11 +87,11 @@ func makeFileFromInfo(osPath string, fileInfo os.FileInfo) *File {
 
 	for _, app := range applications.GetHandlers(f.Mimetype) {
 		f.apps = append(f.apps, app.DesktopId)
-		f.Links = f.Links.Add(f.Path+"?action="+app.DesktopId, "Open with "+app.Title, app.IconUrl, relation.Action, "")
+		f.AddLink(f.Path+"?action="+app.DesktopId, "Open with "+app.Title, app.GetIconUrl(), relation.Action)
 	}
 
 	if fileType == "Directory" {
-		f.Links = f.Links.Add("/search?from="+f.Path, "", "", relation.Search, "")
+		f.AddLink("/search?from="+f.Path, "", "", relation.Search)
 	}
 
 	return &f

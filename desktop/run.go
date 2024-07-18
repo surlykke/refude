@@ -16,13 +16,13 @@ import (
 	"strings"
 
 	"github.com/surlykke/RefudeServices/file"
-	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/repo"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
+	"github.com/surlykke/RefudeServices/lib/searchutils"
 	"github.com/surlykke/RefudeServices/lib/stringhash"
 	"github.com/surlykke/RefudeServices/watch"
 	"github.com/surlykke/RefudeServices/wayland"
@@ -60,7 +60,7 @@ func headingRow(heading string) row {
 	return row{Title: heading, Class: "heading"}
 }
 
-func actionRow(action link.Link) row {
+func actionRow(action resource.Link) row {
 	return row{IconUrl: action.IconUrl, Title: action.Title, Href: action.Href, Relation: action.Relation, Class: "selectable"}
 }
 
@@ -105,7 +105,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			if res != nil {
 				var (
 					term           = strings.ToLower(requests.GetSingleQueryParameter(r, "search", ""))
-					actions        = res.GetActionLinks(term)
+					actions        = GetActionLinks(res, term)
 					sf, searchable = res.(resource.Searchable)
 					rows           = make([]row, 0, len(actions)+4)
 				)
@@ -183,6 +183,16 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	default:
 		StaticServer.ServeHTTP(w, r)
 	}
+}
+
+func GetActionLinks(res resource.Resource, searchTerm string) resource.LinkList {
+	var filtered = make(resource.LinkList, 0, len(res.GetLinks()))
+	for _, lnk := range res.GetLinks() {
+		if (lnk.Relation == relation.Action || lnk.Relation == relation.Delete) && searchutils.Match(searchTerm, lnk.Title) >= 0 {
+			filtered = append(filtered, lnk)
+		}
+	}
+	return filtered
 }
 
 func defaultData(res resource.Resource) string {

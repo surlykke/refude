@@ -48,7 +48,9 @@ func Run() {
 			} else if upd.appId != "" {
 				w.AppId = upd.appId
 				w.Comment = upd.appId
-				w.IconUrl = applications.GetIconUrl(w.AppId)
+				if iconUrl := applications.GetIconUrl(w.AppId); iconUrl != "" {
+					w.SetIconHref(iconUrl)
+				}
 			} else if upd.state > 0 {
 				w.State = upd.state - 1
 			}
@@ -60,7 +62,9 @@ func Run() {
 		case _ = <-appEvents:
 			for _, w := range repo.GetList[*WaylandWindow]("/window/") {
 				var copy = *w
-				copy.IconUrl = applications.GetIconUrl(copy.AppId)
+				if iconUrl := applications.GetIconUrl(copy.AppId); iconUrl != "" {
+					copy.SetIconHref(iconUrl)
+				}
 				repo.Put(&copy)
 			}
 		}
@@ -116,8 +120,8 @@ func MakeWindow(wId uint64) *WaylandWindow {
 		ResourceData: *resource.MakeBase(fmt.Sprintf("/window/%d", wId), "", "", "", "window"),
 		Wid:          wId,
 	}
-	ww.Links = ww.Links.Add(ww.Path, "Focus", "", relation.Action, "")
-	ww.Links = ww.Links.Add(ww.Path, "Close", "", relation.Delete, "")
+	ww.AddLink(ww.Path, "Focus", "", relation.Action)
+	ww.AddLink(ww.Path, "Close", "", relation.Delete)
 	return ww
 }
 

@@ -81,7 +81,7 @@ func readTheme(indexThemeFilePath string) (*IconTheme, bool) {
 	}
 
 	if len(iniFile) < 1 || iniFile[0].Name != "Icon Theme" {
-		log.Warn("Error reading %s , expected 'Icon Theme' at start", indexThemeFilePath)
+		//log.Warn("Error reading %s , expected 'Icon Theme' at start", indexThemeFilePath)
 		return nil, false
 	}
 

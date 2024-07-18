@@ -64,10 +64,10 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					} else if len(url) > 60 {
 						url = url[0:60] + "..."
 					}
-
-					var tab = &Tab{ResourceData: *resource.MakeBase("/tab/"+d["id"], title, url, d["favIcon"], "tab")}
-					tab.Links = tab.Links.Add(tab.Path, "Focus", tab.IconUrl, relation.Action, "")
-					tab.Links = tab.Links.Add(tab.Path, "Close", "", relation.Delete, "")
+					var iconUrl = d["favIcon"]
+					var tab = &Tab{ResourceData: *resource.MakeBase("/tab/"+d["id"], title, url, iconUrl, "tab")}
+					tab.AddLink(tab.Path, "Focus", iconUrl, relation.Action)
+					tab.AddLink(tab.Path, "Close", "", relation.Delete)
 					tabs = append(tabs, tab)
 				}
 				respond.Ok(w)

@@ -114,7 +114,7 @@ func retrieveDevice(path dbus.ObjectPath) *Device {
 		case "BatteryLevel":
 			device.Batterylevel = deviceBatteryLevel(variant.Value().(uint32))
 		case "IconName":
-			device.IconUrl = icons.UrlFromName(variant.Value().(string))
+			device.SetIconHref(icons.UrlFromName(variant.Value().(string)))
 		}
 	}
 	device.Path = "/device/" + path2id(device.DbusPath)

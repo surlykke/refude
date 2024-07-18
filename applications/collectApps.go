@@ -146,7 +146,8 @@ func readDesktopFile(filePath string, id string) (*DesktopApplication, error) {
 		}
 		da.Version = group.Entries["Version"]
 		da.GenericName = group.Entries["GenericName"]
-		da.IconUrl = icons.UrlFromName(group.Entries["Icon"])
+		var iconUrl = icons.UrlFromName(group.Entries["Icon"])
+		da.SetIconHref(iconUrl)
 		da.NoDisplay = group.Entries["NoDisplay"] == "true"
 		da.Hidden = group.Entries["Hidden"] == "true"
 		da.OnlyShowIn = slice.Split(group.Entries["OnlyShowIn"], ";")
@@ -165,7 +166,7 @@ func readDesktopFile(filePath string, id string) (*DesktopApplication, error) {
 		da.Mimetypes = slice.Split(group.Entries["MimeType"], ";")
 		da.DesktopFile = filePath
 
-		da.Links = da.Links.Add(da.Path, "Launch", da.IconUrl, relation.Action, "")
+		da.AddLink(da.Path, "Launch", iconUrl, relation.Action)
 		da.DesktopActions = []DesktopAction{}
 		var actionNames = slice.Split(group.Entries["Actions"], ";")
 
@@ -186,7 +187,7 @@ func readDesktopFile(filePath string, id string) (*DesktopApplication, error) {
 					Exec:    actionGroup.Entries["Exec"],
 					IconUrl: iconUrl,
 				})
-				da.Links = da.Links.Add(da.Path+"?action="+currentAction, name, iconUrl, relation.Action, "")
+				da.AddLink(da.Path+"?action="+currentAction, name, iconUrl, relation.Action)
 			}
 		}
 

@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/surlykke/RefudeServices/file"
-	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/repo"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
@@ -27,7 +26,7 @@ var startResource StartResource
 
 func Run() {
 	startResource = StartResource{ResourceData: *resource.MakeBase("/start", "Refude desktop", "", "", "start")}
-	startResource.Links = startResource.Links.Add("/search", "", "", relation.Search, "")
+	startResource.SetSearchHref("/search")
 	repo.Put(&startResource)
 }
 

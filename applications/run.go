@@ -61,7 +61,7 @@ func GetHandlers(mimetype string) []*DesktopApplication {
 
 func GetIconUrl(appId string) string {
 	if da, ok := repo.Get[*DesktopApplication]("/application/" + appId); ok {
-		return da.IconUrl
+		return da.GetIconUrl()
 	}
 	return ""
 }

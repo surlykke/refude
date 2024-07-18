@@ -10,10 +10,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/respond"
-	"github.com/surlykke/RefudeServices/lib/searchutils"
 )
 
 type Resource interface {
@@ -21,11 +19,10 @@ type Resource interface {
 	GetTitle() string
 	GetComment() string
 	GetIconUrl() string
+	GetSearchUrl() string
 	GetProfile() string
-	GetLinks() link.LinkList
-	GetActionLinks(string) []link.Link
+	GetLinks() LinkList
 	GetKeywords() []string
-
 	OmitFromSearch() bool
 }
 
@@ -59,12 +56,11 @@ func cmp(r1, r2 RankedResource) int {
 
 type ResourceData struct {
 	Path     string
-	Title    string        `json:"title"`
-	Comment  string        `json:"comment,omitempty"`
-	IconUrl  string        `json:"icon,omitempty"`
-	Profile  string        `json:"profile"`
-	Links    link.LinkList `json:"links"`
-	Keywords []string      `json:"-"`
+	Title    string   `json:"title"`
+	Comment  string   `json:"comment,omitempty"`
+	Profile  string   `json:"profile"`
+	Links    LinkList `json:"links"`
+	Keywords []string `json:"-"`
 }
 
 func MakeBase(path, title, comment, iconUrl, profile string) *ResourceData {
@@ -72,33 +68,89 @@ func MakeBase(path, title, comment, iconUrl, profile string) *ResourceData {
 		Path:    path,
 		Title:   title,
 		Comment: comment,
-		IconUrl: iconUrl,
 		Profile: profile,
-		Links:   link.LinkList{{Href: "http://localhost:7938" + path, Relation: relation.Self}},
+		Links:   LinkList{{Href: "http://localhost:7938" + path, Relation: relation.Self}},
+	}
+	if iconUrl != "" {
+		br.SetIconHref(iconUrl)
 	}
 	return &br
 }
 
-func (this *ResourceData) GetPath() string         { return this.Path }
-func (this *ResourceData) GetTitle() string        { return this.Title }
-func (this *ResourceData) GetComment() string      { return this.Comment }
-func (this *ResourceData) GetIconUrl() string      { return this.IconUrl }
-func (this *ResourceData) GetProfile() string      { return this.Profile }
-func (this *ResourceData) GetLinks() link.LinkList { return this.Links }
-func (this *ResourceData) GetKeywords() []string   { return this.Keywords }
-func (this *ResourceData) OmitFromSearch() bool    { return false }
+func (this *ResourceData) GetPath() string       { return this.Path }
+func (this *ResourceData) GetTitle() string      { return this.Title }
+func (this *ResourceData) GetComment() string    { return this.Comment }
+func (this *ResourceData) GetIconUrl() string    { return this.Links.get(relation.Icon).Href }
+func (this *ResourceData) GetSearchUrl() string  { return this.Links.get(relation.Search).Href }
+func (this *ResourceData) GetProfile() string    { return this.Profile }
+func (this *ResourceData) GetLinks() LinkList    { return this.Links }
+func (this *ResourceData) GetKeywords() []string { return this.Keywords }
+func (this *ResourceData) OmitFromSearch() bool  { return false }
 
-// -----------------------------------------------------
+func (this *ResourceData) SetIconHref(iconUrl string) {
+	this.Links = this.Links.set(iconUrl, "", "", relation.Icon)
+}
 
-func (br *ResourceData) GetActionLinks(searchTerm string) []link.Link {
-	var filtered = make([]link.Link, 0, len(br.Links))
-	for _, lnk := range br.Links {
-		if (lnk.Relation == relation.Action || lnk.Relation == relation.Delete) && searchutils.Match(searchTerm, lnk.Title) >= 0 {
-			filtered = append(filtered, lnk)
+func (this *ResourceData) SetSearchHref(searchUrl string) {
+	this.Links = this.Links.set(searchUrl, "", "", relation.Search)
+}
+
+func (this *ResourceData) AddLink(href string, title string, iconUrl string, rel relation.Relation) {
+	this.Links = this.Links.add(href, title, iconUrl, rel)
+}
+
+var httpLocalHost7838 = []byte("http://localhost:7938")
+
+// --------------------- Link --------------------------------------
+
+type Link struct {
+	Href     string            `json:"href"`
+	Title    string            `json:"title,omitempty"`
+	IconUrl  string            `json:"icon,omitempty"`
+	Relation relation.Relation `json:"rel,omitempty"`
+}
+
+type LinkList []Link
+
+func (ll LinkList) add(href, title, iconUrl string, relation relation.Relation) LinkList {
+	var res = slices.Clone(ll)
+	return append(res, Link{Href: normalizeHref(href), Title: title, IconUrl: iconUrl, Relation: relation})
+}
+
+// Ensure only one link with given relation in list
+func (ll LinkList) set(href, title, iconUrl string, relation relation.Relation) LinkList {
+	var res = make(LinkList, len(ll)+1, len(ll)+1)
+	var pos = 0
+	for i := 0; i < len(ll); i++ {
+		if ll[i].Relation != relation {
+			res[pos] = ll[i]
+			pos++
 		}
 	}
-	return filtered
+	res[pos] = Link{Href: normalizeHref(href), Title: title, IconUrl: iconUrl, Relation: relation}
+	res = res[0 : pos+1]
+	return res
 }
+
+// Gets first found link with given relation
+func (ll LinkList) get(relation relation.Relation) Link {
+	for _, l := range ll {
+		if l.Relation == relation {
+			return l
+		}
+	}
+	return Link{}
+}
+
+func normalizeHref(href string) string {
+	if strings.HasPrefix(href, "/") {
+		return "http://localhost:7938" + href
+	} else {
+		return href
+	}
+}
+
+// -------------- Serve -------------------------
 
 type Postable interface {
 	DoPost(w http.ResponseWriter, r *http.Request)
