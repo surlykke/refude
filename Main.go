@@ -107,7 +107,7 @@ func complete(w http.ResponseWriter, r *http.Request) {
 		}
 
 		for _, res := range repo.GetListUntyped(prefix) {
-			paths = append(paths, res.Data().Path)
+			paths = append(paths, res.GetPath())
 		}
 
 		respond.AsJson(w, paths)

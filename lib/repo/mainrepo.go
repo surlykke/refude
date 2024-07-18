@@ -16,7 +16,7 @@ var lock sync.Mutex
 func Put(res resource.Resource) {
 	lock.Lock()
 	defer lock.Unlock()
-	resources[res.Data().Path] = res
+	resources[res.GetPath()] = res
 }
 
 func Remove(path string) {
@@ -34,7 +34,7 @@ func Replace(resList []resource.Resource, prefix string) {
 		}
 	}
 	for _, res := range resList {
-		resources[res.Data().Path] = res
+		resources[res.GetPath()] = res
 	}
 }
 
@@ -59,7 +59,7 @@ func GetListUntyped(prefix string) []resource.Resource {
 	defer lock.Unlock()
 	var resList = make([]resource.Resource, 0, 100)
 	for _, res := range resources {
-		if strings.HasPrefix(res.Data().Path, prefix) {
+		if strings.HasPrefix(res.GetPath(), prefix) {
 			resList = append(resList, res)
 		}
 	}
@@ -79,7 +79,7 @@ func GetList[T resource.Resource](prefix string) []T {
 
 func GetListSortedByPath[T resource.Resource](prefix string) []T {
 	var resList = GetList[T](prefix)
-	slices.SortFunc(resList, func(t1, t2 T) int { return strings.Compare(t1.Data().Path, t2.Data().Path) })
+	slices.SortFunc(resList, func(t1, t2 T) int { return strings.Compare(t1.GetPath(), t2.GetPath()) })
 	return resList
 }
 

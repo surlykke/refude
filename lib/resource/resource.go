@@ -17,7 +17,15 @@ import (
 )
 
 type Resource interface {
-	Data() *ResourceData
+	GetPath() string
+	GetTitle() string
+	GetComment() string
+	GetIconUrl() string
+	GetProfile() string
+	GetLinks() []link.Link
+	GetActionLinks(string) []link.Link
+	GetKeywords() []string
+
 	OmitFromSearch() bool
 }
 
@@ -45,19 +53,18 @@ func cmp(r1, r2 RankedResource) int {
 	if r1.Rank != r2.Rank {
 		return r1.Rank - r2.Rank
 	} else {
-		return strings.Compare(r1.Res.Data().Path, r2.Res.Data().Path)
+		return strings.Compare(r1.Res.GetPath(), r2.Res.GetPath())
 	}
 }
 
 type ResourceData struct {
-	Path           string
-	Title          string      `json:"title"`
-	Comment        string      `json:"comment,omitempty"`
-	IconUrl        string      `json:"icon,omitempty"`
-	Profile        string      `json:"profile"`
-	Links          []link.Link `json:"links"`
-	Keywords       []string    `json:"-"`
-	HideFromSearch bool        `json:"-"`
+	Path     string
+	Title    string      `json:"title"`
+	Comment  string      `json:"comment,omitempty"`
+	IconUrl  string      `json:"icon,omitempty"`
+	Profile  string      `json:"profile"`
+	Links    []link.Link `json:"links"`
+	Keywords []string    `json:"-"`
 }
 
 func MakeBase(path, title, comment, iconUrl, profile string) *ResourceData {
@@ -72,13 +79,14 @@ func MakeBase(path, title, comment, iconUrl, profile string) *ResourceData {
 	return &br
 }
 
-func (this *ResourceData) Data() *ResourceData {
-	return this
-}
-
-func (this *ResourceData) OmitFromSearch() bool {
-	return false
-}
+func (this *ResourceData) GetPath() string       { return this.Path }
+func (this *ResourceData) GetTitle() string      { return this.Title }
+func (this *ResourceData) GetComment() string    { return this.Comment }
+func (this *ResourceData) GetIconUrl() string    { return this.IconUrl }
+func (this *ResourceData) GetProfile() string    { return this.Profile }
+func (this *ResourceData) GetLinks() []link.Link { return this.Links }
+func (this *ResourceData) GetKeywords() []string { return this.Keywords }
+func (this *ResourceData) OmitFromSearch() bool  { return false }
 
 func (this *ResourceData) AddLink(href, title, iconUrl string, relation relation.Relation) {
 	if href == "" {
@@ -94,7 +102,7 @@ func (this *ResourceData) AddLink(href, title, iconUrl string, relation relation
 
 // -----------------------------------------------------
 
-func (br *ResourceData) ActionLinks(searchTerm string) []link.Link {
+func (br *ResourceData) GetActionLinks(searchTerm string) []link.Link {
 	var filtered = make([]link.Link, 0, len(br.Links))
 	for _, lnk := range br.Links {
 		if (lnk.Relation == relation.Action || lnk.Relation == relation.Delete) && searchutils.Match(searchTerm, lnk.Title) >= 0 {

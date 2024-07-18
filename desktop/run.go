@@ -66,10 +66,10 @@ func actionRow(action link.Link) row {
 
 func resourceRow(sr resource.Resource) row {
 	var comment string
-	if sr.Data().Comment != "" {
-		comment = sr.Data().Profile + ": " + sr.Data().Comment
+	if sr.GetComment() != "" {
+		comment = sr.GetProfile() + ": " + sr.GetComment()
 	}
-	return row{IconUrl: sr.Data().IconUrl, Title: sr.Data().Title, Comment: comment, Href: sr.Data().Path, Relation: relation.Self, Profile: sr.Data().Profile, Class: "selectable"}
+	return row{IconUrl: sr.GetIconUrl(), Title: sr.GetTitle(), Comment: comment, Href: sr.GetPath(), Relation: relation.Self, Profile: sr.GetProfile(), Class: "selectable"}
 }
 
 func init() {
@@ -105,7 +105,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			if res != nil {
 				var (
 					term           = strings.ToLower(requests.GetSingleQueryParameter(r, "search", ""))
-					actions        = res.Data().ActionLinks(term)
+					actions        = res.GetActionLinks(term)
 					sf, searchable = res.(resource.Searchable)
 					rows           = make([]row, 0, len(actions)+4)
 				)
@@ -131,12 +131,12 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 				var m = map[string]any{
 					"Searchable": searchable,
-					"Title":      res.Data().Title,
-					"Icon":       res.Data().IconUrl,
+					"Title":      res.GetTitle(),
+					"Icon":       res.GetIconUrl(),
 					"Term":       term,
 					"Rows":       rows,
 				}
-				var etag = buildETag(term, res.Data().Title, res.Data().IconUrl, rows)
+				var etag = buildETag(term, res.GetTitle(), res.GetIconUrl(), rows)
 				if r.Header.Get("if-none-match") == etag {
 					respond.NotModified(w)
 					return
@@ -224,15 +224,15 @@ type resourceGroup struct {
 func arrange(resources []resource.Resource) []resourceGroup {
 	var groups = []resourceGroup{{"Notifications", nil}, {"Windows and Tabs", nil}, {"Applications", nil}, {"Files", nil}, {"Devices", nil}, {"Other", nil}}
 	for _, res := range resources {
-		if res.Data().Profile == "notification" {
+		if res.GetProfile() == "notification" {
 			groups[0].resources = append(groups[0].resources, res)
-		} else if res.Data().Profile == "window" || res.Data().Profile == "tab" {
+		} else if res.GetProfile() == "window" || res.GetProfile() == "tab" {
 			groups[1].resources = append(groups[1].resources, res)
-		} else if res.Data().Profile == "application" {
+		} else if res.GetProfile() == "application" {
 			groups[2].resources = append(groups[2].resources, res)
-		} else if res.Data().Profile == "file" {
+		} else if res.GetProfile() == "file" {
 			groups[3].resources = append(groups[3].resources, res)
-		} else if res.Data().Profile == "device" {
+		} else if res.GetProfile() == "device" {
 			groups[4].resources = append(groups[4].resources, res)
 		} else {
 			groups[5].resources = append(groups[5].resources, res)

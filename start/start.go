@@ -54,7 +54,7 @@ func searchList(list []resource.Resource, term string) []resource.Resource {
 		if res.OmitFromSearch() {
 			continue
 		}
-		if rnk := searchutils.Match(term, res.Data().Title, res.Data().Keywords...); rnk >= 0 {
+		if rnk := searchutils.Match(term, res.GetTitle(), res.GetKeywords()...); rnk >= 0 {
 			rrList = append(rrList, resource.RankedResource{Rank: rnk, Res: res})
 		}
 	}
