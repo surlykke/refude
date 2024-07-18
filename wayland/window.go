@@ -116,8 +116,8 @@ func MakeWindow(wId uint64) *WaylandWindow {
 		ResourceData: *resource.MakeBase(fmt.Sprintf("/window/%d", wId), "", "", "", "window"),
 		Wid:          wId,
 	}
-	ww.AddLink("", "Focus", "", relation.Action)
-	ww.AddLink("", "Close", "", relation.Delete)
+	ww.Links = ww.Links.Add(ww.Path, "Focus", "", relation.Action, "")
+	ww.Links = ww.Links.Add(ww.Path, "Close", "", relation.Delete, "")
 	return ww
 }
 

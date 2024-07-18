@@ -27,7 +27,7 @@ var startResource StartResource
 
 func Run() {
 	startResource = StartResource{ResourceData: *resource.MakeBase("/start", "Refude desktop", "", "", "start")}
-	startResource.AddLink("/search", "", "", relation.Search)
+	startResource.Links = startResource.Links.Add("/search", "", "", relation.Search, "")
 	repo.Put(&startResource)
 }
 

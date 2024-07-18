@@ -165,7 +165,7 @@ func readDesktopFile(filePath string, id string) (*DesktopApplication, error) {
 		da.Mimetypes = slice.Split(group.Entries["MimeType"], ";")
 		da.DesktopFile = filePath
 
-		da.AddLink(da.Path, "Launch", da.IconUrl, relation.Action)
+		da.Links = da.Links.Add(da.Path, "Launch", da.IconUrl, relation.Action, "")
 		da.DesktopActions = []DesktopAction{}
 		var actionNames = slice.Split(group.Entries["Actions"], ";")
 
@@ -186,7 +186,7 @@ func readDesktopFile(filePath string, id string) (*DesktopApplication, error) {
 					Exec:    actionGroup.Entries["Exec"],
 					IconUrl: iconUrl,
 				})
-				da.AddLink("?action="+currentAction, name, iconUrl, relation.Action)
+				da.Links = da.Links.Add(da.Path+"?action="+currentAction, name, iconUrl, relation.Action, "")
 			}
 		}
 

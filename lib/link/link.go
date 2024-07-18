@@ -7,6 +7,7 @@ package link
 
 import (
 	"net/url"
+	"slices"
 	"strings"
 
 	"github.com/surlykke/RefudeServices/lib/relation"
@@ -31,6 +32,54 @@ type Link struct {
 	Profile  string            `json:"profile,omitempty"`
 }
 
+type LinkList []Link
+
+func (ll LinkList) Add(href, title, iconUrl string, relation relation.Relation, profile string) LinkList {
+	var res = slices.Clone(ll)
+	return append(res, Link{Href: normalizeHref(href), Title: title, IconUrl: iconUrl, Relation: relation, Profile: profile})
+}
+
+// Ensure only one link with given relation in list
+func (ll LinkList) Set(href, title, iconUrl string, relation relation.Relation, profile string) LinkList {
+	var res = make(LinkList, len(ll)+1, len(ll)+1)
+	var pos = 0
+	for i := 0; i < len(ll); i++ {
+		if ll[i].Relation != relation {
+			res[pos] = ll[i]
+			pos++
+		}
+	}
+	res[pos] = Link{Href: normalizeHref(href), Title: title, IconUrl: iconUrl, Relation: relation, Profile: profile}
+	res = res[0 : pos+1]
+	return res
+}
+
+// Gets first found link with given relation
+func (ll LinkList) Get(relation relation.Relation) (Link, bool) {
+	for _, l := range ll {
+		if l.Relation == relation {
+			return l, true
+		}
+	}
+	return Link{}, false
+}
+
+func (ll LinkList) GetHref(relation relation.Relation) string {
+	if l, ok := ll.Get(relation); ok {
+		return l.Href
+	} else {
+		return ""
+	}
+}
+
+func normalizeHref(href string) string {
+	if strings.HasPrefix(href, "/") {
+		return "http://localhost:7938" + href
+	} else {
+		return href
+	}
+}
+
 // --------------------------------------------------------------------
 
 func IconUrlFromName(name string) string {
@@ -52,15 +101,3 @@ func IconUrlFromName(name string) string {
 		return ""
 	}
 }
-
-type Action struct {
-	Name    string
-	Title   string
-	IconUrl string
-}
-
-func MkAction(name string, title string, iconUrl string) Action {
-	return Action{Name: name, Title: title, IconUrl: iconUrl}
-}
-
-type ActionList []Action

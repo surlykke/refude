@@ -22,7 +22,7 @@ type Resource interface {
 	GetComment() string
 	GetIconUrl() string
 	GetProfile() string
-	GetLinks() []link.Link
+	GetLinks() link.LinkList
 	GetActionLinks(string) []link.Link
 	GetKeywords() []string
 
@@ -59,12 +59,12 @@ func cmp(r1, r2 RankedResource) int {
 
 type ResourceData struct {
 	Path     string
-	Title    string      `json:"title"`
-	Comment  string      `json:"comment,omitempty"`
-	IconUrl  string      `json:"icon,omitempty"`
-	Profile  string      `json:"profile"`
-	Links    []link.Link `json:"links"`
-	Keywords []string    `json:"-"`
+	Title    string        `json:"title"`
+	Comment  string        `json:"comment,omitempty"`
+	IconUrl  string        `json:"icon,omitempty"`
+	Profile  string        `json:"profile"`
+	Links    link.LinkList `json:"links"`
+	Keywords []string      `json:"-"`
 }
 
 func MakeBase(path, title, comment, iconUrl, profile string) *ResourceData {
@@ -74,31 +74,19 @@ func MakeBase(path, title, comment, iconUrl, profile string) *ResourceData {
 		Comment: comment,
 		IconUrl: iconUrl,
 		Profile: profile,
-		Links:   []link.Link{{Href: "http://localhost:7938" + path, Relation: relation.Self}},
+		Links:   link.LinkList{{Href: "http://localhost:7938" + path, Relation: relation.Self}},
 	}
 	return &br
 }
 
-func (this *ResourceData) GetPath() string       { return this.Path }
-func (this *ResourceData) GetTitle() string      { return this.Title }
-func (this *ResourceData) GetComment() string    { return this.Comment }
-func (this *ResourceData) GetIconUrl() string    { return this.IconUrl }
-func (this *ResourceData) GetProfile() string    { return this.Profile }
-func (this *ResourceData) GetLinks() []link.Link { return this.Links }
-func (this *ResourceData) GetKeywords() []string { return this.Keywords }
-func (this *ResourceData) OmitFromSearch() bool  { return false }
-
-func (this *ResourceData) AddLink(href, title, iconUrl string, relation relation.Relation) {
-	if href == "" {
-		href = this.Path
-	} else if strings.HasPrefix(href, "?") {
-		href = this.Path + href
-	}
-	if strings.HasPrefix(href, "/") {
-		href = "http://localhost:7938" + href
-	}
-	this.Links = append(this.Links, link.Link{Href: href, Title: title, IconUrl: iconUrl, Relation: relation})
-}
+func (this *ResourceData) GetPath() string         { return this.Path }
+func (this *ResourceData) GetTitle() string        { return this.Title }
+func (this *ResourceData) GetComment() string      { return this.Comment }
+func (this *ResourceData) GetIconUrl() string      { return this.IconUrl }
+func (this *ResourceData) GetProfile() string      { return this.Profile }
+func (this *ResourceData) GetLinks() link.LinkList { return this.Links }
+func (this *ResourceData) GetKeywords() []string   { return this.Keywords }
+func (this *ResourceData) OmitFromSearch() bool    { return false }
 
 // -----------------------------------------------------
 
