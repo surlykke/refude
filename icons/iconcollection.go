@@ -139,11 +139,10 @@ func collectOtherIcons() {
 	var collected = make(map[string]string)
 
 	for _, dir := range dirsToLookAt {
-
 		if filePathsInDir, err := filepath.Glob(dir + "/*"); err == nil {
 			for _, filePath := range filePathsInDir {
 				var ext = path.Ext(filePath)
-				if ext == "png" || ext == "svg" { // TODO xpm
+				if ext == ".png" || ext == ".svg" { // TODO xpm
 					var name = path.Base(filePath)
 					name = name[0 : len(name)-4]
 					if _, ok := collected[name]; !ok {
