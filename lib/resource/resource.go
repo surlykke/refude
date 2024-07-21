@@ -26,10 +26,6 @@ type Resource interface {
 	OmitFromSearch() bool
 }
 
-type HasBase interface {
-	ResourceData
-}
-
 type RankedResource struct {
 	Rank int
 	Res  Resource
