@@ -23,7 +23,7 @@ let load = () => {
 			highlightSelected()
 			hash = document.getElementById('table')?.dataset?.hash
 		})
-		.catch(e => { })
+		.catch(() => { })
 }
 
 let highlightSelected = () => {
