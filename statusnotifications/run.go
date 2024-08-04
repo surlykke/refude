@@ -6,6 +6,7 @@
 package statusnotifications
 
 import (
+	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/repo"
 	"github.com/surlykke/RefudeServices/lib/resource"
 )
@@ -25,15 +26,17 @@ func Run() {
 			// Assume it's ItemCreated or property update
 			// A bit bruteforce - if it's a propertychange we could just
 			// retrieve that propery. This is simpler, and probably not too bad
-			var item = buildItem(event.sender, event.path)
-			repo.Put(item)
+			var item = buildItem(itemPath, event.sender, event.path)
 			if item.MenuPath != "" {
+				var menuPath = "/menu/" + pathEscape(event.sender, item.MenuPath)
+				item.AddLink(menuPath, "", "", relation.Menu)
 				repo.Put(&Menu{
-					ResourceData: *resource.MakeBase("/menu/"+pathEscape(event.sender, item.MenuPath), "Menu", "", "", "menu"),
+					ResourceData: *resource.MakeBase(menuPath, "Menu", "", "", "menu"),
 					sender:       event.sender,
 					path:         item.MenuPath,
 				})
 			}
+			repo.Put(item)
 		}
 	}
 }

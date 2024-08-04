@@ -8,6 +8,7 @@ import (
 	"slices"
 	"sync"
 
+	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/repo"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
@@ -20,69 +21,48 @@ type IconPath struct {
 
 var sessionIconsDir = xdg.RuntimeDir + "/org.refude.session-icons"
 
-/*	if err := os.MkdirAll(ic.refudeSessionIconsDir, 0700); err != nil {
-	return nil, err
-}*/
+func init() {
+	if err := os.MkdirAll(sessionIconsDir, 0700); err != nil {
+		log.Warn("Unable to create ", sessionIconsDir, err)
+	}
+}
 
 var themedIcons = make(map[string][]IconPath)
-var otherIcons = make(map[string]string)
+var sessionIcons = make(map[string][]IconPath)
 var iconLock sync.Mutex
 
-func getThemedIconPaths(iconName string) ([]IconPath, bool) {
+func getIconPaths(iconName string) ([]IconPath, bool) {
 	iconLock.Lock()
 	defer iconLock.Unlock()
-	iconPaths, ok := themedIcons[iconName]
-	return iconPaths, ok
+	if iconPaths, ok := themedIcons[iconName]; ok {
+		return iconPaths, true
+	} else if iconPaths, ok = sessionIcons[iconName]; ok {
+		return iconPaths, true
+	} else {
+		return nil, false
+	}
+
 }
 
-func replaceThemedIcons(icons map[string][]IconPath) {
-	iconLock.Lock()
-	defer iconLock.Unlock()
-	for name := range themedIcons {
-		delete(themedIcons, name)
-	}
-	for name, iconPaths := range icons {
-		themedIcons[name] = iconPaths
-	}
-}
-
-func putThemedIcon(name string, iconPaths []IconPath) {
+func addSessionIcon(name string, iconPaths []IconPath) {
 	iconLock.Lock()
 	defer iconLock.Unlock()
 	if _, ok := themedIcons[name]; !ok {
-		themedIcons[name] = iconPaths
+		sessionIcons[name] = iconPaths
 	}
 }
 
-func getOtherIconPath(iconName string) (string, bool) {
-	iconLock.Lock()
-	defer iconLock.Unlock()
-	path, ok := otherIcons[iconName]
-	return path, ok
-}
-
-func replaceOtherIcons(icons map[string]string) {
-	iconLock.Lock()
-	defer iconLock.Unlock()
-	for name := range otherIcons {
-		delete(otherIcons, name)
-	}
-	for name, path := range icons {
-		otherIcons[name] = path
-	}
-}
-
-func putOtherIcon(name, path string) {
-	iconLock.Lock()
-	defer iconLock.Unlock()
-	if _, ok := otherIcons[name]; !ok {
-		otherIcons[name] = path
-	}
+func addSessionIconSinglePath(name, path string) {
+	addSessionIcon(name, []IconPath{{Path: path, MinSize: 1, MaxSize: 1}})
 }
 
 func collectIcons() {
-	collectThemeIcons()
-	collectOtherIcons()
+	var collected = make(map[string][]IconPath, 500)
+	collectThemeIcons(collected)
+	collectOtherIcons(collected)
+	iconLock.Lock()
+	defer iconLock.Unlock()
+	themedIcons = collected
 }
 
 /*
@@ -91,12 +71,9 @@ icon scale is ignored (TODO)
 
 We prefer an icon from theme with not-matching size over icon from parent theme with matching size. This should
 give a gui a more consistent look
-
 */
-
-func collectThemeIcons() {
+func collectThemeIcons(collected map[string][]IconPath) {
 	var searchOrder = determineSearchOrder()
-	var collected = make(map[string][]IconPath)
 	for _, themeId := range searchOrder {
 		for name, iconPaths := range collectIconsFromTheme(themeId) {
 			if _, ok := collected[name]; !ok {
@@ -104,9 +81,6 @@ func collectThemeIcons() {
 			}
 		}
 	}
-
-	// TODO handle xpm and /usr/share/pixmaps
-	replaceThemedIcons(collected)
 }
 
 func collectIconsFromTheme(themeId string) map[string][]IconPath {
@@ -131,12 +105,10 @@ func collectIconsFromTheme(themeId string) map[string][]IconPath {
 	return iconsFromTheme
 }
 
-func collectOtherIcons() {
+func collectOtherIcons(collected map[string][]IconPath) {
 	var dirsToLookAt = make([]string, 0, len(xdg.IconBasedirs)+1)
 	dirsToLookAt = append(dirsToLookAt, xdg.IconBasedirs...)
 	dirsToLookAt = append(dirsToLookAt, xdg.PixmapDir)
-
-	var collected = make(map[string]string)
 
 	for _, dir := range dirsToLookAt {
 		if filePathsInDir, err := filepath.Glob(dir + "/*"); err == nil {
@@ -145,15 +117,14 @@ func collectOtherIcons() {
 				if ext == ".png" || ext == ".svg" { // TODO xpm
 					var name = path.Base(filePath)
 					name = name[0 : len(name)-4]
-					if _, ok := collected[name]; !ok {
-						collected[name] = filePath
+					if _, ok := collected[name]; !ok { // We won't let a non-themed icon shadow a themed icon. cf. above.
+						collected[name] = []IconPath{{Path: filePath, MinSize: 1, MaxSize: 1}}
 					}
 				}
 
 			}
 		}
 	}
-	replaceOtherIcons(collected)
 }
 
 func determineSearchOrder() []string {

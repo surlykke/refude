@@ -25,7 +25,6 @@ func Run() {
 	go watchForDesktopFiles(desktopFileEvents)
 
 	for {
-		fmt.Println(">>>> Load apps and mimetypes")
 		var collection Collection = collect()
 
 		var apps = make([]resource.Resource, 0, len(collection.Apps))
@@ -91,8 +90,6 @@ func watchForDesktopFiles(events chan struct{}) {
 		if xdg.DirOrFileExists(f) {
 			if err := watcher.Add(f); err != nil {
 				log.Warn("Could not watch:", f, ":", err)
-			} else {
-				fmt.Println("Watch: " + f)
 			}
 		}
 	}

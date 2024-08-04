@@ -51,10 +51,8 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func FindIcon(iconName string, size uint32) string {
-	if iconPaths, ok := getThemedIconPaths(iconName); ok {
+	if iconPaths, ok := getIconPaths(iconName); ok {
 		return bestSizeMatch(iconPaths, size)
-	} else if path, ok := getOtherIconPath(iconName); ok {
-		return path
 	} else if lastDash := strings.LastIndex(iconName, "-"); lastDash > -1 {
 		/*
 		   By the icon naming specification, dash ('-') seperates 'levels of specificity'. So given an icon name
@@ -90,7 +88,7 @@ func AddARGBIcon(argbIcon image.ARGBIcon) string {
 		}
 	}
 	if len(iconPaths) > 0 {
-		putThemedIcon(iconName, iconPaths)
+		addSessionIcon(iconName, iconPaths)
 		return iconName
 	} else {
 		return ""
@@ -98,7 +96,7 @@ func AddARGBIcon(argbIcon image.ARGBIcon) string {
 }
 
 func AddFileIcon(filePath string) {
-	putOtherIcon(filePath, filePath)
+	addSessionIconSinglePath(filePath, filePath)
 }
 
 func AddRawImageIcon(imageData image.ImageData) string {
@@ -112,7 +110,7 @@ func AddRawImageIcon(imageData image.ImageData) string {
 			log.Warn("Could not write", path, err)
 			return ""
 		} else {
-			putOtherIcon(iconName, path)
+			addSessionIconSinglePath(iconName, path)
 		}
 	}
 	return iconName

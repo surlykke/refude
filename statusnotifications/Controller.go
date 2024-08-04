@@ -18,6 +18,7 @@ import (
 	dbuscall "github.com/surlykke/RefudeServices/lib/dbusutils"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/repo"
+	"github.com/surlykke/RefudeServices/lib/resource"
 )
 
 const WATCHER_SERVICE = "org.kde.StatusNotifierWatcher"
@@ -140,8 +141,12 @@ type Event struct {
 
 var events = make(chan Event)
 
-func buildItem(sender string, path dbus.ObjectPath) *Item {
-	var item = Item{sender: sender, path: path}
+func buildItem(itemPath string, sender string, path dbus.ObjectPath) *Item {
+	var item = Item{
+		ResourceData: *resource.MakeBase(itemPath, "", "", "", "item"),
+		sender:       sender,
+		path:         path,
+	}
 	var props = dbuscall.GetAllProps(conn, item.sender, item.path, ITEM_INTERFACE)
 	item.ItemId = getStringOr(props["Id"])
 	item.Category = getStringOr(props["Category"])

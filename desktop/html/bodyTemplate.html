@@ -1,39 +1,43 @@
-	<table >
-		<div  class="resourceRow" data-hash="{{.Hash}}">
-			<div>
-				{{if .Icon }}
-				<img src="{{.Icon }}" height="32" width="32">
-				{{end}}
-			</div>
-			<div>
-				{{.Title }}
-			</div>
-			<div>
-				{{if .Searchable}}
-				&#x1F50E;
-				{{.Term}}
-				{{end}}
-			</div>
-		</div>
-			{{if .Data}} 
-				<pre>
-					{{.Data}}
-				</pre>
-			{{end}}
-		<div class="rows">
-		{{range .Rows}}
-		<div class={{.Class}} data-href="{{.Href}}" data-relation="{{.Relation}}" data-profile="{{.Profile}}">
-			<div>
-				{{if .IconUrl}}
-				<img src="{{.IconUrl}}" height="20" width="20">
-				{{end}}
-			</div>
-			<div>
-				<p>{{.Title}}</p>
-				{{if .Comment}}
-				<p>{{.Comment}}</p>
-				{{end}}
-			</div>
-		</div>
+<div style="float: right;">
+{{range .Items}}
+<img src="{{.IconUrl}}" height="22" width="22"/>
+{{end}}
+</div>
+<div  class="resourceRow" data-hash="{{.Hash}}">
+	<div>
+		{{if .Icon }}
+		<img src="{{.Icon }}" height="32" width="32">
 		{{end}}
-		</div>
+	</div>
+	<div>
+		{{.Title }}
+	</div>
+	<div>
+		{{if .Searchable}}
+		&#x1F50E;
+		{{.Term}}
+		{{end}}
+	</div>
+</div>
+{{if .Data}} 
+	<pre>
+		{{.Data}}
+	</pre>
+{{end}}
+<div class="rows">
+{{range .Rows}}
+<div class={{.Class}} data-href="{{.Href}}" data-relation="{{.Relation}}" data-profile="{{.Profile}}">
+	<div>
+		{{if .IconUrl}}
+		<img src="{{.IconUrl}}" height="20" width="20">
+		{{end}}
+	</div>
+	<div>
+		<p>{{.Title}}</p>
+		{{if .Comment}}
+		<p>{{.Comment}}</p>
+		{{end}}
+	</div>
+</div>
+{{end}}
+</div>

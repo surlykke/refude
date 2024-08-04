@@ -24,6 +24,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
 	"github.com/surlykke/RefudeServices/lib/stringhash"
+	"github.com/surlykke/RefudeServices/statusnotifications"
 	"github.com/surlykke/RefudeServices/watch"
 	"github.com/surlykke/RefudeServices/wayland"
 )
@@ -72,6 +73,10 @@ func resourceRow(sr resource.Resource) row {
 	return row{IconUrl: sr.GetIconUrl(), Title: sr.GetTitle(), Comment: comment, Href: sr.GetPath(), Relation: relation.Self, Profile: sr.GetProfile(), Class: "selectable"}
 }
 
+type item struct {
+	IconUrl string
+}
+
 func init() {
 	var tmp http.Handler
 
@@ -108,6 +113,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					actions        = GetActionLinks(res, term)
 					sf, searchable = res.(resource.Searchable)
 					rows           = make([]row, 0, len(actions)+4)
+					items          = make([]item, 0, 10)
 				)
 				if len(actions) > 0 {
 					rows = append(rows, headingRow("Actions"))
@@ -129,14 +135,19 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					}
 				}
 
+				for _, i := range repo.GetListSortedByPath[*statusnotifications.Item]("/item/") {
+					items = append(items, item{IconUrl: i.GetIconUrl()})
+				}
+
 				var m = map[string]any{
 					"Searchable": searchable,
 					"Title":      res.GetTitle(),
 					"Icon":       res.GetIconUrl(),
 					"Term":       term,
 					"Rows":       rows,
+					"Items":      items,
 				}
-				var etag = buildETag(term, res.GetTitle(), res.GetIconUrl(), rows)
+				var etag = buildETag(term, res.GetTitle(), res.GetIconUrl(), rows, items)
 				if r.Header.Get("if-none-match") == etag {
 					respond.NotModified(w)
 					return
@@ -217,11 +228,14 @@ outer:
 	return string(respond.ToJson(structAsMap))
 }
 
-func buildETag(term string, title, icon string, rows []row) string {
+func buildETag(term string, title, icon string, rows []row, items []item) string {
 	var hash uint64 = 0
 	hash = stringhash.FNV1a(term, title, icon)
 	for _, row := range rows {
 		hash = hash ^ stringhash.FNV1a(row.Title, row.Comment, row.Href, row.IconUrl, row.Profile, string(row.Relation))
+	}
+	for _, item := range items {
+		hash = hash ^ stringhash.FNV1a(item.IconUrl)
 	}
 	return fmt.Sprintf(`"%X"`, hash)
 }

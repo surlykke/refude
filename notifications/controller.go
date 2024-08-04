@@ -368,8 +368,6 @@ func Run() {
 		NOTIFICATIONS_INTERFACE,
 	)
 	_ = conn.Export(introspect.Introspectable(INTROSPECT_XML), NOTIFICATIONS_PATH, INTROSPECT_INTERFACE)
-
-	fmt.Println("On the bus...")
 }
 
 func ServeFlash(w http.ResponseWriter, r *http.Request) {

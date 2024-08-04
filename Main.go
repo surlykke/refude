@@ -39,13 +39,23 @@ func main() {
 
 	go wayland.Run()
 	go applications.Run()
+
 	if runNotifications {
+		log.Info("Notifications enabled")
 		go notifications.Run()
+	} else {
+		log.Info("Notifications disabled")
 	}
+
 	go power.Run()
+
 	if runTray {
+		log.Info("Tray enabled")
 		go statusnotifications.Run()
+	} else {
+		log.Info("Tray disabled")
 	}
+
 	go start.Run()
 
 	http.Handle("/ping", ping.WebsocketHandler)
