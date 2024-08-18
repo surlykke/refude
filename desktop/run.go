@@ -12,7 +12,6 @@ import (
 	"io/fs"
 	"net/http"
 	"os"
-	"reflect"
 	"strings"
 
 	"github.com/surlykke/RefudeServices/file"
@@ -23,8 +22,6 @@ import (
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
-	"github.com/surlykke/RefudeServices/lib/stringhash"
-	"github.com/surlykke/RefudeServices/statusnotifications"
 	"github.com/surlykke/RefudeServices/watch"
 	"github.com/surlykke/RefudeServices/wayland"
 )
@@ -32,45 +29,31 @@ import (
 //go:embed html
 var sources embed.FS
 
-var bodyTemplate *template.Template
+var resourceTemplate *template.Template
+var rowTemplate *template.Template
 var StaticServer http.Handler
+
+var funcMap = template.FuncMap{
+	// The name "inc" is what the function will be called in the template text.
+	"inc": func(i int) int {
+		return i + 1
+	},
+}
 
 func init() {
 	var bytes []byte
 	var err error
 
-	if bytes, err = sources.ReadFile("html/bodyTemplate.html"); err != nil {
+	if bytes, err = sources.ReadFile("html/resourceTemplate.html"); err != nil {
 		log.Panic(err)
 	}
+	resourceTemplate = template.Must(template.New("resourceTemplate").Parse(string(bytes)))
 
-	bodyTemplate = template.Must(template.New("bodyTemplate").Parse(string(bytes)))
-}
-
-type row struct {
-	//	Heading  string
-	Class    string
-	IconUrl  string
-	Title    string
-	Comment  string
-	Href     string
-	Relation relation.Relation
-	Profile  string
-}
-
-func headingRow(heading string) row {
-	return row{Title: heading, Class: "heading"}
-}
-
-func actionRow(action resource.Link) row {
-	return row{IconUrl: action.IconUrl, Title: action.Title, Href: action.Href, Relation: action.Relation, Class: "selectable"}
-}
-
-func resourceRow(sr resource.Resource) row {
-	var comment string
-	if sr.GetComment() != "" {
-		comment = sr.GetProfile() + ": " + sr.GetComment()
+	if bytes, err = sources.ReadFile("html/rowTemplate.html"); err != nil {
+		log.Panic(err)
 	}
-	return row{IconUrl: sr.GetIconUrl(), Title: sr.GetTitle(), Comment: comment, Href: sr.GetPath(), Relation: relation.Self, Profile: sr.GetProfile(), Class: "selectable"}
+	rowTemplate = template.Must(template.New("rowTemplate").Funcs(funcMap).Parse(string(bytes)))
+
 }
 
 type item struct {
@@ -94,12 +77,42 @@ func init() {
 }
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("run:", r.URL.Path, r.URL.Query())
 	switch r.URL.Path {
-	case "/desktop/body":
+	case "/desktop/resource":
 		if r.Method != "GET" {
 			respond.NotAllowed(w)
 		} else {
-			var resourcePath = requests.GetSingleQueryParameter(r, "resource", "/start")
+			var resourcePath = requests.GetSingleQueryParameter(r, "path", "/start")
+			var res resource.Resource = nil
+			if strings.HasPrefix(resourcePath, "/file/") {
+				res = file.GetResource(resourcePath)
+			} else {
+				res = repo.GetUntyped(resourcePath)
+			}
+
+			if res == nil {
+				respond.NotFound(w)
+			} else {
+				var _, searchable = res.(resource.Searchable)
+
+				var m = map[string]any{
+					"Searchable": searchable,
+					"Title":      res.GetTitle(),
+					"Icon":       res.GetIconUrl(),
+					"Path":       resourcePath,
+				}
+				if err := resourceTemplate.Execute(w, m); err != nil {
+					log.Warn("Error executing resourceTemplate:", err)
+				}
+
+			}
+		}
+	case "/desktop/search":
+		if r.Method != "GET" {
+			respond.NotAllowed(w)
+		} else {
+			var resourcePath = requests.GetSingleQueryParameter(r, "path", "/start")
 			var res resource.Resource = nil
 			if strings.HasPrefix(resourcePath, "/file/") {
 				res = file.GetResource(resourcePath)
@@ -110,57 +123,58 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			if res != nil {
 				var (
 					term           = strings.ToLower(requests.GetSingleQueryParameter(r, "search", ""))
-					actions        = GetActionLinks(res, term)
 					sf, searchable = res.(resource.Searchable)
-					rows           = make([]row, 0, len(actions)+4)
-					items          = make([]item, 0, 10)
+					rows           = make([]row, 0, 30)
+					lastProfile    = ""
 				)
-				if len(actions) > 0 {
-					rows = append(rows, headingRow("Actions"))
-				}
-				for _, a := range actions {
-					rows = append(rows, actionRow(a))
-				}
-				if len(actions) > 0 {
-					rows = append(rows, headingRow("Related"))
+				for i, action := range GetActionLinks(res, term) {
+					var r = row{IconUrl: action.IconUrl, Text: action.Title, Post: action.Href}
+					if i == 0 {
+						r.Heading = "Actions"
+					}
+					rows = append(rows, r)
 				}
 				if searchable {
-					for _, subresGroup := range arrange(sf.Search(term)) {
-						if len(subresGroup.resources) > 0 {
-							rows = append(rows, headingRow(subresGroup.heading))
-							for _, subres := range subresGroup.resources {
-								rows = append(rows, resourceRow(subres))
-							}
+					for _, res := range sf.Search(term) {
+						var r = row{IconUrl: res.GetIconUrl(), Text: res.GetTitle(), Get: res.GetPath()}
+						if _, ok := res.(resource.Postable); ok {
+							r.Post = res.GetPath()
 						}
+						if _, ok := res.(resource.Deleteable); ok {
+							r.Delete = res.GetPath()
+						}
+						if lastProfile != res.GetProfile() {
+							lastProfile = res.GetProfile()
+							r.Heading = headings[lastProfile]
+						}
+
+						rows = append(rows, r)
+
 					}
 				}
-
-				for _, i := range repo.GetListSortedByPath[*statusnotifications.Item]("/item/") {
-					items = append(items, item{IconUrl: i.GetIconUrl()})
-				}
-
 				var m = map[string]any{
-					"Searchable": searchable,
-					"Title":      res.GetTitle(),
-					"Icon":       res.GetIconUrl(),
-					"Term":       term,
-					"Rows":       rows,
-					"Items":      items,
+					"Term": term,
+					"Rows": rows,
 				}
-				var etag = buildETag(term, res.GetTitle(), res.GetIconUrl(), rows, items)
-				if r.Header.Get("if-none-match") == etag {
-					respond.NotModified(w)
-					return
+				if err := rowTemplate.Execute(w, m); err != nil {
+					log.Warn("Error executing rowTemplate:", err)
 				}
-				w.Header().Set("ETag", etag)
-				if err := bodyTemplate.Execute(w, m); err != nil {
-					log.Warn("Error executing bodyTemplate:", err)
-				}
-
-			} else {
-				respond.NotFound(w)
 			}
 		}
+	/* FIXME case "/desktop/tray":
+
+	if r.Method != "GET" {
+		respond.NotAllowed(w)
+	} else {
+		var items = make([]item, 0, 10)
+		for _, i := range repo.GetListSortedByPath[*statusnotifications.Item]("/item/") {
+			items = append(items, item{IconUrl: i.GetIconUrl()})
+		}
+		if err := bodyTemplate.Execute(w, map[string]any{"Items": items}); err != nil {
+			log.Warn("Error executing bodyTemplate:", err)
+		}
+
+	}*/
 	case "/desktop/show":
 		if r.Method != "POST" {
 			respond.NotAllowed(w)
@@ -169,14 +183,8 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			watch.Publish("showDesktop", "")
 			respond.Accepted(w)
 		}
-	case "/desktop/hash":
-		if r.Method == "GET" {
-			// Go Json cannot handle uint64, so we convert to string
-			respond.AsJson(w, "")
-		} else {
-			respond.NotAllowed(w)
-		}
 	case "/desktop/hide":
+		fmt.Println("/desktop/hide")
 		if r.Method != "POST" {
 			respond.NotAllowed(w)
 		} else {
@@ -188,11 +196,14 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				watch.Publish("restoreTab", "")
 			}
 			respond.Accepted(w)
+			watch.Publish("hideDesktop", "")
 		}
-	case "/desktop/bodyTemplate.html":
-		respond.NotFound(w)
 	default:
-		StaticServer.ServeHTTP(w, r)
+		if strings.HasSuffix(r.URL.Path, "Template.html") {
+			respond.NotFound(w)
+		} else {
+			StaticServer.ServeHTTP(w, r)
+		}
 	}
 }
 
@@ -206,7 +217,40 @@ func GetActionLinks(res resource.Resource, searchTerm string) resource.LinkList 
 	return filtered
 }
 
-func defaultData(res resource.Resource) string {
+type row struct {
+	Heading string
+	IconUrl string
+	Text    string
+	Get     string
+	Post    string
+	Delete  string
+}
+
+func actionRow(action resource.Link) row {
+	return row{IconUrl: action.IconUrl, Text: action.Title, Post: action.Href}
+}
+
+func resourceRow(sr resource.Resource) row {
+	var r = row{IconUrl: sr.GetIconUrl(), Text: sr.GetTitle()}
+	if _, ok := sr.(resource.Postable); ok {
+		r.Post = sr.GetPath()
+	}
+	if _, ok := sr.(resource.Deleteable); ok {
+		r.Delete = sr.GetPath()
+	}
+	return r
+}
+
+var headings = map[string]string{
+	"notification": "Notifications",
+	"window":       "Windows",
+	"tab":          "Tabs",
+	"application":  "Applications",
+	"file":         "Files",
+	"device":       "Devices",
+}
+
+/*func defaultData(res resource.Resource) string {
 	var structAsMap = make(map[string]interface{})
 	var Type = reflect.TypeOf(res)
 	if Type.Kind() != reflect.Struct {
@@ -226,41 +270,4 @@ outer:
 		}
 	}
 	return string(respond.ToJson(structAsMap))
-}
-
-func buildETag(term string, title, icon string, rows []row, items []item) string {
-	var hash uint64 = 0
-	hash = stringhash.FNV1a(term, title, icon)
-	for _, row := range rows {
-		hash = hash ^ stringhash.FNV1a(row.Title, row.Comment, row.Href, row.IconUrl, row.Profile, string(row.Relation))
-	}
-	for _, item := range items {
-		hash = hash ^ stringhash.FNV1a(item.IconUrl)
-	}
-	return fmt.Sprintf(`"%X"`, hash)
-}
-
-type resourceGroup struct {
-	heading   string
-	resources []resource.Resource
-}
-
-func arrange(resources []resource.Resource) []resourceGroup {
-	var groups = []resourceGroup{{"Notifications", nil}, {"Windows and Tabs", nil}, {"Applications", nil}, {"Files", nil}, {"Devices", nil}, {"Other", nil}}
-	for _, res := range resources {
-		if res.GetProfile() == "notification" {
-			groups[0].resources = append(groups[0].resources, res)
-		} else if res.GetProfile() == "window" || res.GetProfile() == "tab" {
-			groups[1].resources = append(groups[1].resources, res)
-		} else if res.GetProfile() == "application" {
-			groups[2].resources = append(groups[2].resources, res)
-		} else if res.GetProfile() == "file" {
-			groups[3].resources = append(groups[3].resources, res)
-		} else if res.GetProfile() == "device" {
-			groups[4].resources = append(groups[4].resources, res)
-		} else {
-			groups[5].resources = append(groups[5].resources, res)
-		}
-	}
-	return groups
-}
+}*/

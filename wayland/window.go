@@ -13,6 +13,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
+	"github.com/surlykke/RefudeServices/watch"
 )
 
 var windowUpdates = make(chan windowUpdate)
@@ -33,8 +34,10 @@ func Run() {
 	go watchAppCollections(appEvents)
 
 	for {
+		var publish = false
 		select {
 		case upd := <-windowUpdates:
+			publish = (upd.title != "" && upd.title != "Refude Desktop") || upd.appId != ""
 			var path = fmt.Sprintf("/window/%d", upd.wId)
 			var w WaylandWindow
 			if tmp, ok := repo.Get[*WaylandWindow](path); ok {
@@ -57,9 +60,12 @@ func Run() {
 
 			repo.Put(&w)
 		case id := <-removals:
+			publish = true
+			fmt.Println("window loop, removal...")
 			var path = fmt.Sprintf("/window/%d", id)
 			repo.Remove(path)
 		case _ = <-appEvents:
+			fmt.Println("window loop, apps...")
 			for _, w := range repo.GetList[*WaylandWindow]("/window/") {
 				var copy = *w
 				if iconUrl := applications.GetIconUrl(copy.AppId); iconUrl != "" {
@@ -67,6 +73,9 @@ func Run() {
 				}
 				repo.Put(&copy)
 			}
+		}
+		if publish {
+			watch.Publish("search", "")
 		}
 	}
 }

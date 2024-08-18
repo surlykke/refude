@@ -72,6 +72,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				}
 				respond.Ok(w)
 				repo.Replace(tabs, "/tab/")
+				watch.Publish("search", "")
 			}
 		}
 	} else {

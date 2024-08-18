@@ -2,102 +2,22 @@
 html, body {
     background-color:#00151b;
     color:  darkgray;
-    height: calc(100% - 20px);
+	font-size: 1.1em;
 }
 
-.resourceRow{
-    display: flex;
-    gap: 16px; 
-    padding-bottom: 1.3em;
+.row {
+	position: relative;
+	margin-bottom: 0.7em;
 }
-.resourceRow div:first-child {
-    width: 36px;
-    height:  36px;
+.heading {
+	font-size: 0.8em;
 }
-
-.resourceRow div:nth-child(2) {
-    font-size: 28px;
+.row img {
+	position: absolute;
 }
 
-.resourceRow div:nth-child(3) {
-    font-size: 22px;
+.row a {
+	padding: 4px 8px 4px 32px;
+	color: inherit;
+	text-decoration: inherit;
 }
-.resourceRow div {
-    vertical-align: middle;
-}
-
-.rows {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    max-height: calc(100% - 60px);
-    overflow-y: auto;
-	overflow-x: hidden;
-	scrollbar-color: grey #00151b;
-}
-
-.selectable {
-    display: flex;
-    gap: 8px;
-}
-
-.selectable div:first-child {
-    width: 24px;
-    height: 24px;
-}
-
-.selectable div:nth-child(2) {
-    display: flex;
-    flex-direction: column;
-    gap: 10px; 
-}
-
-.selectable p {
-    margin: 0;
-}
-
-.selectable p:first-child {
-    font-size: 22px;
-}
-.selected p:first-child {
-    color:   beige;
-}
-.selectable p:nth-child(2) {
-    font-size: 16px;
-    font-style: italic;
-}
-/*.selectable {
-    padding-bottom: 20px;
-}
-.selectable td:last-child p:last-child {
-    font-size: 0.9em;
-    font-style: italic;
-    padding-top: 6px;
-    margin-bottom: 8px;
-}
-.selectable.selected td:last-child p:first-child{
-    font-size: 1.1em;
-    color:   beige;
-}
-.selectable.selected td:last-child p {
-    border-left: solid darkgray 1px;
-    padding-left: 8px;
-}
-
-.selectable td:first-child {
-    vertical-align: top;
-    padding: 6px 6px 0 6px;
-}
-
-.selectable td {
-    padding-bottom: 8px;
-}
-
-.selectable p:first-child {
-    font-size: 1.2em;
-}
-
-.selectable p {
-    margin: 0;
-}
-*/

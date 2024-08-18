@@ -2,7 +2,7 @@ let tabsSocket
 let commandSocket
 
 const reportTabs = () => {
-    chrome.tabs.query({}, tabs => {
+	chrome.tabs.query({}, tabs => {
 		let tabsData = tabs.map(t => {
 			return {
 				id: "" + t.id,
@@ -26,6 +26,7 @@ const reportTabs = () => {
 const watch = () => {
 	let evtSource = new EventSource("http://localhost:7938/watch")
 	evtSource.onopen = reportTabs
+	evtSource.addEventListener("hideDesktop", hideDesktop)
 	evtSource.addEventListener("showDesktop", showDesktop)
 	evtSource.addEventListener("restoreTab", restoreTab)
 	evtSource.addEventListener("focusTab", ({ data }) => {
@@ -46,6 +47,13 @@ const watch = () => {
 }
 
 let rememberedTab
+
+let hideDesktop = () => {
+	chrome.tabs.query({ url: "http://localhost:7938/desktop/*" }, tabs => {
+		chrome.tabs.remove(tabs.map(t => t.id))
+	})
+}
+
 
 let showDesktop = () => {
 	console.log("showDesktop")

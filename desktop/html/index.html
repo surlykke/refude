@@ -7,8 +7,21 @@
 	<link rel="shortcut icon" href="favicon.ico">
 	<link rel="stylesheet" href="./style.css">
 	<script type="application/javascript" src="script.js"></script>
+	<script type="application/javascript" src="htmx.min.js"></script>
+	<script type="application/javascript" src="sse.js"></script>
 </head>
 
-<body>
+	<!--}-->
+<body hx-ext="sse" sse-connect="/watch" >
+	<div style="float: right;">
+		Tray goes here (todo)
+	</div>
+	<div  id="resource" hx-trigger="load,resourceChanged" hx-get="/desktop/resource" hx-vals="js:{path: resourcePath}" hx-on::after-swap="updateTermTag()">
+	</div>
+	<div id="rows" hx-get="/desktop/search" hx-trigger="sse:search, search, resourceChanged" 
+		 hx-vals="js:{search: term , path: resourcePath}" hx-on::after-swap="focusFirst()">
+	</div>
 </body>
 </html>
+
+

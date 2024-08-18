@@ -20,6 +20,7 @@ func removeNotification(id uint32, reason uint32) {
 		repo.Put(&copy)
 		conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", id, reason)
 		watch.Publish("resourceChanged", "/flash")
+		watch.Publish("search", "")
 	}
 }
 

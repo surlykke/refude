@@ -226,11 +226,12 @@ func Notify(
 
 	repo.Put(&notification)
 	watch.Publish("resourceChanged", "/flash")
+	watch.Publish("search", "")
 
 	if notification.Urgency == Low {
-		time.AfterFunc(2050*time.Millisecond, func() { watch.Publish("resourceChanged", "/flash") })
+		time.AfterFunc(2050*time.Millisecond, func() { watch.Publish("resourceChanged", "/flash"); watch.Publish("search", "") })
 	} else if notification.Urgency == Normal {
-		time.AfterFunc(6050*time.Millisecond, func() { watch.Publish("resourceChanged", "/flash") })
+		time.AfterFunc(6050*time.Millisecond, func() { watch.Publish("resourceChanged", "/flash"); watch.Publish("search", "") })
 	}
 
 	return id, nil
