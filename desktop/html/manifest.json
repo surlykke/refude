@@ -1,0 +1,16 @@
+{
+  "name": "Refude desktop",
+  "short_name": "Desktop",
+  "icons": [{
+    "src": "256.png",
+      "sizes": "256x256",
+      "type": "image/png"
+    }],
+  "lang": "en-US",
+  "id": "http://localhost:7938/desktop",
+  "start_url": "http://localhost:7938/desktop",
+  "display": "standalone",
+  "launch_handler": {
+    "client_mode": "focus-existing"
+  }
+}

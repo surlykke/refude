@@ -23,6 +23,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/notifications"
+	"github.com/surlykke/RefudeServices/options"
 	"github.com/surlykke/RefudeServices/ping"
 	"github.com/surlykke/RefudeServices/power"
 	"github.com/surlykke/RefudeServices/start"
@@ -34,13 +35,14 @@ import (
 )
 
 func main() {
-	var runNotifications, runTray = getFlags()
+	var opts = options.GetOpts()
+	fmt.Println("ignore-windows:", opts.IgnoreWinAppIds)
 	go icons.Run()
 
-	go wayland.Run()
+	go wayland.Run(opts.IgnoreWinAppIds)
 	go applications.Run()
 
-	if runNotifications {
+	if !opts.NoNotifications {
 		log.Info("Notifications enabled")
 		go notifications.Run()
 	} else {
@@ -49,7 +51,7 @@ func main() {
 
 	go power.Run()
 
-	if runTray {
+	if !opts.NoTray {
 		log.Info("Tray enabled")
 		go statusnotifications.Run()
 	} else {
@@ -99,7 +101,8 @@ func search(w http.ResponseWriter, r *http.Request) {
 	var fromPath = requests.GetSingleQueryParameter(r, "from", "/start")
 	if from := repo.GetUntyped(fromPath); from != nil {
 		if searcable, ok := from.(resource.Searchable); ok {
-			resource.ServeList(w, r, searcable.Search(term))
+			var list = searcable.Search(term)
+			resource.ServeList(w, r, list)
 			return
 		}
 	}

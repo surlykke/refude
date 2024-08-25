@@ -63,10 +63,9 @@ let doDelete = ctrl => {
 
 
 let dismiss = actionProfile => {
-	console.log("Dismiss")
-	let restore = actionProfile !== 'tab' ? (actionProfile !== 'window' ? "window" : "tab") : ""
-	console.log("Doing post against http://localhost:7938/desktop/hide?restore=" + restore)
-	fetch("http://localhost:7938/desktop/hide?restore=" + restore, { method: 'post' })
+	//let restore = actionProfile !== 'tab' ? (actionProfile !== 'window' ? "window" : "tab") : ""
+	//fetch("http://localhost:7938/desktop/hide?restore=" + restore, { method: 'post' })
+	window.close()
 }
 
 

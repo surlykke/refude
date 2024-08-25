@@ -18,6 +18,7 @@ import (
 
 var windowUpdates = make(chan windowUpdate)
 var removals = make(chan uint64)
+var ignoredWindows map[string]bool
 
 type windowUpdate struct {
 	wId   uint64
@@ -26,7 +27,8 @@ type windowUpdate struct {
 	state WindowStateMask
 }
 
-func Run() {
+func Run(ignWin map[string]bool) {
+	ignoredWindows = ignWin
 
 	go setupAndRunAsWaylandClient()
 
@@ -140,7 +142,7 @@ func (this *WaylandWindow) DoDelete(w http.ResponseWriter, r *http.Request) {
 }
 
 func (this *WaylandWindow) OmitFromSearch() bool {
-	return strings.HasPrefix(this.Title, "Refude Desktop")
+	return strings.HasPrefix(this.Title, "Refude desktop") || ignoredWindows[this.AppId]
 }
 
 func (this *WaylandWindow) DoPost(w http.ResponseWriter, r *http.Request) {

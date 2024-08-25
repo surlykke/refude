@@ -56,7 +56,7 @@ type ResourceData struct {
 	Comment  string   `json:"comment,omitempty"`
 	Profile  string   `json:"profile"`
 	Links    LinkList `json:"links"`
-	Keywords []string `json:"-"`
+	Keywords []string `json:"keywords"`
 }
 
 func MakeBase(path, title, comment, iconUrl, profile string) *ResourceData {
