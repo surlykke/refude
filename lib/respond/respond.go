@@ -3,7 +3,6 @@
 // This file is part of the RefudeServices project.
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
-//
 package respond
 
 import (
@@ -12,7 +11,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 )
 
 func Ok(w http.ResponseWriter) {
@@ -86,40 +84,4 @@ func ToJson(res interface{}) []byte {
 		panic(fmt.Sprintln(err))
 	}
 	return buf.Bytes()
-}
-
-// ------------- ETag support. Not currently used ----------------------------------
-
-func PreventedByETag(w http.ResponseWriter, r *http.Request, etag string) bool {
-	if etags := r.Header.Get("If-None-Match"); etags != "" {
-		if etagMatchHelper(etags, etag, true) {
-			NotModified(w)
-			return true
-		}
-	} else if etags = r.Header.Get("If-Match"); etags != "" {
-		if !etagMatchHelper(etags, etag, false) {
-			PreconditionFailed(w)
-			return true
-		}
-	}
-	return false
-}
-
-func etagMatchHelper(etags, etag string, weakMatch bool) bool {
-	if strings.Index(etags, `"*"`) > -1 { // A personal view: etag "*" is stupid
-		return true
-	} else if pos := strings.Index(etags, etag); pos > -1 {
-		// Our etags are not weak
-		// If strong matching and we have ETag "1234" and the client sends '..W/"1234", "1234"..' this won't work. We live with that.
-		if weakMatch || pos < 2 || etags[pos-2:pos] != "W/" {
-			return true
-		}
-	}
-
-	return false
-}
-
-func AsJsonWithETag(w http.ResponseWriter, data interface{}, etag string) {
-	w.Header().Set("ETag", etag)
-	AsJson(w, data)
 }
