@@ -85,3 +85,11 @@ func ToJson(res interface{}) []byte {
 	}
 	return buf.Bytes()
 }
+
+func ToPrettyJson(res interface{}) []byte {
+	if b, err := json.MarshalIndent(res, "", "    "); err != nil {
+		panic(err)
+	} else {
+		return b
+	}
+}

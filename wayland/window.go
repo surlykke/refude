@@ -102,7 +102,7 @@ func (wsm WindowStateMask) Is(other WindowStateMask) bool {
 	return wsm&other == other
 }
 
-func (wsm WindowStateMask) MarshalJSON() ([]byte, error) {
+func (wsm WindowStateMask) toStringList() []string {
 	var list = make([]string, 0, 4)
 	if wsm&MAXIMIZED > 0 {
 		list = append(list, "MAXIMIZED")
@@ -116,7 +116,16 @@ func (wsm WindowStateMask) MarshalJSON() ([]byte, error) {
 	if wsm&FULLSCREEN > 0 {
 		list = append(list, "FULLSCREEN")
 	}
-	return json.Marshal(list)
+	return list
+}
+
+func (wsm WindowStateMask) String() string {
+	return strings.Join(wsm.toStringList(), "|")
+
+}
+
+func (wsm WindowStateMask) MarshalJSON() ([]byte, error) {
+	return json.Marshal(wsm.toStringList())
 }
 
 type WaylandWindow struct {

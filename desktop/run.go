@@ -14,6 +14,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/surlykke/RefudeServices/applications"
 	"github.com/surlykke/RefudeServices/file"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/relation"
@@ -22,6 +23,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/searchutils"
+	"github.com/surlykke/RefudeServices/power"
 	"github.com/surlykke/RefudeServices/watch"
 	"github.com/surlykke/RefudeServices/wayland"
 )
@@ -102,6 +104,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					"Icon":       res.GetIconUrl(),
 					"Path":       resourcePath,
 				}
+				m["Data"] = defaultData(res)
 				if err := resourceTemplate.Execute(w, m); err != nil {
 					log.Warn("Error executing resourceTemplate:", err)
 				}
@@ -250,24 +253,69 @@ var headings = map[string]string{
 	"device":       "Devices",
 }
 
-/*func defaultData(res resource.Resource) string {
-	var structAsMap = make(map[string]interface{})
-	var Type = reflect.TypeOf(res)
-	if Type.Kind() != reflect.Struct {
-		panic("Resource not a struct")
-	}
-	var structVal = reflect.ValueOf(res)
-outer:
-	for i := 0; i < Type.NumField(); i++ {
-		if Type.Field(i).IsExported() {
-			var fieldName = Type.Field(i).Name
-			for _, omitted := range []string{"Title", "Comment"} {
-				if fieldName == omitted {
-					continue outer
-				}
-			}
-			structAsMap[fieldName] = structVal.Field(i)
+func defaultData(res resource.Resource) [][]string {
+
+	switch res.GetProfile() {
+	case "window":
+		var window = res.(*wayland.WaylandWindow)
+		return [][]string{
+			{"Wid", fmt.Sprintf("%d", window.Wid)},
+			{"AppId", window.AppId},
+			{"State", window.State.String()},
 		}
+	case "application":
+		var application = res.(*applications.DesktopApplication)
+		return [][]string{
+			{"Type", application.Type},
+			{"Version", application.Version},
+			{"GenericName", application.GenericName},
+			{"NoDisplay", showBool(application.NoDisplay)},
+			{"Exec", application.Exec},
+			{"Terminal", showBool(application.Terminal)},
+			{"Categories", strings.Join(application.Categories, ", ")},
+			{"DesktopId", application.DesktopId},
+			{"Mimetypes", strings.Join(application.Mimetypes, ", ")},
+			{"DesktopFile", application.DesktopFile},
+		}
+	case "device":
+		var dev = res.(*power.Device)
+		return [][]string{
+			{"Energy", fmt.Sprintf("%f", dev.Energy)},
+			{"EnergyEmpty", fmt.Sprintf("%f", dev.EnergyEmpty)},
+			{"EnergyFull", fmt.Sprintf("%f", dev.EnergyFull)},
+			{"EnergyFullDesign", fmt.Sprintf("%f", dev.EnergyFullDesign)},
+			{"EnergyRate", fmt.Sprintf("%f", dev.EnergyRate)},
+			{"Percentage", fmt.Sprintf("%d", dev.Percentage)},
+			{"TimeToEmpty", fmt.Sprintf("%d", dev.TimeToEmpty)},
+			{"TimeToFull", fmt.Sprintf("%d", dev.TimeToFull)},
+			{"DisplayDevice", showBool(dev.DisplayDevice)},
+			{"NativePath", dev.NativePath},
+			{"Vendor", dev.Vendor},
+			{"Model", dev.Model},
+			{"Serial", dev.Serial},
+			{"UpdateTime", fmt.Sprintf("%d", dev.UpdateTime)},
+			{"Type", dev.Type},
+			{"PowerSupply", showBool(dev.PowerSupply)},
+			{"Online", showBool(dev.Online)},
+			{"Voltage", fmt.Sprintf("%f", dev.Voltage)},
+			{"IsPresent", showBool(dev.IsPresent)},
+			{"State", dev.State},
+			{"IsRechargeable", showBool(dev.IsRechargeable)},
+			{"Capacity", fmt.Sprintf("%f", dev.Capacity)},
+			{"Technology", dev.Technology},
+			{"Warninglevel", dev.Warninglevel},
+			{"Batterylevel", dev.Batterylevel},
+		}
+
+	default:
+		return [][]string{}
 	}
-	return string(respond.ToJson(structAsMap))
-}*/
+}
+
+func showBool(b bool) string {
+	if b {
+		return "yes"
+	} else {
+		return "no"
+	}
+}
