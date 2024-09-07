@@ -62,9 +62,7 @@ let doDelete = ctrl => {
 }
 
 
-let dismiss = actionProfile => {
-	//let restore = actionProfile !== 'tab' ? (actionProfile !== 'window' ? "window" : "tab") : ""
-	//fetch("http://localhost:7938/desktop/hide?restore=" + restore, { method: 'post' })
+let dismiss = () => {
 	window.close()
 }
 
@@ -72,23 +70,32 @@ let dismiss = actionProfile => {
 
 let onKeyDown = event => {
 	let { key, ctrlKey, altKey, shiftKey } = event;
-	if (key === "Escape" && !ctrlKey && !altKey) {
+	if ((key === "Escape" && !ctrlKey && !altKey) || key === 'ArrowLeft') {
 		doEscape(shiftKey)
-	} else if (key === "Enter" && altKey && !shiftKey) {
+	} else if ((key === "Enter" && altKey && !shiftKey) || key === 'ArrowRight') {
 		goto()
 	} else if (key === "Enter" && !altKey && !shiftKey) {
 		doEnter(ctrlKey)
 	} else if (key === "Delete" && !altKey && !shiftKey) {
 		doDelete(ctrlKey)
-	} else if (key == "Backspace" && !ctrlKey && !altKey && !shiftKey) {
+	} else if (key === "Backspace" && !ctrlKey && !altKey && !shiftKey) {
 		setTerm(term.slice(0, -1))
 	} else if (key.length === 1 && !ctrlKey && !altKey) {
 		setTerm(term + key)
+	} else if (key === "ArrowDown") {
+		nextLink().focus()
+	} else if (key === "ArrowUp") {
+		nextLink('up').focus()
 	} else {
 		return
 	}
 
 	event.preventDefault();
+}
+
+let nextLink = up => {
+	let a = Array.from(document.getElementsByClassName('link'))
+	return a[a.indexOf(document.activeElement) + (up ? -1 : 1)];
 }
 
 
