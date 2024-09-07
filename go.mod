@@ -6,6 +6,7 @@ require (
 	github.com/fsnotify/fsnotify v1.4.9
 	github.com/godbus/dbus/v5 v5.0.3
 	github.com/jessevdk/go-flags v1.6.1
+	github.com/lithammer/fuzzysearch v1.1.8
 	github.com/pkg/errors v0.9.1
 	github.com/r3labs/sse/v2 v2.10.0
 	github.com/rakyll/magicmime v0.1.0
@@ -14,4 +15,7 @@ require (
 
 )
 
-require golang.org/x/sys v0.21.0 // indirect
+require (
+	golang.org/x/sys v0.21.0 // indirect
+	golang.org/x/text v0.14.0 // indirect
+)

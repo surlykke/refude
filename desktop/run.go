@@ -79,7 +79,6 @@ func init() {
 }
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("run:", r.URL.Path, r.URL.Query())
 	switch r.URL.Path {
 	case "/desktop/resource":
 		if r.Method != "GET" {
