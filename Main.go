@@ -6,10 +6,7 @@
 package main
 
 import (
-	"flag"
-	"fmt"
 	"net/http"
-	"os"
 	"strings"
 
 	"github.com/surlykke/RefudeServices/applications"
@@ -36,7 +33,6 @@ import (
 
 func main() {
 	var opts = options.GetOpts()
-	fmt.Println("ignore-windows:", opts.IgnoreWinAppIds)
 	go icons.Run()
 
 	go wayland.Run(opts.IgnoreWinAppIds)
@@ -75,25 +71,6 @@ func main() {
 	if err := http.ListenAndServe(":7938", nil); err != nil {
 		log.Warn("http.ListenAndServe failed:", err)
 	}
-}
-
-func getFlags() (runNotifications bool, runTray bool) {
-	flag.Usage = func() {
-		var out = flag.CommandLine.Output()
-		fmt.Fprintln(out, "usage:")
-		fmt.Fprintln(out, "  RefudeServices [option]... ")
-		fmt.Fprintln(out, "options:")
-		flag.PrintDefaults()
-	}
-
-	var noNotifications = flag.Bool("no-notifications", false, "Dont run notifications module")
-	var noTray = flag.Bool("no-tray", false, "Dont run statusnotifications")
-	flag.Parse()
-	if len(flag.Args()) > 0 {
-		flag.Usage()
-		os.Exit(1)
-	}
-	return !*noNotifications, !*noTray
 }
 
 func search(w http.ResponseWriter, r *http.Request) {
