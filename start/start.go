@@ -12,7 +12,6 @@ import (
 	"github.com/surlykke/RefudeServices/file"
 	"github.com/surlykke/RefudeServices/lib/repo"
 	"github.com/surlykke/RefudeServices/lib/resource"
-	"github.com/surlykke/RefudeServices/lib/searchutils"
 )
 
 var lastUpdated = atomic.Pointer[time.Time]{}
@@ -30,33 +29,28 @@ func Run() {
 	repo.Put(&startResource)
 }
 
-func (s *StartResource) Search(term string) []resource.Resource {
-	var result = make([]resource.Resource, 0, 100)
-	result = append(result, searchList(repo.GetListUntyped("/notification/"), term)...)
-	result = append(result, searchList(repo.GetListUntyped("/window/"), term)...)
-	result = append(result, searchList(repo.GetListUntyped("/tab/"), term)...)
+func (s *StartResource) Search(term string) resource.LinkList {
+	var result = make(resource.LinkList, 0, 100)
+	getLinks(&result, "/notification/")
+	getLinks(&result, "/window/")
+	getLinks(&result, "/tab/")
+
 	if len(term) > 0 {
-		result = append(result, searchList(repo.GetListUntyped("/application/"), term)...)
+		getLinks(&result, "/application/")
 	}
 
 	if len(term) > 2 {
-		result = append(result, searchList(repo.GetListUntyped("/device/"), term)...)
-		result = append(result, file.SearchDesktop(term).GetResources()...)
+		getLinks(&result, "/device/")
+		result = append(result, file.SearchDesktop(term)...)
 	}
 
 	return result
 }
 
-func searchList(list []resource.Resource, term string) []resource.Resource {
-	var rrList = make(resource.RRList, 0, len(list))
-	for _, res := range list {
-		if res.OmitFromSearch() {
-			continue
-		}
-		if rnk := searchutils.Match(term, res.GetTitle(), res.GetKeywords()...); rnk >= 0 {
-			rrList = append(rrList, resource.RankedResource{Rank: rnk, Res: res})
+func getLinks(collector *resource.LinkList, prefix string) {
+	for _, res := range repo.GetListUntyped(prefix) {
+		if !res.OmitFromSearch() {
+			*collector = append(*collector, resource.LinkTo(res))
 		}
 	}
-	var resources = rrList.GetResources()
-	return resources
 }

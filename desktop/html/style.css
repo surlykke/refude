@@ -4,13 +4,12 @@ html, body {
     color:  darkgray;
 	font-size: 1.1em;
 }
-
+#resource {
+	margin-bottom: 0.8em;
+}
 .row {
 	position: relative;
 	margin-bottom: 0.7em;
-}
-.heading {
-	font-size: 0.8em;
 }
 .row img {
 	position: absolute;

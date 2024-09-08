@@ -13,6 +13,7 @@ import (
 	"github.com/fsnotify/fsnotify"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/pubsub"
+	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/repo"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/xdg"
@@ -60,7 +61,7 @@ func GetHandlers(mimetype string) []*DesktopApplication {
 
 func GetIconUrl(appId string) string {
 	if da, ok := repo.Get[*DesktopApplication]("/application/" + appId); ok {
-		return da.GetIconUrl()
+		return da.GetLinks().Get(relation.Icon).Href
 	}
 	return ""
 }

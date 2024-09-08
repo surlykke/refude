@@ -22,9 +22,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
-	"github.com/surlykke/RefudeServices/lib/searchutils"
 	"github.com/surlykke/RefudeServices/power"
-	"github.com/surlykke/RefudeServices/watch"
 	"github.com/surlykke/RefudeServices/wayland"
 )
 
@@ -83,84 +81,40 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case "/desktop/resource":
 		if r.Method != "GET" {
 			respond.NotAllowed(w)
+		} else if res := getResource(r); res == nil {
+			respond.NotFound(w)
 		} else {
-			var resourcePath = requests.GetSingleQueryParameter(r, "path", "/start")
-			var res resource.Resource = nil
-			if strings.HasPrefix(resourcePath, "/file/") {
-				res = file.GetResource(resourcePath)
-			} else {
-				res = repo.GetUntyped(resourcePath)
+			var m = map[string]any{
+				"Title": res.GetTitle(),
+				"Icon":  res.GetLinks().Get(relation.Icon).Href,
+				"Path":  res.GetPath(),
+			}
+			m["Data"] = defaultData(res)
+			if err := resourceTemplate.Execute(w, m); err != nil {
+				log.Warn("Error executing resourceTemplate:", err)
 			}
 
-			if res == nil {
-				respond.NotFound(w)
-			} else {
-				var _, searchable = res.(resource.Searchable)
-
-				var m = map[string]any{
-					"Searchable": searchable,
-					"Title":      res.GetTitle(),
-					"Icon":       res.GetIconUrl(),
-					"Path":       resourcePath,
-				}
-				m["Data"] = defaultData(res)
-				if err := resourceTemplate.Execute(w, m); err != nil {
-					log.Warn("Error executing resourceTemplate:", err)
-				}
-
-			}
 		}
 	case "/desktop/search":
 		if r.Method != "GET" {
 			respond.NotAllowed(w)
+		} else if res := getResource(r); res == nil {
+			respond.NotFound(w)
 		} else {
-			var resourcePath = requests.GetSingleQueryParameter(r, "path", "/start")
-			var res resource.Resource = nil
-			if strings.HasPrefix(resourcePath, "/file/") {
-				res = file.GetResource(resourcePath)
-			} else {
-				res = repo.GetUntyped(resourcePath)
+			var (
+				term = strings.ToLower(requests.GetSingleQueryParameter(r, "search", ""))
+				rows = make([]row, 0, 30)
+			)
+			for _, l := range res.Search(term).FilterAndSort(term) {
+				rows = append(rows, makeRow(l))
 			}
 
-			if res != nil {
-				var (
-					term           = strings.ToLower(requests.GetSingleQueryParameter(r, "search", ""))
-					sf, searchable = res.(resource.Searchable)
-					rows           = make([]row, 0, 30)
-					lastProfile    = ""
-				)
-				for i, action := range GetActionLinks(res, term) {
-					var r = row{IconUrl: action.IconUrl, Text: action.Title, Post: action.Href}
-					if i == 0 {
-						r.Heading = "Actions"
-					}
-					rows = append(rows, r)
-				}
-				if searchable {
-					for _, res := range sf.Search(term) {
-						var r = row{IconUrl: res.GetIconUrl(), Text: res.GetTitle(), Get: res.GetPath()}
-						if _, ok := res.(resource.Postable); ok {
-							r.Post = res.GetPath()
-						}
-						if _, ok := res.(resource.Deleteable); ok {
-							r.Delete = res.GetPath()
-						}
-						if lastProfile != res.GetProfile() {
-							lastProfile = res.GetProfile()
-							r.Heading = headings[lastProfile]
-						}
-
-						rows = append(rows, r)
-
-					}
-				}
-				var m = map[string]any{
-					"Term": term,
-					"Rows": rows,
-				}
-				if err := rowTemplate.Execute(w, m); err != nil {
-					log.Warn("Error executing rowTemplate:", err)
-				}
+			var m = map[string]any{
+				"Term": term,
+				"Rows": rows,
+			}
+			if err := rowTemplate.Execute(w, m); err != nil {
+				log.Warn("Error executing rowTemplate:", err)
 			}
 		}
 	/* FIXME case "/desktop/tray":
@@ -177,29 +131,6 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 
 	}*/
-	case "/desktop/show":
-		if r.Method != "POST" {
-			respond.NotAllowed(w)
-		} else {
-			wayland.RememberActive()
-			watch.Publish("showDesktop", "")
-			respond.Accepted(w)
-		}
-	case "/desktop/hide":
-		fmt.Println("/desktop/hide")
-		if r.Method != "POST" {
-			respond.NotAllowed(w)
-		} else {
-			switch requests.GetSingleQueryParameter(r, "restore", "") {
-			case "window":
-				wayland.ActivateRememberedActive()
-				fallthrough
-			case "tab":
-				watch.Publish("restoreTab", "")
-			}
-			respond.Accepted(w)
-			watch.Publish("hideDesktop", "")
-		}
 	default:
 		if strings.HasSuffix(r.URL.Path, "Template.html") {
 			respond.NotFound(w)
@@ -209,47 +140,31 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func GetActionLinks(res resource.Resource, searchTerm string) resource.LinkList {
-	var filtered = make(resource.LinkList, 0, len(res.GetLinks()))
-	for _, lnk := range res.GetLinks() {
-		if (lnk.Relation == relation.Action || lnk.Relation == relation.Delete) && searchutils.Match(searchTerm, lnk.Title) >= 0 {
-			filtered = append(filtered, lnk)
-		}
+func getResource(r *http.Request) resource.Resource {
+	var resourcePath = strings.Replace(requests.GetSingleQueryParameter(r, "path", "/start"), "http://localhost:7938", "", 1)
+	if strings.HasPrefix(resourcePath, "/file/") {
+		return file.GetResource(resourcePath)
+	} else {
+		return repo.GetUntyped(resourcePath)
 	}
-	return filtered
 }
 
 type row struct {
-	Heading string
-	IconUrl string
 	Text    string
-	Get     string
-	Post    string
-	Delete  string
+	Comment string
+	Href    string
+	IconUrl string
+	relation.Relation
 }
 
-func actionRow(action resource.Link) row {
-	return row{IconUrl: action.IconUrl, Text: action.Title, Post: action.Href}
-}
-
-func resourceRow(sr resource.Resource) row {
-	var r = row{IconUrl: sr.GetIconUrl(), Text: sr.GetTitle()}
-	if _, ok := sr.(resource.Postable); ok {
-		r.Post = sr.GetPath()
+func makeRow(l resource.Link) row {
+	return row{
+		Text:     l.Title,
+		Comment:  "?",
+		Href:     l.Href,
+		IconUrl:  l.IconUrl,
+		Relation: l.Relation,
 	}
-	if _, ok := sr.(resource.Deleteable); ok {
-		r.Delete = sr.GetPath()
-	}
-	return r
-}
-
-var headings = map[string]string{
-	"notification": "Notifications",
-	"window":       "Windows",
-	"tab":          "Tabs",
-	"application":  "Applications",
-	"file":         "Files",
-	"device":       "Devices",
 }
 
 func defaultData(res resource.Resource) [][]string {

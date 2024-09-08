@@ -8,11 +8,12 @@ package relation
 type Relation string
 
 const (
-	Self    = "self"
-	Search  = "search"
-	Icon    = "icon"
-	Action  = "org.refude.action"
-	Delete  = "org.refude.delete"
-	Related = "related"
-	Menu    = "org.refude.menu"
+	Self          = "self"
+	Search        = "search"
+	Icon          = "icon"
+	DefaultAction = "org.refude.defaultaction"
+	Action        = "org.refude.action"
+	Delete        = "org.refude.delete"
+	Related       = "related"
+	Menu          = "org.refude.menu"
 )

@@ -11,8 +11,11 @@ import (
 
 func Match(term, name string, keywords ...string) int {
 	var val = -1
-	for _, target := range append([]string{name}, keywords...) {
+	for i, target := range append([]string{name}, keywords...) {
 		var dist = fuzzy.RankMatchNormalizedFold(term, target)
+		if dist > -1 && i > 0 {
+			dist = dist + 100
+		}
 		if val == -1 || (dist > -1 && dist < val) {
 			val = dist
 		}

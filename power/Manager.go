@@ -12,6 +12,7 @@ import (
 	"github.com/surlykke/RefudeServices/icons"
 	dbuscall "github.com/surlykke/RefudeServices/lib/dbusutils"
 	"github.com/surlykke/RefudeServices/lib/repo"
+	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/notifications"
 )
 
@@ -51,6 +52,7 @@ func retrieveDevicePaths() []dbus.ObjectPath {
 
 func retrieveDevice(path dbus.ObjectPath) *Device {
 	var device = Device{
+		ResourceData:  *resource.MakeBase("/device/"+path2id(path), "", "", "", "device"),
 		DbusPath:      path,
 		DisplayDevice: path == displayDeviceDbusPath,
 	}
@@ -117,9 +119,7 @@ func retrieveDevice(path dbus.ObjectPath) *Device {
 			device.SetIconHref(icons.UrlFromName(variant.Value().(string)))
 		}
 	}
-	device.Path = "/device/" + path2id(device.DbusPath)
 	device.Title = deviceTitle(device.Type, device.Model)
-	device.Profile = "device"
 	device.Keywords = []string{"battery"}
 	return &device
 }

@@ -17,7 +17,6 @@ import (
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/repo"
 	"github.com/surlykke/RefudeServices/lib/requests"
-	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/notifications"
 	"github.com/surlykke/RefudeServices/options"
@@ -74,16 +73,17 @@ func main() {
 }
 
 func search(w http.ResponseWriter, r *http.Request) {
-	var term = strings.ToLower(requests.GetSingleQueryParameter(r, "term", ""))
-	var fromPath = requests.GetSingleQueryParameter(r, "from", "/start")
-	if from := repo.GetUntyped(fromPath); from != nil {
-		if searcable, ok := from.(resource.Searchable); ok {
-			var list = searcable.Search(term)
-			resource.ServeList(w, r, list)
-			return
+	if r.Method == "GET" {
+		var term = strings.ToLower(requests.GetSingleQueryParameter(r, "term", ""))
+		var fromPath = requests.GetSingleQueryParameter(r, "from", "/start")
+		if from := repo.GetUntyped(fromPath); from != nil {
+			respond.AsJson(w, from.Search(term).FilterAndSort(term))
+		} else {
+			respond.NotFound(w)
 		}
+	} else {
+		respond.NotAllowed(w)
 	}
-	respond.NotFound(w)
 }
 
 func complete(w http.ResponseWriter, r *http.Request) {

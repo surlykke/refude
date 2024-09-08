@@ -63,11 +63,9 @@ func Run(ignWin map[string]bool) {
 			repo.Put(&w)
 		case id := <-removals:
 			publish = true
-			fmt.Println("window loop, removal...")
 			var path = fmt.Sprintf("/window/%d", id)
 			repo.Remove(path)
 		case _ = <-appEvents:
-			fmt.Println("window loop, apps...")
 			for _, w := range repo.GetList[*WaylandWindow]("/window/") {
 				var copy = *w
 				if iconUrl := applications.GetIconUrl(copy.AppId); iconUrl != "" {
@@ -140,8 +138,8 @@ func MakeWindow(wId uint64) *WaylandWindow {
 		ResourceData: *resource.MakeBase(fmt.Sprintf("/window/%d", wId), "", "", "", "window"),
 		Wid:          wId,
 	}
-	ww.AddLink(ww.Path, "Focus", "", relation.Action)
-	ww.AddLink(ww.Path, "Close", "", relation.Delete)
+	ww.AddLink(ww.Path, "Focus window", "", relation.DefaultAction)
+	ww.AddLink(ww.Path, "Close window", "", relation.Delete)
 	return ww
 }
 

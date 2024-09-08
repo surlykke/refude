@@ -1,10 +1,10 @@
-let resourcePath = "/start"
+let resourceHref = "/start"
 let term = ""
 let history = []
 
-let setResourcePath = (newPath, newTerm) => {
-	if (newPath !== resourcePath) {
-		resourcePath = newPath
+let setResourceHref = (newHref, newTerm) => {
+	if (newHref !== resourceHref) {
+		resourceHref = newHref
 		document.getElementById("resource").dispatchEvent(new Event("resourceChanged"))
 		setTerm(newTerm || "", true)
 	}
@@ -27,46 +27,34 @@ let focusFirst = () => {
 	document.getElementsByClassName("row")[0]?.getElementsByTagName('a')[0]?.focus()
 }
 
-let selectedDataset = () => document.activeElement.dataset || {}
+let selectedHref = () => document.activeElement?.href
 
 let doEscape = shiftKey => {
 	let state = history.pop()
 	if (state && !shiftKey) {
-		setResourcePath(state.path, state.term)
+		setResourceHref(state.path, state.term)
 	} else {
 		dismiss()
 	}
 }
 
 let goto = () => {
-	console.log("goto, dataset:", selectedDataset())
-	let { get } = selectedDataset()
-	if (get) {
-		history.push({ path: resourcePath, term: term })
-		setResourcePath(get)
+	console.log("goto, selectedHref:", selectedHref())
+	if (selectedHref()) {
+		history.push({ path: resourceHref, term: term })
+		setResourceHref(selectedHref())
 	}
 }
 
 let doEnter = ctrl => {
-	if (selectedDataset().post) {
-		fetch(selectedDataset().post, { method: "post" })
-			.then(resp => resp.ok && !ctrl && dismiss(selectedDataset().profile))
-	}
+	console.log("selectedHref:", selectedHref())
+
+	fetch(selectedHref(), { method: "post" }).then(resp => resp.ok && !ctrl && dismiss())
 }
 
-let doDelete = ctrl => {
-	if (selectedDataset().delete) {
-		fetch(selectedDataset().delete, { method: "delete" })
-			.then(resp => resp.ok && !ctrl && dismiss(selectedDataset().profile))
-	}
-}
+let doDelete = ctrl => fetch(selectedHref(), { method: "delete" }).then(resp => resp.ok && !ctrl && dismiss())
 
-
-let dismiss = () => {
-	window.close()
-}
-
-
+let dismiss = () => window.close()
 
 let onKeyDown = event => {
 	let { key, ctrlKey, altKey, shiftKey } = event;
@@ -99,9 +87,6 @@ let nextLink = up => {
 }
 
 
-window.addEventListener('htmx:noSSESourceError', (e) => {
-	console.log(e);
-});
+window.addEventListener('htmx:noSSESourceError', (e) => console.log(e));
 
 document.addEventListener("keydown", onKeyDown)
-//document.addEventListener("readystatechange", () => document.readyState === "complete" && searchTag().dispatchEvent(new Event("termChanged")))

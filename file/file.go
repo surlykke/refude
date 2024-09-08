@@ -10,7 +10,6 @@ import (
 	"io/fs"
 	"net/http"
 	"os"
-	"path"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -23,7 +22,6 @@ import (
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
-	"github.com/surlykke/RefudeServices/lib/searchutils"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
@@ -73,6 +71,13 @@ func makeFileFromPath(path string) (*File, error) {
 	}
 }
 
+func makeLinkFromPath(path string, name string) resource.Link {
+	var title = name
+	var mimetype, _ = magicmime.TypeByFile(path)
+	var iconUrl = icons.UrlFromName(strings.ReplaceAll(mimetype, "/", "-"))
+	return resource.Link{Href: "/file" + path, Title: title, IconUrl: iconUrl, Relation: relation.Related, Type: "application/vnd.org.refude.file+json"}
+}
+
 func makeFileFromInfo(osPath string, fileInfo os.FileInfo) *File {
 	var fileType = getFileType(fileInfo.Mode())
 	var comment = osPath
@@ -85,9 +90,13 @@ func makeFileFromInfo(osPath string, fileInfo os.FileInfo) *File {
 		Mimetype:     mimetype,
 	}
 
-	for _, app := range applications.GetHandlers(f.Mimetype) {
+	for i, app := range applications.GetHandlers(f.Mimetype) {
 		f.apps = append(f.apps, app.DesktopId)
-		f.AddLink(f.Path+"?action="+app.DesktopId, "Open with "+app.Title, app.GetIconUrl(), relation.Action)
+		if i == 0 {
+			f.AddLink(f.Path+"?action="+app.DesktopId, "Open with "+app.Title, app.GetLinks().Get(relation.Icon).Href, relation.DefaultAction)
+		} else {
+			f.AddLink(f.Path+"?action="+app.DesktopId, "Open with "+app.Title, app.GetLinks().Get(relation.Icon).Href, relation.Action)
+		}
 	}
 
 	if fileType == "Directory" {
@@ -97,77 +106,60 @@ func makeFileFromInfo(osPath string, fileInfo os.FileInfo) *File {
 	return &f
 }
 
-func (f *File) Search(term string) []resource.Resource {
-	var terms = strings.Split(term, "/")
+func (f *File) Search(term string) resource.LinkList {
 	var osPath = f.Path[len("/file"):]
+	var collector = f.ResourceData.Search(term)
+	var pathPattern = strings.Split(term, "/")
+
 	if f.Type == "Directory" {
-		var rrList = make(resource.RRList, 0, 30)
-		search(&rrList, osPath, terms...)
-		return rrList.GetResources()
-	} else {
-		var parentDirOsPath = path.Dir(osPath)
-		var parentDirName = path.Base(parentDirOsPath)
-		if searchutils.Match(term, parentDirName) > -1 {
-			if f, err := makeFileFromPath(parentDirOsPath); err == nil {
-				return []resource.Resource{f}
-			} else {
-				fmt.Println(err)
-			}
-		}
-		return []resource.Resource{}
-	}
-}
-
-func searchFrom(dir, term string) resource.RRList {
-	var collector = make(resource.RRList, 0, 100)
-	var terms = strings.Split(term, "/")
-	search(&collector, dir, terms...)
-	return collector
-}
-
-func SearchDesktop(term string) resource.RRList {
-	var collector = make(resource.RRList, 0, 100)
-	var terms = strings.Split(term, "/")
-	if len(terms[0]) >= 3 {
-		if rnk := searchutils.Match(term, xdg.Home); rnk >= 0 {
-			if info, err := os.Stat(xdg.Home); err != nil {
-				log.Warn(err)
-			} else {
-				var file = makeFileFromInfo(xdg.Home, info)
-				collector = append(collector, resource.RankedResource{Res: file, Rank: rnk})
-			}
-		}
-		search(&collector, xdg.Home, terms...)
-		search(&collector, xdg.ConfigHome, terms...)
-		search(&collector, xdg.DownloadDir, terms...)
-		search(&collector, xdg.DocumentsDir, terms...)
-		search(&collector, xdg.MusicDir, terms...)
-		search(&collector, xdg.VideosDir, terms...)
+		collectFilesFromDir(&collector, osPath, pathPattern[0:len(pathPattern)-1])
 	}
 	return collector
 }
 
-// Assumes that dir is a directory an that len(terms) > 0
-func search(collector *resource.RRList, dir string, terms ...string) {
+func SearchDesktop(term string) resource.LinkList {
+	var collector = make(resource.LinkList, 0, 100)
+	collector = append(collector, makeLinkFromPath(xdg.Home, "Home"))
+	var pathPattern = strings.Split(term, "/")
+	pathPattern = pathPattern[0 : len(pathPattern)-1]
+	collectFilesFromDirs(
+		&collector,
+		[]string{xdg.Home, xdg.ConfigHome, xdg.DownloadDir, xdg.DocumentsDir, xdg.MusicDir, xdg.VideosDir},
+		pathPattern)
+
+	return collector
+}
+
+func collectFilesFromDirs(sink *resource.LinkList, dirs []string, pathPattern []string) {
+	for _, dir := range dirs {
+		collectFilesFromDir(sink, dir, pathPattern)
+	}
+}
+
+func collectFilesFromDir(sink *resource.LinkList, dir string, pathPattern []string) {
+	fmt.Println("collectFilesFromDir, dir:", dir, "pathPattern:", pathPattern)
 	if file, err := os.Open(dir); err != nil {
-		log.Warn(err)
+		log.Warn("Could not open", dir, err)
 	} else if entries, err := file.ReadDir(-1); err != nil {
-		log.Warn(err)
+		log.Warn("Could not read", dir, err)
 	} else {
 		for _, entry := range entries {
-			if rnk := searchutils.Match(terms[0], entry.Name()); rnk > -1 {
-				if len(terms) > 1 {
-					if entry.IsDir() {
-						search(collector, dir+"/"+entry.Name(), terms[1:]...)
-					}
-				} else {
-					fileInfo, _ := entry.Info()
-					var file = makeFileFromInfo(dir+"/"+entry.Name(), fileInfo)
-					*collector = append(*collector, resource.RankedResource{Res: file, Rank: rnk})
+			var name = entry.Name()
+			var path = dir + "/" + name
+			if len(pathPattern) > 0 {
+				if len(pathPattern[0]) > 0 && entry.IsDir() && strings.Contains(strings.ToLower(name), pathPattern[0]) {
+					collectFilesFromDir(sink, path, pathPattern[1:])
 				}
+			} else {
+				fmt.Println("Collecting", path, name)
+				*sink = append(*sink, makeLinkFromPath(path, name))
 			}
 		}
 	}
+}
+
+func globSearch(collector *resource.RankedLinkList, dir string, term string) {
+	// FIXME
 }
 
 func (f *File) DoPost(w http.ResponseWriter, r *http.Request) {
