@@ -6,6 +6,7 @@
 package resource
 
 import (
+	"fmt"
 	"net/http"
 	"slices"
 	"sort"
@@ -167,9 +168,10 @@ func (ll LinkList) FilterAndSort(term string) LinkList {
 	if term == "" {
 		return ll
 	} else {
-		if lastSlash := strings.Index(term, "/"); lastSlash > -1 {
+		if lastSlash := strings.LastIndex(term, "/"); lastSlash > -1 {
 			term = term[lastSlash+1:]
 		}
+		fmt.Println("Matching with", term)
 		var matches = fuzzy.FindFrom(term, ll)
 		var sorted = make(LinkList, len(matches), len(matches))
 		for i, match := range matches {

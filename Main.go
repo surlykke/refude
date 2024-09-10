@@ -77,7 +77,7 @@ func search(w http.ResponseWriter, r *http.Request) {
 		var term = strings.ToLower(requests.GetSingleQueryParameter(r, "term", ""))
 		var fromPath = requests.GetSingleQueryParameter(r, "from", "/start")
 		if from := repo.GetUntyped(fromPath); from != nil {
-			respond.AsJson(w, from.Search(term).FilterAndSort(term))
+			respond.AsJson(w, from.Search(term))
 		} else {
 			respond.NotFound(w)
 		}

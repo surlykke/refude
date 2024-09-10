@@ -22,7 +22,6 @@ import (
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
-	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
 func init() {
@@ -71,7 +70,7 @@ func makeFileFromPath(path string) (*File, error) {
 	}
 }
 
-func makeLinkFromPath(path string, name string) resource.Link {
+func MakeLinkFromPath(path string, name string) resource.Link {
 	var title = name
 	var mimetype, _ = magicmime.TypeByFile(path)
 	var iconUrl = icons.UrlFromName(strings.ReplaceAll(mimetype, "/", "-"))
@@ -107,59 +106,64 @@ func makeFileFromInfo(osPath string, fileInfo os.FileInfo) *File {
 }
 
 func (f *File) Search(term string) resource.LinkList {
-	var osPath = f.Path[len("/file"):]
+	var dirs = []string{f.Path[len("/file"):]}
 	var collector = f.ResourceData.Search(term)
-	var pathPattern = strings.Split(term, "/")
 
 	if f.Type == "Directory" {
-		collectFilesFromDir(&collector, osPath, pathPattern[0:len(pathPattern)-1])
+		if strings.Index(term, "/") > -1 {
+			var pathBits = strings.Split(term, "/")
+			pathBits, term = pathBits[0:len(pathBits)-1], pathBits[len(pathBits)-1]
+			dirs = CollectDirs(dirs, pathBits)
+		}
+		for _, dir := range dirs {
+			Collect(&collector, dir)
+		}
 	}
 	return collector
 }
 
-func SearchDesktop(term string) resource.LinkList {
-	var collector = make(resource.LinkList, 0, 100)
-	collector = append(collector, makeLinkFromPath(xdg.Home, "Home"))
-	var pathPattern = strings.Split(term, "/")
-	pathPattern = pathPattern[0 : len(pathPattern)-1]
-	collectFilesFromDirs(
-		&collector,
-		[]string{xdg.Home, xdg.ConfigHome, xdg.DownloadDir, xdg.DocumentsDir, xdg.MusicDir, xdg.VideosDir},
-		pathPattern)
-
-	return collector
+func Collect(sink *resource.LinkList, dir string) {
+	for _, entry := range readEntries(dir) {
+		var name = entry.Name()
+		*sink = append(*sink, MakeLinkFromPath(dir+"/"+name, name))
+	}
 }
 
-func collectFilesFromDirs(sink *resource.LinkList, dirs []string, pathPattern []string) {
+func CollectDirs(dirs []string, pathBits []string) []string {
+	var collected = make([]string, 0, 30)
 	for _, dir := range dirs {
-		collectFilesFromDir(sink, dir, pathPattern)
+		collectDirs2(&collected, dir, pathBits)
 	}
+	return collected
 }
 
-func collectFilesFromDir(sink *resource.LinkList, dir string, pathPattern []string) {
-	fmt.Println("collectFilesFromDir, dir:", dir, "pathPattern:", pathPattern)
-	if file, err := os.Open(dir); err != nil {
-		log.Warn("Could not open", dir, err)
-	} else if entries, err := file.ReadDir(-1); err != nil {
-		log.Warn("Could not read", dir, err)
-	} else {
-		for _, entry := range entries {
-			var name = entry.Name()
-			var path = dir + "/" + name
-			if len(pathPattern) > 0 {
-				if len(pathPattern[0]) > 0 && entry.IsDir() && strings.Contains(strings.ToLower(name), pathPattern[0]) {
-					collectFilesFromDir(sink, path, pathPattern[1:])
-				}
+func collectDirs2(sink *[]string, dir string, pathBits []string) {
+	if len(pathBits) == 0 {
+		return
+	}
+	for _, entry := range readEntries(dir) {
+		var name = entry.Name()
+		var path = dir + "/" + name
+		if entry.IsDir() && strings.Contains(strings.ToLower(name), pathBits[0]) {
+			if len(pathBits) == 1 {
+				*sink = append(*sink, path)
 			} else {
-				fmt.Println("Collecting", path, name)
-				*sink = append(*sink, makeLinkFromPath(path, name))
+				collectDirs2(sink, path, pathBits[1:])
 			}
 		}
 	}
 }
 
-func globSearch(collector *resource.RankedLinkList, dir string, term string) {
-	// FIXME
+func readEntries(dir string) []fs.DirEntry {
+	if file, err := os.Open(dir); err != nil {
+		log.Warn("Could not open", dir, err)
+		return nil
+	} else if entries, err := file.ReadDir(-1); err != nil {
+		log.Warn("Could not read", dir, err)
+		return nil
+	} else {
+		return entries
+	}
 }
 
 func (f *File) DoPost(w http.ResponseWriter, r *http.Request) {
