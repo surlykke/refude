@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/log"
+	"github.com/surlykke/RefudeServices/lib/mediatype"
 	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/slice"
@@ -133,7 +134,7 @@ func readDesktopFile(filePath string, id string) (*DesktopApplication, error) {
 		group := iniFile[0]
 		var path, title, comment = "/application/" + id, group.Entries["Name"], group.Entries["Comment"]
 		var da = DesktopApplication{
-			ResourceData: *resource.MakeBase(path, title, comment, "", "application"),
+			ResourceData: *resource.MakeBase(path, title, comment, "", mediatype.Application),
 			DesktopId:    id,
 		}
 

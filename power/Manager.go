@@ -11,6 +11,7 @@ import (
 	"github.com/godbus/dbus/v5"
 	"github.com/surlykke/RefudeServices/icons"
 	dbuscall "github.com/surlykke/RefudeServices/lib/dbusutils"
+	"github.com/surlykke/RefudeServices/lib/mediatype"
 	"github.com/surlykke/RefudeServices/lib/repo"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/notifications"
@@ -52,7 +53,7 @@ func retrieveDevicePaths() []dbus.ObjectPath {
 
 func retrieveDevice(path dbus.ObjectPath) *Device {
 	var device = Device{
-		ResourceData:  *resource.MakeBase("/device/"+path2id(path), "", "", "", "device"),
+		ResourceData:  *resource.MakeBase("/device/"+path2id(path), "", "", "", mediatype.Device),
 		DbusPath:      path,
 		DisplayDevice: path == displayDeviceDbusPath,
 	}

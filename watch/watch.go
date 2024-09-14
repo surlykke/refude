@@ -24,7 +24,6 @@ func ResourceChanged(path string) {
 }
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Watch:", r.URL.Path)
 	if r.Method != "GET" {
 		respond.NotAllowed(w)
 	} else if r.URL.Path == "/watch" {

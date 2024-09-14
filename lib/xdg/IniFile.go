@@ -122,6 +122,18 @@ func LocaleMatch(loc string) bool {
 	return false
 }
 
+func GetFromLocalizedMap(m map[string]string) string {
+	var result = ""
+	for loc, val := range m {
+		if loc != "" && LocaleMatch(loc) {
+			result = val
+		} else if loc == "" && result == "" {
+			result = val
+		}
+	}
+	return result
+}
+
 func WriteIniFile(path string, iniFile IniFile) error {
 	if file, err := os.Create(path); err != nil {
 		return err

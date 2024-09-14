@@ -1,8 +1,8 @@
-{{range $i, $row := .Rows}}
+{{range $i, $link := .Links}}
 <div class="row">
 	{{if .IconUrl}}
 		<img src="{{.IconUrl}}" height="20" width="20">
 	{{end}}
-	<a href="{{.Href}}" tabindex="{{inc $i}}" rel="{{.Relation}}" class="link">{{.Text}}</a>
+	<a href="{{.Href}}" tabindex="{{inc $i}}" rel="{{.Relation}}" class="link">{{.Title}}</a>
 </div>
 {{end}}

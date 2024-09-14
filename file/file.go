@@ -6,7 +6,6 @@
 package file
 
 import (
-	"fmt"
 	"io/fs"
 	"net/http"
 	"os"
@@ -18,6 +17,7 @@ import (
 	"github.com/surlykke/RefudeServices/applications"
 	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/log"
+	"github.com/surlykke/RefudeServices/lib/mediatype"
 	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
@@ -83,7 +83,7 @@ func makeFileFromInfo(osPath string, fileInfo os.FileInfo) *File {
 	var mimetype, _ = magicmime.TypeByFile(osPath)
 	var iconUrl = icons.UrlFromName(strings.ReplaceAll(mimetype, "/", "-"))
 	var f = File{
-		ResourceData: *resource.MakeBase("/file/"+osPath[1:], fileInfo.Name(), comment, iconUrl, "file"),
+		ResourceData: *resource.MakeBase("/file/"+osPath[1:], fileInfo.Name(), comment, iconUrl, mediatype.File),
 		Type:         fileType,
 		Permissions:  fileInfo.Mode().String(),
 		Mimetype:     mimetype,
@@ -167,7 +167,6 @@ func readEntries(dir string) []fs.DirEntry {
 }
 
 func (f *File) DoPost(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("File#DoPost", r.URL.Query())
 	var appId = requests.GetSingleQueryParameter(r, "action", "")
 	if appId == "" && len(f.apps) > 0 {
 		appId = f.apps[0]

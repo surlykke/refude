@@ -18,6 +18,7 @@ import (
 	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/image"
 	"github.com/surlykke/RefudeServices/lib/log"
+	"github.com/surlykke/RefudeServices/lib/mediatype"
 	"github.com/surlykke/RefudeServices/lib/repo"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
@@ -180,7 +181,7 @@ func Notify(
 	body = sanitize(body, allowedTags, allowedEscapes)
 	var iconUrl = icons.UrlFromName(iconName)
 	notification := Notification{
-		ResourceData:   *resource.MakeBase(fmt.Sprintf("/notification/%d", id), title, body, iconUrl, "notification"),
+		ResourceData:   *resource.MakeBase(fmt.Sprintf("/notification/%d", id), title, body, iconUrl, mediatype.Notification),
 		NotificationId: id,
 		Sender:         app_name,
 		Created:        time.Now(),

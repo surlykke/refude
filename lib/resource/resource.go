@@ -6,13 +6,13 @@
 package resource
 
 import (
-	"fmt"
 	"net/http"
 	"slices"
 	"sort"
 	"strings"
 
 	"github.com/sahilm/fuzzy"
+	"github.com/surlykke/RefudeServices/lib/mediatype"
 	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/respond"
 )
@@ -21,7 +21,7 @@ type Resource interface {
 	GetPath() string
 	GetTitle() string
 	GetComment() string
-	GetProfile() string
+	GetType() mediatype.MediaType
 	GetLinks() LinkList
 	GetKeywords() []string
 	Search(term string) LinkList
@@ -30,19 +30,19 @@ type Resource interface {
 
 type ResourceData struct {
 	Path     string
-	Title    string   `json:"title"`
-	Comment  string   `json:"comment,omitempty"`
-	Profile  string   `json:"profile"`
-	Links    LinkList `json:"links"`
-	Keywords []string `json:"keywords"`
+	Title    string              `json:"title"`
+	Comment  string              `json:"comment,omitempty"`
+	Type     mediatype.MediaType `json:"type"`
+	Links    LinkList            `json:"links"`
+	Keywords []string            `json:"keywords"`
 }
 
-func MakeBase(path, title, comment, iconUrl, profile string) *ResourceData {
+func MakeBase(path, title, comment, iconUrl string, mType mediatype.MediaType) *ResourceData {
 	var br = ResourceData{
 		Path:    path,
 		Title:   title,
 		Comment: comment,
-		Profile: profile,
+		Type:    mType,
 		Links:   LinkList{{Href: "http://localhost:7938" + path, Relation: relation.Self}},
 	}
 	if iconUrl != "" {
@@ -63,8 +63,8 @@ func (this *ResourceData) GetComment() string {
 	return this.Comment
 }
 
-func (this *ResourceData) GetProfile() string {
-	return this.Profile
+func (this *ResourceData) GetType() mediatype.MediaType {
+	return this.Type
 }
 
 func (this *ResourceData) GetLinks() LinkList {
@@ -115,11 +115,11 @@ var httpLocalHost7838 = []byte("http://localhost:7938")
 // --------------------- Link --------------------------------------
 
 type Link struct {
-	Href     string            `json:"href"`
-	Title    string            `json:"title,omitempty"`
-	IconUrl  string            `json:"icon,omitempty"`
-	Relation relation.Relation `json:"rel,omitempty"`
-	Type     string            `json:"type,omitempty"`
+	Href     string              `json:"href"`
+	Title    string              `json:"title,omitempty"`
+	IconUrl  string              `json:"icon,omitempty"`
+	Relation relation.Relation   `json:"rel,omitempty"`
+	Type     mediatype.MediaType `json:"type,omitempty"`
 }
 
 type LinkList []Link
@@ -171,7 +171,6 @@ func (ll LinkList) FilterAndSort(term string) LinkList {
 		if lastSlash := strings.LastIndex(term, "/"); lastSlash > -1 {
 			term = term[lastSlash+1:]
 		}
-		fmt.Println("Matching with", term)
 		var matches = fuzzy.FindFrom(term, ll)
 		var sorted = make(LinkList, len(matches), len(matches))
 		for i, match := range matches {

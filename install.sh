@@ -24,5 +24,3 @@ cp -R ./refudeicons/* $HICOLOR_ICON_DIR
 cp resources/bin/* $GOBIN
 cp resources/completions/bash/* ${BASH_COMPLETION_DIR}
 cp resources/completions/fish/* ${FISH_COMPLETION_DIR}
-cp resources/desktop/*.desktop ${DESKTOP_FILE_DIR}
-

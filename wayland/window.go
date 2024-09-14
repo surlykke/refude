@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 
 	"github.com/surlykke/RefudeServices/applications"
+	"github.com/surlykke/RefudeServices/lib/mediatype"
 	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/repo"
 	"github.com/surlykke/RefudeServices/lib/requests"
@@ -135,7 +136,7 @@ type WaylandWindow struct {
 
 func MakeWindow(wId uint64) *WaylandWindow {
 	var ww = &WaylandWindow{
-		ResourceData: *resource.MakeBase(fmt.Sprintf("/window/%d", wId), "", "", "", "window"),
+		ResourceData: *resource.MakeBase(fmt.Sprintf("/window/%d", wId), "", "", "", mediatype.Window),
 		Wid:          wId,
 	}
 	ww.AddLink(ww.Path, "Focus window", "", relation.DefaultAction)

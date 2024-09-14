@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/surlykke/RefudeServices/lib/mediatype"
 	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/repo"
 	"github.com/surlykke/RefudeServices/lib/resource"
@@ -65,7 +66,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 						url = url[0:60] + "..."
 					}
 					var iconUrl = d["favIcon"]
-					var tab = &Tab{ResourceData: *resource.MakeBase("/tab/"+d["id"], title, url, iconUrl, "tab")}
+					var tab = &Tab{ResourceData: *resource.MakeBase("/tab/"+d["id"], title, url, iconUrl, mediatype.Tab)}
 					tab.AddLink(tab.Path, "Focus tab", iconUrl, relation.DefaultAction)
 					tab.AddLink(tab.Path, "Close tab", "", relation.Delete)
 					tabs = append(tabs, tab)

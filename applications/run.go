@@ -6,7 +6,6 @@
 package applications
 
 import (
-	"fmt"
 	"strings"
 	"time"
 
@@ -67,7 +66,6 @@ func GetIconUrl(appId string) string {
 }
 
 func OpenFile(appId, path string) bool {
-	fmt.Println("Openfile looking for", "/application/"+appId)
 	if app, ok := repo.Get[*DesktopApplication]("/application/" + appId); ok {
 		app.Run(path)
 		return true
@@ -102,11 +100,9 @@ func watchForDesktopFiles(events chan struct{}) {
 		// When the user reinstalls something it will create a number of inotify events. We collect for a couple of seconds
 		// before doing a reload.
 		case event := <-watcher.Events:
-			fmt.Println("file event:", event.Name)
 			if !reloadScheduled && strings.HasSuffix(event.Name, ".desktop") || strings.HasSuffix(event.Name, "/mimeapps.list") {
 				reloadScheduled = true
 				go func() {
-					fmt.Println("Gracing...")
 					time.Sleep(2 * time.Second)
 					gracePeriodEnded <- struct{}{}
 				}()

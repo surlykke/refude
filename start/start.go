@@ -6,14 +6,18 @@
 package start
 
 import (
-	"fmt"
+	"net/http"
 	"strings"
 	"sync/atomic"
 	"time"
 
 	"github.com/surlykke/RefudeServices/file"
+	"github.com/surlykke/RefudeServices/lib/log"
+	"github.com/surlykke/RefudeServices/lib/mediatype"
 	"github.com/surlykke/RefudeServices/lib/repo"
+	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
@@ -27,7 +31,7 @@ type StartResource struct {
 var startResource StartResource
 
 func Run() {
-	startResource = StartResource{ResourceData: *resource.MakeBase("/start", "Refude desktop", "", "", "start")}
+	startResource = StartResource{ResourceData: *resource.MakeBase("/start", "Refude desktop", "", "", mediatype.Start)}
 	startResource.SetSearchHref("/search")
 	repo.Put(&startResource)
 }
@@ -37,9 +41,7 @@ func (s *StartResource) Search(term string) resource.LinkList {
 	if strings.Index(term, "/") > -1 {
 		var pathBits = strings.Split(term, "/")
 		pathBits, term = pathBits[:len(pathBits)-1], pathBits[len(pathBits)-1]
-		fmt.Println("Collecting dirs with pathBits:", pathBits)
 		var dirs = file.CollectDirs([]string{xdg.Home, xdg.ConfigHome, xdg.DownloadDir, xdg.DocumentsDir, xdg.MusicDir, xdg.VideosDir}, pathBits)
-		fmt.Println("consider dirs:", dirs)
 		for _, dir := range dirs {
 			file.Collect(&result, dir)
 		}
@@ -49,6 +51,7 @@ func (s *StartResource) Search(term string) resource.LinkList {
 		getLinks(&result, "/tab/")
 
 		if len(term) > 0 {
+			getStartLinks(&result)
 			getLinks(&result, "/application/")
 		}
 
@@ -70,5 +73,19 @@ func getLinks(collector *resource.LinkList, prefix string) {
 		if !res.OmitFromSearch() {
 			*collector = append(*collector, resource.LinkTo(res))
 		}
+	}
+}
+
+func (s StartResource) DoPost(w http.ResponseWriter, r *http.Request) {
+	var action = requests.GetSingleQueryParameter(r, "action", "-")
+	if exec, ok := getExec(action); ok {
+		if err := xdg.RunCmd(exec...); err != nil {
+			log.Warn(err)
+			respond.ServerError(w, err)
+		} else {
+			respond.Accepted(w)
+		}
+	} else {
+		respond.NotFound(w)
 	}
 }

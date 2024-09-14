@@ -17,6 +17,7 @@ import (
 	"github.com/surlykke/RefudeServices/applications"
 	"github.com/surlykke/RefudeServices/file"
 	"github.com/surlykke/RefudeServices/lib/log"
+	"github.com/surlykke/RefudeServices/lib/mediatype"
 	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/repo"
 	"github.com/surlykke/RefudeServices/lib/requests"
@@ -37,6 +38,16 @@ var funcMap = template.FuncMap{
 	// The name "inc" is what the function will be called in the template text.
 	"inc": func(i int) int {
 		return i + 1
+	},
+	"comment": func(l resource.Link) string {
+		switch l.Type {
+		case mediatype.Window, mediatype.Tab:
+			return "Focus"
+		case mediatype.Application:
+			return "Launch"
+		default:
+			return ""
+		}
 	},
 }
 
@@ -101,17 +112,10 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		} else if res := getResource(r); res == nil {
 			respond.NotFound(w)
 		} else {
-			var (
-				term = strings.ToLower(requests.GetSingleQueryParameter(r, "search", ""))
-				rows = make([]row, 0, 30)
-			)
-			for _, l := range res.Search(term).FilterAndSort(term) {
-				rows = append(rows, makeRow(l))
-			}
-
+			var term = strings.ToLower(requests.GetSingleQueryParameter(r, "search", ""))
 			var m = map[string]any{
-				"Term": term,
-				"Rows": rows,
+				"Term":  term,
+				"Links": res.Search(term).FilterAndSort(term),
 			}
 			if err := rowTemplate.Execute(w, m); err != nil {
 				log.Warn("Error executing rowTemplate:", err)
@@ -149,27 +153,9 @@ func getResource(r *http.Request) resource.Resource {
 	}
 }
 
-type row struct {
-	Text    string
-	Comment string
-	Href    string
-	IconUrl string
-	relation.Relation
-}
-
-func makeRow(l resource.Link) row {
-	return row{
-		Text:     l.Title,
-		Comment:  "?",
-		Href:     l.Href,
-		IconUrl:  l.IconUrl,
-		Relation: l.Relation,
-	}
-}
-
 func defaultData(res resource.Resource) [][]string {
 
-	switch res.GetProfile() {
+	switch res.GetType() {
 	case "window":
 		var window = res.(*wayland.WaylandWindow)
 		return [][]string{

@@ -17,6 +17,7 @@ import (
 	"github.com/godbus/dbus/v5/prop"
 	dbuscall "github.com/surlykke/RefudeServices/lib/dbusutils"
 	"github.com/surlykke/RefudeServices/lib/log"
+	"github.com/surlykke/RefudeServices/lib/mediatype"
 	"github.com/surlykke/RefudeServices/lib/repo"
 	"github.com/surlykke/RefudeServices/lib/resource"
 )
@@ -143,7 +144,7 @@ var events = make(chan Event)
 
 func buildItem(itemPath string, sender string, path dbus.ObjectPath) *Item {
 	var item = Item{
-		ResourceData: *resource.MakeBase(itemPath, "", "", "", "item"),
+		ResourceData: *resource.MakeBase(itemPath, "", "", "", mediatype.Trayitem),
 		sender:       sender,
 		path:         path,
 	}

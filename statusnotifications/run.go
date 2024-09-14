@@ -6,6 +6,7 @@
 package statusnotifications
 
 import (
+	"github.com/surlykke/RefudeServices/lib/mediatype"
 	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/repo"
 	"github.com/surlykke/RefudeServices/lib/resource"
@@ -31,7 +32,7 @@ func Run() {
 				var menuPath = "/menu/" + pathEscape(event.sender, item.MenuPath)
 				item.AddLink(menuPath, "", "", relation.Menu)
 				repo.Put(&Menu{
-					ResourceData: *resource.MakeBase(menuPath, "Menu", "", "", "menu"),
+					ResourceData: *resource.MakeBase(menuPath, "Menu", "", "", mediatype.Menu),
 					sender:       event.sender,
 					path:         item.MenuPath,
 				})
