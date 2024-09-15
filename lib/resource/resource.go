@@ -185,6 +185,7 @@ func LinkTo(res Resource) Link {
 	lnk.Relation = relation.Related
 	lnk.Title = res.GetTitle()
 	lnk.IconUrl = res.GetLinks().Get(relation.Icon).Href
+	lnk.Type = res.GetType()
 	return lnk
 }
 

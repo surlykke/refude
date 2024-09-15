@@ -46,7 +46,7 @@ var funcMap = template.FuncMap{
 		case mediatype.Application:
 			return "Launch"
 		default:
-			return ""
+			return "?"
 		}
 	},
 }

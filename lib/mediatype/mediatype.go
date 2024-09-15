@@ -14,3 +14,20 @@ const (
 	Start        MediaType = "application/vnd.org.refude.start+json"
 	Mimetype     MediaType = "application/vnd.org.refude.mimetype+json"
 )
+
+var short = map[MediaType]string{
+	Application:  "Application",
+	Window:       "Window",
+	Tab:          "Tab",
+	File:         "File",
+	Device:       "Device",
+	Notification: "Notification",
+	Trayitem:     "Trayitem",
+	Menu:         "Menu",
+	Start:        "Start",
+	Mimetype:     "Mimetype",
+}
+
+func (m MediaType) Short() string {
+	return short[m]
+}
