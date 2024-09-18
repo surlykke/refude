@@ -8,7 +8,7 @@ import (
 	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/slice"
-	"github.com/surlykke/RefudeServices/lib/xdg"
+	"github.com/surlykke/RefudeServices/lib/tr"
 )
 
 func collectMimetypes() map[string]*Mimetype {
@@ -72,19 +72,19 @@ func collectMimetypes() map[string]*Mimetype {
 			log.Warn(err)
 		} else {
 			for _, tmpComment := range tmp.Comment {
-				if xdg.LocaleMatch(tmpComment.Lang) || (tmpComment.Lang == "" && mimeType.Comment == "") {
+				if tr.LocaleMatch(tmpComment.Lang) || (tmpComment.Lang == "" && mimeType.Comment == "") {
 					mimeType.Comment = tmpComment.Text
 				}
 			}
 
 			for _, tmpAcronym := range tmp.Acronym {
-				if xdg.LocaleMatch(tmpAcronym.Lang) || (tmpAcronym.Lang == "" && mimeType.Acronym == "") {
+				if tr.LocaleMatch(tmpAcronym.Lang) || (tmpAcronym.Lang == "" && mimeType.Acronym == "") {
 					mimeType.Acronym = tmpAcronym.Text
 				}
 			}
 
 			for _, tmpExpandedAcronym := range tmp.ExpandedAcronym {
-				if xdg.LocaleMatch(tmpExpandedAcronym.Lang) || tmpExpandedAcronym.Lang == "" && mimeType.ExpandedAcronym == "" {
+				if tr.LocaleMatch(tmpExpandedAcronym.Lang) || tmpExpandedAcronym.Lang == "" && mimeType.ExpandedAcronym == "" {
 					mimeType.ExpandedAcronym = tmpExpandedAcronym.Text
 				}
 			}

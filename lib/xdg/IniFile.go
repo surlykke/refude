@@ -13,54 +13,13 @@ import (
 	"strings"
 
 	"github.com/surlykke/RefudeServices/lib/log"
+	"github.com/surlykke/RefudeServices/lib/tr"
 )
 
 var commentLine = regexp.MustCompile(`^\s*(#.*)?$`)
 var headerLine = regexp.MustCompile(`^\s*\[(.+?)\]\s*`)
 var keyValueLine = regexp.MustCompile(`^\s*(..+?)(\[(..+)\])?=(.*)`)
 var userDirsLine = regexp.MustCompile(`^\s*(XDG_\w+_DIR)="(.*)"`)
-
-var lcMessage = func() string {
-	if os.Getenv("LC_ALL") != "" {
-		return os.Getenv("LC_ALL")
-	} else if os.Getenv("LC_MESSAGE") != "" {
-		return os.Getenv("LC_MESSAGE")
-	} else {
-		return os.Getenv("LANG")
-	}
-}()
-
-var lcMessagePattern = regexp.MustCompile(`([^_.@]+)(_[^.@]+)?(\.[^@]+)?(@.*)?`) // 1: language, 2: country, 3: encoding, 4: modifier
-var lcMatchers = func() []string {
-	if m := lcMessagePattern.FindStringSubmatch(lcMessage); m != nil {
-		var lang = m[1]
-		var country = m[2]
-		var modifier = m[4]
-
-		if country != "" && modifier != "" {
-			return []string{
-				lang + country + modifier,
-				lang + country,
-				lang + modifier,
-				lang,
-			}
-		} else if country != "" {
-			return []string{
-				lang + country,
-				lang,
-			}
-		} else if modifier != "" {
-			return []string{
-				lang + modifier,
-				lang,
-			}
-		} else {
-			return []string{lang}
-		}
-	} else {
-		return []string{}
-	}
-}()
 
 type Group struct {
 	Name    string
@@ -102,7 +61,7 @@ func ReadIniFile(path string) (IniFile, error) {
 			if currentGroup == nil {
 				return nil, errors.New("Invalid iniFile," + path + ": file must start with a group heading")
 			}
-			if LocaleMatch(m[3]) || (m[3] == "" && currentGroup.Entries[m[1]] == "") {
+			if tr.LocaleMatch(m[3]) || (m[3] == "" && currentGroup.Entries[m[1]] == "") {
 				currentGroup.Entries[m[1]] = m[4]
 			}
 		} else {
@@ -113,19 +72,10 @@ func ReadIniFile(path string) (IniFile, error) {
 	return iniFile, nil
 }
 
-func LocaleMatch(loc string) bool {
-	for _, lm := range lcMatchers {
-		if loc == lm {
-			return true
-		}
-	}
-	return false
-}
-
 func GetFromLocalizedMap(m map[string]string) string {
 	var result = ""
 	for loc, val := range m {
-		if loc != "" && LocaleMatch(loc) {
+		if loc != "" && tr.LocaleMatch(loc) {
 			result = val
 		} else if loc == "" && result == "" {
 			result = val

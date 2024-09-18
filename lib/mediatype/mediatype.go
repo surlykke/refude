@@ -1,5 +1,7 @@
 package mediatype
 
+import "github.com/surlykke/RefudeServices/lib/tr"
+
 type MediaType string
 
 const (
@@ -16,16 +18,16 @@ const (
 )
 
 var short = map[MediaType]string{
-	Application:  "Application",
-	Window:       "Window",
-	Tab:          "Tab",
-	File:         "File",
-	Device:       "Device",
-	Notification: "Notification",
-	Trayitem:     "Trayitem",
-	Menu:         "Menu",
-	Start:        "Start",
-	Mimetype:     "Mimetype",
+	Application:  tr.Tr("Application"),
+	Window:       tr.Tr("Window"),
+	Tab:          tr.Tr("Tab"),
+	File:         tr.Tr("File"),
+	Device:       tr.Tr("Device"),
+	Notification: tr.Tr("Notification"),
+	Trayitem:     tr.Tr("Trayitem"),
+	Menu:         tr.Tr("Menu"),
+	Start:        tr.Tr("Start"),
+	Mimetype:     tr.Tr("Mimetype"),
 }
 
 func (m MediaType) Short() string {
