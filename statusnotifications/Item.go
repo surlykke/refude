@@ -21,17 +21,19 @@ import (
 
 type Item struct {
 	resource.ResourceData
-	sender                  string
-	path                    dbus.ObjectPath
+	DbusSender              string
+	DbusPath                dbus.ObjectPath
 	ItemId                  string
+	SenderPid               uint32
+	SenderAppId             string
 	Category                string
 	Status                  string
 	IconAccessibleDesc      string
 	AttentionIconName       string
+	OverlayIconName         string
 	AttentionAccessibleDesc string
 	ToolTip                 string
-	MenuPath                dbus.ObjectPath
-	Menu                   	string 
+	MenuDbusPath            dbus.ObjectPath
 	IconThemePath           string
 	UseIconPixmap           bool
 	UseAttentionIconPixmap  bool
@@ -46,7 +48,7 @@ func (item *Item) DoPost(w http.ResponseWriter, r *http.Request) {
 	var call *dbus.Call
 	if slice.Among(action, "left", "middle", "right") {
 		action2method := map[string]string{"left": "Activate", "middle": "SecondaryActivate", "right": "ContextMenu"}
-		dbusObj := conn.Object(item.sender, item.path)
+		dbusObj := conn.Object(item.DbusSender, item.DbusPath)
 		call = dbusObj.Call("org.kde.StatusNotifierItem."+action2method[action], dbus.Flags(0), x, y)
 	} else {
 		w.WriteHeader(http.StatusUnprocessableEntity)

@@ -46,7 +46,7 @@ func senderAndPath(serviceName string, sender dbus.Sender) (string, dbus.ObjectP
  */
 func addItem(serviceName string, sender dbus.Sender) *dbus.Error {
 	var s, p = senderAndPath(serviceName, sender)
-	events <- Event{"ItemCreated", s, p}
+	events <- event{"ItemCreated", s, p}
 	return nil
 }
 
@@ -64,7 +64,7 @@ func monitorSignals() {
 				}
 			}
 		} else if strings.HasPrefix(signal.Name, "org.kde.StatusNotifierItem.New") {
-			events <- Event{signal.Name, signal.Sender, signal.Path}
+			events <- event{signal.Name, signal.Sender, signal.Path}
 		} else {
 			log.Info("Ignoring signal", signal.Name, "from", signal.Sender, signal.Path)
 		}
@@ -73,9 +73,9 @@ func monitorSignals() {
 
 func checkItemStatus(sender string) {
 	for _, item := range repo.GetList[*Item]("/item/") {
-		if item.sender == sender {
-			if _, ok := dbuscall.GetSingleProp(conn, item.sender, item.path, ITEM_INTERFACE, "Status"); !ok {
-				events <- Event{"ItemRemoved", item.sender, item.path}
+		if item.DbusSender == sender {
+			if _, ok := dbuscall.GetSingleProp(conn, item.DbusSender, item.DbusPath, ITEM_INTERFACE, "Status"); !ok {
+				events <- event{"ItemRemoved", item.DbusSender, item.DbusPath}
 			}
 		}
 	}
@@ -134,58 +134,92 @@ func getOnTheBus() {
 	)
 }
 
-type Event struct {
-	eventName string // New item: "ItemCreated", otherwise name of relevant dbus signal
-	sender    string
-	path      dbus.ObjectPath
+type event struct {
+	name       string // New item: "ItemCreated", otherwise name of relevant dbus signal
+	dbusSender string
+	dbusPath   dbus.ObjectPath
 }
 
-var events = make(chan Event)
+var events = make(chan event)
 
-func buildItem(itemPath string, sender string, path dbus.ObjectPath) *Item {
+func buildItem(path string, dbusSender string, dbusPath dbus.ObjectPath) *Item {
 	var item = Item{
-		ResourceData: *resource.MakeBase(itemPath, "", "", "", mediatype.Trayitem),
-		sender:       sender,
-		path:         path,
+		ResourceData: *resource.MakeBase(path, "", "", "", mediatype.Trayitem),
+		DbusSender:   dbusSender,
+		DbusPath:     dbusPath,
 	}
-	var props = dbuscall.GetAllProps(conn, item.sender, item.path, ITEM_INTERFACE)
-	item.ItemId = getStringOr(props["Id"])
-	item.Category = getStringOr(props["Category"])
-	item.MenuPath = getDbusPath(props["Menu"])
-	item.Title = getStringOr(props["Title"])
-	item.Status = getStringOr(props["Status"])
-	item.ToolTip = getStringOr(props["ToolTip"])
 
-	if item.IconThemePath = getStringOr(props["IconThemePath"]); item.IconThemePath != "" {
+	if err := conn.BusObject().Call("org.freedesktop.DBus.GetConnectionUnixProcessID", 0, dbusSender).Store(&item.SenderPid); err != nil {
+		log.Warn("get processid err:", err)
+	}
+
+	var props = dbuscall.GetAllProps(conn, item.DbusSender, item.DbusPath, ITEM_INTERFACE)
+	item.ItemId = getString(props["Id"])
+	item.Category = getString(props["Category"])
+	item.MenuDbusPath = getDbusPath(props["Menu"])
+	if item.IconThemePath = getString(props["IconThemePath"]); item.IconThemePath != "" {
 		icons.AddBasedir(item.IconThemePath)
 	}
 
-	var iconUrl = ""
-	if item.UseIconPixmap = getStringOr(props["IconName"]) == ""; item.UseIconPixmap {
-		iconUrl = icons.UrlFromName(collectPixMap(props["IconPixmap"]))
-	} else {
-		iconUrl = icons.UrlFromName(getStringOr(props["IconName"]))
-	}
-	if iconUrl != "" {
-		item.SetIconHref(iconUrl)
-	}
+	RetrieveTitle(&item)
+	RetrieveStatus(&item)
+	RetrieveToolTip(&item)
 
-	if item.UseAttentionIconPixmap = getStringOr(props["AttentionIconName"]) == ""; item.UseAttentionIconPixmap {
-		item.AttentionIconName = collectPixMap(props["AttentionIconPixmap"])
-	} else {
-		item.AttentionIconName = getStringOr(props["AttentionIconName"])
-	}
-
-	item.UseOverlayIconPixmap = getStringOr(props["OverlayIconName"]) == "" // TODO
-
+	RetrieveIcon(&item)
+	RetrieveAttentionIcon(&item)
+	RetrieveOverlayIcon(&item)
 	return &item
+}
+
+//case "NewTitle", "NewIcon", "NewAttentionIcon", "NewOverlayIcon", "NewToolTip","NewStatus":
+
+func RetrieveTitle(item *Item) {
+	if prop, ok := getProp(item.DbusSender, item.DbusPath, "Title"); ok {
+		item.Title = getString(prop)
+	}
+}
+
+func RetrieveIcon(item *Item) {
+	if prop, ok := getProp(item.DbusSender, item.DbusPath, "IconName"); ok {
+		item.SetIconHref(icons.UrlFromName(getString(prop)))
+	} else if prop, ok = getProp(item.DbusSender, item.DbusPath, "IconPixmap"); ok {
+		item.SetIconHref(icons.UrlFromName(collectPixMap(prop)))
+	}
+}
+
+func RetrieveAttentionIcon(item *Item) {
+	if prop, ok := getProp(item.DbusSender, item.DbusPath, "AttentionIconName"); ok {
+		item.AttentionIconName = getString(prop)
+	} else if prop, ok = getProp(item.DbusSender, item.DbusPath, "AttentionIconPixmap"); ok {
+		item.AttentionIconName = collectPixMap(prop)
+	}
+}
+
+func RetrieveOverlayIcon(item *Item) {
+	if prop, ok := getProp(item.DbusSender, item.DbusPath, "OverlayIconName"); ok {
+		item.OverlayIconName = getString(prop)
+	} else if prop, ok = getProp(item.DbusSender, item.DbusPath, "OverlayIconPixmap"); ok {
+		item.OverlayIconName = collectPixMap(prop)
+	}
+}
+
+func RetrieveToolTip(item *Item) {
+	if prop, ok := getProp(item.DbusSender, item.DbusPath, "ToolTip"); ok {
+		item.ToolTip = getString(prop)
+	}
+}
+
+func RetrieveStatus(item *Item) {
+	if prop, ok := getProp(item.DbusSender, item.DbusPath, "Status"); ok {
+		item.Status = getString(prop)
+	}
 }
 
 func getProp(sender string, path dbus.ObjectPath, propname string) (dbus.Variant, bool) {
 	return dbuscall.GetSingleProp(conn, sender, path, ITEM_INTERFACE, propname)
 }
 
-func getStringOr(v dbus.Variant) string {
+func getString(v dbus.Variant) string {
 	if res, ok := v.Value().(string); ok {
 		return res
 	}
@@ -193,7 +227,7 @@ func getStringOr(v dbus.Variant) string {
 	return ""
 }
 
-func getBoolOr(variant dbus.Variant, fallback bool) bool {
+func getBool(variant dbus.Variant, fallback bool) bool {
 	if res, ok := variant.Value().(bool); ok {
 		return res
 	}
@@ -201,7 +235,7 @@ func getBoolOr(variant dbus.Variant, fallback bool) bool {
 	return fallback
 }
 
-func getInt32Or(variant dbus.Variant, fallback int32) int32 {
+func getInt32(variant dbus.Variant, fallback int32) int32 {
 	if res, ok := variant.Value().(int32); ok {
 		return res
 	}

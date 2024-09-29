@@ -25,6 +25,19 @@ func Remove(path string) {
 	delete(resources, path)
 }
 
+func RemoveTyped[T resource.Resource](path string) (T, bool) {
+	lock.Lock()
+	defer lock.Unlock()
+	if r, ok := resources[path]; ok {
+		if t, ok := r.(T); ok {
+			delete(resources, path)
+			return t, true
+		}
+	}
+	var t T
+	return t, false
+}
+
 func Replace(resList []resource.Resource, prefix string) {
 	lock.Lock()
 	defer lock.Unlock()

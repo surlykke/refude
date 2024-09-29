@@ -17,27 +17,42 @@ func Run() {
 	go monitorSignals()
 
 	for event := range events {
-		var id = pathEscape(event.sender, event.path)
-		var itemPath = "/item/" + id
-		var menuPath = "/menu/" + id
-		if event.eventName == "ItemRemoved" {
-			repo.Remove(itemPath)
-			repo.Remove(menuPath)
-		} else {
-			// Assume it's ItemCreated or property update
-			// A bit bruteforce - if it's a propertychange we could just
-			// retrieve that propery. This is simpler, and probably not too bad
-			var item = buildItem(itemPath, event.sender, event.path)
-			if item.MenuPath != "" {
-				var menuPath = "/menu/" + pathEscape(event.sender, item.MenuPath)
+		var path = "/item/" + event.dbusSender + string(event.dbusPath)
+		switch event.name {
+		case "ItemRemoved":
+			if i, ok := repo.RemoveTyped[*Item](path); ok {
+				repo.Remove("/menu" + i.DbusSender + string(i.MenuDbusPath))
+			}
+		case "ItemCreated":
+			var item = buildItem(path, event.dbusSender, event.dbusPath)
+			if item.MenuDbusPath != "" {
+				var menuPath = "/menu/" + event.dbusSender + string(item.MenuDbusPath)
 				item.AddLink(menuPath, "", "", relation.Menu)
 				repo.Put(&Menu{
 					ResourceData: *resource.MakeBase(menuPath, "Menu", "", "", mediatype.Menu),
-					sender:       event.sender,
-					path:         item.MenuPath,
+					DbusSender:   event.dbusSender,
+					DbusPath:     item.MenuDbusPath,
 				})
 			}
 			repo.Put(item)
+		case "NewTitle", "NewIcon", "NewAttentionIcon", "NewOverlayIcon", "NewToolTip", "NewStatus":
+			if item, ok := repo.Get[*Item](path); ok {
+				var copy = *item
+				switch event.name {
+				case "NewTitle":
+				case "NewIcon":
+					RetrieveIcon(&copy)
+				case "NewAttentionIcon":
+					RetrieveAttentionIcon(&copy)
+				case "NewOverlayIcon":
+					RetrieveOverlayIcon(&copy)
+				case "NewToolTip":
+					RetrieveToolTip(&copy)
+				case "NewStatus":
+					RetrieveStatus(&copy)
+				}
+
+			}
 		}
 	}
 }

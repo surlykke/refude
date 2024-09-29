@@ -1,4 +1,5 @@
+
 {{range .Items}}
-	<img src="{{.IconUrl}}" height="22" width="22"/>
+<img src="{{.IconUrl}}" height="22" width="22" onclick="setMenu('{{.MenuPath}}', event)" style="float:right"/>
 {{end}}
-	
+<div id="menu" hx-get="/desktop/tray/menu" hx-trigger="fetchMenu" hx-vals="js:{menuPath: currentMenu}" style="clear: both;">	

@@ -30,11 +30,17 @@ let focusFirst = () => {
 let selectedHref = () => document.activeElement?.dataset.href
 
 let doEscape = shiftKey => {
-	let state = history.pop()
-	if (state && !shiftKey) {
-		setResourceHref(state.path, state.term)
-	} else {
+	if (shiftKey) {
 		dismiss()
+	} else if (currentMenu) {
+		setMenu()
+	} else {
+		let state = history.pop()
+		if (state) {
+			setResourceHref(state.path, state.term)
+		} else {
+			dismiss()
+		}
 	}
 }
 
@@ -50,7 +56,13 @@ let doDelete = ctrl => fetch(selectedHref(), { method: "delete" }).then(resp => 
 let dismiss = () => window.close()
 
 let onKeyDown = event => {
+
 	let { key, ctrlKey, altKey, shiftKey } = event;
+	console.log("onKeyDown:", key, ctrlKey, altKey, shiftKey)
+
+	if (key !== "Escape") {
+		setMenu()
+	}
 	if ((key === "Escape" && !ctrlKey && !altKey) || key === 'ArrowLeft' || (key === 'o' && ctrlKey)) {
 		doEscape(shiftKey)
 	} else if ((key === "Enter" && altKey && !shiftKey) || key === 'ArrowRight' || (key === ' ' && ctrlKey)) {
@@ -84,3 +96,32 @@ let nextLink = up => {
 
 window.addEventListener('htmx:noSSESourceError', (e) => console.log(e));
 document.addEventListener("keydown", onKeyDown)
+
+let currentMenu
+let setMenu = (menu, ev) => {
+	console.log("setMenu", menu, ev)
+	ev && ev.stopPropagation()
+	if (menu && menu !== currentMenu) {
+		currentMenu = menu
+		document.getElementById('menu').dispatchEvent(new Event('fetchMenu'))
+	} else {
+		currentMenu = undefined
+		document.getElementById('menu').innerHTML = ''
+	}
+}
+
+let toggleClosed = ev => {
+	console.log("click", ev.target, ev.currentTarget)
+	ev.currentTarget.classList.toggle("closed")
+	ev.stopPropagation()
+}
+
+let execute = (ev, id) => {
+	console.log("execute ", id)
+	ev.stopPropagation()
+	console.log("posting against", currentMenu + "?id=" + id)
+	fetch(currentMenu + "?id=" + id, { method: "post" }).then(resp => {
+		console.log("resp:", resp.status);
+		resp.ok && setMenu()
+	})
+}

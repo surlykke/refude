@@ -1,6 +1,7 @@
 package icons
 
 import (
+	"fmt"
 	"os"
 	"path"
 	"path/filepath"
@@ -162,6 +163,7 @@ func determineDefaultThemeId() string {
 
 			if bytes, err := os.ReadFile(iniFile); err == nil {
 				if matches := iconThemeDefPattern.FindStringSubmatch(string(bytes)); matches != nil {
+					fmt.Println("Using", matches[1], "as default theme")
 					return matches[1]
 				}
 			}

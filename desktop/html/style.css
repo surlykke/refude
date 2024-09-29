@@ -1,7 +1,7 @@
 @charset "UTF-8";
 html, body {
-    background-color:#00151b;
-    color:  darkgray;
+    background-color: azure;
+    color:  black;
 	font-size: 1.1em;
 }
 #resource {
@@ -27,4 +27,33 @@ html, body {
 	top: 8px;
 }
 
-
+#menu {
+	position: absolute;
+	top: 32px;
+	z-axis: 8;
+	right: 4px;
+    background-color: azure;
+    color:  black;
+	border: solid black 1px;
+}
+ul {
+	list-style-type: none;
+  	padding-bottom: 3px;
+    padding-left: 1em;
+	cursor: default;
+}
+li {
+	padding: 3px 0 0 0;
+    width: 16em;
+}
+li>span:hover {
+	text-decoration: underline;
+}
+.menuSeparator {
+    border-bottom: solid 1px grey;
+    width: 4em;
+    margin: 10px 0 10px 0;
+}
+li.closed>ul {
+	display: none;
+}

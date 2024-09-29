@@ -17,13 +17,13 @@ import (
 	"github.com/surlykke/RefudeServices/applications"
 	"github.com/surlykke/RefudeServices/file"
 	"github.com/surlykke/RefudeServices/lib/log"
-	"github.com/surlykke/RefudeServices/lib/mediatype"
 	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/repo"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/power"
+	"github.com/surlykke/RefudeServices/statusnotifications"
 	"github.com/surlykke/RefudeServices/wayland"
 )
 
@@ -32,22 +32,14 @@ var sources embed.FS
 
 var resourceTemplate *template.Template
 var rowTemplate *template.Template
+var trayTemplate *template.Template
+var menuTemplate *template.Template
 var StaticServer http.Handler
 
 var funcMap = template.FuncMap{
 	// The name "inc" is what the function will be called in the template text.
 	"inc": func(i int) int {
 		return i + 1
-	},
-	"comment": func(l resource.Link) string {
-		switch l.Type {
-		case mediatype.Window, mediatype.Tab:
-			return "Focus"
-		case mediatype.Application:
-			return "Launch"
-		default:
-			return "?"
-		}
 	},
 }
 
@@ -65,10 +57,21 @@ func init() {
 	}
 	rowTemplate = template.Must(template.New("rowTemplate").Funcs(funcMap).Parse(string(bytes)))
 
+	if bytes, err = sources.ReadFile("html/trayTemplate.html"); err != nil {
+		log.Panic(err)
+	}
+	trayTemplate = template.Must(template.New("trayTemplate").Funcs(funcMap).Parse(string(bytes)))
+
+	if bytes, err = sources.ReadFile("html/menuTemplate.html"); err != nil {
+		log.Panic(err)
+	}
+	menuTemplate = template.Must(template.New("menuTemplate").Funcs(funcMap).Parse(string(bytes)))
+
 }
 
 type item struct {
-	IconUrl string
+	IconUrl  string
+	MenuPath string
 }
 
 func init() {
@@ -121,20 +124,32 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				log.Warn("Error executing rowTemplate:", err)
 			}
 		}
-	/* FIXME case "/desktop/tray":
+	case "/desktop/tray":
+		if r.Method != "GET" {
+			respond.NotAllowed(w)
+		} else {
+			var items = make([]item, 0, 10)
+			for _, i := range repo.GetListSortedByPath[*statusnotifications.Item]("/item/") {
+				var iconUrl = i.GetLinks().Get(relation.Icon).Href
+				var menuPath, _ = resource.GetPath(i.GetLinks().Get(relation.Menu))
+				items = append(items, item{IconUrl: iconUrl, MenuPath: menuPath})
+			}
+			if err := trayTemplate.Execute(w, map[string]any{"Items": items}); err != nil {
+				log.Warn("Error executing bodyTemplate:", err)
+			}
 
-	if r.Method != "GET" {
-		respond.NotAllowed(w)
-	} else {
-		var items = make([]item, 0, 10)
-		for _, i := range repo.GetListSortedByPath[*statusnotifications.Item]("/item/") {
-			items = append(items, item{IconUrl: i.GetIconUrl()})
 		}
-		if err := bodyTemplate.Execute(w, map[string]any{"Items": items}); err != nil {
-			log.Warn("Error executing bodyTemplate:", err)
+	case "/desktop/tray/menu":
+		var menuPath = requests.GetSingleQueryParameter(r, "menuPath", "??")
+		if menu, ok := repo.Get[*statusnotifications.Menu](menuPath); !ok {
+			respond.NotFound(w)
+		} else if entries, err := menu.Entries(); err != nil {
+			respond.ServerError(w, err)
+		} else {
+			if err := menuTemplate.Execute(w, entries); err != nil {
+				log.Warn("Error executing menuTemplate:", err)
+			}
 		}
-
-	}*/
 	default:
 		if strings.HasSuffix(r.URL.Path, "Template.html") {
 			respond.NotFound(w)

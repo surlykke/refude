@@ -1,0 +1,24 @@
+{{define "menu" }}
+<ul>
+{{ range . }}
+	{{if eq .Type "standard"}}
+		{{if gt (len .SubEntries) 0 }}
+			<li class="submenu closed" onclick="toggleClosed(event)">
+				<img src="{{.IconUrl}}&size=16" width="16" height="16" alt=""/>
+				<span>{{.Label}}</span>
+				{{template "menu" .SubEntries}}
+			</li>
+		{{else}}
+		<li onclick="execute(event, '{{.Id}}')">
+				<img src="{{.IconUrl}}&size=16" width="16" height="16" alt=""/>
+				<span>{{.Label}}</span>
+			</li>
+		{{end}}
+	{{end}}
+	{{if eq .Type "separator"}}
+		<li class="menuSeparator"></li>
+	{{end}}
+{{ end }}
+</ul>
+{{end}}
+{{template "menu" .}}

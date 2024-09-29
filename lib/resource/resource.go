@@ -197,6 +197,14 @@ func normalizeHref(href string) string {
 	}
 }
 
+func GetPath(l Link) (string, bool) {
+	if strings.HasPrefix(l.Href, "http://localhost:7938") {
+		return l.Href[len("http://localhost:7938"):], true
+	} else {
+		return "", false
+	}
+}
+
 type RankedLink struct {
 	Link
 	Rank int
