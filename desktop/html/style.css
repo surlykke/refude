@@ -1,7 +1,7 @@
 @charset "UTF-8";
 html, body {
-    background-color: azure;
-    color:  black;
+	background-color:#00151b;
+    color:  lightgrey;
 	font-size: 1.1em;
 }
 #resource {
@@ -12,11 +12,12 @@ html, body {
 	gap: 8px;
 	font-size: 1.1em;
 }
-#rows { display: table;}
-.row { display: table-row; }
-.cell { 
-	display: table-cell; 
+td { 
 	padding: 4px;
+	outline: none;
+}
+td.title:focus {
+	text-decoration: underline
 }
 .comment {
 	font-size: 0.8em;
@@ -32,9 +33,9 @@ html, body {
 	top: 32px;
 	z-axis: 8;
 	right: 4px;
-    background-color: azure;
-    color:  black;
-	border: solid black 1px;
+	background-color:#00151b;
+    color:  lightgrey;
+	border: solid lightgrey 1px;
 }
 ul {
 	list-style-type: none;

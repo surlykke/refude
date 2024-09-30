@@ -1,14 +1,17 @@
 {{range $i, $link := .Links}}
-<div class="row">
-	<div class="cell icon">	
+<tr>
+	<td rowspan="2">	
 		{{if .IconUrl}}
-		<img src="{{.IconUrl}}" height="20" width="20">
+		<img src="{{.IconUrl}}" height="32" width="32">
 		{{end}}
-	</div>
-	<div class="cell title" tabindex="{{inc $i}}" data-href={{.Href}} data-rel="{{.Relation}}" class="link">{{.Title}}</div>
-</div>
-<div class="row">
-	<div class="cell"></div>
-	<div class="cell comment"> {{$link.Type.Short}} </div>
-</div>
+	</td>
+	<td tabindex="{{inc $i}}" data-href={{.Href}} data-rel="{{.Relation}}" class="title">
+		{{.Title}}
+	</td>
+</tr>
+<tr>
+	<td class="comment">
+		{{$link.Type.Short}} 
+	</td>
+</tr>
 {{end}}
