@@ -94,14 +94,32 @@ let nextLink = up => {
 	}
 }
 
-window.addEventListener('htmx:noSSESourceError', (e) => console.log(e));
-document.addEventListener("keydown", onKeyDown)
+let doLeftClick = ev => {
+	ev.stopPropagation()
+	let e = ev.currentTarget
+	if ("LI" === e.tagName) {
+		if (e.classList.contains('submenu')) {
+			toggleClosed(e)
+		} else {
+			execute(e.dataset.id)
+		}
+		return
+	} else if ("IMG" === e.tagName) {
+		let itemPath = e.dataset.item
+		fetch(itemPath, { method: "post" })
+	}
+	setMenu()
+}
+
+let doRightClick = ev => {
+	ev.stopPropagation()
+	ev.preventDefault()
+	setMenu(ev.currentTarget.dataset.menu)
+}
 
 let currentMenu
-let setMenu = (menu, ev) => {
-	console.log("setMenu", menu, ev)
-	ev && ev.stopPropagation()
-	if (menu && menu !== currentMenu) {
+let setMenu = menu => {
+	if (menu) {
 		currentMenu = menu
 		document.getElementById('menu').dispatchEvent(new Event('fetchMenu'))
 	} else {
@@ -110,18 +128,12 @@ let setMenu = (menu, ev) => {
 	}
 }
 
-let toggleClosed = ev => {
-	console.log("click", ev.target, ev.currentTarget)
-	ev.currentTarget.classList.toggle("closed")
-	ev.stopPropagation()
-}
+let toggleClosed = element => element.classList.toggle("closed")
+let execute = id => fetch(currentMenu + "?id=" + id, { method: "post" }).then(resp => { resp.ok && setMenu() })
 
-let execute = (ev, id) => {
-	console.log("execute ", id)
-	ev.stopPropagation()
-	console.log("posting against", currentMenu + "?id=" + id)
-	fetch(currentMenu + "?id=" + id, { method: "post" }).then(resp => {
-		console.log("resp:", resp.status);
-		resp.ok && setMenu()
-	})
-}
+
+window.addEventListener('htmx:noSSESourceError', (e) => console.log(e));
+document.addEventListener("keydown", onKeyDown)
+window.addEventListener("click", doLeftClick)
+
+

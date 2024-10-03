@@ -23,6 +23,12 @@ import (
 	"github.com/surlykke/RefudeServices/lib/slice"
 )
 
+type Menu struct {
+	resource.ResourceData
+	DbusSender string
+	DbusPath   dbus.ObjectPath
+}
+
 type MenuEntry struct {
 	Id          string
 	Type        string
@@ -34,12 +40,6 @@ type MenuEntry struct {
 	ToggleType  string     `json:",omitempty"`
 	ToggleState int32
 	SubEntries  []MenuEntry `jsoControllern:",omitempty"`
-}
-
-type Menu struct {
-	resource.ResourceData
-	DbusSender string
-	DbusPath   dbus.ObjectPath
 }
 
 var emptyList = []byte("[]")

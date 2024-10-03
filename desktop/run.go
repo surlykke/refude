@@ -71,6 +71,7 @@ func init() {
 
 type item struct {
 	IconUrl  string
+	ItemPath string
 	MenuPath string
 }
 
@@ -131,8 +132,9 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			var items = make([]item, 0, 10)
 			for _, i := range repo.GetListSortedByPath[*statusnotifications.Item]("/item/") {
 				var iconUrl = i.GetLinks().Get(relation.Icon).Href
+
 				var menuPath, _ = resource.GetPath(i.GetLinks().Get(relation.Menu))
-				items = append(items, item{IconUrl: iconUrl, MenuPath: menuPath})
+				items = append(items, item{IconUrl: iconUrl, ItemPath: i.Path, MenuPath: menuPath})
 			}
 			if err := trayTemplate.Execute(w, map[string]any{"Items": items}); err != nil {
 				log.Warn("Error executing bodyTemplate:", err)
