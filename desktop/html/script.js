@@ -106,7 +106,7 @@ let doLeftClick = ev => {
 		return
 	} else if ("IMG" === e.tagName) {
 		let itemPath = e.dataset.item
-		fetch(itemPath, { method: "post" })
+		fetch(itemPath, { method: "post" }).then(resp => resp.ok && dismiss())
 	}
 	setMenu()
 }
