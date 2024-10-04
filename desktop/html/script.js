@@ -101,12 +101,12 @@ let doLeftClick = ev => {
 		if (e.classList.contains('submenu')) {
 			toggleClosed(e)
 		} else {
-			execute(e.dataset.id)
+			fetch(currentMenu + "?id=" + e.dataset.id, { method: "post" })
 		}
 		return
 	} else if ("IMG" === e.tagName) {
 		let itemPath = e.dataset.item
-		fetch(itemPath, { method: "post" }).then(resp => resp.ok && dismiss())
+		fetch(itemPath, { method: "post" })
 	}
 	setMenu()
 }
@@ -129,7 +129,6 @@ let setMenu = menu => {
 }
 
 let toggleClosed = element => element.classList.toggle("closed")
-let execute = id => fetch(currentMenu + "?id=" + id, { method: "post" }).then(resp => { resp.ok && setMenu() })
 
 
 window.addEventListener('htmx:noSSESourceError', (e) => console.log(e));
