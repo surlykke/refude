@@ -101,7 +101,7 @@ let doLeftClick = ev => {
 		if (e.classList.contains('submenu')) {
 			toggleClosed(e)
 		} else {
-			fetch(currentMenu + "?id=" + e.dataset.id, { method: "post" })
+			fetch(currentMenu + "?id=" + e.dataset.id, { method: "post" }).then(resp => resp.ok && setMenu())
 		}
 		return
 	} else if ("IMG" === e.tagName) {
