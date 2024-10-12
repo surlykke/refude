@@ -1,0 +1,19 @@
+{{range $i, $link := .Links}}
+<div class="result">
+	<div>
+		{{if .IconUrl}}
+			<img src="{{.IconUrl}}" height="32" width="32">
+		{{end}}
+	</div>
+	<div>
+		<div tabindex="{{inc $i}}" data-href={{.Href}} data-rel="{{.Relation}}" class="title">
+			{{.Title}}
+		</div>
+		<div>
+			{{$link.Type.Short}} 
+		</div>
+		<div id="{{.Href}}" hx-get="/desktop/details?path={{.Href}}" hx-trigger="details"> 
+		</div>
+	</div>
+</div>
+{{end}}

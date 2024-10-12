@@ -14,15 +14,17 @@ import (
 	"os"
 	"strings"
 
-	"github.com/surlykke/RefudeServices/applications"
 	"github.com/surlykke/RefudeServices/file"
 	"github.com/surlykke/RefudeServices/lib/log"
+	"github.com/surlykke/RefudeServices/lib/mediatype"
 	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/repo"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
+	"github.com/surlykke/RefudeServices/lib/tr"
 	"github.com/surlykke/RefudeServices/power"
+	"github.com/surlykke/RefudeServices/search"
 	"github.com/surlykke/RefudeServices/statusnotifications"
 	"github.com/surlykke/RefudeServices/wayland"
 )
@@ -93,33 +95,42 @@ func init() {
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch r.URL.Path {
-	case "/desktop/resource":
-		if r.Method != "GET" {
-			respond.NotAllowed(w)
-		} else if res := getResource(r); res == nil {
-			respond.NotFound(w)
-		} else {
-			var m = map[string]any{
-				"Title": res.GetTitle(),
-				"Icon":  res.GetLinks().Get(relation.Icon).Href,
-				"Path":  res.GetPath(),
-			}
-			m["Data"] = defaultData(res)
-			if err := resourceTemplate.Execute(w, m); err != nil {
-				log.Warn("Error executing resourceTemplate:", err)
-			}
-
-		}
 	case "/desktop/search":
 		if r.Method != "GET" {
 			respond.NotAllowed(w)
-		} else if res := getResource(r); res == nil {
-			respond.NotFound(w)
 		} else {
+			var tabindex = 0
+
 			var term = strings.ToLower(requests.GetSingleQueryParameter(r, "search", ""))
+			var expandedResource = requests.GetSingleQueryParameter(r, "details", "")
+			var links = search.Search(term)
+			var results = make([]result, 0, len(links))
+			var resultToFocus = 0
+			for i, link := range links {
+				tabindex++
+				var r = linkAsResult(link, tabindex)
+				if r.Path == expandedResource {
+					if res := getResource(expandedResource); res != nil {
+						var rDet = &resourceDetails{Description: description(res)}
+						for _, actionLink := range res.Data().GetLinks(relation.DefaultAction, relation.Action, relation.Delete) {
+							tabindex++
+							rDet.Actions = append(rDet.Actions, linkAsResult(actionLink, tabindex))
+						}
+						r.Details = rDet
+						resultToFocus = i
+					}
+				} else {
+					r.Comment = link.Type.Short()
+				}
+
+				results = append(results, r)
+			}
+			if len(results) > 0 {
+				results[resultToFocus].Autofocus = "autofocus"
+			}
 			var m = map[string]any{
-				"Term":  term,
-				"Links": res.Search(term).FilterAndSort(term),
+				"term":    term,
+				"results": results,
 			}
 			if err := rowTemplate.Execute(w, m); err != nil {
 				log.Warn("Error executing rowTemplate:", err)
@@ -131,9 +142,10 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		} else {
 			var items = make([]item, 0, 10)
 			for _, i := range repo.GetListSortedByPath[*statusnotifications.Item]("/item/") {
-				var iconUrl = i.GetLinks().Get(relation.Icon).Href
+				var iconUrl = i.GetLink(relation.Icon).Href
 
-				var menuPath, _ = resource.GetPath(i.GetLinks().Get(relation.Menu))
+				var menuPath = resource.GetPath(i.GetLink(relation.Menu))
+
 				items = append(items, item{IconUrl: iconUrl, ItemPath: i.Path, MenuPath: menuPath})
 			}
 			if err := trayTemplate.Execute(w, map[string]any{"Items": items}); err != nil {
@@ -161,71 +173,56 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func getResource(r *http.Request) resource.Resource {
-	var resourcePath = strings.Replace(requests.GetSingleQueryParameter(r, "path", "/start"), "http://localhost:7938", "", 1)
-	if strings.HasPrefix(resourcePath, "/file/") {
-		return file.GetResource(resourcePath)
+func getResource(path string) resource.Resource {
+	if strings.HasPrefix(path, "/file/") {
+		return file.GetResource(path)
 	} else {
-		return repo.GetUntyped(resourcePath)
+		return repo.GetUntyped(path)
 	}
 }
 
-func defaultData(res resource.Resource) [][]string {
+func linkAsResult(lnk resource.Link, tabindex int) result {
+	return result{IconUrl: lnk.IconUrl,
+		Title:    lnk.Title,
+		Tabindex: tabindex,
+		Path:     resource.GetPath(lnk),
+		Relation: lnk.Relation}
+}
 
-	switch res.GetType() {
-	case "window":
+type result struct {
+	IconUrl   string
+	Title     string
+	Tabindex  int
+	Path      string
+	Relation  relation.Relation
+	Autofocus string
+	Comment   string
+	Details   *resourceDetails
+}
+
+type resourceDetails struct {
+	Description string
+	Actions     []result
+}
+
+func description(res resource.Resource) string {
+	switch res.Data().Type {
+	case mediatype.Window:
 		var window = res.(*wayland.WaylandWindow)
-		return [][]string{
-			{"Wid", fmt.Sprintf("%d", window.Wid)},
-			{"AppId", window.AppId},
-			{"State", window.State.String()},
-		}
-	case "application":
-		var application = res.(*applications.DesktopApplication)
-		return [][]string{
-			{"Type", application.Type},
-			{"Version", application.Version},
-			{"GenericName", application.GenericName},
-			{"NoDisplay", showBool(application.NoDisplay)},
-			{"Exec", application.Exec},
-			{"Terminal", showBool(application.Terminal)},
-			{"Categories", strings.Join(application.Categories, ", ")},
-			{"DesktopId", application.DesktopId},
-			{"Mimetypes", strings.Join(application.Mimetypes, ", ")},
-			{"DesktopFile", application.DesktopFile},
-		}
-	case "device":
+		return window.AppId
+	case mediatype.Device:
 		var dev = res.(*power.Device)
-		return [][]string{
-			{"Energy", fmt.Sprintf("%f", dev.Energy)},
-			{"EnergyEmpty", fmt.Sprintf("%f", dev.EnergyEmpty)},
-			{"EnergyFull", fmt.Sprintf("%f", dev.EnergyFull)},
-			{"EnergyFullDesign", fmt.Sprintf("%f", dev.EnergyFullDesign)},
-			{"EnergyRate", fmt.Sprintf("%f", dev.EnergyRate)},
-			{"Percentage", fmt.Sprintf("%d", dev.Percentage)},
-			{"TimeToEmpty", fmt.Sprintf("%d", dev.TimeToEmpty)},
-			{"TimeToFull", fmt.Sprintf("%d", dev.TimeToFull)},
-			{"DisplayDevice", showBool(dev.DisplayDevice)},
-			{"NativePath", dev.NativePath},
-			{"Vendor", dev.Vendor},
-			{"Model", dev.Model},
-			{"Serial", dev.Serial},
-			{"UpdateTime", fmt.Sprintf("%d", dev.UpdateTime)},
-			{"Type", dev.Type},
-			{"PowerSupply", showBool(dev.PowerSupply)},
-			{"Online", showBool(dev.Online)},
-			{"Voltage", fmt.Sprintf("%f", dev.Voltage)},
-			{"IsPresent", showBool(dev.IsPresent)},
-			{"State", dev.State},
-			{"IsRechargeable", showBool(dev.IsRechargeable)},
-			{"Capacity", fmt.Sprintf("%f", dev.Capacity)},
-			{"Technology", dev.Technology},
-			{"Warninglevel", dev.Warninglevel},
-			{"Batterylevel", dev.Batterylevel},
+		if dev.Type == "Line Power" {
+			if dev.Online {
+				return tr.Tr("Plugged in")
+			} else {
+				return tr.Tr("Not plugged in")
+			}
+		} else {
+			return fmt.Sprintf("%s %d%% - %s", tr.Tr("Level"), dev.Percentage, dev.State)
 		}
-
 	default:
-		return [][]string{}
+		return ""
 	}
 }
 

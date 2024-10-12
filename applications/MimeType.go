@@ -19,6 +19,7 @@ const freedesktopOrgXml = "/usr/share/mime/packages/freedesktop.org.xml"
 type Mimetype struct {
 	resource.ResourceData
 	Id              string
+	Comment         string
 	Acronym         string `json:",omitempty"`
 	ExpandedAcronym string `json:",omitempty"`
 	Aliases         []string

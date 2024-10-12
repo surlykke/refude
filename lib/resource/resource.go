@@ -8,7 +8,6 @@ package resource
 import (
 	"net/http"
 	"slices"
-	"sort"
 	"strings"
 
 	"github.com/sahilm/fuzzy"
@@ -18,13 +17,7 @@ import (
 )
 
 type Resource interface {
-	GetPath() string
-	GetTitle() string
-	GetComment() string
-	GetType() mediatype.MediaType
-	GetLinks() LinkList
-	GetKeywords() []string
-	Search(term string) LinkList
+	Data() *ResourceData
 	OmitFromSearch() bool
 }
 
@@ -51,38 +44,33 @@ func MakeBase(path, title, comment, iconUrl string, mType mediatype.MediaType) *
 	return &br
 }
 
-func (this *ResourceData) GetPath() string {
-	return this.Path
+func (this *ResourceData) Data() *ResourceData {
+	return this
 }
 
-func (this *ResourceData) GetTitle() string {
-	return this.Title
-}
-
-func (this *ResourceData) GetComment() string {
-	return this.Comment
-}
-
-func (this *ResourceData) GetType() mediatype.MediaType {
-	return this.Type
-}
-
-func (this *ResourceData) GetLinks() LinkList {
-	return this.Links
-}
-
-func (this *ResourceData) GetKeywords() []string {
-	return this.Keywords
-}
-
-func (this *ResourceData) Search(term string) LinkList {
-	var result = make(LinkList, 0, 10)
-	for _, lnk := range this.GetLinks() {
-		if lnk.Relation == relation.DefaultAction || lnk.Relation == relation.Action || lnk.Relation == relation.Delete {
-			result = append(result, lnk)
+func (this *ResourceData) GetLink(rel relation.Relation) Link {
+	for _, link := range this.Links {
+		if rel == link.Relation {
+			return link
 		}
 	}
-	return result
+	return Link{}
+}
+
+func (this *ResourceData) GetLinks(relations ...relation.Relation) []Link {
+	if len(relations) == 0 {
+		return slices.Clone(this.Links)
+	} else {
+		var result = make([]Link, 0, len(this.Links))
+		for _, lnk := range this.Links {
+			for _, rel := range relations {
+				if lnk.Relation == rel {
+					result = append(result, lnk)
+				}
+			}
+		}
+		return result
+	}
 }
 
 func (this *ResourceData) OmitFromSearch() bool {
@@ -90,24 +78,17 @@ func (this *ResourceData) OmitFromSearch() bool {
 }
 
 func (this *ResourceData) SetIconHref(iconUrl string) {
-	this.Links = this.Links.set(iconUrl, "", "", relation.Icon)
-}
-
-func (this *ResourceData) SetSearchHref(searchUrl string) {
-	this.Links = this.Links.set(searchUrl, "", "", relation.Search)
+	for i := 0; i < len(this.Links); i++ {
+		if this.Links[i].Relation == relation.Icon {
+			this.Links[i].Href = iconUrl
+			return
+		}
+	}
+	this.Links = append(this.Links, Link{Href: iconUrl, Relation: relation.Icon})
 }
 
 func (this *ResourceData) AddLink(href string, title string, iconUrl string, rel relation.Relation) {
-	this.Links = this.Links.add(href, title, iconUrl, rel)
-}
-
-func (this *ResourceData) GetDefaultAction() (Link, bool) {
-	for _, lnk := range this.Links {
-		if lnk.Relation == relation.DefaultAction {
-			return lnk, true
-		}
-	}
-	return Link{}, false
+	this.Links = append(this.Links, Link{Href: href, Title: title, IconUrl: iconUrl, Relation: rel})
 }
 
 var httpLocalHost7838 = []byte("http://localhost:7938")
@@ -123,36 +104,6 @@ type Link struct {
 }
 
 type LinkList []Link
-
-func (ll LinkList) add(href, title, iconUrl string, relation relation.Relation) LinkList {
-	var res = slices.Clone(ll)
-	return append(res, Link{Href: normalizeHref(href), Title: title, IconUrl: iconUrl, Relation: relation})
-}
-
-// Ensure only one link with given relation in list
-func (ll LinkList) set(href, title, iconUrl string, relation relation.Relation) LinkList {
-	var res = make(LinkList, len(ll)+1, len(ll)+1)
-	var pos = 0
-	for i := 0; i < len(ll); i++ {
-		if ll[i].Relation != relation {
-			res[pos] = ll[i]
-			pos++
-		}
-	}
-	res[pos] = Link{Href: normalizeHref(href), Title: title, IconUrl: iconUrl, Relation: relation}
-	res = res[0 : pos+1]
-	return res
-}
-
-// Gets first found link with given relation
-func (ll LinkList) Get(relation relation.Relation) Link {
-	for _, l := range ll {
-		if l.Relation == relation {
-			return l
-		}
-	}
-	return Link{}
-}
 
 // Implement fuzzy.Source
 
@@ -181,15 +132,15 @@ func (ll LinkList) FilterAndSort(term string) LinkList {
 }
 
 func LinkTo(res Resource) Link {
-	var lnk = res.GetLinks().Get(relation.Self)
+	var lnk = res.Data().GetLink(relation.Self)
 	lnk.Relation = relation.Related
-	lnk.Title = res.GetTitle()
-	lnk.IconUrl = res.GetLinks().Get(relation.Icon).Href
-	lnk.Type = res.GetType()
+	lnk.Title = res.Data().Title
+	lnk.IconUrl = res.Data().GetLink(relation.Icon).Href
+	lnk.Type = res.Data().Type
 	return lnk
 }
 
-func normalizeHref(href string) string {
+func NormalizeHref(href string) string {
 	if strings.HasPrefix(href, "/") {
 		return "http://localhost:7938" + href
 	} else {
@@ -197,32 +148,14 @@ func normalizeHref(href string) string {
 	}
 }
 
-func GetPath(l Link) (string, bool) {
+func GetPath(l Link) string {
 	if strings.HasPrefix(l.Href, "http://localhost:7938") {
-		return l.Href[len("http://localhost:7938"):], true
+		return l.Href[len("http://localhost:7938"):]
+	} else if strings.HasPrefix(l.Href, "/") {
+		return l.Href
 	} else {
-		return "", false
+		return ""
 	}
-}
-
-type RankedLink struct {
-	Link
-	Rank int
-}
-
-type RankedLinkList []RankedLink
-
-func (this RankedLinkList) Sort() {
-	sort.SliceStable(this, func(i, j int) bool { return this[i].Rank < this[j].Rank })
-}
-
-func (this RankedLinkList) GetLinksSorted() LinkList {
-	this.Sort()
-	var ll = make(LinkList, 0, len(this))
-	for _, rl := range this {
-		ll = append(ll, rl.Link)
-	}
-	return ll
 }
 
 // -------------- Serve -------------------------
@@ -233,10 +166,6 @@ type Postable interface {
 
 type Deleteable interface {
 	DoDelete(w http.ResponseWriter, r *http.Request)
-}
-
-type Searchable interface {
-	Search(term string) RankedLinkList
 }
 
 func ServeSingleResource(w http.ResponseWriter, r *http.Request, res Resource) {

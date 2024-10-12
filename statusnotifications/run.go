@@ -27,7 +27,7 @@ func Run() {
 			var item = buildItem(path, event.dbusSender, event.dbusPath)
 			if item.MenuDbusPath != "" {
 				var menuPath = "/menu/" + event.dbusSender + string(item.MenuDbusPath)
-				item.AddLink(menuPath, "", "", relation.Menu)
+				item.AddLink(resource.NormalizeHref(menuPath), "", "", relation.Menu)
 				repo.Put(&Menu{
 					ResourceData: *resource.MakeBase(menuPath, "Menu", "", "", mediatype.Menu),
 					DbusSender:   event.dbusSender,

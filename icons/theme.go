@@ -22,6 +22,7 @@ import (
 type IconTheme struct {
 	resource.ResourceData
 	Id       string
+	Comment  string
 	Inherits []string
 	Dirs     []IconDir
 }

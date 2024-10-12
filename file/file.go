@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -70,11 +71,11 @@ func makeFileFromPath(path string) (*File, error) {
 	}
 }
 
-func MakeLinkFromPath(path string, name string) resource.Link {
+func MakeLinkFromPath(ospath string, name string) resource.Link {
 	var title = name
-	var mimetype, _ = magicmime.TypeByFile(path)
+	var mimetype, _ = magicmime.TypeByFile(ospath)
 	var iconUrl = icons.UrlFromName(strings.ReplaceAll(mimetype, "/", "-"))
-	return resource.Link{Href: "/file" + path, Title: title, IconUrl: iconUrl, Relation: relation.Related, Type: "application/vnd.org.refude.file+json"}
+	return resource.Link{Href: "/file" + path.Clean(ospath), Title: title, IconUrl: iconUrl, Relation: relation.Related, Type: "application/vnd.org.refude.file+json"}
 }
 
 func makeFileFromInfo(osPath string, fileInfo os.FileInfo) *File {
@@ -83,7 +84,7 @@ func makeFileFromInfo(osPath string, fileInfo os.FileInfo) *File {
 	var mimetype, _ = magicmime.TypeByFile(osPath)
 	var iconUrl = icons.UrlFromName(strings.ReplaceAll(mimetype, "/", "-"))
 	var f = File{
-		ResourceData: *resource.MakeBase("/file/"+osPath[1:], fileInfo.Name(), comment, iconUrl, mediatype.File),
+		ResourceData: *resource.MakeBase("/file"+path.Clean(osPath), fileInfo.Name(), comment, iconUrl, mediatype.File),
 		Type:         fileType,
 		Permissions:  fileInfo.Mode().String(),
 		Mimetype:     mimetype,
@@ -92,37 +93,16 @@ func makeFileFromInfo(osPath string, fileInfo os.FileInfo) *File {
 	for i, app := range applications.GetHandlers(f.Mimetype) {
 		f.apps = append(f.apps, app.DesktopId)
 		if i == 0 {
-			f.AddLink(f.Path+"?action="+app.DesktopId, "Open with "+app.Title, app.GetLinks().Get(relation.Icon).Href, relation.DefaultAction)
+			f.AddLink(f.Path+"?action="+app.DesktopId, "Open with "+app.Title, app.GetLink(relation.Icon).Href, relation.DefaultAction)
 		} else {
-			f.AddLink(f.Path+"?action="+app.DesktopId, "Open with "+app.Title, app.GetLinks().Get(relation.Icon).Href, relation.Action)
+			f.AddLink(f.Path+"?action="+app.DesktopId, "Open with "+app.Title, app.GetLink(relation.Icon).Href, relation.Action)
 		}
-	}
-
-	if fileType == "Directory" {
-		f.AddLink("/search?from="+f.Path, "", "", relation.Search)
 	}
 
 	return &f
 }
 
-func (f *File) Search(term string) resource.LinkList {
-	var dirs = []string{f.Path[len("/file"):]}
-	var collector = f.ResourceData.Search(term)
-
-	if f.Type == "Directory" {
-		if strings.Index(term, "/") > -1 {
-			var pathBits = strings.Split(term, "/")
-			pathBits, term = pathBits[0:len(pathBits)-1], pathBits[len(pathBits)-1]
-			dirs = CollectDirs(dirs, pathBits)
-		}
-		for _, dir := range dirs {
-			Collect(&collector, dir)
-		}
-	}
-	return collector
-}
-
-func Collect(sink *resource.LinkList, dir string) {
+func Collect(sink *[]resource.Link, dir string) {
 	for _, entry := range readEntries(dir) {
 		var name = entry.Name()
 		*sink = append(*sink, MakeLinkFromPath(dir+"/"+name, name))
@@ -174,7 +154,8 @@ func (f *File) DoPost(w http.ResponseWriter, r *http.Request) {
 	if appId == "" || !slices.Contains(f.apps, appId) {
 		respond.NotFound(w)
 	} else {
-		if applications.OpenFile(appId, f.Path[5:]) {
+		var ospath = f.Path[5:]
+		if applications.OpenFile(appId, ospath) {
 			respond.Accepted(w)
 		} else {
 			respond.NotFound(w)

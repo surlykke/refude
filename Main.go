@@ -12,6 +12,7 @@ import (
 	"github.com/surlykke/RefudeServices/applications"
 	"github.com/surlykke/RefudeServices/browsertabs"
 	"github.com/surlykke/RefudeServices/desktop"
+	"github.com/surlykke/RefudeServices/desktopactions"
 	"github.com/surlykke/RefudeServices/file"
 	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/log"
@@ -22,7 +23,7 @@ import (
 	"github.com/surlykke/RefudeServices/options"
 	"github.com/surlykke/RefudeServices/ping"
 	"github.com/surlykke/RefudeServices/power"
-	"github.com/surlykke/RefudeServices/start"
+	"github.com/surlykke/RefudeServices/search"
 	"github.com/surlykke/RefudeServices/statusnotifications"
 	"github.com/surlykke/RefudeServices/watch"
 	"github.com/surlykke/RefudeServices/wayland"
@@ -53,7 +54,7 @@ func main() {
 		log.Info("Tray disabled")
 	}
 
-	go start.Run()
+	go desktopactions.Run()
 
 	http.Handle("/ping", ping.WebsocketHandler)
 	http.HandleFunc("/tabsink", browsertabs.ServeHTTP)
@@ -62,27 +63,13 @@ func main() {
 	http.HandleFunc("/watch", watch.ServeHTTP)
 
 	http.HandleFunc("/complete", complete)
-	http.HandleFunc("/search", search)
+	http.HandleFunc("/search", search.ServeHTTP)
 	http.HandleFunc("/file/", file.ServeHTTP)
 	http.HandleFunc("/flash", notifications.ServeFlash)
 	http.HandleFunc("/", repo.ServeHTTP)
 
 	if err := http.ListenAndServe(":7938", nil); err != nil {
 		log.Warn("http.ListenAndServe failed:", err)
-	}
-}
-
-func search(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "GET" {
-		var term = strings.ToLower(requests.GetSingleQueryParameter(r, "term", ""))
-		var fromPath = requests.GetSingleQueryParameter(r, "from", "/start")
-		if from := repo.GetUntyped(fromPath); from != nil {
-			respond.AsJson(w, from.Search(term))
-		} else {
-			respond.NotFound(w)
-		}
-	} else {
-		respond.NotAllowed(w)
 	}
 }
 
@@ -97,7 +84,7 @@ func complete(w http.ResponseWriter, r *http.Request) {
 		}
 
 		for _, res := range repo.GetListUntyped(prefix) {
-			paths = append(paths, res.GetPath())
+			paths = append(paths, res.Data().Path)
 		}
 
 		respond.AsJson(w, paths)

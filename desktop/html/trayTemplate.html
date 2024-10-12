@@ -1,5 +1,3 @@
-
 {{range .Items}}
-<img src="{{.IconUrl}}" height="22" width="22" onclick="doLeftClick(event)" oncontextmenu="doRightClick(event)" data-menu="{{.MenuPath}}" data-item="{{.ItemPath}}" style="float:right"/>
+<img src="{{.IconUrl}}" height="22" width="22" onclick="doLeftClick(event)" oncontextmenu="doRightClick(event)" data-menu="{{.MenuPath}}" data-item="{{.ItemPath}}"/>
 {{end}}
-<div id="menu" hx-get="/desktop/tray/menu" hx-trigger="fetchMenu" hx-vals="js:{menuPath: currentMenu}" style="clear: both;">	

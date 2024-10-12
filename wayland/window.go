@@ -53,7 +53,6 @@ func Run(ignWin map[string]bool) {
 				w.Title = upd.title
 			} else if upd.appId != "" {
 				w.AppId = upd.appId
-				w.Comment = upd.appId
 				if iconUrl := applications.GetIconUrl(w.AppId); iconUrl != "" {
 					w.SetIconHref(iconUrl)
 				}

@@ -3,7 +3,6 @@
 // This file is part of the RefudeServices project.
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
-//
 package image
 
 import (
@@ -128,9 +127,7 @@ type ImageData struct {
 }
 
 func ImageDataHashName(id ImageData) string {
-	var hasher = sha256.New()
-	hasher.Write(id.Data)
-	return fmt.Sprintf("%x", hasher.Sum(nil))
+	return HashName(id.Data)
 }
 
 func (id ImageData) AsPng() ([]byte, error) {
@@ -163,4 +160,10 @@ func (id ImageData) AsPng() ([]byte, error) {
 	} else {
 		return buf.Bytes(), nil
 	}
+}
+
+func HashName(bytes []byte) string {
+	var hasher = sha256.New()
+	hasher.Write(bytes)
+	return fmt.Sprintf("%x", hasher.Sum(nil))
 }

@@ -248,3 +248,11 @@ func getDbusPath(variant dbus.Variant) dbus.ObjectPath {
 	}
 	return ""
 }
+
+func getBytes(variant dbus.Variant) []byte {
+	if bytes, ok := variant.Value().([]byte); ok {
+		return bytes
+	} else {
+		return nil
+	}
+}

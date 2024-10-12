@@ -103,10 +103,13 @@ func parseMenu(value []interface{}) (MenuEntry, error) {
 	menuItem.Label = strings.ReplaceAll(getString(m["label"]), "_", "")
 	menuItem.Enabled = getBool(m["enabled"], true)
 	menuItem.Visible = getBool(m["visible"], true)
-	var iconName = getString(m["icon-name"])
-	// TODO: Look for pixmap
-	if iconName != "" {
+	if iconName := getString(m["icon-name"]); iconName != "" {
 		menuItem.IconUrl = icons.UrlFromName(iconName)
+	} else if bytes := getBytes(m["icon-data"]); bytes != nil && len(bytes) > 0 {
+		iconName = icons.AddPngIcon(bytes)
+		if iconName != "" {
+			menuItem.IconUrl = icons.UrlFromName(iconName)
+		}
 	}
 
 	if menuItem.ToggleType = getString(m["toggle-type"]); !slice.Among(menuItem.ToggleType, "checkmark", "radio", "") {

@@ -105,7 +105,7 @@ func AddRawImageIcon(imageData image.ImageData) string {
 		log.Warn("Error converting image", err)
 		return ""
 	} else {
-		var path = fmt.Sprintf("%s.png", iconName)
+		var path = fmt.Sprintf("%s/%s.png", sessionIconsDir, iconName)
 		if err := os.WriteFile(path, png, 0700); err != nil {
 			log.Warn("Could not write", path, err)
 			return ""
@@ -114,6 +114,18 @@ func AddRawImageIcon(imageData image.ImageData) string {
 		}
 	}
 	return iconName
+}
+
+func AddPngIcon(png []byte) string {
+	var iconName = image.HashName(png)
+	var path = fmt.Sprintf("%s/%s.png", sessionIconsDir, iconName)
+	if err := os.WriteFile(path, png, 0700); err != nil {
+		log.Warn("Could not write", path, err)
+		return ""
+	} else {
+		addSessionIconSinglePath(iconName, path)
+		return iconName
+	}
 }
 
 func AddBasedir(path string) {

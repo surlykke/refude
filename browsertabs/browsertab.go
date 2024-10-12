@@ -17,6 +17,7 @@ import (
 
 type Tab struct {
 	resource.ResourceData
+	Url string
 }
 
 func (this *Tab) Id() string {
@@ -34,7 +35,7 @@ func (this *Tab) DoDelete(w http.ResponseWriter, r *http.Request) {
 }
 
 func (this *Tab) OmitFromSearch() bool {
-	return strings.HasPrefix(this.Comment, "http://localhost:7938/desktop")
+	return strings.HasPrefix(this.Url, "http://localhost:7938/desktop")
 }
 
 // This is the api that the browserextensions use
@@ -66,7 +67,8 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 						url = url[0:60] + "..."
 					}
 					var iconUrl = d["favIcon"]
-					var tab = &Tab{ResourceData: *resource.MakeBase("/tab/"+d["id"], title, url, iconUrl, mediatype.Tab)}
+					var tab = &Tab{ResourceData: *resource.MakeBase("/tab/"+d["id"], title, title, iconUrl, mediatype.Tab)}
+					tab.Url = url
 					tab.AddLink(tab.Path, "Focus tab", iconUrl, relation.DefaultAction)
 					tab.AddLink(tab.Path, "Close tab", "", relation.Delete)
 					tabs = append(tabs, tab)

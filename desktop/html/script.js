@@ -1,58 +1,47 @@
-let resourceHref = "/start"
 let term = ""
-let history = []
-
-let setResourceHref = (newHref, newTerm) => {
-	if (newHref !== resourceHref) {
-		resourceHref = newHref
-		document.getElementById("resource").dispatchEvent(new Event("resourceChanged"))
-		setTerm(newTerm || "", true)
-	}
-}
+let details = ""
 
 let setTerm = newTerm => {
-	console.log("set term to:", newTerm)
-	term = newTerm
-	document.getElementById("rows").dispatchEvent(new Event("search"))
-	updateTermTag()
+	document.getElementById("term").textContent = term = newTerm
+	search()
 }
 
-let updateTermTag = () => {
-	if (document.getElementById("term")) {
-		document.getElementById("term").textContent = term
-	}
+let setDetails = newDetails => {
+	details = newDetails
+	search()
 }
 
-let focusFirst = () => {
-	document.getElementsByClassName("title")[0]?.focus()
-}
 
-let selectedHref = () => document.activeElement?.dataset.href
+let search = () => document.getElementById("search-results").dispatchEvent(new Event("search"))
 
+let selectedPath = () => document.activeElement?.dataset.path
 let doEscape = shiftKey => {
 	if (shiftKey) {
 		dismiss()
 	} else if (currentMenu) {
 		setMenu()
+	} else if (details) {
+		setDetails("")
+	} else if (term) {
+		setTerm("")
 	} else {
-		let state = history.pop()
-		if (state) {
-			setResourceHref(state.path, state.term)
-		} else {
-			dismiss()
-		}
+		dismiss()
 	}
 }
 
-let goto = () => {
-	if (selectedHref()) {
-		history.push({ path: resourceHref, term: term })
-		setResourceHref(selectedHref())
+let doEnter = (ctrl, shift) => {
+	console.log("doEnter", ctrl, shift)
+	if (ctrl && shift) {
+		return
+	} else if (ctrl) {
+		let newDetails = selectedPath() && selectedPath() !== details ? selectedPath() : ""
+		setDetails(newDetails)
+	} else {
+		fetch(selectedPath(), { method: "post" }).then(resp => resp.ok && !shift && dismiss())
 	}
 }
 
-let doEnter = ctrl => fetch(selectedHref(), { method: "post" }).then(resp => resp.ok && !ctrl && dismiss())
-let doDelete = ctrl => fetch(selectedHref(), { method: "delete" }).then(resp => resp.ok && !ctrl && dismiss())
+let doDelete = shift => fetch(selectedPath(), { method: "delete" }).then(resp => resp.ok && !shift && dismiss())
 let dismiss = () => window.close()
 
 let onKeyDown = event => {
@@ -65,12 +54,10 @@ let onKeyDown = event => {
 	}
 	if ((key === "Escape" && !ctrlKey && !altKey) || key === 'ArrowLeft' || (key === 'o' && ctrlKey)) {
 		doEscape(shiftKey)
-	} else if ((key === "Enter" && altKey && !shiftKey) || key === 'ArrowRight' || (key === ' ' && ctrlKey)) {
-		goto()
-	} else if (key === "Enter" && !altKey && !shiftKey) {
-		doEnter(ctrlKey)
-	} else if (key === "Delete" && !altKey && !shiftKey) {
-		doDelete(ctrlKey)
+	} else if (key === "Enter" && !altKey) {
+		doEnter(ctrlKey, shiftKey)
+	} else if (key === "Delete" && !altKey && ctrlKey) {
+		doDelete(shiftKey)
 	} else if (key === "Backspace" && !ctrlKey && !altKey && !shiftKey) {
 		setTerm(term.slice(0, -1))
 	} else if (key.length === 1 && !ctrlKey && !altKey) {
@@ -114,17 +101,20 @@ let doLeftClick = ev => {
 let doRightClick = ev => {
 	ev.stopPropagation()
 	ev.preventDefault()
+	console.log("doRightClick, currentTarget:", ev.currentTarget)
 	setMenu(ev.currentTarget.dataset.menu)
 }
 
 let currentMenu
 let setMenu = menu => {
 	if (menu) {
+		document.getElementById('menu').style.display = "block"
 		currentMenu = menu
 		document.getElementById('menu').dispatchEvent(new Event('fetchMenu'))
 	} else {
 		currentMenu = undefined
 		document.getElementById('menu').innerHTML = ''
+		document.getElementById('menu').style.display = "none"
 	}
 }
 

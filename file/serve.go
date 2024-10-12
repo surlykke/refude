@@ -6,6 +6,7 @@
 package file
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -23,6 +24,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetResource(path string) *File {
+	fmt.Println("file.GetResource, path: '" + path + "'")
 	if !strings.HasPrefix(path, "/file/") {
 		log.Warn("Unexpeded path:", path)
 		return nil
@@ -30,6 +32,7 @@ func GetResource(path string) *File {
 		log.Warn("Could not make file from", path[5:], err)
 		return nil
 	} else if file == nil {
+		fmt.Println(".. not found")
 		return nil
 	} else {
 		return file
