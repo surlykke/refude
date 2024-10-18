@@ -6,8 +6,10 @@
 package search
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/sahilm/fuzzy"
 	"github.com/surlykke/RefudeServices/desktopactions"
@@ -57,7 +59,17 @@ func Search(term string) []resource.Link {
 			for _, dir := range fileDirs {
 				file.Collect(&result, dir)
 			}
-			getMenuLinks(&result)
+			var t1 = time.Now()
+			var menuLinks = make(chan []resource.Link, 1)
+			var timeout = time.After(40 * time.Millisecond)
+			go getMenuLinks(menuLinks)
+			select {
+			case _ = <-timeout: // Ignore, then
+			case links := <-menuLinks:
+				result = append(result, links...)
+			}
+			var t2 = time.Now()
+			fmt.Println("getMenuLinks took", t2.Sub(t1))
 		}
 	}
 
@@ -78,12 +90,14 @@ func getStartLinks(collector *[]resource.Link) {
 	}
 }
 
-func getMenuLinks(collector *[]resource.Link) {
+func getMenuLinks(sink chan []resource.Link) {
+	var collector = make([]resource.Link, 0, 10)
 	for _, itemMenu := range repo.GetList[*statusnotifications.Menu]("/menu/") {
 		if entries, err := itemMenu.Entries(); err == nil {
-			getLinksFromMenu(collector, itemMenu.Path, entries)
+			getLinksFromMenu(&collector, itemMenu.Path, entries)
 		}
 	}
+	sink <- collector
 }
 
 func getLinksFromMenu(collector *[]resource.Link, menuPath string, entries []statusnotifications.MenuEntry) {
