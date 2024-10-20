@@ -25,7 +25,7 @@ type Item struct {
 	DbusPath                dbus.ObjectPath
 	ItemId                  string
 	SenderPid               uint32
-	SenderAppId             string
+	SenderApp               string
 	Category                string
 	Status                  string
 	IconAccessibleDesc      string

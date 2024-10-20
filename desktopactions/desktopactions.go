@@ -37,6 +37,10 @@ func Run() {
 	repo.Put(&Start)
 }
 
+func GetLinks(searchTerm string) []resource.Link {
+	return Start.GetLinks()
+}
+
 func (s StartResource) DoPost(w http.ResponseWriter, r *http.Request) {
 	var action = requests.GetSingleQueryParameter(r, "action", "-")
 	var method string

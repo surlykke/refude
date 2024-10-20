@@ -58,11 +58,13 @@ func GetHandlers(mimetype string) []*DesktopApplication {
 	return apps
 }
 
-func GetIconUrl(appId string) string {
-	if da, ok := repo.Get[*DesktopApplication]("/application/" + appId); ok {
-		return da.GetLink(relation.Icon).Href
+func GetNameAndIconUrl(appId string) (name string, iconUrl string) {
+	if appId != "" {
+		if da, ok := repo.Get[*DesktopApplication]("/application/" + appId); ok {
+			return da.Title, da.GetLink(relation.Icon).Href
+		}
 	}
-	return ""
+	return "", ""
 }
 
 func OpenFile(appId, path string) bool {

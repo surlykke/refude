@@ -27,6 +27,7 @@ type Menu struct {
 	resource.ResourceData
 	DbusSender string
 	DbusPath   dbus.ObjectPath
+	SenderApp  string
 }
 
 type MenuEntry struct {

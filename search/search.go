@@ -8,13 +8,13 @@ package search
 import (
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
-	"github.com/sahilm/fuzzy"
+	"github.com/lithammer/fuzzysearch/fuzzy"
 	"github.com/surlykke/RefudeServices/desktopactions"
 	"github.com/surlykke/RefudeServices/file"
-	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/repo"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
@@ -32,112 +32,94 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func Search(term string) []resource.Link {
-	var result = make([]resource.Link, 0, 100)
-	var fileDirs = []string{xdg.Home, xdg.ConfigHome, xdg.DownloadDir, xdg.DocumentsDir, xdg.MusicDir, xdg.VideosDir}
-	if strings.Index(term, "/") > -1 {
-		var pathBits = strings.Split(term, "/")
-		pathBits, term = pathBits[:len(pathBits)-1], pathBits[len(pathBits)-1]
-		fileDirs = file.CollectDirs(fileDirs, pathBits)
-		for _, dir := range fileDirs {
-			file.Collect(&result, dir)
+const max_search_time = 30 * time.Millisecond
+
+type collector func(string) []resource.Link
+
+func Search(searchTerm string) []resource.Link {
+	var collectors []collector
+
+	collectors, searchTerm = collectCollectors(searchTerm)
+
+	var result []resource.Link
+	var returned = 0
+	result = make([]resource.Link, 0, 100)
+	var returns = make(chan []resource.Link, len(collectors))
+	for i := 0; i < len(collectors); i++ {
+		var j = i
+		go func() {
+			returns <- collectors[j](searchTerm)
+		}()
+	}
+	var timeout = time.After(max_search_time)
+	for returned < len(collectors) {
+		select {
+		case links := <-returns:
+			result = append(result, links...)
+			returned++
+		case <-timeout:
+			fmt.Println("Reached timeout")
+			break
 		}
+	}
+
+	return filterAndSort(result, searchTerm)
+}
+
+func collectCollectors(searchTerm string) ([]collector, string) {
+	var fileSearchDirs = []string{xdg.Home, xdg.ConfigHome, xdg.DownloadDir, xdg.DocumentsDir, xdg.MusicDir, xdg.VideosDir}
+
+	if strings.Index(searchTerm, "/") > -1 {
+		var pathBits = strings.Split(searchTerm, "/")
+		pathBits, searchTerm = pathBits[:len(pathBits)-1], pathBits[len(pathBits)-1]
+		fileSearchDirs = file.CollectDirs(fileSearchDirs, pathBits) // Special handling of file Search
+
+		return []collector{file.Collector(fileSearchDirs)}, searchTerm
 	} else {
-
-		getLinks(&result, "/notification/")
-		getLinks(&result, "/window/")
-		getLinks(&result, "/tab/")
-
-		if len(term) > 0 {
-			getStartLinks(&result)
-			getLinks(&result, "/application/")
+		var collectors = []collector{linkCollector("/notification/"), linkCollector("/window/"), linkCollector("/tab/")}
+		if len(searchTerm) > 0 {
+			collectors = append(collectors, desktopactions.GetLinks, linkCollector("/application/"))
 		}
-
-		if len(term) > 2 {
-			getLinks(&result, "/device/")
-			result = append(result, file.MakeLinkFromPath(xdg.Home, "Home"))
-			for _, dir := range fileDirs {
-				file.Collect(&result, dir)
-			}
-			var t1 = time.Now()
-			var menuLinks = make(chan []resource.Link, 1)
-			var timeout = time.After(40 * time.Millisecond)
-			go getMenuLinks(menuLinks)
-			select {
-			case _ = <-timeout: // Ignore, then
-			case links := <-menuLinks:
-				result = append(result, links...)
-			}
-			var t2 = time.Now()
-			fmt.Println("getMenuLinks took", t2.Sub(t1))
+		if len(searchTerm) > 2 {
+			collectors = append(collectors, linkCollector("/device/"), file.Collector(fileSearchDirs), statusnotifications.GetLinks)
 		}
-	}
-
-	return filterAndSort(result, term)
-}
-
-func getLinks(collector *[]resource.Link, prefix string) {
-	for _, res := range repo.GetListUntyped(prefix) {
-		if !res.OmitFromSearch() {
-			*collector = append(*collector, resource.LinkTo(res))
-		}
+		return collectors, searchTerm
 	}
 }
 
-func getStartLinks(collector *[]resource.Link) {
-	if start, ok := repo.Get[*desktopactions.StartResource]("/start"); ok {
-		*collector = append(*collector, start.GetLinks(relation.Action)...)
+func linkCollector(prefix string) collector {
+	return func(string) []resource.Link {
+		return repo.CollectLinks(prefix)
 	}
-}
-
-func getMenuLinks(sink chan []resource.Link) {
-	var collector = make([]resource.Link, 0, 10)
-	for _, itemMenu := range repo.GetList[*statusnotifications.Menu]("/menu/") {
-		if entries, err := itemMenu.Entries(); err == nil {
-			getLinksFromMenu(&collector, itemMenu.Path, entries)
-		}
-	}
-	sink <- collector
-}
-
-func getLinksFromMenu(collector *[]resource.Link, menuPath string, entries []statusnotifications.MenuEntry) {
-	for _, entry := range entries {
-		if entry.Type == "standard" {
-			if len(entry.SubEntries) > 0 {
-				getLinksFromMenu(collector, menuPath, entry.SubEntries)
-			} else {
-				var href = menuPath + "?id=" + entry.Id
-				*collector = append(*collector, resource.Link{Href: href, Title: entry.Label, IconUrl: entry.IconUrl, Relation: relation.Action})
-			}
-		}
-	}
-}
-
-type linkList []resource.Link
-
-// Implement fuzzy.Source
-
-func (ll linkList) String(i int) string {
-	return ll[i].Title
-}
-
-func (ll linkList) Len() int {
-	return len(ll)
 }
 
 func filterAndSort(links []resource.Link, term string) []resource.Link {
 	if term == "" {
 		return links
 	} else {
-		var ll = linkList(links)
-		if lastSlash := strings.LastIndex(term, "/"); lastSlash > -1 {
-			term = term[lastSlash+1:]
+		var rankedLinks = make([]resource.Link, 0, 20)
+		for _, l := range links {
+			l.Rank = fuzzy.RankMatchNormalizedFold(term, l.Title)
+			if l.Rank < 0 {
+				for _, keyWord := range l.Keywords {
+					if strings.Index(keyWord, term) > -1 {
+						l.Rank = 100000
+						break
+					}
+				}
+			}
+			if l.Rank > -1 {
+				rankedLinks = append(rankedLinks, l)
+			}
 		}
-		var matches = fuzzy.FindFrom(term, ll)
-		var sorted = make([]resource.Link, len(matches), len(matches))
-		for i, match := range matches {
-			sorted[i] = ll[match.Index]
-		}
-		return sorted
+		slices.SortFunc(rankedLinks, func(l1, l2 resource.Link) int {
+			var tmp = l1.Rank - l2.Rank
+			if tmp == 0 {
+				// Not significant, just to make the sort reproducible
+				tmp = strings.Compare(l1.Href, l2.Href)
+			}
+			return tmp
+		})
+		return rankedLinks
 	}
 }

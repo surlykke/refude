@@ -53,9 +53,9 @@ func Run(ignWin map[string]bool) {
 				w.Title = upd.title
 			} else if upd.appId != "" {
 				w.AppId = upd.appId
-				if iconUrl := applications.GetIconUrl(w.AppId); iconUrl != "" {
-					w.SetIconHref(iconUrl)
-				}
+				var appName, iconUrl = applications.GetNameAndIconUrl(w.AppId)
+				w.Comment = appName
+				w.SetIconHref(iconUrl)
 			} else if upd.state > 0 {
 				w.State = upd.state - 1
 			}
@@ -68,9 +68,9 @@ func Run(ignWin map[string]bool) {
 		case _ = <-appEvents:
 			for _, w := range repo.GetList[*WaylandWindow]("/window/") {
 				var copy = *w
-				if iconUrl := applications.GetIconUrl(copy.AppId); iconUrl != "" {
-					copy.SetIconHref(iconUrl)
-				}
+				var appName, iconUrl = applications.GetNameAndIconUrl(copy.AppId)
+				copy.Comment = appName
+				copy.SetIconHref(iconUrl)
 				repo.Put(&copy)
 			}
 		}

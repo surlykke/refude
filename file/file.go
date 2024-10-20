@@ -102,6 +102,19 @@ func makeFileFromInfo(osPath string, fileInfo os.FileInfo) *File {
 	return &f
 }
 
+func Collector(dirs []string) func(string) []resource.Link {
+	return func(string) []resource.Link {
+		var result = make([]resource.Link, 0, 50)
+		for _, dir := range dirs {
+			for _, entry := range readEntries(dir) {
+				var name = entry.Name()
+				result = append(result, MakeLinkFromPath(dir+"/"+name, name))
+			}
+		}
+		return result
+	}
+}
+
 func Collect(sink *[]resource.Link, dir string) {
 	for _, entry := range readEntries(dir) {
 		var name = entry.Name()

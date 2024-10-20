@@ -6,6 +6,8 @@
 package statusnotifications
 
 import (
+	"strings"
+
 	"github.com/surlykke/RefudeServices/lib/mediatype"
 	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/repo"
@@ -32,6 +34,7 @@ func Run() {
 					ResourceData: *resource.MakeBase(menuPath, "Menu", "", "", mediatype.Menu),
 					DbusSender:   event.dbusSender,
 					DbusPath:     item.MenuDbusPath,
+					SenderApp:    item.SenderApp,
 				})
 			}
 			repo.Put(item)
@@ -55,4 +58,35 @@ func Run() {
 			}
 		}
 	}
+}
+
+func GetLinks(searchTerm string) []resource.Link {
+	var result = make([]resource.Link, 0, 10)
+
+	var getLinksFromMenu func(*Menu, []MenuEntry)
+	getLinksFromMenu = func(menu *Menu, entries []MenuEntry) {
+		for _, entry := range entries {
+			if entry.Type == "standard" {
+				if len(entry.SubEntries) > 0 {
+					getLinksFromMenu(menu, entry.SubEntries)
+				} else {
+					var href = menu.Path + "?id=" + entry.Id
+					var comment = menu.SenderApp
+					if strings.Index(comment, "tray") == -1 {
+						comment = comment + " tray menu"
+					} else {
+						comment = comment + " menu"
+					}
+					result = append(result, resource.Link{Href: href, Title: entry.Label, Comment: comment, IconUrl: entry.IconUrl, Relation: relation.Action})
+				}
+			}
+		}
+	}
+
+	for _, itemMenu := range repo.GetList[*Menu]("/menu/") {
+		if entries, err := itemMenu.Entries(); err == nil {
+			getLinksFromMenu(itemMenu, entries)
+		}
+	}
+	return result
 }

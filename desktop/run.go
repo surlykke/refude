@@ -120,7 +120,11 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 						resultToFocus = i
 					}
 				} else {
-					r.Comment = link.Type.Short()
+					if link.Comment != "" {
+						r.Comment = link.Comment
+					} else {
+						r.Comment = link.Type.Short()
+					}
 				}
 
 				results = append(results, r)

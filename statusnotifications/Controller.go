@@ -7,6 +7,8 @@ package statusnotifications
 
 import (
 	"errors"
+	"fmt"
+	"os"
 	"regexp"
 	"strings"
 
@@ -151,6 +153,10 @@ func buildItem(path string, dbusSender string, dbusPath dbus.ObjectPath) *Item {
 
 	if err := conn.BusObject().Call("org.freedesktop.DBus.GetConnectionUnixProcessID", 0, dbusSender).Store(&item.SenderPid); err != nil {
 		log.Warn("get processid err:", err)
+	} else if bytes, err := os.ReadFile(fmt.Sprintf("/proc/%d/cmdline", item.SenderPid)); err != nil {
+		log.Warn("Error reading proc cmdline for", item.SenderPid)
+	} else {
+		item.SenderApp = extractCommandName(bytes)
 	}
 
 	var props = dbuscall.GetAllProps(conn, item.DbusSender, item.DbusPath, ITEM_INTERFACE)
@@ -169,6 +175,33 @@ func buildItem(path string, dbusSender string, dbusPath dbus.ObjectPath) *Item {
 	RetrieveAttentionIcon(&item)
 	RetrieveOverlayIcon(&item)
 	return &item
+}
+
+var cmdLineArg = regexp.MustCompile(` -\S*`)
+var repeatedSpaces = regexp.MustCompile(`  +`)
+
+func extractCommandName(bytes []byte) string {
+	var cmdline = string(bytes)
+
+	// The kernel uses \0 as separator
+	cmdline = strings.ReplaceAll(cmdline, "\u0000", " ")
+
+	// Remove upto and including last slash
+	// so eg:
+	//    - "nm-applet" is unchanged
+	//    - "/opt/google/chrome/chrome --arg1 --arg2" becomes "chrome --arg1 --arg2"
+	//    - "/usr/bin/python3 /usr/bin/blueman-tray"  becomes "blueman-tray"
+	//
+	// Something like /path/to/command /path/to/file-arg will not work well.
+	//
+	cmdline = cmdline[strings.LastIndex(cmdline, "/")+1:]
+
+	// Remove trailing args, so eg. "chrome --arg1 --arg2" becomes "chrome"
+	if firstSpace := strings.Index(cmdline, " "); firstSpace > -1 {
+		cmdline = cmdline[:firstSpace]
+	}
+
+	return cmdline
 }
 
 //case "NewTitle", "NewIcon", "NewAttentionIcon", "NewOverlayIcon", "NewToolTip","NewStatus":

@@ -67,7 +67,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 						url = url[0:60] + "..."
 					}
 					var iconUrl = d["favIcon"]
-					var tab = &Tab{ResourceData: *resource.MakeBase("/tab/"+d["id"], title, title, iconUrl, mediatype.Tab)}
+					var tab = &Tab{ResourceData: *resource.MakeBase("/tab/"+d["id"], title, "", iconUrl, mediatype.Tab)}
 					tab.Url = url
 					tab.AddLink(tab.Path, "Focus tab", iconUrl, relation.DefaultAction)
 					tab.AddLink(tab.Path, "Close tab", "", relation.Delete)

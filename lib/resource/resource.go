@@ -73,6 +73,17 @@ func (this *ResourceData) GetLinks(relations ...relation.Relation) []Link {
 	}
 }
 
+func (this *ResourceData) Link() Link {
+	var lnk = this.GetLink(relation.Self)
+	lnk.Relation = relation.Related
+	lnk.Title = this.Title
+	lnk.Comment = this.Comment
+	lnk.IconUrl = this.GetLink(relation.Icon).Href
+	lnk.Type = this.Type
+	return lnk
+
+}
+
 func (this *ResourceData) OmitFromSearch() bool {
 	return false
 }
@@ -98,9 +109,13 @@ var httpLocalHost7838 = []byte("http://localhost:7938")
 type Link struct {
 	Href     string              `json:"href"`
 	Title    string              `json:"title,omitempty"`
+	Comment  string              `json:"comment,omitempty"`
 	IconUrl  string              `json:"icon,omitempty"`
 	Relation relation.Relation   `json:"rel,omitempty"`
 	Type     mediatype.MediaType `json:"type,omitempty"`
+	// --- Used for search -------
+	Keywords []string `json:"-"`
+	Rank     int      `json:"-"`
 }
 
 type LinkList []Link

@@ -90,6 +90,17 @@ func GetList[T resource.Resource](prefix string) []T {
 	return list
 }
 
+func CollectLinks(prefix string) []resource.Link {
+	var resList = GetListUntyped(prefix)
+	var result = make([]resource.Link, 0, len(resList))
+	for _, res := range resList {
+		if !res.OmitFromSearch() {
+			result = append(result, res.Data().Link())
+		}
+	}
+	return result
+}
+
 func GetListSortedByPath[T resource.Resource](prefix string) []T {
 	var resList = GetList[T](prefix)
 	slices.SortFunc(resList, func(t1, t2 T) int { return strings.Compare(t1.Data().Path, t2.Data().Path) })
