@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/surlykke/RefudeServices/icon"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
@@ -60,7 +61,7 @@ type Notification struct {
 	Urgency        Urgency
 	NActions       map[string]string `json:"actions"`
 	Hints          map[string]interface{}
-	iconName       string
+	iconName       icon.Name
 	IconSize       uint32 `json:",omitempty"`
 }
 

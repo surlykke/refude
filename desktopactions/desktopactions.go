@@ -12,7 +12,6 @@ import (
 
 	"github.com/godbus/dbus/v5"
 	"github.com/surlykke/RefudeServices/lib/mediatype"
-	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/repo"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
@@ -30,15 +29,16 @@ var Start StartResource
 
 func Run() {
 	Start = StartResource{ResourceData: *resource.MakeBase("/start", "Refude desktop", "", "", mediatype.Start)}
-	Start.AddLink("/start?action=shutdown", tr.Tr("Power off"), "/icon?name=system-shutdown", relation.Action)
-	Start.AddLink("/start?action=reboot", tr.Tr("Reboot"), "/icon?name=system-reboot", relation.Action)
-	Start.AddLink("/start?action=suspend", tr.Tr("Suspend"), "/icon?name=system-suspend", relation.Action)
-
+	Start.Actions = []resource.Action{
+		{Id: "shutdown", Title: tr.Tr("Power off"), Icon: "system-shutdown"},
+		{Id: "reboot", Title: tr.Tr("Reboot"), Icon: "system-reboot"},
+		{Id: "suspend", Title: tr.Tr("Suspend"), Icon: "system-suspend"},
+	}
 	repo.Put(&Start)
 }
 
-func GetLinks(searchTerm string) []resource.Link {
-	return Start.GetLinks()
+func GetLinks(term string) []resource.Link {
+	return Start.GetActionLinks()
 }
 
 func (s StartResource) DoPost(w http.ResponseWriter, r *http.Request) {

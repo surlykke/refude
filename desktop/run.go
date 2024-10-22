@@ -15,8 +15,10 @@ import (
 	"strings"
 
 	"github.com/surlykke/RefudeServices/file"
+	"github.com/surlykke/RefudeServices/icon"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/mediatype"
+	"github.com/surlykke/RefudeServices/lib/path"
 	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/repo"
 	"github.com/surlykke/RefudeServices/lib/requests"
@@ -72,9 +74,9 @@ func init() {
 }
 
 type item struct {
-	IconUrl  string
-	ItemPath string
-	MenuPath string
+	Icon     icon.Name
+	ItemPath path.Path
+	MenuPath path.Path
 }
 
 func init() {
@@ -109,10 +111,10 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			for i, link := range links {
 				tabindex++
 				var r = linkAsResult(link, tabindex)
-				if r.Path == expandedResource {
-					if res := getResource(expandedResource); res != nil {
+				if string(r.Path) == expandedResource {
+					if res := getResource(r.Path); res != nil {
 						var rDet = &resourceDetails{Description: description(res)}
-						for _, actionLink := range res.Data().GetLinks(relation.DefaultAction, relation.Action, relation.Delete) {
+						for _, actionLink := range res.Data().GetActionLinks() {
 							tabindex++
 							rDet.Actions = append(rDet.Actions, linkAsResult(actionLink, tabindex))
 						}
@@ -146,11 +148,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		} else {
 			var items = make([]item, 0, 10)
 			for _, i := range repo.GetListSortedByPath[*statusnotifications.Item]("/item/") {
-				var iconUrl = i.GetLink(relation.Icon).Href
-
-				var menuPath = resource.GetPath(i.GetLink(relation.Menu))
-
-				items = append(items, item{IconUrl: iconUrl, ItemPath: i.Path, MenuPath: menuPath})
+				items = append(items, item{Icon: i.Icon, ItemPath: i.Path, MenuPath: i.MenuPath})
 			}
 			if err := trayTemplate.Execute(w, map[string]any{"Items": items}); err != nil {
 				log.Warn("Error executing bodyTemplate:", err)
@@ -159,7 +157,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	case "/desktop/tray/menu":
 		var menuPath = requests.GetSingleQueryParameter(r, "menuPath", "??")
-		if menu, ok := repo.Get[*statusnotifications.Menu](menuPath); !ok {
+		if menu, ok := repo.Get[*statusnotifications.Menu](path.Of(menuPath)); !ok {
 			respond.NotFound(w)
 		} else if entries, err := menu.Entries(); err != nil {
 			respond.ServerError(w, err)
@@ -177,8 +175,8 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func getResource(path string) resource.Resource {
-	if strings.HasPrefix(path, "/file/") {
+func getResource(path path.Path) resource.Resource {
+	if strings.HasPrefix(string(path), "/file/") {
 		return file.GetResource(path)
 	} else {
 		return repo.GetUntyped(path)
@@ -186,10 +184,11 @@ func getResource(path string) resource.Resource {
 }
 
 func linkAsResult(lnk resource.Link, tabindex int) result {
-	return result{IconUrl: lnk.IconUrl,
+	return result{
+		IconUrl:  lnk.Icon.String(),
 		Title:    lnk.Title,
 		Tabindex: tabindex,
-		Path:     resource.GetPath(lnk),
+		Path:     lnk.Path,
 		Relation: lnk.Relation}
 }
 
@@ -197,7 +196,7 @@ type result struct {
 	IconUrl   string
 	Title     string
 	Tabindex  int
-	Path      string
+	Path      path.Path
 	Relation  relation.Relation
 	Autofocus string
 	Comment   string

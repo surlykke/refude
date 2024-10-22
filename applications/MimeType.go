@@ -9,6 +9,7 @@ import (
 	"regexp"
 
 	"github.com/surlykke/RefudeServices/lib/mediatype"
+	"github.com/surlykke/RefudeServices/lib/path"
 	"github.com/surlykke/RefudeServices/lib/resource"
 
 	"github.com/pkg/errors"
@@ -37,7 +38,7 @@ func MakeMimetype(id string) (*Mimetype, error) {
 		return nil, errors.New("Incomprehensible mimetype: " + id)
 	} else {
 		var mt = Mimetype{
-			ResourceData: *resource.MakeBase("/mimetype/"+id, "", "", "", mediatype.Mimetype),
+			ResourceData: *resource.MakeBase(path.Of("/mimetype/", id), "", "", "", mediatype.Mimetype),
 			Id:           id,
 			Aliases:      []string{},
 			Globs:        []string{},

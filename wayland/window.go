@@ -2,14 +2,13 @@ package wayland
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strings"
 	"sync/atomic"
 
 	"github.com/surlykke/RefudeServices/applications"
 	"github.com/surlykke/RefudeServices/lib/mediatype"
-	"github.com/surlykke/RefudeServices/lib/relation"
+	"github.com/surlykke/RefudeServices/lib/path"
 	"github.com/surlykke/RefudeServices/lib/repo"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
@@ -41,7 +40,7 @@ func Run(ignWin map[string]bool) {
 		select {
 		case upd := <-windowUpdates:
 			publish = (upd.title != "" && upd.title != "Refude Desktop") || upd.appId != ""
-			var path = fmt.Sprintf("/window/%d", upd.wId)
+			var path = path.Of("/window/", upd.wId)
 			var w WaylandWindow
 			if tmp, ok := repo.Get[*WaylandWindow](path); ok {
 				w = *tmp
@@ -52,10 +51,10 @@ func Run(ignWin map[string]bool) {
 			if upd.title != "" {
 				w.Title = upd.title
 			} else if upd.appId != "" {
+				if app := applications.GetApp(upd.appId); app != nil {
+					w.Comment, w.Icon = app.Title, app.Icon
+				}
 				w.AppId = upd.appId
-				var appName, iconUrl = applications.GetNameAndIconUrl(w.AppId)
-				w.Comment = appName
-				w.SetIconHref(iconUrl)
 			} else if upd.state > 0 {
 				w.State = upd.state - 1
 			}
@@ -63,14 +62,14 @@ func Run(ignWin map[string]bool) {
 			repo.Put(&w)
 		case id := <-removals:
 			publish = true
-			var path = fmt.Sprintf("/window/%d", id)
+			var path = path.Of("/window/", id)
 			repo.Remove(path)
 		case _ = <-appEvents:
 			for _, w := range repo.GetList[*WaylandWindow]("/window/") {
 				var copy = *w
-				var appName, iconUrl = applications.GetNameAndIconUrl(copy.AppId)
-				copy.Comment = appName
-				copy.SetIconHref(iconUrl)
+				if app := applications.GetApp(copy.AppId); app != nil {
+					copy.Comment, copy.Icon = app.Title, app.Icon
+				}
 				repo.Put(&copy)
 			}
 		}
@@ -135,11 +134,11 @@ type WaylandWindow struct {
 
 func MakeWindow(wId uint64) *WaylandWindow {
 	var ww = &WaylandWindow{
-		ResourceData: *resource.MakeBase(fmt.Sprintf("/window/%d", wId), "", "", "", mediatype.Window),
+		ResourceData: *resource.MakeBase(path.Of("/window/", wId), "", "", "", mediatype.Window),
 		Wid:          wId,
 	}
-	ww.AddLink(ww.Path, "Focus window", "", relation.DefaultAction)
-	ww.AddLink(ww.Path, "Close window", "", relation.Delete)
+	ww.DefaultAction = "Focus window"
+	ww.DeleteAction = "Close window"
 	return ww
 }
 

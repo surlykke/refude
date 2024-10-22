@@ -9,6 +9,7 @@ import (
 	"github.com/godbus/dbus/v5"
 
 	"github.com/surlykke/RefudeServices/lib/log"
+	"github.com/surlykke/RefudeServices/lib/path"
 	"github.com/surlykke/RefudeServices/lib/repo"
 )
 
@@ -34,8 +35,8 @@ func Run() {
 				repo.Put(retrieveDevice(path))
 			}
 		} else if signal.Name == "org.freedesktop.UPower.DeviceRemoved" {
-			if path, ok := signal.Body[0].(dbus.ObjectPath); ok {
-				repo.Remove("/device/" + path2id(path))
+			if dbusPath, ok := signal.Body[0].(dbus.ObjectPath); ok {
+				repo.Remove(path.Of("/device/", dbusPath2id(dbusPath)))
 			}
 		} else {
 			log.Warn("Update on unknown device: ", signal.Path)

@@ -7,11 +7,10 @@ package resource
 
 import (
 	"net/http"
-	"slices"
-	"strings"
 
-	"github.com/sahilm/fuzzy"
+	"github.com/surlykke/RefudeServices/icon"
 	"github.com/surlykke/RefudeServices/lib/mediatype"
+	"github.com/surlykke/RefudeServices/lib/path"
 	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/respond"
 )
@@ -22,24 +21,24 @@ type Resource interface {
 }
 
 type ResourceData struct {
-	Path     string
-	Title    string              `json:"title"`
-	Comment  string              `json:"comment,omitempty"`
-	Type     mediatype.MediaType `json:"type"`
-	Links    LinkList            `json:"links"`
-	Keywords []string            `json:"keywords"`
+	Path          path.Path `json:"self"`
+	Title         string    `json:"title"`
+	Comment       string    `json:"comment,omitempty"`
+	Icon          icon.Name
+	DefaultAction string
+	DeleteAction  string
+	Actions       []Action
+	Type          mediatype.MediaType `json:"type"`
+	Keywords      []string            `json:"keywords"`
 }
 
-func MakeBase(path, title, comment, iconUrl string, mType mediatype.MediaType) *ResourceData {
+func MakeBase(path path.Path, title, comment string, icon icon.Name, mType mediatype.MediaType) *ResourceData {
 	var br = ResourceData{
 		Path:    path,
 		Title:   title,
 		Comment: comment,
+		Icon:    icon,
 		Type:    mType,
-		Links:   LinkList{{Href: "http://localhost:7938" + path, Relation: relation.Self}},
-	}
-	if iconUrl != "" {
-		br.SetIconHref(iconUrl)
 	}
 	return &br
 }
@@ -48,58 +47,27 @@ func (this *ResourceData) Data() *ResourceData {
 	return this
 }
 
-func (this *ResourceData) GetLink(rel relation.Relation) Link {
-	for _, link := range this.Links {
-		if rel == link.Relation {
-			return link
-		}
-	}
-	return Link{}
-}
-
-func (this *ResourceData) GetLinks(relations ...relation.Relation) []Link {
-	if len(relations) == 0 {
-		return slices.Clone(this.Links)
-	} else {
-		var result = make([]Link, 0, len(this.Links))
-		for _, lnk := range this.Links {
-			for _, rel := range relations {
-				if lnk.Relation == rel {
-					result = append(result, lnk)
-				}
-			}
-		}
-		return result
-	}
-}
-
 func (this *ResourceData) Link() Link {
-	var lnk = this.GetLink(relation.Self)
-	lnk.Relation = relation.Related
-	lnk.Title = this.Title
-	lnk.Comment = this.Comment
-	lnk.IconUrl = this.GetLink(relation.Icon).Href
-	lnk.Type = this.Type
-	return lnk
-
+	return LinkTo(this)
 }
 
 func (this *ResourceData) OmitFromSearch() bool {
 	return false
 }
 
-func (this *ResourceData) SetIconHref(iconUrl string) {
-	for i := 0; i < len(this.Links); i++ {
-		if this.Links[i].Relation == relation.Icon {
-			this.Links[i].Href = iconUrl
-			return
-		}
+func (this *ResourceData) GetActionLinks() []Link {
+	var result = make([]Link, 0, 8)
+	if this.DefaultAction != "" {
+		result = append(result, Link{Path: this.Path, Title: this.DefaultAction, Icon: this.Icon, Relation: relation.DefaultAction})
 	}
-	this.Links = append(this.Links, Link{Href: iconUrl, Relation: relation.Icon})
-}
+	for _, a := range this.Actions {
+		result = append(result, Link{Path: path.Of(this.Path, "?action=", a.Id), Title: a.Title, Icon: a.Icon, Relation: relation.Action})
+	}
+	if this.DeleteAction != "" {
+		result = append(result, Link{Path: this.Path, Title: this.DeleteAction, Relation: relation.Delete})
+	}
 
-func (this *ResourceData) AddLink(href string, title string, iconUrl string, rel relation.Relation) {
-	this.Links = append(this.Links, Link{Href: href, Title: title, IconUrl: iconUrl, Relation: rel})
+	return result
 }
 
 var httpLocalHost7838 = []byte("http://localhost:7938")
@@ -107,10 +75,10 @@ var httpLocalHost7838 = []byte("http://localhost:7938")
 // --------------------- Link --------------------------------------
 
 type Link struct {
-	Href     string              `json:"href"`
+	Path     path.Path           `json:"href"`
 	Title    string              `json:"title,omitempty"`
 	Comment  string              `json:"comment,omitempty"`
-	IconUrl  string              `json:"icon,omitempty"`
+	Icon     icon.Name           `json:"icon,omitempty"`
 	Relation relation.Relation   `json:"rel,omitempty"`
 	Type     mediatype.MediaType `json:"type,omitempty"`
 	// --- Used for search -------
@@ -118,59 +86,8 @@ type Link struct {
 	Rank     int      `json:"-"`
 }
 
-type LinkList []Link
-
-// Implement fuzzy.Source
-
-func (ll LinkList) String(i int) string {
-	return ll[i].Title
-}
-
-func (ll LinkList) Len() int {
-	return len(ll)
-}
-
-func (ll LinkList) FilterAndSort(term string) LinkList {
-	if term == "" {
-		return ll
-	} else {
-		if lastSlash := strings.LastIndex(term, "/"); lastSlash > -1 {
-			term = term[lastSlash+1:]
-		}
-		var matches = fuzzy.FindFrom(term, ll)
-		var sorted = make(LinkList, len(matches), len(matches))
-		for i, match := range matches {
-			sorted[i] = ll[match.Index]
-		}
-		return sorted
-	}
-}
-
 func LinkTo(res Resource) Link {
-	var lnk = res.Data().GetLink(relation.Self)
-	lnk.Relation = relation.Related
-	lnk.Title = res.Data().Title
-	lnk.IconUrl = res.Data().GetLink(relation.Icon).Href
-	lnk.Type = res.Data().Type
-	return lnk
-}
-
-func NormalizeHref(href string) string {
-	if strings.HasPrefix(href, "/") {
-		return "http://localhost:7938" + href
-	} else {
-		return href
-	}
-}
-
-func GetPath(l Link) string {
-	if strings.HasPrefix(l.Href, "http://localhost:7938") {
-		return l.Href[len("http://localhost:7938"):]
-	} else if strings.HasPrefix(l.Href, "/") {
-		return l.Href
-	} else {
-		return ""
-	}
+	return Link{Path: res.Data().Path, Title: res.Data().Title, Icon: res.Data().Icon, Relation: relation.Related, Type: res.Data().Type}
 }
 
 // -------------- Serve -------------------------

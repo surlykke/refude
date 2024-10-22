@@ -88,6 +88,7 @@ let doLeftClick = ev => {
 		if (e.classList.contains('submenu')) {
 			toggleClosed(e)
 		} else {
+			console.log("posting against ", currentMenu + "?id=" + e.dataset.id)
 			fetch(currentMenu + "?id=" + e.dataset.id, { method: "post" }).then(resp => resp.ok && setMenu())
 		}
 		return

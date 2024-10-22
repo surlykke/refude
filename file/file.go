@@ -9,16 +9,17 @@ import (
 	"io/fs"
 	"net/http"
 	"os"
-	"path"
+	gopath "path"
 	"path/filepath"
 	"slices"
 	"strings"
 
 	"github.com/rakyll/magicmime"
 	"github.com/surlykke/RefudeServices/applications"
-	"github.com/surlykke/RefudeServices/icons"
+	"github.com/surlykke/RefudeServices/icon"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/mediatype"
+	"github.com/surlykke/RefudeServices/lib/path"
 	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
@@ -74,28 +75,29 @@ func makeFileFromPath(path string) (*File, error) {
 func MakeLinkFromPath(ospath string, name string) resource.Link {
 	var title = name
 	var mimetype, _ = magicmime.TypeByFile(ospath)
-	var iconUrl = icons.UrlFromName(strings.ReplaceAll(mimetype, "/", "-"))
-	return resource.Link{Href: "/file" + path.Clean(ospath), Title: title, IconUrl: iconUrl, Relation: relation.Related, Type: "application/vnd.org.refude.file+json"}
+	var icon = icon.Name(strings.ReplaceAll(mimetype, "/", "-"))
+	return resource.Link{Path: path.Of("/file", gopath.Clean(ospath)), Title: title, Icon: icon, Relation: relation.Related, Type: "application/vnd.org.refude.file+json"}
 }
 
 func makeFileFromInfo(osPath string, fileInfo os.FileInfo) *File {
 	var fileType = getFileType(fileInfo.Mode())
 	var comment = osPath
 	var mimetype, _ = magicmime.TypeByFile(osPath)
-	var iconUrl = icons.UrlFromName(strings.ReplaceAll(mimetype, "/", "-"))
+	var icon = icon.Name(strings.ReplaceAll(mimetype, "/", "-"))
+	var path = path.Of("/file" + gopath.Clean(osPath))
 	var f = File{
-		ResourceData: *resource.MakeBase("/file"+path.Clean(osPath), fileInfo.Name(), comment, iconUrl, mediatype.File),
+		ResourceData: *resource.MakeBase(path, fileInfo.Name(), comment, icon, mediatype.File),
 		Type:         fileType,
 		Permissions:  fileInfo.Mode().String(),
 		Mimetype:     mimetype,
 	}
 
 	for i, app := range applications.GetHandlers(f.Mimetype) {
-		f.apps = append(f.apps, app.DesktopId)
+		f.Actions = make([]resource.Action, 0, 5)
 		if i == 0 {
-			f.AddLink(f.Path+"?action="+app.DesktopId, "Open with "+app.Title, app.GetLink(relation.Icon).Href, relation.DefaultAction)
+			f.DefaultAction = "Open with " + app.Title
 		} else {
-			f.AddLink(f.Path+"?action="+app.DesktopId, "Open with "+app.Title, app.GetLink(relation.Icon).Href, relation.Action)
+			f.Actions = append(f.Actions, resource.Action{Id: app.DesktopId, Title: "Open with " + app.Title, Icon: app.Icon})
 		}
 	}
 
@@ -167,7 +169,7 @@ func (f *File) DoPost(w http.ResponseWriter, r *http.Request) {
 	if appId == "" || !slices.Contains(f.apps, appId) {
 		respond.NotFound(w)
 	} else {
-		var ospath = f.Path[5:]
+		var ospath = string(f.Path[5:])
 		if applications.OpenFile(appId, ospath) {
 			respond.Accepted(w)
 		} else {

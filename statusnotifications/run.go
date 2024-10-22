@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/surlykke/RefudeServices/lib/mediatype"
+	"github.com/surlykke/RefudeServices/lib/path"
 	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/repo"
 	"github.com/surlykke/RefudeServices/lib/resource"
@@ -19,19 +20,17 @@ func Run() {
 	go monitorSignals()
 
 	for event := range events {
-		var path = "/item/" + event.dbusSender + string(event.dbusPath)
+		var path = path.Of("/item/" + event.dbusSender + string(event.dbusPath))
 		switch event.name {
 		case "ItemRemoved":
 			if i, ok := repo.RemoveTyped[*Item](path); ok {
-				repo.Remove("/menu" + i.DbusSender + string(i.MenuDbusPath))
+				repo.Remove(i.MenuPath)
 			}
 		case "ItemCreated":
 			var item = buildItem(path, event.dbusSender, event.dbusPath)
 			if item.MenuDbusPath != "" {
-				var menuPath = "/menu/" + event.dbusSender + string(item.MenuDbusPath)
-				item.AddLink(resource.NormalizeHref(menuPath), "", "", relation.Menu)
 				repo.Put(&Menu{
-					ResourceData: *resource.MakeBase(menuPath, "Menu", "", "", mediatype.Menu),
+					ResourceData: *resource.MakeBase(item.MenuPath, "Menu", "", "", mediatype.Menu),
 					DbusSender:   event.dbusSender,
 					DbusPath:     item.MenuDbusPath,
 					SenderApp:    item.SenderApp,
@@ -70,14 +69,14 @@ func GetLinks(searchTerm string) []resource.Link {
 				if len(entry.SubEntries) > 0 {
 					getLinksFromMenu(menu, entry.SubEntries)
 				} else {
-					var href = menu.Path + "?id=" + entry.Id
+					var path = path.Of(menu.Path, "?id=", entry.Id)
 					var comment = menu.SenderApp
 					if strings.Index(comment, "tray") == -1 {
 						comment = comment + " tray menu"
 					} else {
 						comment = comment + " menu"
 					}
-					result = append(result, resource.Link{Href: href, Title: entry.Label, Comment: comment, IconUrl: entry.IconUrl, Relation: relation.Action})
+					result = append(result, resource.Link{Path: path, Title: entry.Label, Comment: comment, Icon: entry.Icon, Relation: relation.Action})
 				}
 			}
 		}

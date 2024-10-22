@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/surlykke/RefudeServices/lib/log"
+	"github.com/surlykke/RefudeServices/lib/path"
 	"github.com/surlykke/RefudeServices/lib/repo"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/slice"
@@ -89,7 +90,7 @@ func readTheme(indexThemeFilePath string) (*IconTheme, bool) {
 	themeGroup := iniFile[0]
 
 	theme := IconTheme{}
-	theme.Path = "/icontheme/" + themeId
+	theme.Path = path.Of("/icontheme/", themeId)
 	theme.Id = themeId
 	theme.Title = themeGroup.Entries["Name"]
 	theme.Comment = themeGroup.Entries["Comment"]

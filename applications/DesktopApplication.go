@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/surlykke/RefudeServices/icon"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
@@ -53,10 +54,10 @@ func (d *DesktopApplication) Run(arg string) error {
 }
 
 type DesktopAction struct {
-	id      string
-	Name    string
-	Exec    string
-	IconUrl string
+	id   string
+	Name string
+	Exec string
+	Icon icon.Name
 }
 
 func (d *DesktopApplication) DoPost(w http.ResponseWriter, r *http.Request) {

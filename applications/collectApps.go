@@ -7,10 +7,11 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/surlykke/RefudeServices/icon"
 	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/mediatype"
-	"github.com/surlykke/RefudeServices/lib/relation"
+	"github.com/surlykke/RefudeServices/lib/path"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/slice"
 	"github.com/surlykke/RefudeServices/lib/xdg"
@@ -132,7 +133,7 @@ func readDesktopFile(filePath string, id string) (*DesktopApplication, error) {
 		return nil, errors.New("file must start with '[Desktop Entry]'")
 	} else {
 		group := iniFile[0]
-		var path, title, comment = "/application/" + id, group.Entries["Name"], group.Entries["Comment"]
+		var path, title, comment = path.Of("/application/", id), group.Entries["Name"], group.Entries["Comment"]
 		var da = DesktopApplication{
 			ResourceData: *resource.MakeBase(path, title, comment, "", mediatype.Application),
 			DesktopId:    id,
@@ -147,8 +148,14 @@ func readDesktopFile(filePath string, id string) (*DesktopApplication, error) {
 		}
 		da.Version = group.Entries["Version"]
 		da.GenericName = group.Entries["GenericName"]
-		var iconUrl = icons.UrlFromName(group.Entries["Icon"])
-		da.SetIconHref(iconUrl)
+		var iconName = group.Entries["Icon"]
+		if iconName != "" {
+			da.Icon = icon.Name(iconName)
+
+			if strings.HasPrefix(string(da.Icon), "/") {
+				icons.AddFileIcon(iconName)
+			}
+		}
 		da.NoDisplay = group.Entries["NoDisplay"] == "true"
 		da.Hidden = group.Entries["Hidden"] == "true"
 		da.OnlyShowIn = slice.Split(group.Entries["OnlyShowIn"], ";")
@@ -167,7 +174,7 @@ func readDesktopFile(filePath string, id string) (*DesktopApplication, error) {
 		da.Mimetypes = slice.Split(group.Entries["MimeType"], ";")
 		da.DesktopFile = filePath
 
-		da.AddLink(da.Path, "Launch "+da.Title, iconUrl, relation.DefaultAction)
+		da.DefaultAction = "Launch " + da.Title
 		da.DesktopActions = []DesktopAction{}
 		var actionNames = slice.Split(group.Entries["Actions"], ";")
 
@@ -181,14 +188,14 @@ func readDesktopFile(filePath string, id string) (*DesktopApplication, error) {
 				if name == "" {
 					return nil, errors.New("Desktop file invalid, action " + actionGroup.Name + " has no default 'Name'")
 				}
-				var iconUrl = icons.UrlFromName(actionGroup.Entries["icon"])
+				var iconUrl = icon.Name(actionGroup.Entries["icon"])
 				da.DesktopActions = append(da.DesktopActions, DesktopAction{
-					id:      currentAction,
-					Name:    name,
-					Exec:    actionGroup.Entries["Exec"],
-					IconUrl: iconUrl,
+					id:   currentAction,
+					Name: name,
+					Exec: actionGroup.Entries["Exec"],
+					Icon: iconUrl,
 				})
-				da.AddLink(da.Path+"?action="+currentAction, name, iconUrl, relation.Action)
+				da.Actions = append(da.Actions, resource.Action{Id: currentAction, Title: name, Icon: iconUrl})
 			}
 		}
 

@@ -85,7 +85,7 @@ func deviceTecnology(index uint32) string {
 	return devTecnology[index]
 }
 
-func path2id(path dbus.ObjectPath) string {
+func dbusPath2id(path dbus.ObjectPath) string {
 	// I _think_ it's safe to assume all device paths start with devicePrefix
 	if strings.HasPrefix(string(path), devicePrefix) {
 		return strings.ReplaceAll(string(path)[len(devicePrefix):], "/", "-")

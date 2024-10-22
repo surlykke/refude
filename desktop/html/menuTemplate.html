@@ -4,16 +4,16 @@
 	{{if eq .Type "standard"}}
 		{{if gt (len .SubEntries) 0 }}
 			<li class="submenu closed" onclick="doLeftClick(event)">
-				{{if .IconUrl}}
-				<img src="{{.IconUrl}}" width="24" height="24" alt=""/>
+				{{if .Icon}}
+				<img src="{{.Icon}}" width="24" height="24" alt=""/>
 		        {{end}}
 				<span>{{.Label}}</span>
 				{{template "menu" .SubEntries}}
 			</li>
 		{{else}}
 		<li onclick="doLeftClick(event)" data-id="{{.Id}}">
-				{{if .IconUrl}}
-				<img src="{{.IconUrl}}" width="24" height="24" alt=""/>
+				{{if .Icon}}
+				<img src="{{.Icon}}" width="24" height="24" alt=""/>
 		        {{end}}
 				<span>{{.Label}}</span>
 			</li>

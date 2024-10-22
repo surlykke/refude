@@ -6,15 +6,14 @@
 package notifications
 
 import (
-	"fmt"
-
 	"github.com/surlykke/RefudeServices/icons"
+	"github.com/surlykke/RefudeServices/lib/path"
 	"github.com/surlykke/RefudeServices/lib/repo"
 	"github.com/surlykke/RefudeServices/watch"
 )
 
 func removeNotification(id uint32, reason uint32) {
-	if n, ok := repo.Get[*Notification](fmt.Sprintf("/notification/%d", id)); ok && !n.Deleted {
+	if n, ok := repo.Get[*Notification](path.Of("/notification/%d", id)); ok && !n.Deleted {
 		var copy = *n
 		copy.Deleted = true
 		repo.Put(&copy)
@@ -35,7 +34,7 @@ func getFlash() (map[string]string, bool) {
 			return map[string]string{
 				"subject":      n.Title,
 				"body":         n.Comment,
-				"iconFilePath": icons.FindIcon(n.iconName, uint32(64)),
+				"iconFilePath": icons.FindIcon(string(n.iconName), uint32(64)),
 			}, true
 		}
 	}

@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/surlykke/RefudeServices/icon"
 	"github.com/surlykke/RefudeServices/lib/image"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/requests"
@@ -51,7 +52,8 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func FindIcon(iconName string, size uint32) string {
-	if iconPaths, ok := getIconPaths(iconName); ok {
+	var icon = icon.Name(iconName)
+	if iconPaths, ok := getIconPaths(icon); ok {
 		return bestSizeMatch(iconPaths, size)
 	} else if lastDash := strings.LastIndex(iconName, "-"); lastDash > -1 {
 		/*
@@ -67,8 +69,8 @@ func FindIcon(iconName string, size uint32) string {
 
 }
 
-func AddARGBIcon(argbIcon image.ARGBIcon) string {
-	var iconName = image.ARGBIconHashName(argbIcon)
+func AddARGBIcon(argbIcon image.ARGBIcon) icon.Name {
+	var iconName = icon.Name(image.ARGBIconHashName(argbIcon))
 	var iconPaths = make([]IconPath, 0, len(argbIcon.Images))
 	for _, pixMap := range argbIcon.Images {
 		if pixMap.Width == pixMap.Height { // else ignore
@@ -96,11 +98,11 @@ func AddARGBIcon(argbIcon image.ARGBIcon) string {
 }
 
 func AddFileIcon(filePath string) {
-	addSessionIconSinglePath(filePath, filePath)
+	addSessionIconSinglePath(icon.Name(filePath), filePath)
 }
 
-func AddRawImageIcon(imageData image.ImageData) string {
-	iconName := image.ImageDataHashName(imageData)
+func AddRawImageIcon(imageData image.ImageData) icon.Name {
+	iconName := icon.Name(image.ImageDataHashName(imageData))
 	if png, err := imageData.AsPng(); err != nil {
 		log.Warn("Error converting image", err)
 		return ""
@@ -116,8 +118,8 @@ func AddRawImageIcon(imageData image.ImageData) string {
 	return iconName
 }
 
-func AddPngIcon(png []byte) string {
-	var iconName = image.HashName(png)
+func AddPngIcon(png []byte) icon.Name {
+	var iconName = icon.Name(image.HashName(png))
 	var path = fmt.Sprintf("%s/%s.png", sessionIconsDir, iconName)
 	if err := os.WriteFile(path, png, 0700); err != nil {
 		log.Warn("Could not write", path, err)

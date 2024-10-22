@@ -7,8 +7,9 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/surlykke/RefudeServices/icon"
 	"github.com/surlykke/RefudeServices/lib/mediatype"
-	"github.com/surlykke/RefudeServices/lib/relation"
+	"github.com/surlykke/RefudeServices/lib/path"
 	"github.com/surlykke/RefudeServices/lib/repo"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
@@ -21,7 +22,7 @@ type Tab struct {
 }
 
 func (this *Tab) Id() string {
-	return this.Path[len("/tab/"):]
+	return string(this.Path[len("/tab/"):])
 }
 
 func (this *Tab) DoPost(w http.ResponseWriter, r *http.Request) {
@@ -67,10 +68,10 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 						url = url[0:60] + "..."
 					}
 					var iconUrl = d["favIcon"]
-					var tab = &Tab{ResourceData: *resource.MakeBase("/tab/"+d["id"], title, "", iconUrl, mediatype.Tab)}
+					var tab = &Tab{ResourceData: *resource.MakeBase(path.Of("/tab/", d["id"]), title, "", icon.Name(iconUrl), mediatype.Tab)}
 					tab.Url = url
-					tab.AddLink(tab.Path, "Focus tab", iconUrl, relation.DefaultAction)
-					tab.AddLink(tab.Path, "Close tab", "", relation.Delete)
+					tab.DefaultAction = "Focus tab"
+					tab.DeleteAction = "Close tab"
 					tabs = append(tabs, tab)
 				}
 				respond.Ok(w)

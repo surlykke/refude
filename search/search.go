@@ -116,7 +116,7 @@ func filterAndSort(links []resource.Link, term string) []resource.Link {
 			var tmp = l1.Rank - l2.Rank
 			if tmp == 0 {
 				// Not significant, just to make the sort reproducible
-				tmp = strings.Compare(l1.Href, l2.Href)
+				tmp = strings.Compare(string(l1.Path), string(l2.Path))
 			}
 			return tmp
 		})

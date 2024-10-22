@@ -6,11 +6,12 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/surlykke/RefudeServices/lib/path"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
 )
 
-var resources = make(map[string]resource.Resource, 200)
+var resources = make(map[path.Path]resource.Resource, 200)
 var lock sync.Mutex
 
 func Put(res resource.Resource) {
@@ -19,13 +20,13 @@ func Put(res resource.Resource) {
 	resources[res.Data().Path] = res
 }
 
-func Remove(path string) {
+func Remove(path path.Path) {
 	lock.Lock()
 	defer lock.Unlock()
 	delete(resources, path)
 }
 
-func RemoveTyped[T resource.Resource](path string) (T, bool) {
+func RemoveTyped[T resource.Resource](path path.Path) (T, bool) {
 	lock.Lock()
 	defer lock.Unlock()
 	if r, ok := resources[path]; ok {
@@ -42,7 +43,7 @@ func Replace(resList []resource.Resource, prefix string) {
 	lock.Lock()
 	defer lock.Unlock()
 	for path := range resources {
-		if strings.HasPrefix(path, prefix) {
+		if strings.HasPrefix(string(path), prefix) {
 			delete(resources, path)
 		}
 	}
@@ -51,13 +52,13 @@ func Replace(resList []resource.Resource, prefix string) {
 	}
 }
 
-func GetUntyped(path string) resource.Resource {
+func GetUntyped(path path.Path) resource.Resource {
 	lock.Lock()
 	defer lock.Unlock()
 	return resources[path]
 }
 
-func Get[T resource.Resource](path string) (T, bool) {
+func Get[T resource.Resource](path path.Path) (T, bool) {
 	if res := GetUntyped(path); res != nil {
 		if t, ok := res.(T); ok {
 			return t, true
@@ -72,7 +73,7 @@ func GetListUntyped(prefix string) []resource.Resource {
 	defer lock.Unlock()
 	var resList = make([]resource.Resource, 0, 100)
 	for _, res := range resources {
-		if strings.HasPrefix(res.Data().Path, prefix) {
+		if strings.HasPrefix(string(res.Data().Path), prefix) {
 			resList = append(resList, res)
 		}
 	}
@@ -103,16 +104,16 @@ func CollectLinks(prefix string) []resource.Link {
 
 func GetListSortedByPath[T resource.Resource](prefix string) []T {
 	var resList = GetList[T](prefix)
-	slices.SortFunc(resList, func(t1, t2 T) int { return strings.Compare(t1.Data().Path, t2.Data().Path) })
+	slices.SortFunc(resList, func(t1, t2 T) int { return strings.Compare(string(t1.Data().Path), string(t2.Data().Path)) })
 	return resList
 }
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	var path = r.URL.Path
-	if strings.HasSuffix(path, "/") {
-		resource.ServeList(w, r, GetListUntyped(path))
+	var reqPath = r.URL.Path
+	if strings.HasSuffix(string(reqPath), "/") {
+		resource.ServeList(w, r, GetListUntyped(reqPath))
 	} else {
-		if res := GetUntyped(path); res != nil {
+		if res := GetUntyped(path.Of(reqPath)); res != nil {
 			resource.ServeSingleResource(w, r, res)
 		} else {
 			respond.NotFound(w)

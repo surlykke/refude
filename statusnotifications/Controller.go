@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/surlykke/RefudeServices/icon"
 	"github.com/surlykke/RefudeServices/icons"
 
 	"github.com/godbus/dbus/v5"
@@ -20,6 +21,7 @@ import (
 	dbuscall "github.com/surlykke/RefudeServices/lib/dbusutils"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/mediatype"
+	"github.com/surlykke/RefudeServices/lib/path"
 	"github.com/surlykke/RefudeServices/lib/repo"
 	"github.com/surlykke/RefudeServices/lib/resource"
 )
@@ -144,9 +146,9 @@ type event struct {
 
 var events = make(chan event)
 
-func buildItem(path string, dbusSender string, dbusPath dbus.ObjectPath) *Item {
+func buildItem(itemPath path.Path, dbusSender string, dbusPath dbus.ObjectPath) *Item {
 	var item = Item{
-		ResourceData: *resource.MakeBase(path, "", "", "", mediatype.Trayitem),
+		ResourceData: *resource.MakeBase(itemPath, "", "", "", mediatype.Trayitem),
 		DbusSender:   dbusSender,
 		DbusPath:     dbusPath,
 	}
@@ -163,6 +165,9 @@ func buildItem(path string, dbusSender string, dbusPath dbus.ObjectPath) *Item {
 	item.ItemId = getString(props["Id"])
 	item.Category = getString(props["Category"])
 	item.MenuDbusPath = getDbusPath(props["Menu"])
+	if item.MenuDbusPath != "" {
+		item.MenuPath = path.Of("/menu", dbusSender, item.MenuDbusPath)
+	}
 	if item.IconThemePath = getString(props["IconThemePath"]); item.IconThemePath != "" {
 		icons.AddBasedir(item.IconThemePath)
 	}
@@ -214,15 +219,15 @@ func RetrieveTitle(item *Item) {
 
 func RetrieveIcon(item *Item) {
 	if prop, ok := getProp(item.DbusSender, item.DbusPath, "IconName"); ok {
-		item.SetIconHref(icons.UrlFromName(getString(prop)))
+		item.Icon = icon.Name(getString(prop))
 	} else if prop, ok = getProp(item.DbusSender, item.DbusPath, "IconPixmap"); ok {
-		item.SetIconHref(icons.UrlFromName(collectPixMap(prop)))
+		item.Icon = collectPixMap(prop)
 	}
 }
 
 func RetrieveAttentionIcon(item *Item) {
 	if prop, ok := getProp(item.DbusSender, item.DbusPath, "AttentionIconName"); ok {
-		item.AttentionIconName = getString(prop)
+		item.AttentionIconName = icon.Name(getString(prop))
 	} else if prop, ok = getProp(item.DbusSender, item.DbusPath, "AttentionIconPixmap"); ok {
 		item.AttentionIconName = collectPixMap(prop)
 	}
@@ -230,7 +235,7 @@ func RetrieveAttentionIcon(item *Item) {
 
 func RetrieveOverlayIcon(item *Item) {
 	if prop, ok := getProp(item.DbusSender, item.DbusPath, "OverlayIconName"); ok {
-		item.OverlayIconName = getString(prop)
+		item.OverlayIconName = icon.Name(getString(prop))
 	} else if prop, ok = getProp(item.DbusSender, item.DbusPath, "OverlayIconPixmap"); ok {
 		item.OverlayIconName = collectPixMap(prop)
 	}

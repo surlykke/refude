@@ -7,7 +7,6 @@ package notifications
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 	"reflect"
 	"strings"
@@ -15,10 +14,12 @@ import (
 
 	"github.com/godbus/dbus/v5"
 	"github.com/godbus/dbus/v5/introspect"
+	"github.com/surlykke/RefudeServices/icon"
 	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/image"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/mediatype"
+	"github.com/surlykke/RefudeServices/lib/path"
 	"github.com/surlykke/RefudeServices/lib/repo"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
@@ -159,7 +160,7 @@ func Notify(
 
 	// Get image
 
-	var iconName string
+	var iconName icon.Name
 	var ok bool
 
 	var sizeHint uint32
@@ -168,7 +169,7 @@ func Notify(
 			if iconName, ok = installFileIcon(hints, "image-path"); !ok {
 				if iconName, ok = installFileIcon(hints, "image_path"); !ok {
 					if "" != app_icon {
-						iconName = app_icon
+						iconName = icon.Name(app_icon)
 					} else {
 						iconName, sizeHint, _ = installRawImageIcon(hints, "icon_data")
 					}
@@ -179,9 +180,8 @@ func Notify(
 
 	var title = sanitize(summary, []string{}, []string{})
 	body = sanitize(body, allowedTags, allowedEscapes)
-	var iconUrl = icons.UrlFromName(iconName)
 	notification := Notification{
-		ResourceData:   *resource.MakeBase(fmt.Sprintf("/notification/%d", id), title, body, iconUrl, mediatype.Notification),
+		ResourceData:   *resource.MakeBase(path.Of("/notification/%d", id), title, body, iconName, mediatype.Notification),
 		NotificationId: id,
 		Sender:         app_name,
 		Created:        time.Now(),
@@ -238,7 +238,7 @@ func Notify(
 	return id, nil
 }
 
-func installRawImageIcon(hints map[string]dbus.Variant, key string) (string, uint32, bool) {
+func installRawImageIcon(hints map[string]dbus.Variant, key string) (icon.Name, uint32, bool) {
 	if v, ok := hints[key]; !ok {
 		return "", 0, false
 	} else if imageData, err := getRawImage(v); err != nil {
@@ -279,7 +279,7 @@ func getRawImage(v dbus.Variant) (image.ImageData, error) {
 	}
 }
 
-func installFileIcon(hints map[string]dbus.Variant, key string) (string, bool) {
+func installFileIcon(hints map[string]dbus.Variant, key string) (icon.Name, bool) {
 	if v, ok := hints[key]; !ok {
 		return "", false
 	} else if path, ok := v.Value().(string); !ok {
@@ -287,7 +287,7 @@ func installFileIcon(hints map[string]dbus.Variant, key string) (string, bool) {
 		return "", true
 	} else {
 		icons.AddFileIcon(path)
-		return path, false
+		return icon.Name(path), false
 	}
 }
 

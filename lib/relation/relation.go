@@ -9,7 +9,6 @@ type Relation string
 
 const (
 	Self          = "self"
-	Search        = "search"
 	Icon          = "icon"
 	DefaultAction = "org.refude.defaultaction"
 	Action        = "org.refude.action"

@@ -11,9 +11,11 @@ import (
 	"strings"
 
 	"github.com/godbus/dbus/v5"
+	"github.com/surlykke/RefudeServices/icon"
 	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/image"
 	"github.com/surlykke/RefudeServices/lib/log"
+	"github.com/surlykke/RefudeServices/lib/path"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/slice"
@@ -29,10 +31,11 @@ type Item struct {
 	Category                string
 	Status                  string
 	IconAccessibleDesc      string
-	AttentionIconName       string
-	OverlayIconName         string
+	AttentionIconName       icon.Name
+	OverlayIconName         icon.Name
 	AttentionAccessibleDesc string
 	ToolTip                 string
+	MenuPath                path.Path
 	MenuDbusPath            dbus.ObjectPath
 	IconThemePath           string
 	UseIconPixmap           bool
@@ -62,7 +65,7 @@ func (item *Item) DoPost(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func collectPixMap(variant dbus.Variant) string {
+func collectPixMap(variant dbus.Variant) icon.Name {
 	if arrs, ok := variant.Value().([][]interface{}); ok {
 		var images = []image.ARGBImage{}
 		for _, arr := range arrs {

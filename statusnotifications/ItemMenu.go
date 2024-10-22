@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/godbus/dbus/v5"
+	"github.com/surlykke/RefudeServices/icon"
 	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/requests"
@@ -36,7 +37,7 @@ type MenuEntry struct {
 	Label       string
 	Enabled     bool
 	Visible     bool
-	IconUrl     string
+	Icon        icon.Name
 	Shortcuts   [][]string `json:",omitempty"`
 	ToggleType  string     `json:",omitempty"`
 	ToggleState int32
@@ -105,12 +106,9 @@ func parseMenu(value []interface{}) (MenuEntry, error) {
 	menuItem.Enabled = getBool(m["enabled"], true)
 	menuItem.Visible = getBool(m["visible"], true)
 	if iconName := getString(m["icon-name"]); iconName != "" {
-		menuItem.IconUrl = icons.UrlFromName(iconName)
+		menuItem.Icon = icon.Name(iconName)
 	} else if bytes := getBytes(m["icon-data"]); bytes != nil && len(bytes) > 0 {
-		iconName = icons.AddPngIcon(bytes)
-		if iconName != "" {
-			menuItem.IconUrl = icons.UrlFromName(iconName)
-		}
+		menuItem.Icon = icons.AddPngIcon(bytes)
 	}
 
 	if menuItem.ToggleType = getString(m["toggle-type"]); !slice.Among(menuItem.ToggleType, "checkmark", "radio", "") {

@@ -11,8 +11,8 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/surlykke/RefudeServices/lib/log"
+	"github.com/surlykke/RefudeServices/lib/path"
 	"github.com/surlykke/RefudeServices/lib/pubsub"
-	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/repo"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/xdg"
@@ -48,9 +48,9 @@ func Run() {
 
 func GetHandlers(mimetype string) []*DesktopApplication {
 	var apps = make([]*DesktopApplication, 0, 10)
-	if mt, ok := repo.Get[*Mimetype]("/mimetype/" + mimetype); ok {
+	if mt, ok := repo.Get[*Mimetype](path.Of("/mimetype/", mimetype)); ok {
 		for _, appId := range mt.Applications {
-			if app, ok := repo.Get[*DesktopApplication]("/application/" + appId); ok {
+			if app, ok := repo.Get[*DesktopApplication](path.Of("/application/", appId)); ok {
 				apps = append(apps, app)
 			}
 		}
@@ -58,18 +58,19 @@ func GetHandlers(mimetype string) []*DesktopApplication {
 	return apps
 }
 
-func GetNameAndIconUrl(appId string) (name string, iconUrl string) {
+func GetApp(appId string) *DesktopApplication {
 	if appId != "" {
-		if da, ok := repo.Get[*DesktopApplication]("/application/" + appId); ok {
-			return da.Title, da.GetLink(relation.Icon).Href
+		var path = path.Of("/application/", appId)
+		if da, ok := repo.Get[*DesktopApplication](path); ok {
+			return da
 		}
 	}
-	return "", ""
+	return nil
 }
 
-func OpenFile(appId, path string) bool {
-	if app, ok := repo.Get[*DesktopApplication]("/application/" + appId); ok {
-		app.Run(path)
+func OpenFile(appId, filePath string) bool {
+	if app, ok := repo.Get[*DesktopApplication](path.Of("/application/", appId)); ok {
+		app.Run(filePath)
 		return true
 	}
 	return false

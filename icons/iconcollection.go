@@ -3,13 +3,15 @@ package icons
 import (
 	"fmt"
 	"os"
-	"path"
+	gopath "path"
 	"path/filepath"
 	"regexp"
 	"slices"
 	"sync"
 
+	"github.com/surlykke/RefudeServices/icon"
 	"github.com/surlykke/RefudeServices/lib/log"
+	"github.com/surlykke/RefudeServices/lib/path"
 	"github.com/surlykke/RefudeServices/lib/repo"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
@@ -28,16 +30,16 @@ func init() {
 	}
 }
 
-var themedIcons = make(map[string][]IconPath)
-var sessionIcons = make(map[string][]IconPath)
+var themedIcons = make(map[icon.Name][]IconPath)
+var sessionIcons = make(map[icon.Name][]IconPath)
 var iconLock sync.Mutex
 
-func getIconPaths(iconName string) ([]IconPath, bool) {
+func getIconPaths(icon icon.Name) ([]IconPath, bool) {
 	iconLock.Lock()
 	defer iconLock.Unlock()
-	if iconPaths, ok := themedIcons[iconName]; ok {
+	if iconPaths, ok := themedIcons[icon]; ok {
 		return iconPaths, true
-	} else if iconPaths, ok = sessionIcons[iconName]; ok {
+	} else if iconPaths, ok = sessionIcons[icon]; ok {
 		return iconPaths, true
 	} else {
 		return nil, false
@@ -45,20 +47,20 @@ func getIconPaths(iconName string) ([]IconPath, bool) {
 
 }
 
-func addSessionIcon(name string, iconPaths []IconPath) {
+func addSessionIcon(icon icon.Name, iconPaths []IconPath) {
 	iconLock.Lock()
 	defer iconLock.Unlock()
-	if _, ok := themedIcons[name]; !ok {
-		sessionIcons[name] = iconPaths
+	if _, ok := themedIcons[icon]; !ok {
+		sessionIcons[icon] = iconPaths
 	}
 }
 
-func addSessionIconSinglePath(name, path string) {
-	addSessionIcon(name, []IconPath{{Path: path, MinSize: 1, MaxSize: 1}})
+func addSessionIconSinglePath(icon icon.Name, path string) {
+	addSessionIcon(icon, []IconPath{{Path: path, MinSize: 1, MaxSize: 1}})
 }
 
 func collectIcons() {
-	var collected = make(map[string][]IconPath, 500)
+	var collected = make(map[icon.Name][]IconPath, 500)
 	collectThemeIcons(collected)
 	collectOtherIcons(collected)
 	iconLock.Lock()
@@ -73,7 +75,7 @@ icon scale is ignored (TODO)
 We prefer an icon from theme with not-matching size over icon from parent theme with matching size. This should
 give a gui a more consistent look
 */
-func collectThemeIcons(collected map[string][]IconPath) {
+func collectThemeIcons(collected map[icon.Name][]IconPath) {
 	var searchOrder = determineSearchOrder()
 	for _, themeId := range searchOrder {
 		for name, iconPaths := range collectIconsFromTheme(themeId) {
@@ -84,20 +86,20 @@ func collectThemeIcons(collected map[string][]IconPath) {
 	}
 }
 
-func collectIconsFromTheme(themeId string) map[string][]IconPath {
-	var iconsFromTheme = make(map[string][]IconPath)
-	var theme, _ = repo.Get[*IconTheme]("/icontheme/" + themeId)
+func collectIconsFromTheme(themeId string) map[icon.Name][]IconPath {
+	var iconsFromTheme = make(map[icon.Name][]IconPath)
+	var theme, _ = repo.Get[*IconTheme](path.Of("/icontheme/", themeId))
 	for _, basedir := range xdg.IconBasedirs {
 		for _, themeDir := range theme.Dirs {
 			var glob = basedir + "/" + themeId + "/" + themeDir.Path + "/*"
 			if filePathsInThemeDir, err := filepath.Glob(glob); err == nil {
 				for _, filePath := range filePathsInThemeDir {
-					var ext = path.Ext(filePath)
+					var ext = gopath.Ext(filePath)
 					if ext == ".png" || ext == ".svg" { // TODO xpm
-						var fileName = path.Base(filePath)
+						var fileName = gopath.Base(filePath)
 						var iconPath = IconPath{Path: filePath, MinSize: themeDir.MinSize, MaxSize: themeDir.MaxSize}
-						var name = fileName[0 : len(fileName)-4]
-						iconsFromTheme[name] = append(iconsFromTheme[name], iconPath)
+						var icon = icon.Name(fileName[0 : len(fileName)-4])
+						iconsFromTheme[icon] = append(iconsFromTheme[icon], iconPath)
 					}
 				}
 			}
@@ -106,7 +108,7 @@ func collectIconsFromTheme(themeId string) map[string][]IconPath {
 	return iconsFromTheme
 }
 
-func collectOtherIcons(collected map[string][]IconPath) {
+func collectOtherIcons(collected map[icon.Name][]IconPath) {
 	var dirsToLookAt = make([]string, 0, len(xdg.IconBasedirs)+1)
 	dirsToLookAt = append(dirsToLookAt, xdg.IconBasedirs...)
 	dirsToLookAt = append(dirsToLookAt, xdg.PixmapDir)
@@ -114,12 +116,12 @@ func collectOtherIcons(collected map[string][]IconPath) {
 	for _, dir := range dirsToLookAt {
 		if filePathsInDir, err := filepath.Glob(dir + "/*"); err == nil {
 			for _, filePath := range filePathsInDir {
-				var ext = path.Ext(filePath)
+				var ext = gopath.Ext(filePath)
 				if ext == ".png" || ext == ".svg" { // TODO xpm
-					var name = path.Base(filePath)
-					name = name[0 : len(name)-4]
-					if _, ok := collected[name]; !ok { // We won't let a non-themed icon shadow a themed icon. cf. above.
-						collected[name] = []IconPath{{Path: filePath, MinSize: 1, MaxSize: 1}}
+					var name = gopath.Base(filePath)
+					var icon = icon.Name(name[0 : len(name)-4])
+					if _, ok := collected[icon]; !ok { // We won't let a non-themed icon shadow a themed icon. cf. above.
+						collected[icon] = []IconPath{{Path: filePath, MinSize: 1, MaxSize: 1}}
 					}
 				}
 
@@ -133,7 +135,7 @@ func determineSearchOrder() []string {
 	var walker func(themeId string)
 	walker = func(themeId string) {
 		if themeId != "" && themeId != "hicolor" && !slices.Contains(searchOrder, themeId) {
-			if theme, ok := repo.Get[*IconTheme]("/icontheme/" + themeId); ok {
+			if theme, ok := repo.Get[*IconTheme](path.Of("/icontheme/" + themeId)); ok {
 				searchOrder = append(searchOrder, themeId)
 				for _, parent := range theme.Inherits {
 					walker(parent)

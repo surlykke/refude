@@ -9,9 +9,10 @@ import (
 	"fmt"
 
 	"github.com/godbus/dbus/v5"
-	"github.com/surlykke/RefudeServices/icons"
+	"github.com/surlykke/RefudeServices/icon"
 	dbuscall "github.com/surlykke/RefudeServices/lib/dbusutils"
 	"github.com/surlykke/RefudeServices/lib/mediatype"
+	"github.com/surlykke/RefudeServices/lib/path"
 	"github.com/surlykke/RefudeServices/lib/repo"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/notifications"
@@ -51,14 +52,14 @@ func retrieveDevicePaths() []dbus.ObjectPath {
 	return append(enumCall.Body[0].([]dbus.ObjectPath), displayDeviceDbusPath)
 }
 
-func retrieveDevice(path dbus.ObjectPath) *Device {
+func retrieveDevice(dbusPath dbus.ObjectPath) *Device {
 	var device = Device{
-		ResourceData:  *resource.MakeBase("/device/"+path2id(path), "", "", "", mediatype.Device),
-		DbusPath:      path,
-		DisplayDevice: path == displayDeviceDbusPath,
+		ResourceData:  *resource.MakeBase(path.Of("/device/", dbusPath2id(dbusPath)), "", "", "", mediatype.Device),
+		DbusPath:      dbusPath,
+		DisplayDevice: dbusPath == displayDeviceDbusPath,
 	}
 
-	var props = dbuscall.GetAllProps(dbusConn, upowerService, path, upowerDeviceInterface)
+	var props = dbuscall.GetAllProps(dbusConn, upowerService, dbusPath, upowerDeviceInterface)
 
 	for key, variant := range props {
 		switch key {
@@ -117,7 +118,7 @@ func retrieveDevice(path dbus.ObjectPath) *Device {
 		case "BatteryLevel":
 			device.Batterylevel = deviceBatteryLevel(variant.Value().(uint32))
 		case "IconName":
-			device.SetIconHref(icons.UrlFromName(variant.Value().(string)))
+			device.Icon = icon.Name((variant.Value().(string)))
 		}
 	}
 	device.Title = deviceTitle(device.Type, device.Model)
@@ -140,7 +141,7 @@ func updateTrayIcon() {
 }
 
 func notifyOnLow() {
-	if displayDevice, ok := repo.Get[*Device](fmt.Sprintf("/device/%s", path2id(displayDeviceDbusPath))); ok {
+	if displayDevice, ok := repo.Get[*Device](path.Of("/device/%s", dbusPath2id(displayDeviceDbusPath))); ok {
 		var percentage = int(displayDevice.Percentage)
 		if displayDevice.State == "Discharging" {
 			if percentage <= 5 {
