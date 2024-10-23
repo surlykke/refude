@@ -166,7 +166,7 @@ func buildItem(itemPath path.Path, dbusSender string, dbusPath dbus.ObjectPath) 
 	item.Category = getString(props["Category"])
 	item.MenuDbusPath = getDbusPath(props["Menu"])
 	if item.MenuDbusPath != "" {
-		item.MenuPath = path.Of("/menu", dbusSender, item.MenuDbusPath)
+		item.MenuPath = path.Of("/menu/", dbusSender, item.MenuDbusPath)
 	}
 	if item.IconThemePath = getString(props["IconThemePath"]); item.IconThemePath != "" {
 		icons.AddBasedir(item.IconThemePath)

@@ -27,6 +27,7 @@ type ResourceData struct {
 	Icon          icon.Name
 	DefaultAction string
 	DeleteAction  string
+	DeleteIcon    icon.Name
 	Actions       []Action
 	Type          mediatype.MediaType `json:"type"`
 	Keywords      []string            `json:"keywords"`
@@ -64,7 +65,7 @@ func (this *ResourceData) GetActionLinks() []Link {
 		result = append(result, Link{Path: path.Of(this.Path, "?action=", a.Id), Title: a.Title, Icon: a.Icon, Relation: relation.Action})
 	}
 	if this.DeleteAction != "" {
-		result = append(result, Link{Path: this.Path, Title: this.DeleteAction, Relation: relation.Delete})
+		result = append(result, Link{Path: this.Path, Title: this.DeleteAction, Icon: this.DeleteIcon, Relation: relation.Delete})
 	}
 
 	return result
@@ -87,7 +88,7 @@ type Link struct {
 }
 
 func LinkTo(res Resource) Link {
-	return Link{Path: res.Data().Path, Title: res.Data().Title, Icon: res.Data().Icon, Relation: relation.Related, Type: res.Data().Type}
+	return Link{Path: res.Data().Path, Title: res.Data().Title, Comment: res.Data().Comment, Icon: res.Data().Icon, Relation: relation.Related, Type: res.Data().Type}
 }
 
 // -------------- Serve -------------------------

@@ -72,9 +72,7 @@ func GetLinks(searchTerm string) []resource.Link {
 					var path = path.Of(menu.Path, "?id=", entry.Id)
 					var comment = menu.SenderApp
 					if strings.Index(comment, "tray") == -1 {
-						comment = comment + " tray menu"
-					} else {
-						comment = comment + " menu"
+						comment = comment + " tray"
 					}
 					result = append(result, resource.Link{Path: path, Title: entry.Label, Comment: comment, Icon: entry.Icon, Relation: relation.Action})
 				}
@@ -86,6 +84,7 @@ func GetLinks(searchTerm string) []resource.Link {
 		if entries, err := itemMenu.Entries(); err == nil {
 			getLinksFromMenu(itemMenu, entries)
 		}
+
 	}
 	return result
 }

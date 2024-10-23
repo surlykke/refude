@@ -107,32 +107,39 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			var expandedResource = requests.GetSingleQueryParameter(r, "details", "")
 			var links = search.Search(term)
 			var results = make([]result, 0, len(links))
-			var resultToFocus = 0
-			for i, link := range links {
-				tabindex++
-				var r = linkAsResult(link, tabindex)
+			var focusFound = false
+			for _, link := range links {
+				var r = linkAsResult(link)
+				if link.Comment != "" {
+					r.Comment = link.Comment
+				} else {
+					r.Comment = link.Type.Short()
+				}
 				if string(r.Path) == expandedResource {
 					if res := getResource(r.Path); res != nil {
 						var rDet = &resourceDetails{Description: description(res)}
-						for _, actionLink := range res.Data().GetActionLinks() {
+						for i, actionLink := range res.Data().GetActionLinks() {
+							var actionResult = linkAsResult(actionLink)
+							if i == 0 {
+								actionResult.Autofocus = "autofocus"
+								focusFound = true
+							}
 							tabindex++
-							rDet.Actions = append(rDet.Actions, linkAsResult(actionLink, tabindex))
+							actionResult.Tabindex = tabindex
+							rDet.Actions = append(rDet.Actions, actionResult)
+
 						}
 						r.Details = rDet
-						resultToFocus = i
 					}
 				} else {
-					if link.Comment != "" {
-						r.Comment = link.Comment
-					} else {
-						r.Comment = link.Type.Short()
-					}
+					tabindex++
+					r.Tabindex = tabindex
 				}
 
 				results = append(results, r)
 			}
-			if len(results) > 0 {
-				results[resultToFocus].Autofocus = "autofocus"
+			if !focusFound && len(results) > 0 {
+				results[0].Autofocus = "autofocus"
 			}
 			var m = map[string]any{
 				"term":    term,
@@ -183,11 +190,11 @@ func getResource(path path.Path) resource.Resource {
 	}
 }
 
-func linkAsResult(lnk resource.Link, tabindex int) result {
+func linkAsResult(lnk resource.Link) result {
 	return result{
 		IconUrl:  lnk.Icon.String(),
 		Title:    lnk.Title,
-		Tabindex: tabindex,
+		Tabindex: -1,
 		Path:     lnk.Path,
 		Relation: lnk.Relation}
 }

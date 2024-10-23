@@ -52,7 +52,7 @@ func Run(ignWin map[string]bool) {
 				w.Title = upd.title
 			} else if upd.appId != "" {
 				if app := applications.GetApp(upd.appId); app != nil {
-					w.Comment, w.Icon = app.Title, app.Icon
+					w.Comment, w.Icon = app.Title+" window", app.Icon
 				}
 				w.AppId = upd.appId
 			} else if upd.state > 0 {
@@ -68,7 +68,7 @@ func Run(ignWin map[string]bool) {
 			for _, w := range repo.GetList[*WaylandWindow]("/window/") {
 				var copy = *w
 				if app := applications.GetApp(copy.AppId); app != nil {
-					copy.Comment, copy.Icon = app.Title, app.Icon
+					copy.Comment, copy.Icon = app.Title+" window", app.Icon
 				}
 				repo.Put(&copy)
 			}
@@ -139,6 +139,7 @@ func MakeWindow(wId uint64) *WaylandWindow {
 	}
 	ww.DefaultAction = "Focus window"
 	ww.DeleteAction = "Close window"
+	ww.DeleteIcon = "window-close"
 	return ww
 }
 

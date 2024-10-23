@@ -76,7 +76,7 @@ func MakeLinkFromPath(ospath string, name string) resource.Link {
 	var title = name
 	var mimetype, _ = magicmime.TypeByFile(ospath)
 	var icon = icon.Name(strings.ReplaceAll(mimetype, "/", "-"))
-	return resource.Link{Path: path.Of("/file", gopath.Clean(ospath)), Title: title, Icon: icon, Relation: relation.Related, Type: "application/vnd.org.refude.file+json"}
+	return resource.Link{Path: path.Of("/file", gopath.Clean(ospath)), Title: title, Comment: ospath, Icon: icon, Relation: relation.Related, Type: "application/vnd.org.refude.file+json"}
 }
 
 func makeFileFromInfo(osPath string, fileInfo os.FileInfo) *File {

@@ -188,7 +188,7 @@ func readDesktopFile(filePath string, id string) (*DesktopApplication, error) {
 				if name == "" {
 					return nil, errors.New("Desktop file invalid, action " + actionGroup.Name + " has no default 'Name'")
 				}
-				var iconUrl = icon.Name(actionGroup.Entries["icon"])
+				var iconUrl = icon.Name(actionGroup.Entries["Icon"])
 				da.DesktopActions = append(da.DesktopActions, DesktopAction{
 					id:   currentAction,
 					Name: name,
