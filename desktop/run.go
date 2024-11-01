@@ -15,7 +15,7 @@ import (
 	"strings"
 
 	"github.com/surlykke/RefudeServices/file"
-	"github.com/surlykke/RefudeServices/icon"
+	"github.com/surlykke/RefudeServices/lib/icon"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/mediatype"
 	"github.com/surlykke/RefudeServices/lib/path"

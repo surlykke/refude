@@ -9,7 +9,7 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/surlykke/RefudeServices/icon"
+	"github.com/surlykke/RefudeServices/lib/icon"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/path"
 	"github.com/surlykke/RefudeServices/lib/repo"

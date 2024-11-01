@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/surlykke/RefudeServices/icon"
+	"github.com/surlykke/RefudeServices/lib/icon"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"

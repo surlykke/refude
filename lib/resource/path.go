@@ -1,6 +1,6 @@
 package resource
 
-import "github.com/surlykke/RefudeServices/icon"
+import "github.com/surlykke/RefudeServices/lib/icon"
 
 type Action struct {
 	Id    string

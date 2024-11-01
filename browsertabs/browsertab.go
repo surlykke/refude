@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/surlykke/RefudeServices/icon"
+	"github.com/surlykke/RefudeServices/lib/icon"
 	"github.com/surlykke/RefudeServices/lib/mediatype"
 	"github.com/surlykke/RefudeServices/lib/path"
 	"github.com/surlykke/RefudeServices/lib/repo"

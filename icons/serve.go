@@ -15,7 +15,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/surlykke/RefudeServices/icon"
+	"github.com/surlykke/RefudeServices/lib/icon"
 	"github.com/surlykke/RefudeServices/lib/image"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/requests"
