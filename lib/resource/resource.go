@@ -49,7 +49,15 @@ func (this *ResourceData) Data() *ResourceData {
 }
 
 func (this *ResourceData) Link() Link {
-	return LinkTo(this)
+	return Link{
+		Path:     this.Data().Path,
+		Title:    this.Data().Title,
+		Comment:  this.Data().Comment,
+		Icon:     this.Data().Icon,
+		Relation: relation.Related,
+		Type:     this.Data().Type,
+		Keywords: this.Data().Keywords,
+	}
 }
 
 func (this *ResourceData) OmitFromSearch() bool {
@@ -71,8 +79,6 @@ func (this *ResourceData) GetActionLinks() []Link {
 	return result
 }
 
-var httpLocalHost7838 = []byte("http://localhost:7938")
-
 // --------------------- Link --------------------------------------
 
 type Link struct {
@@ -85,10 +91,6 @@ type Link struct {
 	// --- Used for search -------
 	Keywords []string `json:"-"`
 	Rank     int      `json:"-"`
-}
-
-func LinkTo(res Resource) Link {
-	return Link{Path: res.Data().Path, Title: res.Data().Title, Comment: res.Data().Comment, Icon: res.Data().Icon, Relation: relation.Related, Type: res.Data().Type}
 }
 
 // -------------- Serve -------------------------
