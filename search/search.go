@@ -37,6 +37,7 @@ const max_search_time = 30 * time.Millisecond
 type collector func(string) []resource.Link
 
 func Search(searchTerm string) []resource.Link {
+	searchTerm = strings.ToLower(searchTerm)
 	var collectors []collector
 
 	collectors, searchTerm = collectCollectors(searchTerm)
@@ -102,7 +103,7 @@ func filterAndSort(links []resource.Link, term string) []resource.Link {
 			l.Rank = fuzzy.RankMatchNormalizedFold(term, l.Title)
 			if l.Rank < 0 {
 				for _, keyWord := range l.Keywords {
-					if strings.Index(keyWord, term) > -1 {
+					if strings.Contains(strings.ToLower(keyWord), term) {
 						l.Rank = 100000
 						break
 					}
