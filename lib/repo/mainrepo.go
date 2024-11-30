@@ -68,13 +68,15 @@ func Get[T resource.Resource](path path.Path) (T, bool) {
 	return t, false
 }
 
-func GetListUntyped(prefix string) []resource.Resource {
+func GetListUntyped(prefixes ...string) []resource.Resource {
 	lock.Lock()
 	defer lock.Unlock()
 	var resList = make([]resource.Resource, 0, 100)
-	for _, res := range resources {
-		if strings.HasPrefix(string(res.Data().Path), prefix) {
-			resList = append(resList, res)
+	for _, prefix := range prefixes {
+		for _, res := range resources {
+			if strings.HasPrefix(string(res.Data().Path), prefix) {
+				resList = append(resList, res)
+			}
 		}
 	}
 	return resList

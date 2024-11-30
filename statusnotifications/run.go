@@ -7,12 +7,15 @@ package statusnotifications
 
 import (
 	"strings"
+	"time"
 
+	"github.com/surlykke/RefudeServices/lib/href"
 	"github.com/surlykke/RefudeServices/lib/mediatype"
 	"github.com/surlykke/RefudeServices/lib/path"
 	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/repo"
 	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib/searchcache"
 )
 
 func Run() {
@@ -26,7 +29,7 @@ func Run() {
 			if i, ok := repo.RemoveTyped[*Item](path); ok {
 				repo.Remove(i.MenuPath)
 			}
-		case "ItemCreated":
+		case "ItemCreated", "NewTitle", "NewIcon", "NewAttentionIcon", "NewOverlayIcon", "NewToolTip", "NewStatus":
 			var item = buildItem(path, event.dbusSender, event.dbusPath)
 			if item.MenuDbusPath != "" {
 				repo.Put(&Menu{
@@ -37,31 +40,18 @@ func Run() {
 				})
 			}
 			repo.Put(item)
-		case "NewTitle", "NewIcon", "NewAttentionIcon", "NewOverlayIcon", "NewToolTip", "NewStatus":
-			if item, ok := repo.Get[*Item](path); ok {
-				var copy = *item
-				switch event.name {
-				case "NewTitle":
-				case "NewIcon":
-					RetrieveIcon(&copy)
-				case "NewAttentionIcon":
-					RetrieveAttentionIcon(&copy)
-				case "NewOverlayIcon":
-					RetrieveOverlayIcon(&copy)
-				case "NewToolTip":
-					RetrieveToolTip(&copy)
-				case "NewStatus":
-					RetrieveStatus(&copy)
-				}
-
-			}
 		}
 	}
 }
 
-func GetLinks(searchTerm string) []resource.Link {
-	var result = make([]resource.Link, 0, 10)
+func GetLinks() []resource.Link {
+	return cache.Get()
+}
 
+var cache = searchcache.Make(getLinks, 10*time.Second)
+
+func getLinks() []resource.Link {
+	var result = make([]resource.Link, 0, 30)
 	var getLinksFromMenu func(*Menu, []MenuEntry)
 	getLinksFromMenu = func(menu *Menu, entries []MenuEntry) {
 		for _, entry := range entries {
@@ -69,12 +59,12 @@ func GetLinks(searchTerm string) []resource.Link {
 				if len(entry.SubEntries) > 0 {
 					getLinksFromMenu(menu, entry.SubEntries)
 				} else {
-					var path = path.Of(menu.Path, "?id=", entry.Id)
 					var comment = menu.SenderApp
 					if strings.Index(comment, "tray") == -1 {
 						comment = comment + " tray"
 					}
-					result = append(result, resource.Link{Path: path, Title: entry.Label, Comment: comment, Icon: entry.Icon, Relation: relation.Action})
+					var lnk = resource.Link{Href: href.Of(menu.Path).P("id", entry.Id), Title: entry.Label, Comment: comment, Icon: entry.Icon, Relation: relation.Action}
+					result = append(result, lnk)
 				}
 			}
 		}

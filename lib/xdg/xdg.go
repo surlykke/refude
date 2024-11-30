@@ -65,14 +65,14 @@ func init() {
 	// User dirs. Defaults taken from my /etc/xdg/user-dirs.defaults. We probably should re-read that file on startup,
 	// but given that so many apps use these, I find it unlikely that they will change. (The defaults, that is)
 	var userDirs, _ = readUserDirs(Home, ConfigHome)
-	DesktopDir = clean(notEmptyOr(userDirs["XDG_DESKTOP_DIR"], Home+"/DESKTOP"))
-	DownloadDir = clean(notEmptyOr(userDirs["XDG_DOWNLOAD_DIR"], Home+"/DOWNLOAD"))
-	TemplatesDir = clean(notEmptyOr(userDirs["XDG_TEMPLATES_DIR"], Home+"/TEMPLATES"))
-	PublicshareDir = clean(notEmptyOr(userDirs["XDG_PUBLICSHARE_DIR"], Home+"/PUBLICSHARE"))
-	DocumentsDir = clean(notEmptyOr(userDirs["XDG_DOCUMENTS_DIR"], Home+"/DOCUMENTS"))
-	MusicDir = clean(notEmptyOr(userDirs["XDG_MUSIC_DIR"], Home+"/MUSIC"))
-	PicturesDir = clean(notEmptyOr(userDirs["XDG_PICTURES_DIR"], Home+"/PICTURES"))
-	VideosDir = clean(notEmptyOr(userDirs["XDG_VIDEOS_DIR"], Home+"/VIDEOS"))
+	DesktopDir = clean(notEmptyOr(userDirs["XDG_DESKTOP_DIR"], Home+"/Desktop"))
+	DownloadDir = clean(notEmptyOr(userDirs["XDG_DOWNLOAD_DIR"], Home+"/Download"))
+	TemplatesDir = clean(notEmptyOr(userDirs["XDG_TEMPLATES_DIR"], Home+"/Templates"))
+	PublicshareDir = clean(notEmptyOr(userDirs["XDG_PUBLICSHARE_DIR"], Home+"/public"))
+	DocumentsDir = clean(notEmptyOr(userDirs["XDG_DOCUMENTS_DIR"], Home+"/Documents"))
+	MusicDir = clean(notEmptyOr(userDirs["XDG_MUSIC_DIR"], Home+"/Music"))
+	PicturesDir = clean(notEmptyOr(userDirs["XDG_PICTURES_DIR"], Home+"/Pictures"))
+	VideosDir = clean(notEmptyOr(userDirs["XDG_VIDEOS_DIR"], Home+"/Videos"))
 
 }
 

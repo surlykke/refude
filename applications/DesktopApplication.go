@@ -65,7 +65,7 @@ func (d *DesktopApplication) DoPost(w http.ResponseWriter, r *http.Request) {
 	var terminal bool
 	var action = requests.GetSingleQueryParameter(r, "action", "")
 	var args = r.URL.Query()["arg"]
-	if action == "" {
+	if action == "launch" {
 		exec, terminal = d.Exec, d.Terminal
 	} else {
 		for _, da := range d.DesktopActions {

@@ -133,14 +133,19 @@ func readDesktopFile(filePath string, id string) (*DesktopApplication, error) {
 		return nil, errors.New("file must start with '[Desktop Entry]'")
 	} else {
 		group := iniFile[0]
-		var path, title, comment = path.Of("/application/", id), group.Entries["Name"], group.Entries["Comment"]
-		var da = DesktopApplication{
-			ResourceData: *resource.MakeBase(path, title, comment, "", mediatype.Application),
-			DesktopId:    id,
+
+		var path, title, comment, iconName = path.Of("/application/", id), group.Entries["Name"], group.Entries["Comment"], group.Entries["Icon"]
+		if strings.HasPrefix(string(iconName), "/") {
+			icons.AddFileIcon(iconName)
 		}
 
-		if da.Title == "" {
+		if title == "" {
 			return nil, errors.New("desktop file invalid, no 'Name' given")
+		}
+
+		var da = DesktopApplication{
+			ResourceData: *resource.MakeBase(path, title, comment, icon.Name(iconName), mediatype.Application),
+			DesktopId:    id,
 		}
 
 		if da.Type = group.Entries["Type"]; da.Type == "" {
@@ -148,14 +153,6 @@ func readDesktopFile(filePath string, id string) (*DesktopApplication, error) {
 		}
 		da.Version = group.Entries["Version"]
 		da.GenericName = group.Entries["GenericName"]
-		var iconName = group.Entries["Icon"]
-		if iconName != "" {
-			da.Icon = icon.Name(iconName)
-
-			if strings.HasPrefix(string(da.Icon), "/") {
-				icons.AddFileIcon(iconName)
-			}
-		}
 		da.NoDisplay = group.Entries["NoDisplay"] == "true"
 		da.Hidden = group.Entries["Hidden"] == "true"
 		da.OnlyShowIn = slice.Split(group.Entries["OnlyShowIn"], ";")
@@ -173,8 +170,7 @@ func readDesktopFile(filePath string, id string) (*DesktopApplication, error) {
 		da.Url = group.Entries["URL"]
 		da.Mimetypes = slice.Split(group.Entries["MimeType"], ";")
 		da.DesktopFile = filePath
-
-		da.DefaultAction = "Launch " + da.Title
+		da.AddAction("launch", title, "Launch", icon.Name(iconName))
 		da.DesktopActions = []DesktopAction{}
 		var actionNames = slice.Split(group.Entries["Actions"], ";")
 
@@ -195,7 +191,7 @@ func readDesktopFile(filePath string, id string) (*DesktopApplication, error) {
 					Exec: actionGroup.Entries["Exec"],
 					Icon: iconUrl,
 				})
-				da.Actions = append(da.Actions, resource.Action{Id: currentAction, Title: name, Icon: iconUrl})
+				da.AddAction(currentAction, name, title, iconUrl, title)
 			}
 		}
 

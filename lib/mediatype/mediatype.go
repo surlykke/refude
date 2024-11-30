@@ -15,6 +15,7 @@ const (
 	Menu         MediaType = "application/vnd.org.refude.menu+json"
 	Start        MediaType = "application/vnd.org.refude.start+json"
 	Mimetype     MediaType = "application/vnd.org.refude.mimetype+json"
+	IconTheme    MediaType = "application/vnd.org.refude.icontheme+json"
 )
 
 var short = map[MediaType]string{

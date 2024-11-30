@@ -31,9 +31,10 @@ func getFlash() (map[string]string, bool) {
 			continue
 		}
 		if !n.SoftExpired() {
+			var self = n.Link()
 			return map[string]string{
-				"subject":      n.Title,
-				"body":         n.Comment,
+				"subject":      self.Title,
+				"body":         self.Comment,
 				"iconFilePath": icons.FindIcon(string(n.iconName), uint32(64)),
 			}, true
 		}

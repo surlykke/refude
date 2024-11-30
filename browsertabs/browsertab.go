@@ -70,8 +70,9 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					var iconUrl = d["favIcon"]
 					var tab = &Tab{ResourceData: *resource.MakeBase(path.Of("/tab/", d["id"]), title, "", icon.Name(iconUrl), mediatype.Tab)}
 					tab.Url = url
-					tab.DefaultAction = "Focus tab"
-					tab.DeleteAction = "Close tab"
+					tab.AddAction("focus", title, "Focus tab", icon.Name(iconUrl))
+					//tab.AddDeleteAction("close", title, "Close tab", "")
+
 					tabs = append(tabs, tab)
 				}
 				respond.Ok(w)

@@ -7,7 +7,9 @@ import (
 
 	"github.com/surlykke/RefudeServices/lib/icon"
 	"github.com/surlykke/RefudeServices/lib/log"
+	"github.com/surlykke/RefudeServices/lib/mediatype"
 	"github.com/surlykke/RefudeServices/lib/path"
+	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/slice"
 	"github.com/surlykke/RefudeServices/lib/tr"
 )
@@ -69,14 +71,26 @@ func collectMimetypes() map[string]*Mimetype {
 	}
 
 	for _, tmp := range xmlCollector.MimeTypes {
-		if mimeType, err := MakeMimetype(tmp.Type); err != nil {
-			log.Warn(err)
+		if !mimetypePattern.MatchString(tmp.Type) {
+			log.Warn("Incomprehensible mimetype:", tmp.Type)
 		} else {
+			var mPath = path.Of("/mimetype/", tmp.Type)
+
+			var comment = ""
+			var iconName icon.Name = ""
+
 			for _, tmpComment := range tmp.Comment {
-				if tr.LocaleMatch(tmpComment.Lang) || (tmpComment.Lang == "" && mimeType.Comment == "") {
-					mimeType.Comment = tmpComment.Text
+				if tr.LocaleMatch(tmpComment.Lang) || (tmpComment.Lang == "" && comment == "") {
+					comment = tmpComment.Text
 				}
 			}
+
+			if tmp.Icon.Name == "" {
+				tmp.Icon.Name = strings.Replace(tmp.Type, "/", "-", -1)
+			}
+			iconName = icon.Name(tmp.Icon.Name)
+
+			var mimeType = &Mimetype{ResourceData: *resource.MakeBase(mPath, "", comment, iconName, mediatype.Mimetype), Id: tmp.Type}
 
 			for _, tmpAcronym := range tmp.Acronym {
 				if tr.LocaleMatch(tmpAcronym.Lang) || (tmpAcronym.Lang == "" && mimeType.Acronym == "") {
@@ -89,11 +103,6 @@ func collectMimetypes() map[string]*Mimetype {
 					mimeType.ExpandedAcronym = tmpExpandedAcronym.Text
 				}
 			}
-
-			if tmp.Icon.Name == "" {
-				tmp.Icon.Name = strings.Replace(tmp.Type, "/", "-", -1)
-			}
-			mimeType.Icon = icon.Name(tmp.Icon.Name)
 
 			for _, aliasStruct := range tmp.Alias {
 				mimeType.Aliases = slice.AppendIfNotThere(mimeType.Aliases, aliasStruct.Type)

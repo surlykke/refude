@@ -23,7 +23,7 @@
 	</div>
 	<div id="menu" hx-get="/desktop/tray/menu" hx-trigger="fetchMenu" hx-vals="js:{menuPath: currentMenu}"></div>
 
-	<div id="search-results" hx-get="/desktop/search" hx-trigger="sse:search, search, load" hx-vals="js:{search: term, details: details}"> 
+	<div id="search-results" hx-get="/desktop/search" hx-trigger="sse:search, search, load" hx-vals="js:{search: term}"> 
 	</div>
 </body>
 </html>

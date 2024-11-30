@@ -29,16 +29,10 @@ var Start StartResource
 
 func Run() {
 	Start = StartResource{ResourceData: *resource.MakeBase("/start", "Refude desktop", "", "", mediatype.Start)}
-	Start.Actions = []resource.Action{
-		{Id: "shutdown", Title: tr.Tr("Power off"), Icon: "system-shutdown"},
-		{Id: "reboot", Title: tr.Tr("Reboot"), Icon: "system-reboot"},
-		{Id: "suspend", Title: tr.Tr("Suspend"), Icon: "system-suspend"},
-	}
+	Start.AddAction("shutdown", tr.Tr("Power off"), "", "system-shutdown")
+	Start.AddAction("reboot", tr.Tr("Reboot"), "", "system-reboot")
+	Start.AddAction("suspend", tr.Tr("Suspend"), "", "system-suspend")
 	repo.Put(&Start)
-}
-
-func GetLinks(term string) []resource.Link {
-	return Start.GetActionLinks()
 }
 
 func (s StartResource) DoPost(w http.ResponseWriter, r *http.Request) {

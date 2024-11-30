@@ -6,26 +6,25 @@
 package search
 
 import (
-	"fmt"
 	"net/http"
 	"slices"
 	"strings"
 	"time"
 
-	"github.com/lithammer/fuzzysearch/fuzzy"
-	"github.com/surlykke/RefudeServices/desktopactions"
 	"github.com/surlykke/RefudeServices/file"
+	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/repo"
 	"github.com/surlykke/RefudeServices/lib/requests"
 	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/respond"
-	"github.com/surlykke/RefudeServices/lib/xdg"
 	"github.com/surlykke/RefudeServices/statusnotifications"
 )
 
+const maxRank uint = 1000000
+
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		var term = strings.ToLower(requests.GetSingleQueryParameter(r, "term", ""))
+		var term = requests.GetSingleQueryParameter(r, "term", "")
 		respond.AsJson(w, Search(term))
 	} else {
 		respond.NotAllowed(w)
@@ -34,93 +33,96 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 const max_search_time = 30 * time.Millisecond
 
-type collector func(string) []resource.Link
-
-func Search(searchTerm string) []resource.Link {
-	searchTerm = strings.ToLower(searchTerm)
-	var collectors []collector
-
-	collectors, searchTerm = collectCollectors(searchTerm)
-
-	var result []resource.Link
-	var returned = 0
-	result = make([]resource.Link, 0, 100)
-	var returns = make(chan []resource.Link, len(collectors))
-	for i := 0; i < len(collectors); i++ {
-		var j = i
-		go func() {
-			returns <- collectors[j](searchTerm)
-		}()
-	}
-	var timeout = time.After(max_search_time)
-	for returned < len(collectors) {
-		select {
-		case links := <-returns:
-			result = append(result, links...)
-			returned++
-		case <-timeout:
-			fmt.Println("Reached timeout")
-			break
-		}
-	}
-
-	return filterAndSort(result, searchTerm)
+type rankedLink struct {
+	resource.Link
+	rank uint
 }
 
-func collectCollectors(searchTerm string) ([]collector, string) {
-	var fileSearchDirs = []string{xdg.Home, xdg.ConfigHome, xdg.DownloadDir, xdg.DocumentsDir, xdg.MusicDir, xdg.VideosDir}
-
-	if strings.Index(searchTerm, "/") > -1 {
-		var pathBits = strings.Split(searchTerm, "/")
-		pathBits, searchTerm = pathBits[:len(pathBits)-1], pathBits[len(pathBits)-1]
-		fileSearchDirs = file.CollectDirs(fileSearchDirs, pathBits) // Special handling of file Search
-
-		return []collector{file.Collector(fileSearchDirs)}, searchTerm
+func Search(term string) []rankedLink {
+	var termRunes = []rune(strings.ToLower(term))
+	var links []rankedLink
+	if len(term) == 0 {
+		links = searchResources(repo.GetListUntyped("/notification/", "/window/", "/tab/"), termRunes)
+	} else if len(term) == 1 {
+		links = searchResources(repo.GetListUntyped("/notification/", "/window/", "/tab/", "/start", "/application"), termRunes)
 	} else {
-		var collectors = []collector{linkCollector("/notification/"), linkCollector("/window/"), linkCollector("/tab/")}
-		if len(searchTerm) > 0 {
-			collectors = append(collectors, desktopactions.GetLinks, linkCollector("/application/"))
-		}
-		if len(searchTerm) > 2 {
-			collectors = append(collectors, linkCollector("/device/"), file.Collector(fileSearchDirs), statusnotifications.GetLinks)
-		}
-		return collectors, searchTerm
+		links = searchResources(repo.GetListUntyped("/notification/", "/window/", "/tab/", "/start", "/application", "/device"), termRunes)
+		links = append(links, searchLinks(statusnotifications.GetLinks(), termRunes)...)
+		links = append(links, searchResources(file.GetFiles(), termRunes)...)
 	}
+
+	slices.SortFunc(links, func(l1, l2 rankedLink) int {
+		var tmp = int(l1.rank) - int(l2.rank)
+		if tmp == 0 {
+			// Not significant, just to make the sort reproducible
+			tmp = strings.Compare(string(l1.Href), string(l2.Href))
+		}
+		return tmp
+	})
+
+	return links
 }
 
-func linkCollector(prefix string) collector {
-	return func(string) []resource.Link {
-		return repo.CollectLinks(prefix)
-	}
-}
-
-func filterAndSort(links []resource.Link, term string) []resource.Link {
-	if term == "" {
-		return links
-	} else {
-		var rankedLinks = make([]resource.Link, 0, 20)
-		for _, l := range links {
-			l.Rank = fuzzy.RankMatchNormalizedFold(term, l.Title)
-			if l.Rank < 0 {
-				for _, keyWord := range l.Keywords {
-					if strings.Contains(strings.ToLower(keyWord), term) {
-						l.Rank = 100000
-						break
-					}
-				}
-			}
-			if l.Rank > -1 {
-				rankedLinks = append(rankedLinks, l)
+func searchResources(reslist []resource.Resource, term []rune) []rankedLink {
+	var result = make([]rankedLink, 0, 2*len(reslist))
+	for _, res := range reslist {
+		if res.OmitFromSearch() {
+			continue
+		}
+		var resRank = match(res.Data().Link().Title, term, 100)
+		for _, keyword := range res.Data().Keywords {
+			if tmp := match(keyword, term, 100); tmp < resRank {
+				resRank = tmp
 			}
 		}
-		slices.SortFunc(rankedLinks, func(l1, l2 resource.Link) int {
-			var tmp = l1.Rank - l2.Rank
-			if tmp == 0 {
-				// Not significant, just to make the sort reproducible
-				tmp = strings.Compare(string(l1.Path), string(l2.Path))
+
+		var correction uint = 0
+		for _, l := range res.Data().GetLinks(relation.Action, relation.Delete) {
+			if linkRank := match(l.Title, term, correction); linkRank < maxRank {
+				result = append(result, rankedLink{Link: l, rank: linkRank})
+			} else if resRank < maxRank {
+				result = append(result, rankedLink{Link: l, rank: resRank})
 			}
-			return tmp
-		})
-		return rankedLinks
+			correction = 20
+		}
 	}
+	return result
+}
+
+func searchLinks(linkList []resource.Link, term []rune) []rankedLink {
+	var result = make([]rankedLink, 0, len(linkList))
+	for _, l := range linkList {
+		if rnk := match(l.Title, term, 0); rnk < maxRank {
+			result = append(result, rankedLink{Link: l, rank: rnk})
+		}
+	}
+	return result
+}
+
+// Kindof 'has Substring with skips'. So eg. 'nvim' matches 'neovim' or 'pwr' matches 'poweroff'
+func match(text string, term []rune, correction uint) uint {
+	if len(term) == 0 {
+		return 0
+	}
+
+	var rnk uint = 0
+
+	text = strings.ToLower(text)
+	var j, lastPos = 0, -1
+	for i, r := range text {
+		if term[j] == r {
+			if j == 0 {
+				rnk += 5 * uint(i-lastPos-1)
+			} else {
+				rnk += uint(i - lastPos - 1)
+			}
+			lastPos = i
+			j++
+		}
+		if j >= len(term) {
+			return rnk + correction
+		}
+	}
+
+	return maxRank
 }

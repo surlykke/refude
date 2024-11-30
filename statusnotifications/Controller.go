@@ -147,10 +147,38 @@ type event struct {
 var events = make(chan event)
 
 func buildItem(itemPath path.Path, dbusSender string, dbusPath dbus.ObjectPath) *Item {
+	var props = dbuscall.GetAllProps(conn, dbusSender, dbusPath, ITEM_INTERFACE)
+
+	var title, _ = props["Title"].Value().(string)
+	var iconName, _ = props["IconName"].Value().(string)
+
 	var item = Item{
-		ResourceData: *resource.MakeBase(itemPath, "", "", "", mediatype.Trayitem),
+		ResourceData: *resource.MakeBase(itemPath, title, "", icon.Name(iconName), mediatype.Trayitem),
 		DbusSender:   dbusSender,
 		DbusPath:     dbusPath,
+	}
+
+	item.ItemId, _ = props["Id"].Value().(string)
+	item.Category, _ = props["Category"].Value().(string)
+	item.MenuDbusPath, _ = props["Menu"].Value().(dbus.ObjectPath)
+	if item.MenuDbusPath != "" {
+		item.MenuPath = path.Of("/menu/", dbusSender, item.MenuDbusPath)
+	}
+	item.IconThemePath, _ = props["IconThemePath"].Value().(string)
+	if item.IconThemePath != "" {
+		icons.AddBasedir(item.IconThemePath)
+	}
+	item.Status, _ = props["Status"].Value().(string)
+	item.ToolTip, _ = props["ToolTip"].Value().(string)
+	if attentionIconName, ok := props["AttentionIconName"].Value().(string); ok {
+		item.AttentionIconName = icon.Name(attentionIconName)
+	} else {
+		item.AttentionIconName = collectPixMap(props["AttentionIconPixmap"])
+	}
+	if overlayIconName, ok := props["OverlayIconName"].Value().(string); ok {
+		item.OverlayIconName = icon.Name(overlayIconName)
+	} else {
+		item.OverlayIconName = collectPixMap(props["OverlayIconPixmap"])
 	}
 
 	if err := conn.BusObject().Call("org.freedesktop.DBus.GetConnectionUnixProcessID", 0, dbusSender).Store(&item.SenderPid); err != nil {
@@ -161,24 +189,6 @@ func buildItem(itemPath path.Path, dbusSender string, dbusPath dbus.ObjectPath) 
 		item.SenderApp = extractCommandName(bytes)
 	}
 
-	var props = dbuscall.GetAllProps(conn, item.DbusSender, item.DbusPath, ITEM_INTERFACE)
-	item.ItemId = getString(props["Id"])
-	item.Category = getString(props["Category"])
-	item.MenuDbusPath = getDbusPath(props["Menu"])
-	if item.MenuDbusPath != "" {
-		item.MenuPath = path.Of("/menu/", dbusSender, item.MenuDbusPath)
-	}
-	if item.IconThemePath = getString(props["IconThemePath"]); item.IconThemePath != "" {
-		icons.AddBasedir(item.IconThemePath)
-	}
-
-	RetrieveTitle(&item)
-	RetrieveStatus(&item)
-	RetrieveToolTip(&item)
-
-	RetrieveIcon(&item)
-	RetrieveAttentionIcon(&item)
-	RetrieveOverlayIcon(&item)
 	return &item
 }
 
@@ -211,45 +221,57 @@ func extractCommandName(bytes []byte) string {
 
 //case "NewTitle", "NewIcon", "NewAttentionIcon", "NewOverlayIcon", "NewToolTip","NewStatus":
 
-func RetrieveTitle(item *Item) {
+func RetrieveTitle(item *Item) string {
 	if prop, ok := getProp(item.DbusSender, item.DbusPath, "Title"); ok {
-		item.Title = getString(prop)
+		return getString(prop)
+	} else {
+		return ""
 	}
 }
 
-func RetrieveIcon(item *Item) {
+func RetrieveIcon(item *Item) icon.Name {
 	if prop, ok := getProp(item.DbusSender, item.DbusPath, "IconName"); ok {
-		item.Icon = icon.Name(getString(prop))
+		return icon.Name(getString(prop))
 	} else if prop, ok = getProp(item.DbusSender, item.DbusPath, "IconPixmap"); ok {
-		item.Icon = collectPixMap(prop)
+		return collectPixMap(prop)
+	} else {
+		return ""
 	}
 }
 
-func RetrieveAttentionIcon(item *Item) {
+func RetrieveAttentionIcon(item *Item) icon.Name {
 	if prop, ok := getProp(item.DbusSender, item.DbusPath, "AttentionIconName"); ok {
-		item.AttentionIconName = icon.Name(getString(prop))
+		return icon.Name(getString(prop))
 	} else if prop, ok = getProp(item.DbusSender, item.DbusPath, "AttentionIconPixmap"); ok {
-		item.AttentionIconName = collectPixMap(prop)
+		return collectPixMap(prop)
+	} else {
+		return ""
 	}
 }
 
-func RetrieveOverlayIcon(item *Item) {
+func RetrieveOverlayIcon(item *Item) icon.Name {
 	if prop, ok := getProp(item.DbusSender, item.DbusPath, "OverlayIconName"); ok {
-		item.OverlayIconName = icon.Name(getString(prop))
+		return icon.Name(getString(prop))
 	} else if prop, ok = getProp(item.DbusSender, item.DbusPath, "OverlayIconPixmap"); ok {
-		item.OverlayIconName = collectPixMap(prop)
+		return collectPixMap(prop)
+	} else {
+		return ""
 	}
 }
 
-func RetrieveToolTip(item *Item) {
+func RetrieveToolTip(item *Item) string {
 	if prop, ok := getProp(item.DbusSender, item.DbusPath, "ToolTip"); ok {
-		item.ToolTip = getString(prop)
+		return getString(prop)
+	} else {
+		return ""
 	}
 }
 
-func RetrieveStatus(item *Item) {
+func RetrieveStatus(item *Item) string {
 	if prop, ok := getProp(item.DbusSender, item.DbusPath, "Status"); ok {
-		item.Status = getString(prop)
+		return getString(prop)
+	} else {
+		return ""
 	}
 }
 

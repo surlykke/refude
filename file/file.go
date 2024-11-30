@@ -11,11 +11,11 @@ import (
 	"os"
 	gopath "path"
 	"path/filepath"
-	"slices"
 	"strings"
 
 	"github.com/rakyll/magicmime"
 	"github.com/surlykke/RefudeServices/applications"
+	"github.com/surlykke/RefudeServices/lib/href"
 	"github.com/surlykke/RefudeServices/lib/icon"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/mediatype"
@@ -76,7 +76,7 @@ func MakeLinkFromPath(ospath string, name string) resource.Link {
 	var title = name
 	var mimetype, _ = magicmime.TypeByFile(ospath)
 	var icon = icon.Name(strings.ReplaceAll(mimetype, "/", "-"))
-	return resource.Link{Path: path.Of("/file", gopath.Clean(ospath)), Title: title, Comment: ospath, Icon: icon, Relation: relation.Related, Type: "application/vnd.org.refude.file+json"}
+	return resource.Link{Href: href.Of(path.Of("/file", gopath.Clean(ospath))), Title: title, Comment: ospath, Icon: icon, Relation: relation.Related, Type: "application/vnd.org.refude.file+json"}
 }
 
 func makeFileFromInfo(osPath string, fileInfo os.FileInfo) *File {
@@ -90,15 +90,12 @@ func makeFileFromInfo(osPath string, fileInfo os.FileInfo) *File {
 		Type:         fileType,
 		Permissions:  fileInfo.Mode().String(),
 		Mimetype:     mimetype,
+		Name:         fileInfo.Name(),
 	}
 
-	for i, app := range applications.GetHandlers(f.Mimetype) {
-		f.Actions = make([]resource.Action, 0, 5)
-		if i == 0 {
-			f.DefaultAction = "Open with " + app.Title
-		} else {
-			f.Actions = append(f.Actions, resource.Action{Id: app.DesktopId, Title: "Open with " + app.Title, Icon: app.Icon})
-		}
+	for _, app := range applications.GetHandlers(f.Mimetype) {
+		var self = app.Link()
+		f.AddAction(app.DesktopId, f.Name, "Open with "+self.Title, self.Icon)
 	}
 
 	return &f
@@ -117,38 +114,6 @@ func Collector(dirs []string) func(string) []resource.Link {
 	}
 }
 
-func Collect(sink *[]resource.Link, dir string) {
-	for _, entry := range readEntries(dir) {
-		var name = entry.Name()
-		*sink = append(*sink, MakeLinkFromPath(dir+"/"+name, name))
-	}
-}
-
-func CollectDirs(dirs []string, pathBits []string) []string {
-	var collected = make([]string, 0, 30)
-	for _, dir := range dirs {
-		collectDirs2(&collected, dir, pathBits)
-	}
-	return collected
-}
-
-func collectDirs2(sink *[]string, dir string, pathBits []string) {
-	if len(pathBits) == 0 {
-		return
-	}
-	for _, entry := range readEntries(dir) {
-		var name = entry.Name()
-		var path = dir + "/" + name
-		if entry.IsDir() && strings.Contains(strings.ToLower(name), pathBits[0]) {
-			if len(pathBits) == 1 {
-				*sink = append(*sink, path)
-			} else {
-				collectDirs2(sink, path, pathBits[1:])
-			}
-		}
-	}
-}
-
 func readEntries(dir string) []fs.DirEntry {
 	if file, err := os.Open(dir); err != nil {
 		log.Warn("Could not open", dir, err)
@@ -162,18 +127,13 @@ func readEntries(dir string) []fs.DirEntry {
 }
 
 func (f *File) DoPost(w http.ResponseWriter, r *http.Request) {
-	var appId = requests.GetSingleQueryParameter(r, "action", "")
-	if appId == "" && len(f.apps) > 0 {
-		appId = f.apps[0]
+	var actionId = requests.GetSingleQueryParameter(r, "action", "")
+	var ospath = string(f.Path[5:])
+
+	if applications.OpenFile(actionId, ospath) {
+		respond.Accepted(w)
+		return
 	}
-	if appId == "" || !slices.Contains(f.apps, appId) {
-		respond.NotFound(w)
-	} else {
-		var ospath = string(f.Path[5:])
-		if applications.OpenFile(appId, ospath) {
-			respond.Accepted(w)
-		} else {
-			respond.NotFound(w)
-		}
-	}
+
+	respond.NotFound(w)
 }

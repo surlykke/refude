@@ -1,27 +1,19 @@
 let term = ""
-let details = ""
 
 let setTerm = newTerm => {
 	document.getElementById("term").textContent = term = newTerm
 	search()
 }
 
-let setDetails = newDetails => {
-	details = newDetails
-	search()
-}
-
-
 let search = () => document.getElementById("search-results").dispatchEvent(new Event("search"))
 
 let selectedPath = () => document.activeElement?.dataset.path
+
 let doEscape = shiftKey => {
 	if (shiftKey) {
 		dismiss()
 	} else if (currentMenu) {
 		setMenu()
-	} else if (details) {
-		setDetails("")
 	} else if (term) {
 		setTerm("")
 	} else {
@@ -30,18 +22,19 @@ let doEscape = shiftKey => {
 }
 
 let doEnter = (ctrl, shift) => {
-	console.log("doEnter", ctrl, shift)
-	if (ctrl && shift) {
+	if (ctrl) {
 		return
-	} else if (ctrl) {
-		let newDetails = selectedPath() && selectedPath() !== details ? selectedPath() : ""
-		setDetails(newDetails)
 	} else {
-		fetch(selectedPath(), { method: "post" }).then(resp => resp.ok && !shift && dismiss())
+		href = document.activeElement?.dataset.href
+		rel = document.activeElement?.dataset.rel
+
+		console.log("href:", href, "rel:", rel)
+		if (rel === "org.refude.action") {
+			fetch(href, { method: "post" }).then(resp => resp.ok && !shift && dismiss())
+		}
 	}
 }
 
-let doDelete = shift => fetch(selectedPath(), { method: "delete" }).then(resp => resp.ok && !shift && dismiss())
 let dismiss = () => window.close()
 
 let onKeyDown = event => {

@@ -55,6 +55,7 @@ func main() {
 	}
 
 	go desktopactions.Run()
+	go file.Run()
 
 	http.Handle("/ping", ping.WebsocketHandler)
 	http.HandleFunc("/tabsink", browsertabs.ServeHTTP)

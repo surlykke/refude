@@ -53,76 +53,49 @@ func retrieveDevicePaths() []dbus.ObjectPath {
 }
 
 func retrieveDevice(dbusPath dbus.ObjectPath) *Device {
-	var device = Device{
-		ResourceData:  *resource.MakeBase(path.Of("/device/", dbusPath2id(dbusPath)), "", "", "", mediatype.Device),
-		DbusPath:      dbusPath,
-		DisplayDevice: dbusPath == displayDeviceDbusPath,
-	}
+
+	var device = Device{}
 
 	var props = dbuscall.GetAllProps(dbusConn, upowerService, dbusPath, upowerDeviceInterface)
 
-	for key, variant := range props {
-		switch key {
-		case "NativePath":
-			device.NativePath = variant.Value().(string)
-		case "Vendor":
-			device.Vendor = variant.Value().(string)
-		case "Model":
-			device.Model = variant.Value().(string)
-		case "Serial":
-			device.Serial = variant.Value().(string)
-		case "UpdateTime":
-			device.UpdateTime = variant.Value().(uint64)
-		case "Type":
-			device.Type = deviceType(variant.Value().(uint32))
-		case "PowerSupply":
-			device.PowerSupply = variant.Value().(bool)
-		case "HasHistory":
-			device.HasHistory = variant.Value().(bool)
-		case "HasStatistics":
-			device.HasStatistics = variant.Value().(bool)
-		case "Online":
-			device.Online = variant.Value().(bool)
-		case "Energy":
-			device.Energy = variant.Value().(float64)
-		case "EnergyEmpty":
-			device.EnergyEmpty = variant.Value().(float64)
-		case "EnergyFull":
-			device.EnergyFull = variant.Value().(float64)
-		case "EnergyFullDesign":
-			device.EnergyFullDesign = variant.Value().(float64)
-		case "EnergyRate":
-			device.EnergyRate = variant.Value().(float64)
-		case "Voltage":
-			device.Voltage = variant.Value().(float64)
-		case "Luminosity":
-			device.Voltage = variant.Value().(float64)
-		case "TimeToEmpty":
-			device.TimeToEmpty = variant.Value().(int64)
-		case "TimeToFull":
-			device.TimeToFull = variant.Value().(int64)
-		case "Percentage":
-			device.Percentage = int8(variant.Value().(float64))
-		case "IsPresent":
-			device.IsPresent = variant.Value().(bool)
-		case "State":
-			device.State = deviceState(variant.Value().(uint32))
-		case "IsRechargeable":
-			device.IsRechargeable = variant.Value().(bool)
-		case "Capacity":
-			device.Capacity = variant.Value().(float64)
-		case "Technology":
-			device.Technology = deviceTecnology(variant.Value().(uint32))
-		case "WarningLevel":
-			device.Warninglevel = deviceWarningLevel(variant.Value().(uint32))
-		case "BatteryLevel":
-			device.Batterylevel = deviceBatteryLevel(variant.Value().(uint32))
-		case "IconName":
-			device.Icon = icon.Name((variant.Value().(string)))
-		}
-	}
-	device.Title = deviceTitle(device.Type, device.Model)
+	device.NativePath, _ = props["NativePath"].Value().(string)
+	device.Vendor, _ = props["Vendor"].Value().(string)
+	device.Model, _ = props["Model"].Value().(string)
+	device.Serial, _ = props["Serial"].Value().(string)
+	device.UpdateTime, _ = props["UpdateTime"].Value().(uint64)
+	device.Type, _ = props["Type"].Value().(string)
+	device.PowerSupply, _ = props["PowerSupply"].Value().(bool)
+	device.HasHistory, _ = props["HasHistory"].Value().(bool)
+	device.HasStatistics, _ = props["HasStatistics"].Value().(bool)
+	device.Online, _ = props["Online"].Value().(bool)
+	device.Energy, _ = props["Energy"].Value().(float64)
+	device.EnergyEmpty, _ = props["EnergyEmpty"].Value().(float64)
+	device.EnergyFull, _ = props["EnergyFull"].Value().(float64)
+	device.EnergyFullDesign, _ = props["EnergyFullDesign"].Value().(float64)
+	device.EnergyRate, _ = props["EnergyRate"].Value().(float64)
+	device.Voltage, _ = props["Voltage"].Value().(float64)
+	device.Luminosity, _ = props["Luminosity"].Value().(float64)
+	device.TimeToEmpty, _ = props["TimeToEmpty"].Value().(int64)
+	device.TimeToFull, _ = props["TimeToFull"].Value().(int64)
+	var percentage, _ = props["Percentage"].Value().(float64)
+	device.Percentage = int8(100 * percentage)
+	device.IsPresent, _ = props["IsPresent"].Value().(bool)
+	device.State, _ = props["State"].Value().(string)
+	device.IsRechargeable, _ = props["IsRechargeable"].Value().(bool)
+	device.Capacity, _ = props["Capacity"].Value().(float64)
+	var tech, _ = props["Technology"].Value().(uint32)
+	device.Technology = deviceTecnology(tech)
+	var warnL, _ = props["WarningLevel"].Value().(uint32)
+	device.Warninglevel = deviceWarningLevel(warnL)
+	var batL, _ = props["BatteryLevel"].Value().(uint32)
+	device.Batterylevel = deviceBatteryLevel(batL)
 	device.Keywords = []string{"battery"}
+
+	var title = deviceTitle(device.Type, device.Model)
+	var iconName, _ = props["IconName"].Value().(string)
+
+	device.ResourceData = *resource.MakeBase(path.Of("/device/", dbusPath2id(dbusPath)), title, "", icon.Name(iconName), mediatype.Device)
+
 	return &device
 }
 
@@ -141,7 +114,7 @@ func updateTrayIcon() {
 }
 
 func notifyOnLow() {
-	if displayDevice, ok := repo.Get[*Device](path.Of("/device/%s", dbusPath2id(displayDeviceDbusPath))); ok {
+	if displayDevice, ok := repo.Get[*Device](path.Of("/device/", dbusPath2id(displayDeviceDbusPath))); ok {
 		var percentage = int(displayDevice.Percentage)
 		if displayDevice.State == "Discharging" {
 			if percentage <= 5 {

@@ -1,36 +1,17 @@
-{{range $res := .results}}
+{{range $i, $res := .links}}
 	<div class="line">
 		<div class="icon">
-			{{if .IconUrl}}
-				<img src="{{.IconUrl}}" height="32" width="32" class="icon">
+			{{if .Icon}}
+				<img src="{{.Icon}}" height="32" width="32" class="icon">
 			{{end}}
 		</div>
 		<div>
-			<div  class="title" tabindex="{{.Tabindex}}" data-path={{.Path}} data-rel="{{.Relation}}" class="title" {{.Autofocus}}>
+			<div  class="title" tabindex="{{(inc $i)}}" data-href={{.Href}} data-rel="{{.Relation}}" class="title" {{if ( eq $i 0) }}autofocus{{end}}>
 				{{.Title}}
 			</div>
 			<div class="comment">
 				{{.Comment}} 
 			</div>
-			{{with .Details}}
-				<div class="details">
-					<div class="description">
-						{{.Description}}	
-					</div>
-					{{range .Actions}}
-						<div class="line">
-							<div class="icon-sub">
-								{{if .IconUrl}}
-									<img src="{{.IconUrl}}" height="24" width="24">
-								{{end}}
-							</div>
-							<div class="title-sub" tabindex="{{.Tabindex}}" data-path={{.Path}} data-rel="{{.Relation}}" class="title" {{.Autofocus}}>
-								{{.Title}}
-							</div>
-						</div>
-					{{end}}
-				</div>
-			{{end}}
 		</div>
     </div>
 {{end}}

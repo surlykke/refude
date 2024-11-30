@@ -8,6 +8,7 @@ package resource
 import (
 	"net/http"
 
+	"github.com/surlykke/RefudeServices/lib/href"
 	"github.com/surlykke/RefudeServices/lib/icon"
 	"github.com/surlykke/RefudeServices/lib/mediatype"
 	"github.com/surlykke/RefudeServices/lib/path"
@@ -21,25 +22,15 @@ type Resource interface {
 }
 
 type ResourceData struct {
-	Path          path.Path `json:"self"`
-	Title         string    `json:"title"`
-	Comment       string    `json:"comment,omitempty"`
-	Icon          icon.Name
-	DefaultAction string
-	DeleteAction  string
-	DeleteIcon    icon.Name
-	Actions       []Action
-	Type          mediatype.MediaType `json:"type"`
-	Keywords      []string            `json:"keywords"`
+	Path     path.Path `json:"path"`
+	Links    []Link
+	Keywords []string `json:"keywords"`
 }
 
 func MakeBase(path path.Path, title, comment string, icon icon.Name, mType mediatype.MediaType) *ResourceData {
 	var br = ResourceData{
-		Path:    path,
-		Title:   title,
-		Comment: comment,
-		Icon:    icon,
-		Type:    mType,
+		Path:  path,
+		Links: []Link{{Href: href.Of(path), Title: title, Comment: comment, Icon: icon, Type: mType, Relation: relation.Self}},
 	}
 	return &br
 }
@@ -49,31 +40,37 @@ func (this *ResourceData) Data() *ResourceData {
 }
 
 func (this *ResourceData) Link() Link {
-	return Link{
-		Path:     this.Data().Path,
-		Title:    this.Data().Title,
-		Comment:  this.Data().Comment,
-		Icon:     this.Data().Icon,
-		Relation: relation.Related,
-		Type:     this.Data().Type,
-		Keywords: this.Data().Keywords,
+	if len(this.Links) < 1 || this.Links[0].Relation != relation.Self {
+		panic("ResourceData does not hold self link as first link")
 	}
+	return this.Links[0]
 }
+
+// ------------ Don't call after published ------------------
+
+func (this *ResourceData) AddAction(actionId string, title string, comment string, iconName icon.Name, keywords ...string) {
+	var lnk = Link{Href: href.Of(this.Path).P("action", actionId), Title: title, Comment: comment, Icon: iconName, Relation: relation.Action}
+	this.Links = append(this.Links, lnk)
+}
+
+func (this *ResourceData) AddDeleteAction(actionId string, title string, comment string, iconName icon.Name) {
+	this.Links = append(this.Links, Link{Href: href.Of(this.Path).P("action", actionId), Title: title, Comment: comment, Icon: iconName, Relation: relation.Delete})
+}
+
+// ----------------------------------------------------------
 
 func (this *ResourceData) OmitFromSearch() bool {
 	return false
 }
 
-func (this *ResourceData) GetActionLinks() []Link {
-	var result = make([]Link, 0, 8)
-	if this.DefaultAction != "" {
-		result = append(result, Link{Path: this.Path, Title: this.DefaultAction, Icon: this.Icon, Relation: relation.DefaultAction})
-	}
-	for _, a := range this.Actions {
-		result = append(result, Link{Path: path.Of(this.Path, "?action=", a.Id), Title: a.Title, Icon: a.Icon, Relation: relation.Action})
-	}
-	if this.DeleteAction != "" {
-		result = append(result, Link{Path: this.Path, Title: this.DeleteAction, Icon: this.DeleteIcon, Relation: relation.Delete})
+func (this *ResourceData) GetLinks(relations ...relation.Relation) []Link {
+	var result = make([]Link, 0, len(this.Links))
+	for _, l := range this.Links {
+		for _, rel := range relations {
+			if l.Relation == rel {
+				result = append(result, l)
+			}
+		}
 	}
 
 	return result
@@ -82,15 +79,12 @@ func (this *ResourceData) GetActionLinks() []Link {
 // --------------------- Link --------------------------------------
 
 type Link struct {
-	Path     path.Path           `json:"href"`
+	Href     href.Href           `json:"href"`
 	Title    string              `json:"title,omitempty"`
 	Comment  string              `json:"comment,omitempty"`
 	Icon     icon.Name           `json:"icon,omitempty"`
 	Relation relation.Relation   `json:"rel,omitempty"`
 	Type     mediatype.MediaType `json:"type,omitempty"`
-	// --- Used for search -------
-	Keywords []string `json:"-"`
-	Rank     int      `json:"-"`
 }
 
 // -------------- Serve -------------------------

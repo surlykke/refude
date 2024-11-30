@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
+	"github.com/surlykke/RefudeServices/lib/icon"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/path"
 	"github.com/surlykke/RefudeServices/lib/pubsub"
@@ -58,14 +59,14 @@ func GetHandlers(mimetype string) []*DesktopApplication {
 	return apps
 }
 
-func GetApp(appId string) *DesktopApplication {
+func GetTitleAndIcon(appId string) (string, icon.Name, bool) {
 	if appId != "" {
-		var path = path.Of("/application/", appId)
-		if da, ok := repo.Get[*DesktopApplication](path); ok {
-			return da
+		if da, ok := repo.Get[*DesktopApplication](path.Of("/application/", appId)); ok {
+			var self = da.Link()
+			return self.Title, self.Icon, true
 		}
 	}
-	return nil
+	return "", "", false
 }
 
 func OpenFile(appId, filePath string) bool {

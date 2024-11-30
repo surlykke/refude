@@ -6,13 +6,12 @@
 package icons
 
 import (
-	"fmt"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 
 	"github.com/surlykke/RefudeServices/lib/log"
+	"github.com/surlykke/RefudeServices/lib/mediatype"
 	"github.com/surlykke/RefudeServices/lib/path"
 	"github.com/surlykke/RefudeServices/lib/repo"
 	"github.com/surlykke/RefudeServices/lib/resource"
@@ -23,7 +22,6 @@ import (
 type IconTheme struct {
 	resource.ResourceData
 	Id       string
-	Comment  string
 	Inherits []string
 	Dirs     []IconDir
 }
@@ -89,11 +87,8 @@ func readTheme(indexThemeFilePath string) (*IconTheme, bool) {
 
 	themeGroup := iniFile[0]
 
-	theme := IconTheme{}
-	theme.Path = path.Of("/icontheme/", themeId)
+	theme := IconTheme{ResourceData: *resource.MakeBase(path.Of("/icontheme/", themeId), themeGroup.Entries["Name"], themeGroup.Entries["Comment"], "", mediatype.IconTheme)}
 	theme.Id = themeId
-	theme.Title = themeGroup.Entries["Name"]
-	theme.Comment = themeGroup.Entries["Comment"]
 	theme.Inherits = slice.Split(themeGroup.Entries["Inherits"], ",")
 	theme.Dirs = make([]IconDir, 0, 50)
 	var addedDirs = make(map[string]bool)
@@ -138,7 +133,7 @@ func readTheme(indexThemeFilePath string) (*IconTheme, bool) {
 			minSize = size - threshold
 			maxSize = size + threshold
 		} else {
-			_, _ = fmt.Fprintln(os.Stderr, "Error in ", theme.Title, ", ", iniGroup.Name, ", type must be given as 'Fixed', 'Scalable' or 'Threshold', was: ", sizeType)
+			log.Warn("Error in theme %s, %s, type must be given as 'Fixed', 'Scalable' or 'Threshold', was: %s", theme.Id, ", ", iniGroup.Name, "", sizeType)
 			continue
 		}
 
