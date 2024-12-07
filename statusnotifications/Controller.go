@@ -150,7 +150,12 @@ func buildItem(itemPath path.Path, dbusSender string, dbusPath dbus.ObjectPath) 
 	var props = dbuscall.GetAllProps(conn, dbusSender, dbusPath, ITEM_INTERFACE)
 
 	var title, _ = props["Title"].Value().(string)
-	var iconName, _ = props["IconName"].Value().(string)
+	var iconName icon.Name
+	if tmp, ok := props["IconName"].Value().(string); ok {
+		iconName = icon.Name(tmp)
+	} else {
+		iconName = collectPixMap(props["IconPixmap"])
+	}
 
 	var item = Item{
 		ResourceData: *resource.MakeBase(itemPath, title, "", icon.Name(iconName), mediatype.Trayitem),

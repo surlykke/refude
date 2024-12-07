@@ -152,7 +152,6 @@ func clean(menuEntries []MenuEntry) []MenuEntry {
 }
 
 func (m *Menu) DoPost(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("menuPost:", r.URL.Path, r.URL.Query())
 	var menuId = requests.GetSingleQueryParameter(r, "id", "")
 	if menuId == "" {
 		respond.NotFound(w)

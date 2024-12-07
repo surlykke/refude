@@ -1,7 +1,6 @@
 package tr
 
 import (
-	"fmt"
 	"os"
 	"regexp"
 )
@@ -52,9 +51,6 @@ func init() {
 	if len(lcMatchers) > 0 {
 		lang = lcMatchers[len(lcMatchers)-1]
 	}
-
-	fmt.Println("lcMatchers:", lcMatchers, ", lang:", lang)
-
 }
 
 func Tr(text string) string {
