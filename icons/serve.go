@@ -14,6 +14,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/surlykke/RefudeServices/lib/icon"
 	"github.com/surlykke/RefudeServices/lib/image"
@@ -39,6 +40,13 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				respond.UnprocessableEntity(w, err)
 			} else if iconFilePath := FindIcon(name, size); iconFilePath == "" {
 				respond.NotFound(w)
+			} else if strings.HasSuffix(iconFilePath, ".xpm") {
+				if pngBytes := getPngFromXpm(iconFilePath); pngBytes == nil {
+					respond.NotFound(w)
+				} else {
+					w.Header().Set("Content-Type", "image/png")
+					w.Write(pngBytes)
+				}
 			} else {
 				http.ServeFile(w, r, iconFilePath)
 			}
@@ -50,6 +58,24 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		respond.NotFound(w)
 	}
 }
+
+func getPngFromXpm(filePath string) []byte {
+	xpmCacheLock.Lock()
+	defer xpmCacheLock.Unlock()
+	var pngBytes []byte
+	var ok bool
+	if pngBytes, ok = xpmCache[filePath]; !ok {
+		var err error
+		if pngBytes, err = image.Xpmfile2png(filePath); err != nil {
+			log.Warn("Error converting xpm file:", err)
+			xpmCache[filePath] = nil
+		}
+	}
+	return pngBytes
+}
+
+var xpmCache = make(map[string][]byte)
+var xpmCacheLock sync.Mutex
 
 func FindIcon(iconName string, size uint32) string {
 	var icon = icon.Name(iconName)

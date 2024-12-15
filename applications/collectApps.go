@@ -137,6 +137,8 @@ func readDesktopFile(filePath string, id string) (*DesktopApplication, error) {
 		var path, title, comment, iconName = path.Of("/application/", id), group.Entries["Name"], group.Entries["Comment"], group.Entries["Icon"]
 		if strings.HasPrefix(string(iconName), "/") {
 			icons.AddFileIcon(iconName)
+		} else if strings.HasSuffix(iconName, ".png") || strings.HasSuffix(iconName, ".svg") || strings.HasSuffix(iconName, ".xpm") {
+			iconName = iconName[:len(iconName)-4]
 		}
 
 		if title == "" {

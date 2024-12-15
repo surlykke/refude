@@ -1,6 +1,7 @@
 package icons
 
 import (
+	"errors"
 	"os"
 	gopath "path"
 	"path/filepath"
@@ -93,12 +94,11 @@ func collectIconsFromTheme(themeId string) map[icon.Name][]IconPath {
 			var glob = basedir + "/" + themeId + "/" + themeDir.Path + "/*"
 			if filePathsInThemeDir, err := filepath.Glob(glob); err == nil {
 				for _, filePath := range filePathsInThemeDir {
-					var ext = gopath.Ext(filePath)
-					if ext == ".png" || ext == ".svg" { // TODO xpm
-						var fileName = gopath.Base(filePath)
-						var iconPath = IconPath{Path: filePath, MinSize: themeDir.MinSize, MaxSize: themeDir.MaxSize}
-						var icon = icon.Name(fileName[0 : len(fileName)-4])
-						iconsFromTheme[icon] = append(iconsFromTheme[icon], iconPath)
+					if iconName, path, err := nameAndPath(filePath); err != nil {
+						continue
+					} else {
+						var iconPath = IconPath{Path: path, MinSize: themeDir.MinSize, MaxSize: themeDir.MaxSize}
+						iconsFromTheme[iconName] = append(iconsFromTheme[iconName], iconPath)
 					}
 				}
 			}
@@ -115,18 +115,23 @@ func collectOtherIcons(collected map[icon.Name][]IconPath) {
 	for _, dir := range dirsToLookAt {
 		if filePathsInDir, err := filepath.Glob(dir + "/*"); err == nil {
 			for _, filePath := range filePathsInDir {
-				var ext = gopath.Ext(filePath)
-				if ext == ".png" || ext == ".svg" { // TODO xpm
-					var name = gopath.Base(filePath)
-					var icon = icon.Name(name[0 : len(name)-4])
-					if _, ok := collected[icon]; !ok { // We won't let a non-themed icon shadow a themed icon. cf. above.
-						collected[icon] = []IconPath{{Path: filePath, MinSize: 1, MaxSize: 1}}
-					}
+				if iconName, path, err := nameAndPath(filePath); err != nil {
+					continue
+				} else if _, ok := collected[iconName]; !ok { // We won't let a non-themed icon shadow a themed icon. cf. above.
+					collected[iconName] = []IconPath{{Path: path, MinSize: 1, MaxSize: 1}}
 				}
-
 			}
 		}
 	}
+}
+
+func nameAndPath(filePath string) (icon.Name, string, error) {
+	var fileName, ext = gopath.Base(filePath), gopath.Ext(filePath)
+	if !(ext == ".png" || ext == ".svg" || ext == ".xpm") {
+		return "", "", errors.New("unknown icon format: " + filePath)
+	}
+	fileName = fileName[:len(fileName)-4]
+	return icon.Name(fileName), filePath, nil
 }
 
 func determineSearchOrder() []string {

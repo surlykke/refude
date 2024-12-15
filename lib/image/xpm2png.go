@@ -3,7 +3,6 @@
 // This file is part of the RefudeServices project.
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
-//
 package image
 
 import (
@@ -12,6 +11,7 @@ import (
 	"image"
 	"image/color"
 	"image/png"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -120,5 +120,13 @@ func Xpm2png(data []byte) ([]byte, error) {
 		} else {
 			return buf.Bytes(), nil
 		}
+	}
+}
+
+func Xpmfile2png(path string) ([]byte, error) {
+	if bytes, err := os.ReadFile(path); err != nil {
+		return nil, err
+	} else {
+		return Xpm2png(bytes)
 	}
 }
