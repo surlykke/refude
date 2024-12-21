@@ -16,6 +16,7 @@ const (
 	Start        MediaType = "application/vnd.org.refude.start+json"
 	Mimetype     MediaType = "application/vnd.org.refude.mimetype+json"
 	IconTheme    MediaType = "application/vnd.org.refude.icontheme+json"
+	Bookmark     MediaType = "application/vnd.org.refude.bookmark+json"
 )
 
 var short = map[MediaType]string{
@@ -29,6 +30,7 @@ var short = map[MediaType]string{
 	Menu:         tr.Tr("Menu"),
 	Start:        tr.Tr("Start"),
 	Mimetype:     tr.Tr("Mimetype"),
+	Bookmark:     tr.Tr("Bookmark"),
 }
 
 func (m MediaType) Short() string {

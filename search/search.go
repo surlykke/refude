@@ -46,7 +46,7 @@ func Search(term string) []rankedLink {
 	} else if len(term) == 1 {
 		links = searchResources(repo.GetListUntyped("/notification/", "/window/", "/tab/", "/start", "/application"), termRunes)
 	} else {
-		links = searchResources(repo.GetListUntyped("/notification/", "/window/", "/tab/", "/start", "/application", "/device"), termRunes)
+		links = searchResources(repo.GetListUntyped("/notification/", "/window/", "/tab/", "/bookmark/", "/start", "/application", "/device"), termRunes)
 		links = append(links, searchLinks(statusnotifications.GetLinks(), termRunes)...)
 		links = append(links, searchResources(file.GetFiles(), termRunes)...)
 	}

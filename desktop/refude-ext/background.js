@@ -23,9 +23,38 @@ const reportTabs = () => {
 	})
 }
 
+const reportBookmarks = () => {
+	
+	chrome.bookmarks.getTree(bookmarks => {
+		let collectedBookmarks = []
+
+		let walk = bookmarks => bookmarks?.forEach(bookmark => {
+			bookmark.id && bookmark.title && bookmark.url && collectedBookmarks.push({id: bookmark.id, title: bookmark.title, url: bookmark.url})	
+			walk(bookmark.children)
+		})
+
+		walk(bookmarks, collectedBookmarks)
+		console.log("bookmarks:", JSON.stringify(collectedBookmarks, null, 4))
+
+		fetch("http://localhost:7938/bookmarksink", { method: "POST", body: JSON.stringify(collectedBookmarks) })
+			.then(response => {
+				if (!response.ok) {
+					throw new Error(response.status)
+				}
+			})
+			.catch(() => { // If we couldn't deliver data, try again i 5 secs.
+				setTimeout(reportBookmarks, 5000)
+			})
+	})
+}
+
+
 const watch = () => {
 	let evtSource = new EventSource("http://localhost:7938/watch")
-	evtSource.onopen = reportTabs
+	evtSource.onopen = () => {
+		reportTabs()
+		reportBookmarks()
+	}
 	evtSource.addEventListener("focusTab", ({ data }) => {
 		focusTab(parseInt(data))
 	})
@@ -52,6 +81,11 @@ let focusTab = tabId => {
 
 
 reportTabs()
+reportBookmarks()
+chrome.bookmarks.onChanged.addListener(reportBookmarks)
+chrome.bookmarks.onCreated.addListener(reportBookmarks)
+chrome.bookmarks.onRemoved.addListener(reportBookmarks)
+
 chrome.tabs.onRemoved.addListener(reportTabs)
 chrome.tabs.onUpdated.addListener(reportTabs)
 watch()

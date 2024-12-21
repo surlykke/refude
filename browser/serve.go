@@ -1,10 +1,11 @@
-package browsertabs
+package browser
 
 import (
 	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/surlykke/RefudeServices/lib/icon"
@@ -15,29 +16,6 @@ import (
 	"github.com/surlykke/RefudeServices/lib/respond"
 	"github.com/surlykke/RefudeServices/watch"
 )
-
-type Tab struct {
-	resource.ResourceData
-	Url string
-}
-
-func (this *Tab) Id() string {
-	return string(this.Path[len("/tab/"):])
-}
-
-func (this *Tab) DoPost(w http.ResponseWriter, r *http.Request) {
-	watch.Publish("focusTab", this.Id())
-	respond.Accepted(w)
-}
-
-func (this *Tab) DoDelete(w http.ResponseWriter, r *http.Request) {
-	watch.Publish("closeTab", this.Id())
-	respond.Accepted(w)
-}
-
-func (this *Tab) OmitFromSearch() bool {
-	return strings.HasPrefix(this.Url, "http://localhost:7938/desktop")
-}
 
 // This is the api that the browserextensions use
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -50,7 +28,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			var data = make([]map[string]string, 30)
 			if err := json.Unmarshal(bytes, &data); err != nil {
 				respond.UnprocessableEntity(w, err)
-			} else {
+			} else if r.URL.Path == "/tabsink" {
 				var tabs = make([]resource.Resource, 0, len(data))
 				for _, d := range data {
 					var title = d["title"]
@@ -77,6 +55,22 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				}
 				respond.Ok(w)
 				repo.Replace(tabs, "/tab/")
+				watch.Publish("search", "")
+			} else { // /bookmarksink
+				var bookmarks = make([]resource.Resource, 0, len(data))
+				for _, d := range data {
+					var externalUrl = d["url"]
+					if externalUrl == "" {
+						continue
+					}
+					var iconUrl = "https://t0.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&url=" + url.QueryEscape(externalUrl)
+
+					var baseData = resource.MakeBase(path.Of("/bookmark/", d["id"]), d["title"], "", icon.Name(iconUrl), mediatype.Bookmark)
+					var bookMark = Bookmark{ResourceData: *baseData, Id: d["id"], ExternalUrl: externalUrl}
+					bookMark.AddAction("open", d["title"], "Open bookmark", icon.Name(iconUrl))
+					bookmarks = append(bookmarks, &bookMark)
+				}
+				repo.Replace(bookmarks, "/bookmark/")
 				watch.Publish("search", "")
 			}
 		}

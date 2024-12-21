@@ -18,6 +18,7 @@
     "tabs",
     "notifications", 
     "background",
+	"bookmarks",
     "http://localhost:7938/*"
   ]
 }

@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/surlykke/RefudeServices/applications"
-	"github.com/surlykke/RefudeServices/browsertabs"
+	"github.com/surlykke/RefudeServices/browser"
 	"github.com/surlykke/RefudeServices/desktop"
 	"github.com/surlykke/RefudeServices/desktopactions"
 	"github.com/surlykke/RefudeServices/file"
@@ -58,7 +58,8 @@ func main() {
 	go file.Run()
 
 	http.Handle("/ping", ping.WebsocketHandler)
-	http.HandleFunc("/tabsink", browsertabs.ServeHTTP)
+	http.HandleFunc("/tabsink", browser.ServeHTTP)
+	http.HandleFunc("/bookmarksink", browser.ServeHTTP)
 	http.HandleFunc("/icon", icons.ServeHTTP)
 	http.HandleFunc("/desktop/", desktop.ServeHTTP)
 	http.HandleFunc("/watch", watch.ServeHTTP)
