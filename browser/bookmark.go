@@ -1,20 +1,20 @@
 package browser
 
 import (
-	"net/http"
-
-	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib/entity"
+	"github.com/surlykke/RefudeServices/lib/response"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
 type Bookmark struct {
-	resource.ResourceData
+	entity.Base
 	Id          string
 	ExternalUrl string
 }
 
-func (this *Bookmark) DoPost(w http.ResponseWriter, r *http.Request) {
+func (this *Bookmark) DoPost(action string) response.Response {
 	xdg.RunCmd("xdg-open", this.ExternalUrl)
+	return response.Accepted()
 }
 
 // We use this for icon url

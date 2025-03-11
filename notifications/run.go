@@ -7,16 +7,17 @@ package notifications
 
 import (
 	"github.com/surlykke/RefudeServices/icons"
-	"github.com/surlykke/RefudeServices/lib/path"
 	"github.com/surlykke/RefudeServices/lib/repo"
 	"github.com/surlykke/RefudeServices/watch"
 )
 
+var NotificationMap = repo.MakeSynkMap[uint32, *Notification]()
+
 func removeNotification(id uint32, reason uint32) {
-	if n, ok := repo.Get[*Notification](path.Of("/notification/%d", id)); ok && !n.Deleted {
+	if n, ok := NotificationMap.Get(id); ok && !n.Deleted {
 		var copy = *n
 		copy.Deleted = true
-		repo.Put(&copy)
+		NotificationMap.Put(id, &copy)
 		conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", id, reason)
 		watch.Publish("resourceChanged", "/flash")
 		watch.Publish("search", "")
@@ -24,17 +25,16 @@ func removeNotification(id uint32, reason uint32) {
 }
 
 func getFlash() (map[string]string, bool) {
-	var notifications = repo.GetListSortedByPath[*Notification]("/notification/")
+	var notifications = NotificationMap.GetAll()
 	for i := len(notifications) - 1; i >= 0; i-- {
 		n := notifications[i]
 		if n.Deleted {
 			continue
 		}
 		if !n.SoftExpired() {
-			var self = n.Link()
 			return map[string]string{
-				"subject":      self.Title,
-				"body":         self.Comment,
+				"subject":      n.Title,
+				"body":         n.Body,
 				"iconFilePath": icons.FindIcon(string(n.iconName), uint32(64)),
 			}, true
 		}

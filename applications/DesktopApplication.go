@@ -7,21 +7,20 @@ package applications
 
 import (
 	"fmt"
-	"net/http"
 	"os"
 	"regexp"
 	"strings"
 
+	"github.com/surlykke/RefudeServices/lib/entity"
 	"github.com/surlykke/RefudeServices/lib/icon"
-	"github.com/surlykke/RefudeServices/lib/requests"
-	"github.com/surlykke/RefudeServices/lib/resource"
-	"github.com/surlykke/RefudeServices/lib/respond"
+	"github.com/surlykke/RefudeServices/lib/response"
 
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
 type DesktopApplication struct {
-	resource.ResourceData
+	entity.Base
+	Comment         string `json:",omitempty"`
 	Type            string
 	Version         string `json:",omitempty"`
 	GenericName     string `json:",omitempty"`
@@ -60,28 +59,24 @@ type DesktopAction struct {
 	Icon icon.Name
 }
 
-func (d *DesktopApplication) DoPost(w http.ResponseWriter, r *http.Request) {
-	var exec string
-	var terminal bool
-	var action = requests.GetSingleQueryParameter(r, "action", "")
-	var args = r.URL.Query()["arg"]
-	if action == "launch" {
-		exec, terminal = d.Exec, d.Terminal
+func (d *DesktopApplication) DoPost(action string) response.Response {
+	if action == "" {
+		return postHelper(d.Exec, d.Terminal)
 	} else {
-		for _, da := range d.DesktopActions {
-			if action == da.id {
-				exec = da.Exec
+		for _, dac := range d.DesktopActions {
+			if action == dac.id {
+				return postHelper(dac.Exec, d.Terminal)
 			}
 		}
 	}
-	if exec != "" {
-		if err := run(exec, strings.Join(args, " "), terminal); err != nil {
-			respond.ServerError(w, err)
-		} else {
-			respond.Accepted(w)
-		}
+	return response.NotFound()
+}
+
+func postHelper(exec string, terminal bool) response.Response {
+	if err := run(exec, "", terminal); err != nil {
+		return response.ServerError(err)
 	} else {
-		respond.NotFound(w)
+		return response.Accepted()
 	}
 }
 

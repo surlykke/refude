@@ -35,36 +35,30 @@ html, body {
 	display: flex;
 	gap: 12px;
 	position: relative;
+	margin-left: 4px;
 }
 .icon {
 	width: 34px;
 	height: 34px;
 }
-.comment {
-	margin-top:6px;
-	font-size: 0.8em;
-	font-style: italic;
-}
-.details {
-	margin: 8px;
-}
-.description {
-	margin: 0 0 6px 0;
-	font-size: 0.8em;
-	font-style: italic;
-}
-.title-sub {
+.buttons {
+	display: flex;
+	flex-direction: row;
+	gap: 12px;
 	font-size: 0.9em;
 }
-.icon-sub {
-	width: 22px;
-	height: 22px;
+.button:focus {
+	outline: none;
+	border-bottom: solid 1px beige;
+	font-size: 1.15em;
+	font-color: white;
+}
+.button-icon {
+	width: 12px;
+	height: 12px;
 }
 .title, .title-sub {
 	outline: none;
-}
-.title:focus, .title-sub:focus {
-	text-decoration: underline
 }
 
 
@@ -86,36 +80,4 @@ html, body {
 	display: flex;
 }*/
 
-/* --------------- Menu --------------- */
 
-#menu {
-	position: absolute;
-	top: 32px;
-	z-index: 8;
-	right: 4px;
-	background-color:#00151b;
-    color:  lightgrey;
-	border: solid lightgrey 1px;
-	display: none;
-}
-ul {
-	list-style-type: none;
-  	padding-bottom: 3px;
-    padding-left: 1em;
-	cursor: default;
-}
-li {
-	padding: 3px 0 0 0;
-    width: 16em;
-}
-li:hover {
-	text-decoration: underline;
-}
-.menuSeparator {
-    border-bottom: solid 1px grey;
-    width: 4em;
-    margin: 10px 0 10px 0;
-}
-li.closed>ul {
-	display: none;
-}

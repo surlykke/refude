@@ -11,8 +11,6 @@ import (
 
 	"github.com/surlykke/RefudeServices/lib/icon"
 	"github.com/surlykke/RefudeServices/lib/log"
-	"github.com/surlykke/RefudeServices/lib/path"
-	"github.com/surlykke/RefudeServices/lib/repo"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
@@ -88,7 +86,7 @@ func collectThemeIcons(collected map[icon.Name][]IconPath) {
 
 func collectIconsFromTheme(themeId string) map[icon.Name][]IconPath {
 	var iconsFromTheme = make(map[icon.Name][]IconPath)
-	var theme, _ = repo.Get[*IconTheme](path.Of("/icontheme/", themeId))
+	var theme, _ = ThemeMap.Get(themeId)
 	for _, basedir := range xdg.IconBasedirs {
 		for _, themeDir := range theme.Dirs {
 			var glob = basedir + "/" + themeId + "/" + themeDir.Path + "/*"
@@ -139,7 +137,7 @@ func determineSearchOrder() []string {
 	var walker func(themeId string)
 	walker = func(themeId string) {
 		if themeId != "" && themeId != "hicolor" && !slices.Contains(searchOrder, themeId) {
-			if theme, ok := repo.Get[*IconTheme](path.Of("/icontheme/" + themeId)); ok {
+			if theme, ok := ThemeMap.Get(themeId); ok {
 				searchOrder = append(searchOrder, themeId)
 				for _, parent := range theme.Inherits {
 					walker(parent)

@@ -8,11 +8,10 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/surlykke/RefudeServices/icons"
+	"github.com/surlykke/RefudeServices/lib/entity"
 	"github.com/surlykke/RefudeServices/lib/icon"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/mediatype"
-	"github.com/surlykke/RefudeServices/lib/path"
-	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/slice"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
@@ -134,7 +133,7 @@ func readDesktopFile(filePath string, id string) (*DesktopApplication, error) {
 	} else {
 		group := iniFile[0]
 
-		var path, title, comment, iconName = path.Of("/application/", id), group.Entries["Name"], group.Entries["Comment"], group.Entries["Icon"]
+		var title, iconName = group.Entries["Name"], group.Entries["Icon"]
 		if strings.HasPrefix(string(iconName), "/") {
 			icons.AddFileIcon(iconName)
 		} else if strings.HasSuffix(iconName, ".png") || strings.HasSuffix(iconName, ".svg") || strings.HasSuffix(iconName, ".xpm") {
@@ -145,11 +144,13 @@ func readDesktopFile(filePath string, id string) (*DesktopApplication, error) {
 			return nil, errors.New("desktop file invalid, no 'Name' given")
 		}
 
+		var keywords = slice.Split(group.Entries["Keywords"], ";")
 		var da = DesktopApplication{
-			ResourceData: *resource.MakeBase(path, title, comment, icon.Name(iconName), mediatype.Application),
-			DesktopId:    id,
+			Base:      *entity.MakeBase(title, icon.Name(iconName), mediatype.Application, keywords...),
+			DesktopId: id,
 		}
 
+		da.Comment = group.Entries["Comment"]
 		if da.Type = group.Entries["Type"]; da.Type == "" {
 			return nil, errors.New("desktop file invalid, no 'Type' given")
 		}
@@ -166,21 +167,20 @@ func readDesktopFile(filePath string, id string) (*DesktopApplication, error) {
 		da.Terminal = group.Entries["Terminal"] == "true"
 		da.Categories = slice.Split(group.Entries["Categories"], ";")
 		da.Implements = slice.Split(group.Entries["Implements"], ";")
-		da.Keywords = slice.Split(group.Entries["Keywords"], ";")
 		da.StartupNotify = group.Entries["StartupNotify"] == "true"
 		da.StartupWmClass = group.Entries["StartupWMClass"]
 		da.Url = group.Entries["URL"]
 		da.Mimetypes = slice.Split(group.Entries["MimeType"], ";")
 		da.DesktopFile = filePath
-		da.AddAction("launch", title, "Launch", icon.Name(iconName))
+		da.AddAction("", "Launch", "")
 		da.DesktopActions = []DesktopAction{}
 		var actionNames = slice.Split(group.Entries["Actions"], ";")
 
 		for _, actionGroup := range iniFile[1:] {
 			if !strings.HasPrefix(actionGroup.Name, "Desktop Action ") {
-				log.Warn(path, ", ", "Unknown group type: ", actionGroup.Name, " - ignoring\n")
+				log.Warn(da.DesktopId, ", ", "Unknown group type: ", actionGroup.Name, " - ignoring\n")
 			} else if currentAction := actionGroup.Name[15:]; !slice.Contains(actionNames, currentAction) {
-				log.Warn(path, ", undeclared action: ", currentAction, " - ignoring\n")
+				log.Warn(da.DesktopId, ", undeclared action: ", currentAction, " - ignoring\n")
 			} else {
 				var name = actionGroup.Entries["Name"]
 				if name == "" {
@@ -193,7 +193,7 @@ func readDesktopFile(filePath string, id string) (*DesktopApplication, error) {
 					Exec: actionGroup.Entries["Exec"],
 					Icon: iconUrl,
 				})
-				da.AddAction(currentAction, name, title, iconUrl, title)
+				da.AddAction(currentAction, name, iconUrl)
 			}
 		}
 

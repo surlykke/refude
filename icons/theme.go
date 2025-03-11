@@ -10,18 +10,17 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/surlykke/RefudeServices/lib/entity"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/mediatype"
-	"github.com/surlykke/RefudeServices/lib/path"
-	"github.com/surlykke/RefudeServices/lib/repo"
-	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/slice"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
 type IconTheme struct {
-	resource.ResourceData
+	entity.Base
 	Id       string
+	Comment  string
 	Inherits []string
 	Dirs     []IconDir
 }
@@ -34,16 +33,13 @@ type IconDir struct {
 }
 
 func collectThemes() {
-	var themeMap = readThemes(xdg.IconBasedirs)
-	if _, ok := themeMap["hicolor"]; !ok {
+	var mapOfThemes = readThemes(xdg.IconBasedirs)
+	if _, ok := mapOfThemes["hicolor"]; !ok {
 		log.Warn("Found no hicolor theme - unable to serve icons")
 		return
 	}
-	var themeList = make([]resource.Resource, 0, len(themeMap))
-	for _, theme := range themeMap {
-		themeList = append(themeList, theme)
-	}
-	repo.Replace(themeList, "/icontheme/")
+
+	ThemeMap.Replace(mapOfThemes)
 }
 
 func readThemes(basedirs []string) map[string]*IconTheme {
@@ -87,8 +83,9 @@ func readTheme(indexThemeFilePath string) (*IconTheme, bool) {
 
 	themeGroup := iniFile[0]
 
-	theme := IconTheme{ResourceData: *resource.MakeBase(path.Of("/icontheme/", themeId), themeGroup.Entries["Name"], themeGroup.Entries["Comment"], "", mediatype.IconTheme)}
+	theme := IconTheme{Base: *entity.MakeBase(themeGroup.Entries["Name"], "", mediatype.IconTheme)}
 	theme.Id = themeId
+	theme.Comment = themeGroup.Entries["Comment"]
 	theme.Inherits = slice.Split(themeGroup.Entries["Inherits"], ",")
 	theme.Dirs = make([]IconDir, 0, 50)
 	var addedDirs = make(map[string]bool)
@@ -133,7 +130,7 @@ func readTheme(indexThemeFilePath string) (*IconTheme, bool) {
 			minSize = size - threshold
 			maxSize = size + threshold
 		} else {
-			log.Warn("Error in theme %s, %s, type must be given as 'Fixed', 'Scalable' or 'Threshold', was: %s", theme.Id, ", ", iniGroup.Name, "", sizeType)
+			//log.Warn("Error in theme %s, %s, type must be given as 'Fixed', 'Scalable' or 'Threshold', was: %s", theme.Id, ", ", iniGroup.Name, "", sizeType)
 			continue
 		}
 

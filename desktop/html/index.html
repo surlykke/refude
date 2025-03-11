@@ -11,7 +11,8 @@
 	<script type="application/javascript" src="sse.js"></script>
 </head>
 
-<body hx-ext="sse" sse-connect="/watch">
+<!--body hx-ext="sse" sse-connect="/watch"-->
+<body>
 	<div class="topbar">
 		<span class="heading">
 			Refude desktop
@@ -19,11 +20,11 @@
 		<img class="search" src="/icon?name=transsearch" width="20" height="20"></img>
 		<span id="term"></span>
 		<span class="spacer"></span>
-		<span hx-trigger="load,trayChanged" hx-get="/desktop/tray"> </span>
+		<!--span hx-trigger="load,trayChanged" hx-get="/desktop/tray"> </span-->
 	</div>
-	<div id="menu" hx-get="/desktop/tray/menu" hx-trigger="fetchMenu" hx-vals="js:{menuPath: currentMenu}"></div>
+	<!--div id="menu" hx-get="/desktop/tray/menu" hx-trigger="fetchMenu" hx-vals="js:{menuPath: currentMenu}"></div-->
 
-	<div id="search-results" hx-get="/desktop/search" hx-trigger="sse:search, search, load" hx-vals="js:{search: term}"> 
+	<div id="search-results" hx-get="/desktop/search" hx-trigger="sse:search, search, load" hx-vals="js:{term: term}"> 
 	</div>
 </body>
 </html>

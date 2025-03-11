@@ -2,20 +2,19 @@ package wayland
 
 import (
 	"encoding/json"
-	"net/http"
 	"strings"
 	"sync/atomic"
 
 	"github.com/surlykke/RefudeServices/applications"
+	"github.com/surlykke/RefudeServices/lib/entity"
 	"github.com/surlykke/RefudeServices/lib/icon"
 	"github.com/surlykke/RefudeServices/lib/mediatype"
-	"github.com/surlykke/RefudeServices/lib/path"
 	"github.com/surlykke/RefudeServices/lib/repo"
-	"github.com/surlykke/RefudeServices/lib/requests"
-	"github.com/surlykke/RefudeServices/lib/resource"
-	"github.com/surlykke/RefudeServices/lib/respond"
+	"github.com/surlykke/RefudeServices/lib/response"
 	"github.com/surlykke/RefudeServices/watch"
 )
+
+var WindowMap = repo.MakeSynkMap[uint64, *WaylandWindow]()
 
 var windowUpdates = make(chan windowUpdate)
 var removals = make(chan uint64)
@@ -45,15 +44,13 @@ func Run(ignWin map[string]bool) {
 
 			var (
 				title    string
-				comment  string
 				iconName icon.Name
 				appId    string
 				state    WindowStateMask
 			)
 
-			if w, ok := repo.Get[*WaylandWindow](path.Of("/window/", upd.wId)); ok {
-				var self = w.Link()
-				title, comment, iconName = self.Title, self.Comment, self.Icon
+			if w, ok := WindowMap.Get(upd.wId); ok {
+				title, iconName = w.Title, w.Icon
 				appId, state = w.AppId, w.State
 			}
 
@@ -63,8 +60,7 @@ func Run(ignWin map[string]bool) {
 
 			if upd.appId != "" {
 				appId = upd.appId
-				if appTitle, appIconName, ok := applications.GetTitleAndIcon(upd.appId); ok {
-					comment = appTitle + " window"
+				if _, appIconName, ok := applications.GetTitleAndIcon(upd.appId); ok {
 					iconName = appIconName
 				}
 			}
@@ -73,21 +69,18 @@ func Run(ignWin map[string]bool) {
 				state = upd.state - 1
 			}
 
-			repo.Put(makeWindow(upd.wId, title, comment, iconName, appId, state))
+			WindowMap.Put(upd.wId, makeWindow(upd.wId, title, iconName, appId, state))
 		case id := <-removals:
 			publish = true
-			var path = path.Of("/window/", id)
-			repo.Remove(path)
+			WindowMap.Remove(id)
 		case _ = <-appEvents:
-			for _, w := range repo.GetList[*WaylandWindow]("/window/") {
-				var self = w.Link()
-				var title, comment, iconName = self.Title, self.Comment, self.Icon
+			for _, w := range WindowMap.GetAll() {
+				var title, iconName = w.Title, w.Icon
 				var appId, state = w.AppId, w.State
 
-				if appTitle, appIconName, ok := applications.GetTitleAndIcon(appId); ok {
-					comment = appTitle + " window"
+				if _, appIconName, ok := applications.GetTitleAndIcon(appId); ok {
 					iconName = appIconName
-					repo.Put(makeWindow(w.Wid, title, comment, iconName, appId, state))
+					WindowMap.Put(w.Wid, makeWindow(w.Wid, title, iconName, appId, state))
 				}
 			}
 		}
@@ -144,48 +137,46 @@ func (wsm WindowStateMask) MarshalJSON() ([]byte, error) {
 }
 
 type WaylandWindow struct {
-	resource.ResourceData
+	entity.Base
 	Wid   uint64 `json:"-"`
 	AppId string `json:"app_id"`
 	State WindowStateMask
 }
 
-func makeWindow(wId uint64, title, comment string, iconName icon.Name, appId string, state WindowStateMask) *WaylandWindow {
+func makeWindow(wId uint64, title string, iconName icon.Name, appId string, state WindowStateMask) *WaylandWindow {
 	var ww = &WaylandWindow{
-		ResourceData: *resource.MakeBase(path.Of("/window/", wId), title, comment, iconName, mediatype.Window),
-		Wid:          wId,
-		AppId:        appId,
-		State:        state,
+		Base:  *entity.MakeBase(title, iconName, mediatype.Window),
+		Wid:   wId,
+		AppId: appId,
+		State: state,
 	}
-	ww.AddAction("focus", title, "Focus window", iconName)
+	ww.AddAction("", "Focus", "")
 	//ww.AddAction("close", title, "Close window", "window-close")
 	return ww
 }
 
-func (this *WaylandWindow) DoDelete(w http.ResponseWriter, r *http.Request) {
+func (this *WaylandWindow) DoDelete() response.Response {
 	close(this.Wid)
-	respond.Accepted(w)
+	return response.Accepted()
 }
 
 func (this *WaylandWindow) OmitFromSearch() bool {
-	var self = this.Link()
-	return strings.HasPrefix(self.Title, "Refude desktop") || ignoredWindows[this.AppId]
+	return strings.HasPrefix(this.Title, "Refude desktop") || ignoredWindows[this.AppId]
 }
 
-func (this *WaylandWindow) DoPost(w http.ResponseWriter, r *http.Request) {
-	var action = requests.GetSingleQueryParameter(r, "action", "")
-	if "focus" == action {
+func (this *WaylandWindow) DoPost(action string) response.Response {
+	if "" == action {
 		activate(this.Wid)
-		respond.Accepted(w)
+		return response.Accepted()
 	} else {
-		respond.NotFound(w)
+		return response.NotFound()
 	}
 }
 
 var remembered atomic.Uint64
 
 func RememberActive() {
-	for _, w := range repo.GetList[*WaylandWindow]("/window/") {
+	for _, w := range WindowMap.GetAll() {
 		if w.State.Is(ACTIVATED) {
 			remembered.Store(w.Wid)
 			break

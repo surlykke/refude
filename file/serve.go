@@ -6,48 +6,19 @@
 package file
 
 import (
-	"net/http"
-	"strings"
-	"sync"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/surlykke/RefudeServices/applications"
 	"github.com/surlykke/RefudeServices/lib/log"
-	"github.com/surlykke/RefudeServices/lib/path"
-	"github.com/surlykke/RefudeServices/lib/resource"
-	"github.com/surlykke/RefudeServices/lib/respond"
+	"github.com/surlykke/RefudeServices/lib/repo"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
-func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if f := GetResource(path.Of(r.URL.Path)); f == nil {
-		respond.NotFound(w)
-	} else {
-		resource.ServeSingleResource(w, r, f)
-	}
-}
-
-func GetResource(resPath path.Path) *File {
-	var pathS = string(resPath)
-	if !strings.HasPrefix(pathS, "/file/") {
-		log.Warn("Unexpeded path:", resPath)
-		return nil
-	} else if file, err := makeFileFromPath(pathS[5:]); err != nil {
-		log.Warn("Could not make file from", pathS[5:], err)
-		return nil
-	} else if file == nil {
-		return nil
-	} else {
-		return file
-	}
-}
-
-var watchedDirs []string
-var files []*File = []*File{}
-var filesLock sync.Mutex
+var FileMap = repo.MakeSynkMap[string, *File]()
 
 func Run() {
+	var watchedDirs []string
 
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
@@ -66,7 +37,7 @@ func Run() {
 
 	var scanEv = make(chan struct{})
 	var scanScheduled = false
-	scanDirs()
+	scanDirs(watchedDirs)
 	go func() {
 		var appSubscription = applications.AppEvents.Subscribe()
 		for {
@@ -85,33 +56,22 @@ func Run() {
 			}
 		case <-scanEv:
 			scanScheduled = false
-			scanDirs()
+			scanDirs(watchedDirs)
 		}
 	}
 
 }
 
-func scanDirs() {
-	var collected = make([]*File, 0, 50)
+func scanDirs(watchedDirs []string) {
+	var collected = make(map[string]*File, 50)
 	for _, dir := range watchedDirs {
 		for _, entry := range readEntries(dir) {
 			var name = entry.Name()
-			if file, err := makeFileFromPath(dir + "/" + name); err == nil {
-				collected = append(collected, file)
+			var path = dir + "/" + name
+			if file, err := makeFileFromPath(path); err == nil {
+				collected[path[1:]] = file
 			}
 		}
 	}
-	filesLock.Lock()
-	files = collected
-	filesLock.Unlock()
-}
-
-func GetFiles() []resource.Resource {
-	filesLock.Lock()
-	defer filesLock.Unlock()
-	var result = make([]resource.Resource, len(files), len(files))
-	for i, file := range files {
-		result[i] = file
-	}
-	return result
+	FileMap.Replace(collected)
 }

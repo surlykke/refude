@@ -6,14 +6,12 @@
 package notifications
 
 import (
-	"net/http"
 	"strconv"
 	"time"
 
+	"github.com/surlykke/RefudeServices/lib/entity"
 	"github.com/surlykke/RefudeServices/lib/icon"
-	"github.com/surlykke/RefudeServices/lib/requests"
-	"github.com/surlykke/RefudeServices/lib/resource"
-	"github.com/surlykke/RefudeServices/lib/respond"
+	"github.com/surlykke/RefudeServices/lib/response"
 )
 
 type Urgency uint8
@@ -52,8 +50,9 @@ func (ut UnixTime) MarshalJSON() ([]byte, error) {
 }
 
 type Notification struct {
-	resource.ResourceData
+	entity.Base
 	NotificationId uint32
+	Body           string
 	Sender         string
 	Created        time.Time
 	Expires        time.Time
@@ -78,21 +77,22 @@ func (this *Notification) OmitFromSearch() bool {
 	return this.Deleted || this.Expired() || (this.NActions["default"] == "" && this.SoftExpired())
 }
 
-func (n *Notification) DoPost(w http.ResponseWriter, r *http.Request) {
-	var action = requests.GetSingleQueryParameter(r, "action", "default")
-
+func (n *Notification) DoPost(action string) response.Response {
+	if action == "" && len(n.Actions) > 0 {
+		action = n.Actions[0].Id
+	}
 	if _, ok := n.NActions[action]; ok {
 		if err := conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".ActionInvoked", n.NotificationId, action); err != nil {
-			respond.ServerError(w, err)
+			return response.ServerError(err)
 		} else {
-			respond.Accepted(w)
+			return response.Accepted()
 		}
 	} else {
-		respond.NotFound(w)
+		return response.NotFound()
 	}
 }
 
-func (n *Notification) DoDelete(w http.ResponseWriter, r *http.Request) {
+func (n *Notification) DoDelete() response.Response {
 	removeNotification(n.NotificationId, Dismissed)
-	respond.Ok(w)
+	return response.Ok()
 }

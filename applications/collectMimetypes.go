@@ -5,11 +5,10 @@ import (
 	"os"
 	"strings"
 
+	"github.com/surlykke/RefudeServices/lib/entity"
 	"github.com/surlykke/RefudeServices/lib/icon"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/mediatype"
-	"github.com/surlykke/RefudeServices/lib/path"
-	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/slice"
 	"github.com/surlykke/RefudeServices/lib/tr"
 )
@@ -74,8 +73,6 @@ func collectMimetypes() map[string]*Mimetype {
 		if !mimetypePattern.MatchString(tmp.Type) {
 			log.Warn("Incomprehensible mimetype:", tmp.Type)
 		} else {
-			var mPath = path.Of("/mimetype/", tmp.Type)
-
 			var comment = ""
 			var iconName icon.Name = ""
 
@@ -90,7 +87,7 @@ func collectMimetypes() map[string]*Mimetype {
 			}
 			iconName = icon.Name(tmp.Icon.Name)
 
-			var mimeType = &Mimetype{ResourceData: *resource.MakeBase(mPath, "", comment, iconName, mediatype.Mimetype), Id: tmp.Type}
+			var mimeType = &Mimetype{Base: *entity.MakeBase(comment, iconName, mediatype.Mimetype), Id: tmp.Type}
 
 			for _, tmpAcronym := range tmp.Acronym {
 				if tr.LocaleMatch(tmpAcronym.Lang) || (tmpAcronym.Lang == "" && mimeType.Acronym == "") {
@@ -142,7 +139,6 @@ func collectMimetypes() map[string]*Mimetype {
 		for _, aliasId := range mt.Aliases {
 			if _, ok := res[aliasId]; !ok {
 				var copy = *mt
-				copy.Path = path.Of("/mimetype/", aliasId)
 				copy.Id = aliasId
 				copy.Aliases = []string{}
 				res[aliasId] = &copy

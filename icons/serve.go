@@ -6,57 +6,51 @@
 package icons
 
 import (
-	"errors"
 	"fmt"
 	"math"
-	"net/http"
 	"net/url"
 	"os"
-	"strconv"
 	"strings"
 	"sync"
 
 	"github.com/surlykke/RefudeServices/lib/icon"
 	"github.com/surlykke/RefudeServices/lib/image"
 	"github.com/surlykke/RefudeServices/lib/log"
-	"github.com/surlykke/RefudeServices/lib/requests"
-	"github.com/surlykke/RefudeServices/lib/respond"
+	"github.com/surlykke/RefudeServices/lib/repo"
+	"github.com/surlykke/RefudeServices/lib/response"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
+
+var ThemeMap = repo.MakeSynkMap[string, *IconTheme]()
 
 func Run() {
 	collectThemes()
 	collectIcons()
-
-	// TODO Recollect on changes
 }
 
-func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path == "/icon" {
-		if r.Method == "GET" {
-			if name := requests.GetSingleQueryParameter(r, "name", ""); name == "" {
-				respond.UnprocessableEntity(w, fmt.Errorf("Query parameter 'name' must be given, and not empty"))
-			} else if size, err := extractSize(r); err != nil {
-				respond.UnprocessableEntity(w, err)
-			} else if iconFilePath := FindIcon(name, size); iconFilePath == "" {
-				respond.NotFound(w)
-			} else if strings.HasSuffix(iconFilePath, ".xpm") {
-				if pngBytes := getPngFromXpm(iconFilePath); pngBytes == nil {
-					respond.NotFound(w)
-				} else {
-					w.Header().Set("Content-Type", "image/png")
-					w.Write(pngBytes)
-				}
-			} else {
-				http.ServeFile(w, r, iconFilePath)
-			}
-		} else {
-			respond.NotAllowed(w)
-		}
-
-	} else {
-		respond.NotFound(w)
+func GetHandler(name string, size uint32) response.Response {
+	var iconFilePath = FindIcon(name, size)
+	if iconFilePath == "" {
+		return response.NotFound()
 	}
+
+	var (
+		contentType string = "image/png"
+		bytes       []byte
+		err         error
+	)
+	if strings.HasSuffix(iconFilePath, ".xpm") {
+		if bytes = getPngFromXpm(iconFilePath); bytes == nil {
+			return response.NotFound()
+		}
+	} else if bytes, err = os.ReadFile(iconFilePath); err != nil {
+		return response.NotFound()
+	}
+
+	if strings.HasSuffix(iconFilePath, ".svg") {
+		contentType = "image/svg+xml"
+	}
+	return response.Image(contentType, bytes)
 }
 
 func getPngFromXpm(filePath string) []byte {
@@ -205,18 +199,4 @@ func bestSizeMatch(iconPaths []IconPath, size uint32) string {
 		}
 	}
 	return path
-}
-
-func extractSize(r *http.Request) (uint32, error) {
-	var size uint32 = 32
-
-	if len(r.URL.Query()["size"]) > 0 {
-		if size64, err := strconv.ParseUint(r.URL.Query()["size"][0], 10, 32); err != nil {
-			return 0, errors.New("Invalid size given:" + r.URL.Query()["size"][0])
-		} else {
-			size = uint32(size64)
-		}
-	}
-
-	return size, nil
 }

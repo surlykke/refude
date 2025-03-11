@@ -6,95 +6,100 @@
 package search
 
 import (
-	"net/http"
 	"slices"
 	"strings"
-	"time"
 
+	"github.com/surlykke/RefudeServices/applications"
+	"github.com/surlykke/RefudeServices/browser"
+	"github.com/surlykke/RefudeServices/desktopactions"
 	"github.com/surlykke/RefudeServices/file"
+	"github.com/surlykke/RefudeServices/lib/entity"
+	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/relation"
-	"github.com/surlykke/RefudeServices/lib/repo"
-	"github.com/surlykke/RefudeServices/lib/requests"
-	"github.com/surlykke/RefudeServices/lib/resource"
-	"github.com/surlykke/RefudeServices/lib/respond"
-	"github.com/surlykke/RefudeServices/statusnotifications"
+	"github.com/surlykke/RefudeServices/lib/response"
+	"github.com/surlykke/RefudeServices/notifications"
+	"github.com/surlykke/RefudeServices/power"
+	"github.com/surlykke/RefudeServices/wayland"
 )
 
 const maxRank uint = 1000000
 
-func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "GET" {
-		var term = requests.GetSingleQueryParameter(r, "term", "")
-		respond.AsJson(w, Search(term))
-	} else {
-		respond.NotAllowed(w)
+func GetHandler(term string) response.Response {
+	return response.Json(Search(term))
+}
+
+type searchable interface {
+	OmitFromSearch() bool
+	GetShort() entity.Short
+}
+
+type RankedShort struct {
+	entity.Short
+	Rank uint
+}
+
+func (rs *RankedShort) ActionLinks() []link.Link {
+	var filtered []link.Link = make([]link.Link, 0, len(rs.Links))
+	for _, l := range rs.Links {
+		if l.Relation == relation.Action || l.Relation == relation.Delete {
+			filtered = append(filtered, l)
+		}
 	}
+	return filtered
 }
 
-const max_search_time = 30 * time.Millisecond
-
-type rankedLink struct {
-	resource.Link
-	rank uint
-}
-
-func Search(term string) []rankedLink {
+func Search(term string) []RankedShort {
 	var termRunes = []rune(strings.ToLower(term))
-	var links []rankedLink
-	if len(term) == 0 {
-		links = searchResources(repo.GetListUntyped("/notification/", "/window/", "/tab/"), termRunes)
-	} else if len(term) == 1 {
-		links = searchResources(repo.GetListUntyped("/notification/", "/window/", "/tab/", "/start", "/application"), termRunes)
-	} else {
-		links = searchResources(repo.GetListUntyped("/notification/", "/window/", "/tab/", "/bookmark/", "/start", "/application", "/device"), termRunes)
-		links = append(links, searchLinks(statusnotifications.GetLinks(), termRunes)...)
-		links = append(links, searchResources(file.GetFiles(), termRunes)...)
-	}
+	var length = len(termRunes)
+	var rankedShorts []RankedShort = make([]RankedShort, 0, 100)
 
-	slices.SortFunc(links, func(l1, l2 rankedLink) int {
-		var tmp = int(l1.rank) - int(l2.rank)
+	rankedShorts = append(rankedShorts, search(termRunes, notifications.NotificationMap.GetAll())...)
+	rankedShorts = append(rankedShorts, search(termRunes, wayland.WindowMap.GetAll())...)
+	rankedShorts = append(rankedShorts, search(termRunes, browser.TabMap.GetAll())...)
+	if length > 0 {
+		rankedShorts = append(rankedShorts, search(termRunes, applications.AppMap.GetAll())...)
+		if length > 2 {
+			rankedShorts = append(rankedShorts, search(termRunes, power.DeviceMap.GetAll())...)
+			rankedShorts = append(rankedShorts, search(termRunes, file.FileMap.GetAll())...)
+			rankedShorts = append(rankedShorts, search(termRunes, browser.BookmarkMap.GetAll())...)
+			rankedShorts = append(rankedShorts, search(termRunes, desktopactions.Resources)...)
+		}
+	}
+	slices.SortFunc(rankedShorts, func(l1, l2 RankedShort) int {
+		var tmp = int(l1.Rank) - int(l2.Rank)
 		if tmp == 0 {
 			// Not significant, just to make the sort reproducible
-			tmp = strings.Compare(string(l1.Href), string(l2.Href))
+			tmp = strings.Compare(string(l1.Title), string(l2.Title))
 		}
 		return tmp
 	})
 
-	return links
+	return rankedShorts
 }
 
-func searchResources(reslist []resource.Resource, term []rune) []rankedLink {
-	var result = make([]rankedLink, 0, 2*len(reslist))
+func search[R searchable](term []rune, reslist []R) []RankedShort {
+	var result = make([]RankedShort, 0, 100)
 	for _, res := range reslist {
 		if res.OmitFromSearch() {
 			continue
 		}
-		var resRank = match(res.Data().Link().Title, term, 100)
-		for _, keyword := range res.Data().Keywords {
-			if tmp := match(keyword, term, 100); tmp < resRank {
-				resRank = tmp
+
+		var short = res.GetShort()
+		var rank = match(short.Title, term, 0)
+		for _, keyword := range short.Keywords {
+			if tmp := match(keyword, term, 0); tmp < rank {
+				rank = tmp
 			}
 		}
-
-		var correction uint = 0
-		for _, l := range res.Data().GetLinks(relation.Action, relation.Delete) {
-			if linkRank := match(l.Title, term, correction); linkRank < maxRank {
-				result = append(result, rankedLink{Link: l, rank: linkRank})
-			} else if resRank < maxRank {
-				result = append(result, rankedLink{Link: l, rank: resRank})
+		for _, link := range short.Links {
+			if tmp := match(link.Title, term, 0); tmp < rank {
+				rank = tmp
 			}
-			correction = 20
 		}
-	}
-	return result
-}
+		if rank < maxRank {
+			result = append(result, RankedShort{short, rank})
+		}
 
-func searchLinks(linkList []resource.Link, term []rune) []rankedLink {
-	var result = make([]rankedLink, 0, len(linkList))
-	for _, l := range linkList {
-		if rnk := match(l.Title, term, 0); rnk < maxRank {
-			result = append(result, rankedLink{Link: l, rank: rnk})
-		}
 	}
 	return result
 }

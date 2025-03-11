@@ -23,13 +23,10 @@ func GetSingleQueryParameter(r *http.Request, parameterName string, fallbackValu
 func GetPosInt(r *http.Request, parameterName string) (uint, error) {
 	var paramValue = GetSingleQueryParameter(r, parameterName, "")
 	if intVal, err := strconv.Atoi(paramValue); err != nil {
-		return 0, err 
-	} else if intVal <= 0{
+		return 0, err
+	} else if intVal <= 0 {
 		return 0, errors.New(fmt.Sprintf("'%s' should be positive", parameterName))
 	} else {
-		return uint(intVal), nil 
+		return uint(intVal), nil
 	}
 }
-
-
-

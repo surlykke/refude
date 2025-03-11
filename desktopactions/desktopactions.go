@@ -6,54 +6,54 @@
 package desktopactions
 
 import (
-	"net/http"
 	"sync/atomic"
 	"time"
 
 	"github.com/godbus/dbus/v5"
+	"github.com/surlykke/RefudeServices/lib/entity"
 	"github.com/surlykke/RefudeServices/lib/mediatype"
-	"github.com/surlykke/RefudeServices/lib/repo"
-	"github.com/surlykke/RefudeServices/lib/requests"
-	"github.com/surlykke/RefudeServices/lib/resource"
-	"github.com/surlykke/RefudeServices/lib/respond"
+	"github.com/surlykke/RefudeServices/lib/response"
 	"github.com/surlykke/RefudeServices/lib/tr"
 )
 
 var lastUpdated = atomic.Pointer[time.Time]{}
 
+var actionMethod = map[string]string{
+	"shutdown": "org.freedesktop.login1.Manager.PowerOff",
+	"reboot":   "org.freedesktop.login1.Manager.Reboot",
+	"suspend":  "org.freedesktop.login1.Manager.Suspend",
+}
+
 type StartResource struct {
-	resource.ResourceData
+	entity.Base
 }
 
 var Start StartResource
 
-func Run() {
-	Start = StartResource{ResourceData: *resource.MakeBase("/start", "Refude desktop", "", "", mediatype.Start)}
-	Start.AddAction("shutdown", tr.Tr("Power off"), "", "system-shutdown")
-	Start.AddAction("reboot", tr.Tr("Reboot"), "", "system-reboot")
-	Start.AddAction("suspend", tr.Tr("Suspend"), "", "system-suspend")
-	repo.Put(&Start)
+var Resources = []*StartResource{&Start}
+
+func init() {
+	Start = StartResource{Base: *entity.MakeBase("Refude desktop", "", mediatype.Start)}
+	Start.Keywords = []string{"sluk", "genstart", "slumre"}
+	Start.AddAction("shutdown", tr.Tr("Power off"), "system-shutdown")
+	Start.AddAction("reboot", tr.Tr("Reboot"), "system-reboot")
+	Start.AddAction("suspend", tr.Tr("Suspend"), "system-suspend")
+	Start.SetPath("/start")
 }
 
-func (s StartResource) DoPost(w http.ResponseWriter, r *http.Request) {
-	var action = requests.GetSingleQueryParameter(r, "action", "-")
-	var method string
-	switch action {
-	case "shutdown":
-		method = "org.freedesktop.login1.Manager.PowerOff"
-	case "reboot":
-		method = "org.freedesktop.login1.Manager.Reboot"
-	case "suspend":
-		method = "org.freedesktop.login1.Manager.Suspend"
-	default:
-		respond.NotFound(w)
-		return
-	}
+func GetHandler() response.Response {
+	return response.Json(Start)
+}
 
-	if conn, err := dbus.SystemBus(); err != nil {
-		respond.ServerError(w, err)
+func PostHandler(action string) response.Response {
+	if method, ok := actionMethod[action]; ok {
+		if conn, err := dbus.SystemBus(); err != nil {
+			return response.ServerError(err)
+		} else {
+			conn.Object("org.freedesktop.login1", "/org/freedesktop/login1").Call(method, dbus.Flags(0), false)
+			return response.Accepted()
+		}
 	} else {
-		conn.Object("org.freedesktop.login1", "/org/freedesktop/login1").Call(method, dbus.Flags(0), false)
-		respond.Accepted(w)
+		return response.NotFound()
 	}
 }

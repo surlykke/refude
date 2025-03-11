@@ -9,34 +9,35 @@ import (
 	"github.com/godbus/dbus/v5"
 
 	"github.com/surlykke/RefudeServices/lib/log"
-	"github.com/surlykke/RefudeServices/lib/path"
 	"github.com/surlykke/RefudeServices/lib/repo"
 )
+
+var DeviceMap = repo.MakeSynkMap[string, *Device]()
 
 func Run() {
 	var signals = subscribe()
 
-	repo.Put(retrieveDevice(displayDeviceDbusPath))
+	DeviceMap.Put(retrieveDevice(displayDeviceDbusPath))
 	showOnDesktop()
 
 	for _, dbusPath := range retrieveDevicePaths() {
-		repo.Put(retrieveDevice(dbusPath))
+		DeviceMap.Put(retrieveDevice(dbusPath))
 	}
 
 	for signal := range signals {
 		if signal.Name == "org.freedesktop.DBus.Properties.PropertiesChanged" {
-			var device = retrieveDevice(signal.Path)
-			repo.Put(device)
-			if device.Path == "/device/DisplayDevice" {
+			var id, device = retrieveDevice(signal.Path)
+			DeviceMap.Put(id, device)
+			if device.DisplayDevice {
 				showOnDesktop()
 			}
 		} else if signal.Name == "org.freedesktop.UPower.DeviceAdded" {
 			if path, ok := getAddedRemovedPath(signal); ok {
-				repo.Put(retrieveDevice(path))
+				DeviceMap.Put(retrieveDevice(path))
 			}
 		} else if signal.Name == "org.freedesktop.UPower.DeviceRemoved" {
 			if dbusPath, ok := signal.Body[0].(dbus.ObjectPath); ok {
-				repo.Remove(path.Of("/device/", dbusPath2id(dbusPath)))
+				DeviceMap.Remove(dbusPath2id(dbusPath))
 			}
 		} else {
 			log.Warn("Update on unknown device: ", signal.Path)

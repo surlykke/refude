@@ -1,4 +1,4 @@
-{{range $i, $res := .links}}
+{{range $i, $res := .resources}}
 	<div class="line">
 		<div class="icon">
 			{{if .Icon}}
@@ -6,11 +6,18 @@
 			{{end}}
 		</div>
 		<div>
-			<div  class="title" tabindex="{{(inc $i)}}" data-href={{.Href}} data-rel="{{.Relation}}" class="title" {{if ( eq $i 0) }}autofocus{{end}}>
+			<div  class="title" class="title" >
 				{{.Title}}
 			</div>
-			<div class="comment">
-				{{.Comment}} 
+			<div class="buttons">
+				{{ range $j, $l := .ActionLinks }} 
+					<div data-rel={{.Relation}} tabindex="{{(tabindex $i $j)}}" {{if (autofocus $i $j)}}autofocus{{end}} data-href={{.Href}} class="button">
+						{{if .Icon}}
+							<img src="{{.Icon}}" height="12" width="12" class="button-icon">
+						{{end}}
+						{{.Title}}
+			        </div>
+				{{ end }}
 			</div>
 		</div>
     </div>

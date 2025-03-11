@@ -8,9 +8,8 @@ package applications
 import (
 	"regexp"
 
+	"github.com/surlykke/RefudeServices/lib/entity"
 	"github.com/surlykke/RefudeServices/lib/mediatype"
-	"github.com/surlykke/RefudeServices/lib/path"
-	"github.com/surlykke/RefudeServices/lib/resource"
 
 	"github.com/pkg/errors"
 )
@@ -18,7 +17,7 @@ import (
 const freedesktopOrgXml = "/usr/share/mime/packages/freedesktop.org.xml"
 
 type Mimetype struct {
-	resource.ResourceData
+	entity.Base
 	Id              string
 	Comment         string
 	Acronym         string `json:",omitempty"`
@@ -38,12 +37,12 @@ func MakeMimetype(id string) (*Mimetype, error) {
 		return nil, errors.New("Incomprehensible mimetype: " + id)
 	} else {
 		var mt = Mimetype{
-			ResourceData: *resource.MakeBase(path.Of("/mimetype/", id), "", "", "", mediatype.Mimetype),
-			Id:           id,
-			Aliases:      []string{},
-			Globs:        []string{},
-			SubClassOf:   []string{},
-			GenericIcon:  "unknown",
+			Base:        *entity.MakeBase("", "", mediatype.Mimetype),
+			Id:          id,
+			Aliases:     []string{},
+			Globs:       []string{},
+			SubClassOf:  []string{},
+			GenericIcon: "unknown",
 		}
 		return &mt, nil
 	}

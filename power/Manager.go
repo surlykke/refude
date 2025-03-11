@@ -10,11 +10,9 @@ import (
 
 	"github.com/godbus/dbus/v5"
 	dbuscall "github.com/surlykke/RefudeServices/lib/dbusutils"
+	"github.com/surlykke/RefudeServices/lib/entity"
 	"github.com/surlykke/RefudeServices/lib/icon"
 	"github.com/surlykke/RefudeServices/lib/mediatype"
-	"github.com/surlykke/RefudeServices/lib/path"
-	"github.com/surlykke/RefudeServices/lib/repo"
-	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/notifications"
 )
 
@@ -52,9 +50,9 @@ func retrieveDevicePaths() []dbus.ObjectPath {
 	return append(enumCall.Body[0].([]dbus.ObjectPath), displayDeviceDbusPath)
 }
 
-func retrieveDevice(dbusPath dbus.ObjectPath) *Device {
+func retrieveDevice(dbusPath dbus.ObjectPath) (string, *Device) {
 
-	var device = Device{}
+	var device = Device{Id: dbusPath2id(dbusPath)}
 
 	var props = dbuscall.GetAllProps(dbusConn, upowerService, dbusPath, upowerDeviceInterface)
 
@@ -89,14 +87,11 @@ func retrieveDevice(dbusPath dbus.ObjectPath) *Device {
 	device.Warninglevel = deviceWarningLevel(warnL)
 	var batL, _ = props["BatteryLevel"].Value().(uint32)
 	device.Batterylevel = deviceBatteryLevel(batL)
-	device.Keywords = []string{"battery"}
-
 	var title = deviceTitle(device.Type, device.Model)
 	var iconName, _ = props["IconName"].Value().(string)
 
-	device.ResourceData = *resource.MakeBase(path.Of("/device/", dbusPath2id(dbusPath)), title, "", icon.Name(iconName), mediatype.Device)
-
-	return &device
+	device.Base = *entity.MakeBase(title, icon.Name(iconName), mediatype.Device, "battery")
+	return device.Id, &device
 }
 
 var previousPercentage = 101
@@ -114,7 +109,7 @@ func updateTrayIcon() {
 }
 
 func notifyOnLow() {
-	if displayDevice, ok := repo.Get[*Device](path.Of("/device/", dbusPath2id(displayDeviceDbusPath))); ok {
+	if displayDevice, ok := DeviceMap.Get(dbusPath2id(displayDeviceDbusPath)); ok {
 		var percentage = int(displayDevice.Percentage)
 		if displayDevice.State == "Discharging" {
 			if percentage <= 5 {

@@ -9,13 +9,14 @@ import (
 	"strings"
 
 	"github.com/godbus/dbus/v5"
-	"github.com/surlykke/RefudeServices/lib/resource"
+	"github.com/surlykke/RefudeServices/lib/entity"
 )
 
 type Device struct {
-	resource.ResourceData
-	// Properies of our making
-	DbusPath      dbus.ObjectPath
+	entity.Base
+	Id string
+
+	// Property of our making
 	DisplayDevice bool
 
 	// Properties from upower/dbus

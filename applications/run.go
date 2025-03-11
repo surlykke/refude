@@ -12,14 +12,15 @@ import (
 	"github.com/fsnotify/fsnotify"
 	"github.com/surlykke/RefudeServices/lib/icon"
 	"github.com/surlykke/RefudeServices/lib/log"
-	"github.com/surlykke/RefudeServices/lib/path"
 	"github.com/surlykke/RefudeServices/lib/pubsub"
 	"github.com/surlykke/RefudeServices/lib/repo"
-	"github.com/surlykke/RefudeServices/lib/resource"
 	"github.com/surlykke/RefudeServices/lib/xdg"
 )
 
 var AppEvents = pubsub.MakePublisher[struct{}]()
+
+var AppMap = repo.MakeSynkMap[string, *DesktopApplication]()
+var MimeMap = repo.MakeSynkMap[string, *Mimetype]()
 
 func Run() {
 	var desktopFileEvents = make(chan struct{})
@@ -27,19 +28,8 @@ func Run() {
 
 	for {
 		var collection Collection = collect()
-
-		var apps = make([]resource.Resource, 0, len(collection.Apps))
-		for _, app := range collection.Apps {
-			apps = append(apps, app)
-		}
-		repo.Replace(apps, "/application/")
-
-		var mts = make([]resource.Resource, 0, len(collection.Mimetypes))
-		for _, mt := range collection.Mimetypes {
-			mts = append(mts, mt)
-		}
-		repo.Replace(mts, "/mimetype/")
-
+		AppMap.Replace(collection.Apps)
+		MimeMap.Replace(collection.Mimetypes)
 		AppEvents.Publish(struct{}{})
 
 		<-desktopFileEvents
@@ -49,9 +39,9 @@ func Run() {
 
 func GetHandlers(mimetype string) []*DesktopApplication {
 	var apps = make([]*DesktopApplication, 0, 10)
-	if mt, ok := repo.Get[*Mimetype](path.Of("/mimetype/", mimetype)); ok {
+	if mt, ok := MimeMap.Get(mimetype); ok {
 		for _, appId := range mt.Applications {
-			if app, ok := repo.Get[*DesktopApplication](path.Of("/application/", appId)); ok {
+			if app, ok := AppMap.Get(appId); ok {
 				apps = append(apps, app)
 			}
 		}
@@ -61,16 +51,15 @@ func GetHandlers(mimetype string) []*DesktopApplication {
 
 func GetTitleAndIcon(appId string) (string, icon.Name, bool) {
 	if appId != "" {
-		if da, ok := repo.Get[*DesktopApplication](path.Of("/application/", appId)); ok {
-			var self = da.Link()
-			return self.Title, self.Icon, true
+		if da, ok := AppMap.Get(appId); ok {
+			return da.Title, da.Icon, true
 		}
 	}
 	return "", "", false
 }
 
 func OpenFile(appId, filePath string) bool {
-	if app, ok := repo.Get[*DesktopApplication](path.Of("/application/", appId)); ok {
+	if app, ok := AppMap.Get(appId); ok {
 		app.Run(filePath)
 		return true
 	}

@@ -7,7 +7,6 @@ package notifications
 
 import (
 	"errors"
-	"net/http"
 	"reflect"
 	"strings"
 	"time"
@@ -15,14 +14,12 @@ import (
 	"github.com/godbus/dbus/v5"
 	"github.com/godbus/dbus/v5/introspect"
 	"github.com/surlykke/RefudeServices/icons"
+	"github.com/surlykke/RefudeServices/lib/entity"
 	"github.com/surlykke/RefudeServices/lib/icon"
 	"github.com/surlykke/RefudeServices/lib/image"
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/mediatype"
-	"github.com/surlykke/RefudeServices/lib/path"
-	"github.com/surlykke/RefudeServices/lib/repo"
-	"github.com/surlykke/RefudeServices/lib/resource"
-	"github.com/surlykke/RefudeServices/lib/respond"
+	"github.com/surlykke/RefudeServices/lib/response"
 	"github.com/surlykke/RefudeServices/watch"
 )
 
@@ -181,8 +178,9 @@ func Notify(
 	var title = sanitize(summary, []string{}, []string{})
 	body = sanitize(body, allowedTags, allowedEscapes)
 	notification := Notification{
-		ResourceData:   *resource.MakeBase(path.Of("/notification/%d", id), title, body, iconName, mediatype.Notification),
+		Base:           *entity.MakeBase(title, iconName, mediatype.Notification),
 		NotificationId: id,
+		Body:           body,
 		Sender:         app_name,
 		Created:        time.Now(),
 		Urgency:        Normal,
@@ -225,7 +223,7 @@ func Notify(
 
 	notification.Expires = time.Now().Add(time.Duration(expire_timeout) * time.Millisecond)
 
-	repo.Put(&notification)
+	NotificationMap.Put(id, &notification)
 	watch.Publish("resourceChanged", "/flash")
 	watch.Publish("search", "")
 
@@ -372,15 +370,11 @@ func Run() {
 	_ = conn.Export(introspect.Introspectable(INTROSPECT_XML), NOTIFICATIONS_PATH, INTROSPECT_INTERFACE)
 }
 
-func ServeFlash(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/flash" {
-		respond.NotFound(w)
-	} else if r.Method != "GET" {
-		respond.NotAllowed(w)
-	} else if flash, ok := getFlash(); !ok {
-		respond.NotFound(w)
+func FlashHandler() response.Response {
+	if flash, ok := getFlash(); !ok {
+		return response.NotFound()
 	} else {
-		respond.AsJson(w, flash)
+		return response.Json(flash)
 	}
 
 }

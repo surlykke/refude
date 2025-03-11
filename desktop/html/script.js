@@ -12,8 +12,6 @@ let selectedPath = () => document.activeElement?.dataset.path
 let doEscape = shiftKey => {
 	if (shiftKey) {
 		dismiss()
-	} else if (currentMenu) {
-		setMenu()
 	} else if (term) {
 		setTerm("")
 	} else {
@@ -42,10 +40,7 @@ let onKeyDown = event => {
 	let { key, ctrlKey, altKey, shiftKey } = event;
 	console.log("onKeyDown:", key, ctrlKey, altKey, shiftKey)
 
-	if (key !== "Escape") {
-		setMenu()
-	}
-	if ((key === "Escape" && !ctrlKey && !altKey) || key === 'ArrowLeft' || (key === 'o' && ctrlKey)) {
+	if ((key === "Escape" && !ctrlKey && !altKey) || (key === 'o' && ctrlKey)) {
 		doEscape(shiftKey)
 	} else if (key === "Enter" && !altKey) {
 		doEnter(ctrlKey, shiftKey)
@@ -55,10 +50,14 @@ let onKeyDown = event => {
 		setTerm(term.slice(0, -1))
 	} else if (key.length === 1 && !ctrlKey && !altKey) {
 		setTerm(term + key)
-	} else if (key === "ArrowDown") {
+	} else if (key === "ArrowDown" || (ctrlKey && key === 'j')) {
 		nextLink()?.focus()
-	} else if (key === "ArrowUp") {
+	} else if (key === "ArrowUp" || (ctrlKey && key === 'k')) {
 		nextLink('up')?.focus()
+	} else if (key === "ArrowRight" || (ctrlKey && key === 'l')) {
+		document.activeElement?.nextElementSibling?.focus()
+	}  else if (key === "ArrowLeft" || (ctrlKey && key === 'h')) {
+		document.activeElement?.previousElementSibling?.focus()
 	} else {
 		return
 	}
@@ -74,49 +73,9 @@ let nextLink = up => {
 	}
 }
 
-let doLeftClick = ev => {
-	ev.stopPropagation()
-	let e = ev.currentTarget
-	if ("LI" === e.tagName) {
-		if (e.classList.contains('submenu')) {
-			toggleClosed(e)
-		} else {
-			console.log("posting against ", currentMenu + "?id=" + e.dataset.id)
-			fetch(currentMenu + "?id=" + e.dataset.id, { method: "post" }).then(resp => resp.ok && setMenu())
-		}
-		return
-	} else if ("IMG" === e.tagName) {
-		let itemPath = e.dataset.item
-		fetch(itemPath, { method: "post" })
-	}
-	setMenu()
-}
-
-let doRightClick = ev => {
-	ev.stopPropagation()
-	ev.preventDefault()
-	console.log("doRightClick, currentTarget:", ev.currentTarget)
-	setMenu(ev.currentTarget.dataset.menu)
-}
-
-let currentMenu
-let setMenu = menu => {
-	if (menu) {
-		document.getElementById('menu').style.display = "block"
-		currentMenu = menu
-		document.getElementById('menu').dispatchEvent(new Event('fetchMenu'))
-	} else {
-		currentMenu = undefined
-		document.getElementById('menu').innerHTML = ''
-		document.getElementById('menu').style.display = "none"
-	}
-}
-
 let toggleClosed = element => element.classList.toggle("closed")
-
 
 window.addEventListener('htmx:noSSESourceError', (e) => console.log(e));
 document.addEventListener("keydown", onKeyDown)
-window.addEventListener("click", doLeftClick)
 
 

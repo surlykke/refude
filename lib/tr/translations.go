@@ -12,9 +12,8 @@ var translations = map[string]map[string]string{
 		"Menu":         "Menu",
 		"Start":        "Start",
 		"Mimetype":     "Mimetype",
-
-		"Power off": "Sluk",
-		"Reboot":    "Genstart",
-		"Suspend":   "Slumre",
+		"Power off":    "Sluk",
+		"Reboot":       "Genstart",
+		"Suspend":      "Slumre",
 	},
 }
