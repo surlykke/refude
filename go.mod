@@ -1,6 +1,7 @@
 module github.com/surlykke/RefudeServices
 
-go 1.23
+go 1.23.2
+
 require (
 	github.com/fsnotify/fsnotify v1.4.9
 	github.com/godbus/dbus/v5 v5.0.3
