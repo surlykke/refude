@@ -15,9 +15,9 @@ func ServeFunc(path string, function any, bindings ...string) {
 
 func ServeMap[K cmp.Ordered, V repo.Storable](prefix string, m *repo.SyncMap[K, V]) {
 	m.SetPrefix(prefix)
-	ServeFunc("GET "+prefix+"{id}", m.DoGetSingle, "path id")
+	ServeFunc("GET "+prefix+"{id...}", m.DoGetSingle, "path id")
 	ServeFunc("GET "+prefix+"{$}", m.DoGetAll)
-	ServeFunc("POST "+prefix+"{id}", m.DoPost, "path id", "query action")
+	ServeFunc("POST "+prefix+"{id...}", m.DoPost, "path id", "query action")
 }
 
 var queryWithDefault = regexp.MustCompile(`^query (\w+) default (\S+)$`)
