@@ -20,29 +20,16 @@ type Response struct {
 	Body    []byte
 }
 
-func ServeResponse(w http.ResponseWriter, resp Response) {
-	var bodylen = fmt.Sprintf("%d", len(resp.Body))
-	w.Header().Add("Content-Length", bodylen)
-	w.WriteHeader(resp.Status)
-
-	for headerName, headerValues := range resp.Headers {
-		for _, headerValue := range headerValues {
-			w.Header().Add(headerName, headerValue)
-		}
-	}
-	w.Write(resp.Body)
-}
-
 func (this Response) Send(w http.ResponseWriter) {
 	var bodylen = fmt.Sprintf("%d", len(this.Body))
 	w.Header().Add("Content-Length", bodylen)
-	w.WriteHeader(this.Status)
 
 	for headerName, headerValues := range this.Headers {
 		for _, headerValue := range headerValues {
 			w.Header().Add(headerName, headerValue)
 		}
 	}
+	w.WriteHeader(this.Status)
 	w.Write(this.Body)
 }
 
