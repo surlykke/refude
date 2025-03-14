@@ -34,10 +34,10 @@ var Resources = []*StartResource{&Start}
 
 func init() {
 	Start = StartResource{Base: *entity.MakeBase("Refude desktop", "", mediatype.Start)}
-	Start.Keywords = []string{"sluk", "genstart", "slumre"}
 	Start.AddAction("shutdown", tr.Tr("Power off"), "system-shutdown")
 	Start.AddAction("reboot", tr.Tr("Reboot"), "system-reboot")
 	Start.AddAction("suspend", tr.Tr("Suspend"), "system-suspend")
+	Start.Keywords = append(Start.Keywords, tr.Tr("Power off"), tr.Tr("Reboot"), tr.Tr("Suspend"))
 	Start.SetPath("/start")
 }
 

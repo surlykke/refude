@@ -50,7 +50,6 @@ html, body {
 .button:focus {
 	outline: none;
 	border-bottom: solid 1px beige;
-	font-size: 1.15em;
 	font-color: white;
 }
 .button-icon {

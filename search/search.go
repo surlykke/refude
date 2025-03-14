@@ -91,11 +91,6 @@ func search[R searchable](term []rune, reslist []R) []RankedShort {
 				rank = tmp
 			}
 		}
-		for _, link := range short.Links {
-			if tmp := match(link.Title, term, 0); tmp < rank {
-				rank = tmp
-			}
-		}
 		if rank < maxRank {
 			result = append(result, RankedShort{short, rank})
 		}
