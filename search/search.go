@@ -14,8 +14,6 @@ import (
 	"github.com/surlykke/RefudeServices/desktopactions"
 	"github.com/surlykke/RefudeServices/file"
 	"github.com/surlykke/RefudeServices/lib/entity"
-	"github.com/surlykke/RefudeServices/lib/link"
-	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/response"
 	"github.com/surlykke/RefudeServices/notifications"
 	"github.com/surlykke/RefudeServices/power"
@@ -28,44 +26,45 @@ func GetHandler(term string) response.Response {
 	return response.Json(Search(term))
 }
 
-type searchable interface {
-	OmitFromSearch() bool
-	GetShort() entity.Short
-}
-
-type RankedShort struct {
-	entity.Short
+type Ranked struct {
+	entity.Base
 	Rank uint
 }
 
-func (rs *RankedShort) ActionLinks() []link.Link {
-	var filtered []link.Link = make([]link.Link, 0, len(rs.Links))
-	for _, l := range rs.Links {
-		if l.Relation == relation.Action || l.Relation == relation.Delete {
-			filtered = append(filtered, l)
-		}
-	}
-	return filtered
-}
-
-func Search(term string) []RankedShort {
+func Search(term string) []Ranked {
 	var termRunes = []rune(strings.ToLower(term))
 	var length = len(termRunes)
-	var rankedShorts []RankedShort = make([]RankedShort, 0, 100)
+	var bases = make([]entity.Base, 0, 1000)
 
-	rankedShorts = append(rankedShorts, search(termRunes, notifications.NotificationMap.GetAll())...)
-	rankedShorts = append(rankedShorts, search(termRunes, wayland.WindowMap.GetAll())...)
-	rankedShorts = append(rankedShorts, search(termRunes, browser.TabMap.GetAll())...)
+	notifications.NotificationMap.GetForSearch(&bases)
+	wayland.WindowMap.GetForSearch(&bases)
+	browser.TabMap.GetForSearch(&bases)
+
 	if length > 0 {
-		rankedShorts = append(rankedShorts, search(termRunes, applications.AppMap.GetAll())...)
+		applications.AppMap.GetForSearch(&bases)
 		if length > 2 {
-			rankedShorts = append(rankedShorts, search(termRunes, power.DeviceMap.GetAll())...)
-			rankedShorts = append(rankedShorts, search(termRunes, file.FileMap.GetAll())...)
-			rankedShorts = append(rankedShorts, search(termRunes, browser.BookmarkMap.GetAll())...)
-			rankedShorts = append(rankedShorts, search(termRunes, desktopactions.Resources)...)
+			power.DeviceMap.GetForSearch(&bases)
+			file.FileMap.GetForSearch(&bases)
+			browser.BookmarkMap.GetForSearch(&bases)
+			bases = append(bases, *desktopactions.Start.GetBase())
 		}
 	}
-	slices.SortFunc(rankedShorts, func(l1, l2 RankedShort) int {
+
+	var result = make([]Ranked, 0, len(bases))
+	for _, res := range bases {
+		var rank = match(res.Title, termRunes, 0)
+		for _, keyword := range res.Keywords {
+			if tmp := match(keyword, termRunes, 0); tmp < rank {
+				rank = tmp
+			}
+		}
+		if rank < maxRank {
+			result = append(result, Ranked{res, rank})
+		}
+
+	}
+
+	slices.SortFunc(result, func(l1, l2 Ranked) int {
 		var tmp = int(l1.Rank) - int(l2.Rank)
 		if tmp == 0 {
 			// Not significant, just to make the sort reproducible
@@ -74,28 +73,6 @@ func Search(term string) []RankedShort {
 		return tmp
 	})
 
-	return rankedShorts
-}
-
-func search[R searchable](term []rune, reslist []R) []RankedShort {
-	var result = make([]RankedShort, 0, 100)
-	for _, res := range reslist {
-		if res.OmitFromSearch() {
-			continue
-		}
-
-		var short = res.GetShort()
-		var rank = match(short.Title, term, 0)
-		for _, keyword := range short.Keywords {
-			if tmp := match(keyword, term, 0); tmp < rank {
-				rank = tmp
-			}
-		}
-		if rank < maxRank {
-			result = append(result, RankedShort{short, rank})
-		}
-
-	}
 	return result
 }
 

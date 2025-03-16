@@ -1,4 +1,4 @@
-{{range $i, $res := .resources}}
+{{range .}}
 	<div class="line">
 		<div class="icon">
 			{{if .Icon}}
@@ -10,8 +10,8 @@
 				{{.Title}}
 			</div>
 			<div class="buttons">
-				{{ range $j, $l := .ActionLinks }} 
-					<div data-rel={{.Relation}} tabindex="{{(tabindex $i $j)}}" {{if (autofocus $i $j)}}autofocus{{end}} data-href={{.Href}} class="button">
+				{{ range .ActionLinks }} 
+					<div data-rel={{.Relation}} tabindex="{{.Tabindex}}" {{.Autofocus}} data-href={{.Href}} class="button">
 						{{if .Icon}}
 							<img src="{{.Icon}}" height="12" width="12" class="button-icon">
 						{{end}}

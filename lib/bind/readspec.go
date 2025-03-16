@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/surlykke/RefudeServices/lib/entity"
 	"github.com/surlykke/RefudeServices/lib/repo"
 )
 
@@ -13,7 +14,7 @@ func ServeFunc(path string, function any, bindings ...string) {
 	http.HandleFunc(path, buildHandler(function, readSpecs(bindings...)))
 }
 
-func ServeMap[K cmp.Ordered, V repo.Storable](prefix string, m *repo.SyncMap[K, V]) {
+func ServeMap[K cmp.Ordered, V entity.Servable](prefix string, m *repo.SyncMap[K, V]) {
 	m.SetPrefix(prefix)
 	ServeFunc("GET "+prefix+"{id...}", m.DoGetSingle, "path id")
 	ServeFunc("GET "+prefix+"{$}", m.DoGetAll)

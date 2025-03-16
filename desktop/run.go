@@ -15,7 +15,7 @@ import (
 
 	"github.com/surlykke/RefudeServices/lib/icon"
 	"github.com/surlykke/RefudeServices/lib/log"
-	"github.com/surlykke/RefudeServices/lib/path"
+	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/response"
 	"github.com/surlykke/RefudeServices/search"
 )
@@ -63,19 +63,54 @@ func init() {
 
 }
 
-type item struct {
-	Icon     icon.Name
-	ItemPath path.Path
-	MenuPath path.Path
+type Resourceline struct {
+	Icon        icon.Name
+	Title       string
+	ActionLinks []Resourcelink
+}
+
+type Resourcelink struct {
+	Relation  relation.Relation
+	Href      string
+	Icon      icon.Name
+	Title     string
+	Tabindex  int
+	Autofocus string
 }
 
 func SearchHandler(term string) response.Response {
-	var m = map[string]any{
-		"term":      term,
-		"resources": search.Search(term),
+	var reslines = make([]Resourceline, 0, 50)
+	for i, entity := range search.Search(term) {
+		var resline = Resourceline{
+			Icon:        entity.Icon,
+			Title:       entity.Title,
+			ActionLinks: make([]Resourcelink, 0, len(entity.Links))}
+		for _, l := range entity.Links {
+			if l.Relation != relation.Action {
+				continue
+			}
+			var autofocus string
+			if i == 0 && len(resline.ActionLinks) == 0 {
+				autofocus = "autofocus"
+			}
+			var tabindex = -1
+			if len(resline.ActionLinks) == 0 {
+				tabindex = i + 1
+			}
+			resline.ActionLinks = append(resline.ActionLinks, Resourcelink{
+				Relation:  l.Relation,
+				Href:      l.Href,
+				Icon:      l.Icon,
+				Title:     l.Title,
+				Tabindex:  tabindex,
+				Autofocus: autofocus,
+			})
+		}
+		reslines = append(reslines, resline)
 	}
+
 	var b bytes.Buffer
-	if err := rowTemplate.Execute(&b, m); err != nil {
+	if err := rowTemplate.Execute(&b, reslines); err != nil {
 		return response.ServerError(err)
 	} else {
 		return response.HtmlBytes(b.Bytes())

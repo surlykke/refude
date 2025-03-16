@@ -91,7 +91,7 @@ func makeFileFromInfo(osPath string, fileInfo os.FileInfo) *File {
 	}
 
 	for _, app := range applications.GetHandlers(f.Mimetype) {
-		f.AddAction(app.DesktopId, "Open with "+app.Title, app.Icon)
+		f.AddAction(app.DesktopId, app.Title, app.Icon)
 	}
 	return &f
 }

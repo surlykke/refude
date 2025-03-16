@@ -7,22 +7,19 @@ import (
 	"github.com/surlykke/RefudeServices/lib/relation"
 )
 
+type Servable interface {
+	GetBase() *Base
+	OmitFromSearch() bool
+}
+
 type Base struct {
-	path      string
+	Path      string `json:"-"`
 	Title     string
 	Icon      icon.Name
 	MediaType mediatype.MediaType
 	Links     []link.Link
 	Keywords  []string `json:"keywords"`
 	Actions   []Action `json:"actions"`
-}
-
-type Short struct {
-	Title     string
-	Icon      icon.Name
-	Keywords  []string
-	Links     []link.Link
-	MediaType mediatype.MediaType
 }
 
 type Action struct {
@@ -43,33 +40,21 @@ func MakeBase(title string, icon icon.Name, mediatype mediatype.MediaType, keywo
 func (this *Base) OmitFromSearch() bool {
 	return false
 }
-
-func (this *Base) GetShort() Short {
-	return Short{
-		Title:     this.Title,
-		Icon:      this.Icon,
-		Keywords:  this.Keywords,
-		Links:     this.Links,
-		MediaType: this.MediaType,
-	}
+func (this *Base) GetBase() *Base {
+	return this
 }
 
 // ------------ Don't call after published ------------------
 
-func (this *Base) GetPath() string {
-	return this.path
-}
-
-func (this *Base) SetPath(path string) {
-	this.path = path
+func (this *Base) BuildLinks() {
 	this.Links = make([]link.Link, 1+len(this.Actions), 1+len(this.Actions))
-	this.Links[0] = link.Link{Href: this.path, Title: this.Title, Icon: this.Icon, Relation: relation.Self}
+	this.Links[0] = link.Link{Href: this.Path, Title: this.Title, Icon: this.Icon, Relation: relation.Self}
 	for i, action := range this.Actions {
 		var actionParam string
 		if action.Id != "" {
 			actionParam = "?action=" + action.Id
 		}
-		this.Links[i+1] = link.Link{Href: this.path + actionParam, Title: action.Name, Relation: relation.Action}
+		this.Links[i+1] = link.Link{Href: this.Path + actionParam, Title: action.Name, Relation: relation.Action}
 	}
 }
 
