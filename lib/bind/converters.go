@@ -1,7 +1,6 @@
 package bind
 
 import (
-	"encoding/json"
 	"reflect"
 	"strconv"
 
@@ -135,13 +134,5 @@ func floatHelper(str string, bitsize int) (float64, error) {
 		return 0, nil
 	} else {
 		return strconv.ParseFloat(str, bitsize)
-	}
-}
-
-func makeJsonConverter(t reflect.Type) converter {
-	return func(body string) (reflect.Value, error) {
-		var valPtr = reflect.New(t)
-		err := json.Unmarshal([]byte(body), valPtr.Interface())
-		return valPtr.Elem(), err
 	}
 }
