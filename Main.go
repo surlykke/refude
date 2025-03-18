@@ -44,8 +44,8 @@ func main() {
 	bind.ServeFunc("GET /start", desktopactions.GetHandler)
 	bind.ServeFunc("POST /start", desktopactions.PostHandler, "name=action")
 	bind.ServeFunc("GET /flash", notifications.FlashHandler)
-	bind.ServeFunc("POST /tabsink", browser.TabsDoPost, "type=json")
-	bind.ServeFunc("POST /bookmarksink", browser.BookmarksDoPost, "type=json")
+	bind.ServeFunc("POST /tabsink", browser.TabsDoPost, "type=jsonbody")
+	bind.ServeFunc("POST /bookmarksink", browser.BookmarksDoPost, "type=jsonbody")
 	bind.ServeFunc("GET /complete", completeHandler, "name=prefix")
 	bind.ServeFunc("GET /desktop/search", desktop.SearchHandler, "name=term")
 

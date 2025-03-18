@@ -42,7 +42,7 @@ func buildHandler(function any, tags ...string) func(w http.ResponseWriter, r *h
 	for i, tag := range tags {
 		var tagData = readTag(tag)
 		var inputType = tagData["type"]
-		if inputType == "json" {
+		if inputType == "jsonbody" {
 			deserializers[i] = makeJsonBodyDeserializer(funcType.In(i))
 		} else {
 			var fromQuery = inputType == "query"
@@ -135,7 +135,7 @@ func readTag(tag string) map[string]string {
 				if attrs["name"] == "" {
 					panic("'name' must be given for  'query' and 'path'")
 				}
-			case "json":
+			case "jsonbody":
 				if attrs["name"] != "" || attrs["required"] != "false" || attrs["default"] != "" {
 					panic("attributes 'name', 'required' and 'default' should not be given for type 'json'")
 				}
