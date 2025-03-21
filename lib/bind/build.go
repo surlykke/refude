@@ -21,9 +21,9 @@ func ServeFunc(path string, function any, tags ...string) {
 
 func ServeMap[K cmp.Ordered, V entity.Servable](prefix string, m *repo.SyncMap[K, V]) {
 	m.SetPrefix(prefix)
-	ServeFunc("GET "+prefix+"{id...}", m.DoGetSingle, "type=path,name=id")
+	ServeFunc("GET "+prefix+"{id...}", m.DoGetSingle, `path:"id"`)
 	ServeFunc("GET "+prefix+"{$}", m.DoGetAll)
-	ServeFunc("POST "+prefix+"{id...}", m.DoPost, "type=path,name=id", "name=action")
+	ServeFunc("POST "+prefix+"{id...}", m.DoPost, `path:"id"`, `query:"action"`)
 }
 
 func buildHandler(function any, tags ...string) func(w http.ResponseWriter, r *http.Request) {
@@ -40,17 +40,13 @@ func buildHandler(function any, tags ...string) func(w http.ResponseWriter, r *h
 	}
 	var deserializers = make([]deserializer, len(tags), len(tags))
 	for i, tag := range tags {
-		var tagData = readTag(tag)
-		var inputType = tagData["type"]
-		if inputType == "jsonbody" {
+
+		var pb = readTag(reflect.StructTag(tag))
+		if pb.bindingType == "body" {
 			deserializers[i] = makeJsonBodyDeserializer(funcType.In(i))
 		} else {
-			var fromQuery = inputType == "query"
-			var name = tagData["name"]
-			var required = "true" == tagData["required"]
-			var _default = tagData["default"]
 			var conv = getConverter(funcType.In(i))
-			deserializers[i] = makeParmDeserializer(fromQuery, name, required, _default, conv)
+			deserializers[i] = makeParmDeserializer("query" == pb.bindingType, pb.name, pb.required, pb.defaultValue, conv)
 		}
 	}
 
@@ -113,44 +109,54 @@ func makeServer(handlerFunction reflect.Value, deserializers []deserializer) fun
 	}
 }
 
-func readTag(tag string) map[string]string {
-	var attrs = map[string]string{
-		"type":     "query",
-		"required": "false",
-		"default":  "",
-	}
-	for _, pair := range strings.Split(tag, ",") {
-		var keyVal = strings.Split(pair, "=")
-		if len(keyVal) != 2 {
-			panic("tag should be a comma-separated list of key-value pairs separated by '=' <key>=<val> : " + tag)
-		}
-		attrs[keyVal[0]] = keyVal[1]
+type parameterBinding struct {
+	bindingType  string
+	name         string
+	required     bool
+	defaultValue string
+}
+
+func readTag(tag reflect.StructTag) parameterBinding {
+	var (
+		pb             parameterBinding
+		bindingDetails string
+		ok             bool
+	)
+
+	if bindingDetails, ok = tag.Lookup("query"); ok {
+		pb.bindingType = "query"
+	} else if bindingDetails, ok = tag.Lookup("path"); ok {
+		pb.bindingType = "path"
+	} else if bindingDetails, ok = tag.Lookup("body"); ok {
+		pb.bindingType = "body"
+	} else {
+		panic("tag should start with 'query', 'path' or 'body'")
 	}
 
-	for key, val := range attrs {
-		switch key {
-		case "type":
-			switch val {
-			case "query", "path":
-				if attrs["name"] == "" {
-					panic("'name' must be given for  'query' and 'path'")
-				}
-			case "jsonbody":
-				if attrs["name"] != "" || attrs["required"] != "false" || attrs["default"] != "" {
-					panic("attributes 'name', 'required' and 'default' should not be given for type 'json'")
-				}
-			default:
-				panic("only types 'query', 'path' and 'json' supported")
-			}
-		case "name": // handled above
-		case "required":
-			if val != "true" && val != "false" {
-				panic("required must be 'true' or 'false'")
-			}
-		case "default": // Anything goes
-		default:
-			panic("Unknown attibute: '" + key + "'")
+	var elements = strings.Split(bindingDetails, ",")
+	if len(elements) == 0 {
+		panic("value for " + pb.bindingType + " empty")
+	}
+	pb.name = elements[0]
+	for i := 1; i < len(elements); i++ {
+		if elements[i] == "required" {
+			pb.required = true
+		} else if strings.HasPrefix(elements[i], "default=") {
+			pb.defaultValue = elements[i][8:]
+		} else {
+			panic("only 'required' or 'default=<value>' allowed as qualifiers")
 		}
 	}
-	return attrs
+	if pb.bindingType == "body" {
+		if pb.name != "json" {
+			panic("Only 'json' supported for 'body:'")
+		} else if pb.required || pb.defaultValue != "" {
+			panic("'required' or 'default' not allowed for 'body:'")
+		}
+	} else {
+		if pb.required && pb.defaultValue != "" {
+			panic("'default' cannot be given when 'required'")
+		}
+	}
+	return pb
 }
