@@ -10,7 +10,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/mediatype"
 	"github.com/surlykke/RefudeServices/lib/slice"
-	"github.com/surlykke/RefudeServices/lib/tr"
+	"github.com/surlykke/RefudeServices/lib/translate"
 )
 
 func collectMimetypes() map[string]*Mimetype {
@@ -77,7 +77,7 @@ func collectMimetypes() map[string]*Mimetype {
 			var iconName icon.Name = ""
 
 			for _, tmpComment := range tmp.Comment {
-				if tr.LocaleMatch(tmpComment.Lang) || (tmpComment.Lang == "" && comment == "") {
+				if translate.LocaleMatch(tmpComment.Lang) || (tmpComment.Lang == "" && comment == "") {
 					comment = tmpComment.Text
 				}
 			}
@@ -90,13 +90,13 @@ func collectMimetypes() map[string]*Mimetype {
 			var mimeType = &Mimetype{Base: *entity.MakeBase(comment, iconName, mediatype.Mimetype), Id: tmp.Type}
 
 			for _, tmpAcronym := range tmp.Acronym {
-				if tr.LocaleMatch(tmpAcronym.Lang) || (tmpAcronym.Lang == "" && mimeType.Acronym == "") {
+				if translate.LocaleMatch(tmpAcronym.Lang) || (tmpAcronym.Lang == "" && mimeType.Acronym == "") {
 					mimeType.Acronym = tmpAcronym.Text
 				}
 			}
 
 			for _, tmpExpandedAcronym := range tmp.ExpandedAcronym {
-				if tr.LocaleMatch(tmpExpandedAcronym.Lang) || tmpExpandedAcronym.Lang == "" && mimeType.ExpandedAcronym == "" {
+				if translate.LocaleMatch(tmpExpandedAcronym.Lang) || tmpExpandedAcronym.Lang == "" && mimeType.ExpandedAcronym == "" {
 					mimeType.ExpandedAcronym = tmpExpandedAcronym.Text
 				}
 			}

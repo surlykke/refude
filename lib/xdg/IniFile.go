@@ -13,7 +13,7 @@ import (
 	"strings"
 
 	"github.com/surlykke/RefudeServices/lib/log"
-	"github.com/surlykke/RefudeServices/lib/tr"
+	"github.com/surlykke/RefudeServices/lib/translate"
 )
 
 var commentLine = regexp.MustCompile(`^\s*(#.*)?$`)
@@ -61,7 +61,7 @@ func ReadIniFile(path string) (IniFile, error) {
 			if currentGroup == nil {
 				return nil, errors.New("Invalid iniFile," + path + ": file must start with a group heading")
 			}
-			if tr.LocaleMatch(m[3]) || (m[3] == "" && currentGroup.Entries[m[1]] == "") {
+			if translate.LocaleMatch(m[3]) || (m[3] == "" && currentGroup.Entries[m[1]] == "") {
 				currentGroup.Entries[m[1]] = m[4]
 			}
 		} else {
@@ -75,7 +75,7 @@ func ReadIniFile(path string) (IniFile, error) {
 func GetFromLocalizedMap(m map[string]string) string {
 	var result = ""
 	for loc, val := range m {
-		if loc != "" && tr.LocaleMatch(loc) {
+		if loc != "" && translate.LocaleMatch(loc) {
 			result = val
 		} else if loc == "" && result == "" {
 			result = val

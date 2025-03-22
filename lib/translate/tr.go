@@ -1,4 +1,4 @@
-package tr
+package translate
 
 import (
 	"os"
@@ -53,7 +53,7 @@ func init() {
 	}
 }
 
-func Tr(text string) string {
+func Text(text string) string {
 	if lang != "" {
 		if m, ok := translations[lang]; ok {
 			if translation, ok := m[text]; ok {
@@ -62,6 +62,14 @@ func Tr(text string) string {
 		}
 	}
 	return text
+}
+
+func Texts(texts []string) []string {
+	var translated = make([]string, len(texts), len(texts))
+	for i, text := range texts {
+		translated[i] = Text(text)
+	}
+	return translated
 }
 
 func LocaleMatch(loc string) bool {

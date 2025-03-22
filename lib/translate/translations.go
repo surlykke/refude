@@ -1,4 +1,4 @@
-package tr
+package translate
 
 var translations = map[string]map[string]string{
 	"da": {
@@ -15,5 +15,9 @@ var translations = map[string]map[string]string{
 		"Power off":    "Sluk",
 		"Reboot":       "Genstart",
 		"Suspend":      "Slumre",
+		"Power":        "Strømstyring",
+		"Launch":       "Kør",
+		"Open":         "Åbn",
+		"Focus":        "Fokuser",
 	},
 }

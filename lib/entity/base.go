@@ -5,6 +5,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/link"
 	"github.com/surlykke/RefudeServices/lib/mediatype"
 	"github.com/surlykke/RefudeServices/lib/relation"
+	"github.com/surlykke/RefudeServices/lib/translate"
 )
 
 type Servable interface {
@@ -30,10 +31,10 @@ type Action struct {
 
 func MakeBase(title string, icon icon.Name, mediatype mediatype.MediaType, keywords ...string) *Base {
 	return &Base{
-		Title:     title,
+		Title:     translate.Text(title),
 		Icon:      icon,
 		MediaType: mediatype,
-		Keywords:  keywords,
+		Keywords:  translate.Texts(keywords),
 	}
 }
 
@@ -58,8 +59,12 @@ func (this *Base) BuildLinks() {
 	}
 }
 
+func (this *Base) AddKeywords(keywords ...string) {
+	this.Keywords = append(this.Keywords, translate.Texts(keywords)...)
+}
+
 func (this *Base) AddAction(id string, name string, iconUrl icon.Name) {
-	this.Actions = append(this.Actions, Action{Id: id, Name: name})
+	this.Actions = append(this.Actions, Action{Id: id, Name: translate.Text(name)})
 }
 
 func (this *Base) ActionLinks() []link.Link {

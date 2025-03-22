@@ -13,7 +13,6 @@ import (
 	"github.com/surlykke/RefudeServices/lib/entity"
 	"github.com/surlykke/RefudeServices/lib/mediatype"
 	"github.com/surlykke/RefudeServices/lib/response"
-	"github.com/surlykke/RefudeServices/lib/tr"
 )
 
 var lastUpdated = atomic.Pointer[time.Time]{}
@@ -33,11 +32,11 @@ var Start StartResource
 var Resources = []*StartResource{&Start}
 
 func init() {
-	Start = StartResource{Base: *entity.MakeBase("Refude desktop", "", mediatype.Start)}
-	Start.AddAction("shutdown", tr.Tr("Power off"), "system-shutdown")
-	Start.AddAction("reboot", tr.Tr("Reboot"), "system-reboot")
-	Start.AddAction("suspend", tr.Tr("Suspend"), "system-suspend")
-	Start.Keywords = append(Start.Keywords, tr.Tr("Power off"), tr.Tr("Reboot"), tr.Tr("Suspend"))
+	Start = StartResource{Base: *entity.MakeBase("Power", "system-shut-down", mediatype.Start)}
+	Start.AddAction("shutdown", "Power off", "system-shutdown")
+	Start.AddAction("reboot", "Reboot", "system-reboot")
+	Start.AddAction("suspend", "Suspend", "system-suspend")
+	Start.AddKeywords("Power off", "Reboot", "Suspend")
 	Start.Path = "/start"
 	Start.BuildLinks()
 }
