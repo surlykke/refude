@@ -73,5 +73,5 @@ func scanDirs(watchedDirs []string) {
 			}
 		}
 	}
-	FileMap.Replace(collected)
+	FileMap.ReplaceAll(collected)
 }

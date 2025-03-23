@@ -11,7 +11,7 @@ const reportTabs = () => {
 				favIcon: t.favIconUrl
 			}
 		})
-		fetch("http://localhost:7938/tabsink", { method: "POST", body: JSON.stringify(tabsData) })
+		fetch("http://localhost:7938/tabsink?browserName=" + browserName, { method: "POST", body: JSON.stringify(tabsData) })
 			.then(response => {
 				if (!response.ok) {
 					throw new Error(response.status)
@@ -34,7 +34,6 @@ const reportBookmarks = () => {
 		})
 
 		walk(bookmarks, collectedBookmarks)
-		console.log("bookmarks:", JSON.stringify(collectedBookmarks, null, 4))
 
 		fetch("http://localhost:7938/bookmarksink", { method: "POST", body: JSON.stringify(collectedBookmarks) })
 			.then(response => {
@@ -59,7 +58,6 @@ const watch = () => {
 		focusTab(parseInt(data))
 	})
 	evtSource.addEventListener("closeTab", ({ data }) => {
-		console.log("closeTab", data)
 		let tabId = parseInt(data)
 		tabId && chrome.tabs.remove(tabId)
 	})
@@ -79,13 +77,17 @@ let focusTab = tabId => {
 	})
 }
 
+console.log("browser name:", browserName)
 
 reportTabs()
-reportBookmarks()
-chrome.bookmarks.onChanged.addListener(reportBookmarks)
-chrome.bookmarks.onCreated.addListener(reportBookmarks)
-chrome.bookmarks.onRemoved.addListener(reportBookmarks)
-
 chrome.tabs.onRemoved.addListener(reportTabs)
 chrome.tabs.onUpdated.addListener(reportTabs)
+
+if (showBookmarks) {
+	reportBookmarks()
+	chrome.bookmarks.onChanged.addListener(reportBookmarks)
+	chrome.bookmarks.onCreated.addListener(reportBookmarks)
+	chrome.bookmarks.onRemoved.addListener(reportBookmarks)
+}
+
 watch()

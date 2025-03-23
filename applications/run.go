@@ -28,8 +28,8 @@ func Run() {
 
 	for {
 		var collection Collection = collect()
-		AppMap.Replace(collection.Apps)
-		MimeMap.Replace(collection.Mimetypes)
+		AppMap.ReplaceAll(collection.Apps)
+		MimeMap.ReplaceAll(collection.Mimetypes)
 		AppEvents.Publish(struct{}{})
 
 		<-desktopFileEvents

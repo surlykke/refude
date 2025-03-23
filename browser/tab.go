@@ -10,8 +10,9 @@ import (
 
 type Tab struct {
 	entity.Base
-	Id  string
-	Url string
+	Id        string
+	BrowserId string
+	Url       string
 }
 
 func (this *Tab) DoPost(action string) response.Response {

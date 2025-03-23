@@ -40,6 +40,10 @@ func (this *SyncMap[K, V]) Get(k K) (V, bool) {
 func (this *SyncMap[K, V]) Put(k K, v V) {
 	this.lock.Lock()
 	defer this.lock.Unlock()
+	this.put(k, v)
+}
+
+func (this *SyncMap[K, V]) put(k K, v V) {
 	v.GetBase().Path = fmt.Sprintf("%s%v", this.basepath, k)
 	v.GetBase().BuildLinks()
 	this.m[k] = v
@@ -48,6 +52,10 @@ func (this *SyncMap[K, V]) Put(k K, v V) {
 func (this *SyncMap[K, V]) Remove(k K) (V, bool) {
 	this.lock.Lock()
 	defer this.lock.Unlock()
+	return this.remove(k)
+}
+
+func (this *SyncMap[K, V]) remove(k K) (V, bool) {
 	v, ok := this.m[k]
 	if ok {
 		delete(this.m, k)
@@ -55,7 +63,20 @@ func (this *SyncMap[K, V]) Remove(k K) (V, bool) {
 	return v, ok
 }
 
-func (this *SyncMap[K, V]) Replace(newSet map[K]V) {
+func (this *SyncMap[K, V]) Replace(newVals map[K]V, remove func(V) bool) {
+	this.lock.Lock()
+	defer this.lock.Unlock()
+	for k, v := range this.m {
+		if remove(v) {
+			delete(this.m, k)
+		}
+	}
+	for k, v := range newVals {
+		this.put(k, v)
+	}
+}
+
+func (this *SyncMap[K, V]) ReplaceAll(newSet map[K]V) {
 	this.lock.Lock()
 	defer this.lock.Unlock()
 	this.m = newSet

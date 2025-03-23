@@ -39,7 +39,7 @@ func collectThemes() {
 		return
 	}
 
-	ThemeMap.Replace(mapOfThemes)
+	ThemeMap.ReplaceAll(mapOfThemes)
 }
 
 func readThemes(basedirs []string) map[string]*IconTheme {
