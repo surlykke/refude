@@ -112,7 +112,7 @@ func readUserDirs(home string, configHome string) (map[string]string, error) {
 				var path = strings.ReplaceAll(m[2], "$HOME", home) // TODO Should we check that path exists, and if not fall back to default?
 				res[envVarName] = path
 			} else {
-				log.Warn("Could not comprehend '%s'", scanner.Text())
+				log.Warn("Could not comprehend", scanner.Text())
 			}
 		}
 	}
