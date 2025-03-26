@@ -1,30 +1,27 @@
-let tabsSocket
-let commandSocket
+let socket
 
 const reportTabs = () => {
-	chrome.tabs.query({}, tabs => {
-		let tabsData = tabs.map(t => {
-			return {
-				id: "" + t.id,
-				title: t.title,
-				url: t.url,
-				favIcon: t.favIconUrl
-			}
-		})
-		fetch("http://localhost:7938/tabsink?browserName=" + browserName, { method: "POST", body: JSON.stringify(tabsData) })
-			.then(response => {
-				if (!response.ok) {
-					throw new Error(response.status)
-				}
-			})
-			.catch(() => { // If we couldn't deliver data, try again i 5 secs.
-				setTimeout(reportTabs, 5000)
-			})
+    chrome.tabs.query({}, tabs => {
+        if (socket) {
+			let msg = {
+				browserName: browserName,
+				msgType: "tabs",
+				data:tabs.map(t => {
+					return {
+						id: "" + t.id,
+						title: t.title,
+						url: t.url,
+						favicon: t.favIconUrl 
+					}
+				})
+		 	}
+            socket.send(JSON.stringify(msg))
+        } 
 	})
 }
 
 const reportBookmarks = () => {
-	
+	if (socket) {	
 	chrome.bookmarks.getTree(bookmarks => {
 		let collectedBookmarks = []
 
@@ -35,59 +32,53 @@ const reportBookmarks = () => {
 
 		walk(bookmarks, collectedBookmarks)
 
-		fetch("http://localhost:7938/bookmarksink", { method: "POST", body: JSON.stringify(collectedBookmarks) })
-			.then(response => {
-				if (!response.ok) {
-					throw new Error(response.status)
-				}
-			})
-			.catch(() => { // If we couldn't deliver data, try again i 5 secs.
-				setTimeout(reportBookmarks, 5000)
-			})
-	})
+		let msg = {
+			browserName: browserName,
+			msgType: "bookmarks",
+			data: collectedBookmarks
+		}
+		socket.send(JSON.stringify(msg))
+
+	})	
+	}
 }
 
-
-const watch = () => {
-	let evtSource = new EventSource("http://localhost:7938/watch")
-	evtSource.onopen = () => {
-		reportTabs()
-		reportBookmarks()
-	}
-	evtSource.addEventListener("focusTab", ({ data }) => {
-		focusTab(parseInt(data))
-	})
-	evtSource.addEventListener("closeTab", ({ data }) => {
-		let tabId = parseInt(data)
-		tabId && chrome.tabs.remove(tabId)
-	})
-	evtSource.onerror = error => {
-		console.log(error)
-		if (evtSource.readyState === 2) {
-			setTimeout(watch, 5000)
+const openSocket = () => {
+    socket = new WebSocket("ws://localhost:7938/browser/socket") // ?
+    socket.onopen = () => { 
+		reportTabs(); 
+		if (showBookmarks) {
+			reportBookmarks()
 		}
 	}
+    socket.onmessage = m => {
+        let msg = JSON.parse(m.data)
+        let tabId = parseInt(msg.tabId)
+        if (tabId) {
+			if (msg.operation === "focus") {
+				chrome.tabs.get(tabId, tab => {
+					chrome.tabs.update(tabId, { 'active': true })
+                	chrome.windows.update(tab.windowId, { focused: true })
+				})
+			} else if (operation === "close") {
+				chrome.tabs.close(tabId)
+			}
+        }
+    }
+    socket.onclose = () => {
+        socket = null;
+        setTimeout(openSocket, 10000)
+    }
 }
 
+openSocket()
 
-let focusTab = tabId => {
-	chrome.tabs.get(tabId, tab => {
-		chrome.tabs.update(tab.id, { active: true })
-		chrome.windows.update(tab.windowId, { focused: true })
-	})
-}
-
-console.log("browser name:", browserName)
-
-reportTabs()
 chrome.tabs.onRemoved.addListener(reportTabs)
 chrome.tabs.onUpdated.addListener(reportTabs)
 
 if (showBookmarks) {
-	reportBookmarks()
 	chrome.bookmarks.onChanged.addListener(reportBookmarks)
 	chrome.bookmarks.onCreated.addListener(reportBookmarks)
 	chrome.bookmarks.onRemoved.addListener(reportBookmarks)
 }
 
-watch()

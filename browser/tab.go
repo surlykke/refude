@@ -5,7 +5,6 @@ import (
 
 	"github.com/surlykke/RefudeServices/lib/entity"
 	"github.com/surlykke/RefudeServices/lib/response"
-	"github.com/surlykke/RefudeServices/watch"
 )
 
 type Tab struct {
@@ -16,12 +15,12 @@ type Tab struct {
 }
 
 func (this *Tab) DoPost(action string) response.Response {
-	watch.Publish("focusTab", this.Id)
+	commands <- tabCommand{BrowserName: this.BrowserId, Operation: "focus", TabId: this.Id}
 	return response.Accepted()
 }
 
 func (this *Tab) DoDelete() response.Response {
-	watch.Publish("closeTab", this.Id)
+	commands <- tabCommand{BrowserName: this.BrowserId, Operation: "delete", TabId: this.Id}
 	return response.Accepted()
 }
 
