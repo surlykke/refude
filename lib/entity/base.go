@@ -31,7 +31,7 @@ type Action struct {
 
 func (a Action) Href(path string) string {
 	if a.Id != "" {
-		path = "?action=" + a.Id
+		path = path + "?action=" + a.Id
 	}
 	return path
 }
