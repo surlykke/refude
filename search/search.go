@@ -14,6 +14,7 @@ import (
 	"github.com/surlykke/RefudeServices/desktopactions"
 	"github.com/surlykke/RefudeServices/file"
 	"github.com/surlykke/RefudeServices/lib/entity"
+	"github.com/surlykke/RefudeServices/lib/mediatype"
 	"github.com/surlykke/RefudeServices/lib/response"
 	"github.com/surlykke/RefudeServices/notifications"
 	"github.com/surlykke/RefudeServices/power"
@@ -27,8 +28,9 @@ func GetHandler(term string) response.Response {
 }
 
 type Ranked struct {
-	entity.Base
-	Rank uint
+	entity.Base // Basen dether
+	Rank        uint
+	FocusHint   int
 }
 
 func Search(term string) []Ranked {
@@ -53,13 +55,22 @@ func Search(term string) []Ranked {
 	var result = make([]Ranked, 0, len(bases))
 	for _, res := range bases {
 		var rank = match(res.Title, termRunes, 0)
+		var focusHint = 0
 		for _, keyword := range res.Keywords {
 			if tmp := match(keyword, termRunes, 0); tmp < rank {
 				rank = tmp
 			}
 		}
+		if res.MediaType == mediatype.Start || res.MediaType == mediatype.Application {
+			for i, act := range res.Actions {
+				if tmp := match(act.Name, termRunes, 0); tmp < rank {
+					rank = tmp
+					focusHint = i
+				}
+			}
+		}
 		if rank < maxRank {
-			result = append(result, Ranked{res, rank})
+			result = append(result, Ranked{Base: res, Rank: rank, FocusHint: focusHint})
 		}
 
 	}

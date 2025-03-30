@@ -36,7 +36,6 @@ func init() {
 	Start.AddAction("shutdown", "Power off", "system-shutdown")
 	Start.AddAction("reboot", "Reboot", "system-reboot")
 	Start.AddAction("suspend", "Suspend", "system-suspend")
-	Start.AddKeywords("Power off", "Reboot", "Suspend")
 	Start.Path = "/start"
 	Start.BuildLinks()
 }

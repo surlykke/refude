@@ -12,10 +12,6 @@ import (
 	"github.com/surlykke/RefudeServices/lib/response"
 )
 
-type Entity interface {
-	SetPath(string)
-}
-
 type Link struct {
 	Href     string              `json:"href"`
 	Title    string              `json:"title,omitempty"`
@@ -31,5 +27,5 @@ type Postable interface {
 }
 
 type Deleteable interface {
-	DoDelete()
+	DoDelete() response.Response
 }

@@ -1,23 +1,58 @@
 package mediatype
 
-import "github.com/surlykke/RefudeServices/lib/translate"
+import (
+	"encoding/json"
 
-type MediaType string
+	"github.com/surlykke/RefudeServices/lib/translate"
+)
+
+type MediaType uint8
 
 const (
-	Application  MediaType = "application/vnd.org.refude.application+json"
-	Window       MediaType = "application/vnd.org.refude.window+json"
-	Tab          MediaType = "application/vnd.org.refude.tab+json"
-	File         MediaType = "application/vnd.org.refude.file+json"
-	Device       MediaType = "application/vnd.org.refude.device+json"
-	Notification MediaType = "application/vnd.org.refude.notification+json"
-	Trayitem     MediaType = "application/vnd.org.refude.trayitem+json"
-	Menu         MediaType = "application/vnd.org.refude.menu+json"
-	Start        MediaType = "application/vnd.org.refude.start+json"
-	Mimetype     MediaType = "application/vnd.org.refude.mimetype+json"
-	IconTheme    MediaType = "application/vnd.org.refude.icontheme+json"
-	Bookmark     MediaType = "application/vnd.org.refude.bookmark+json"
+	Application MediaType = iota
+	Window
+	Tab
+	File
+	Device
+	Notification
+	Trayitem
+	Menu
+	Start
+	Mimetype
+	IconTheme
+	Bookmark
 )
+
+func (m MediaType) String() string {
+	switch m {
+	case Application:
+		return "application/vnd.org.refude.application+json"
+	case Window:
+		return "application/vnd.org.refude.window+json"
+	case Tab:
+		return "application/vnd.org.refude.tab+json"
+	case File:
+		return "application/vnd.org.refude.file+json"
+	case Device:
+		return "application/vnd.org.refude.device+json"
+	case Notification:
+		return "application/vnd.org.refude.notification+json"
+	case Trayitem:
+		return "application/vnd.org.refude.trayitem+json"
+	case Menu:
+		return "application/vnd.org.refude.menu+json"
+	case Start:
+		return "application/vnd.org.refude.start+json"
+	case Mimetype:
+		return "application/vnd.org.refude.mimetype+json"
+	case IconTheme:
+		return "application/vnd.org.refude.icontheme+json"
+	case Bookmark:
+		return "application/vnd.org.refude.bookmark+json"
+	default:
+		return ""
+	}
+}
 
 var short = map[MediaType]string{
 	Application:  translate.Text("Application"),
@@ -31,6 +66,10 @@ var short = map[MediaType]string{
 	Start:        translate.Text("Start"),
 	Mimetype:     translate.Text("Mimetype"),
 	Bookmark:     translate.Text("Bookmark"),
+}
+
+func (m *MediaType) MarshalJSON() ([]byte, error) {
+	return json.Marshal(m.String())
 }
 
 func (m MediaType) Short() string {

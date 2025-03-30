@@ -29,6 +29,13 @@ type Action struct {
 	Icon icon.Name
 }
 
+func (a Action) Href(path string) string {
+	if a.Id != "" {
+		path = "?action=" + a.Id
+	}
+	return path
+}
+
 func MakeBase(title string, icon icon.Name, mediatype mediatype.MediaType, keywords ...string) *Base {
 	return &Base{
 		Title:     translate.Text(title),
@@ -41,6 +48,7 @@ func MakeBase(title string, icon icon.Name, mediatype mediatype.MediaType, keywo
 func (this *Base) OmitFromSearch() bool {
 	return false
 }
+
 func (this *Base) GetBase() *Base {
 	return this
 }
@@ -51,16 +59,8 @@ func (this *Base) BuildLinks() {
 	this.Links = make([]link.Link, 1+len(this.Actions), 1+len(this.Actions))
 	this.Links[0] = link.Link{Href: this.Path, Title: this.Title, Icon: this.Icon, Relation: relation.Self}
 	for i, action := range this.Actions {
-		var actionParam string
-		if action.Id != "" {
-			actionParam = "?action=" + action.Id
-		}
-		this.Links[i+1] = link.Link{Href: this.Path + actionParam, Title: action.Name, Relation: relation.Action}
+		this.Links[i+1] = link.Link{Href: action.Href(this.Path), Title: action.Name, Relation: relation.Action}
 	}
-}
-
-func (this *Base) AddKeywords(keywords ...string) {
-	this.Keywords = append(this.Keywords, translate.Texts(keywords)...)
 }
 
 func (this *Base) AddAction(id string, name string, iconUrl icon.Name) {

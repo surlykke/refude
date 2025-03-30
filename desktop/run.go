@@ -81,31 +81,28 @@ type Resourcelink struct {
 func SearchHandler(term string) response.Response {
 	var reslines = make([]Resourceline, 0, 50)
 	for i, entity := range search.Search(term) {
-		var resline = Resourceline{
-			Icon:        entity.Icon,
-			Title:       entity.Title,
-			ActionLinks: make([]Resourcelink, 0, len(entity.Links))}
-		for _, l := range entity.Links {
-			if l.Relation != relation.Action {
-				continue
-			}
+		var resline = Resourceline{Icon: entity.Icon, Title: entity.Title, ActionLinks: make([]Resourcelink, 0, len(entity.Links))}
+
+		for j, act := range entity.Actions {
 			var autofocus string
-			if i == 0 && len(resline.ActionLinks) == 0 {
-				autofocus = "autofocus"
-			}
 			var tabindex = -1
-			if len(resline.ActionLinks) == 0 {
+			if j == entity.FocusHint {
 				tabindex = i + 1
+				if i == 0 {
+					autofocus = "autofocus"
+				}
 			}
+
 			resline.ActionLinks = append(resline.ActionLinks, Resourcelink{
-				Relation:  l.Relation,
-				Href:      l.Href,
-				Icon:      l.Icon,
-				Title:     l.Title,
+				Relation:  relation.Action,
+				Href:      act.Href(entity.Path),
+				Title:     act.Name,
 				Tabindex:  tabindex,
 				Autofocus: autofocus,
 			})
+
 		}
+
 		reslines = append(reslines, resline)
 	}
 
@@ -113,6 +110,6 @@ func SearchHandler(term string) response.Response {
 	if err := rowTemplate.Execute(&b, reslines); err != nil {
 		return response.ServerError(err)
 	} else {
-		return response.HtmlBytes(b.Bytes())
+		return response.Html(b.Bytes())
 	}
 }

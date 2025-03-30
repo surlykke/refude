@@ -69,11 +69,7 @@ func Json(data any) Response {
 	return Response{Status: http.StatusOK, Headers: http.Header{"Content-Type": {"application/json"}}, Body: ToJson(data)}
 }
 
-func Html(html string) Response {
-	return Response{Status: http.StatusOK, Headers: http.Header{"Content-Type": {"text/html"}}, Body: []byte(html)}
-}
-
-func HtmlBytes(html []byte) Response {
+func Html(html []byte) Response {
 	return Response{Status: http.StatusOK, Headers: http.Header{"Content-Type": {"text/html"}}, Body: html}
 }
 
