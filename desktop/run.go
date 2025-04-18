@@ -26,26 +26,13 @@ var sources embed.FS
 var rowTemplate *template.Template
 var StaticServer http.Handler
 
-var funcMap = template.FuncMap{
-	"tabindex": func(i, j int) int {
-		if j == 0 {
-			return i + 1
-		} else {
-			return -1
-		}
-	},
-	"autofocus": func(i, j int) bool {
-		return i == 0 && j == 0
-	},
-}
-
 func loadTemplate(name, relPath string) *template.Template {
 	var bytes []byte
 	var err error
 	if bytes, err = sources.ReadFile(relPath); err != nil {
 		log.Panic(err)
 	}
-	return template.Must(template.New(name).Funcs(funcMap).Parse(string(bytes)))
+	return template.Must(template.New(name).Parse(string(bytes)))
 }
 
 func init() {
@@ -79,18 +66,23 @@ type Resourcelink struct {
 }
 
 func SearchHandler(term string) response.Response {
-	var reslines = make([]Resourceline, 0, 50)
-	for i, entity := range search.Search(term) {
+	var (
+		reslines         = make([]Resourceline, 0, 50)
+		nextTabIndex int = 1
+	)
+
+	for _, entity := range search.Search(term) {
 		var resline = Resourceline{Icon: entity.Icon, Title: entity.Title, ActionLinks: make([]Resourcelink, 0, len(entity.Links))}
 
 		for j, act := range entity.Actions {
 			var autofocus string
 			var tabindex = -1
 			if j == entity.FocusHint {
-				tabindex = i + 1
-				if i == 0 {
+				if nextTabIndex == 1 {
 					autofocus = "autofocus"
 				}
+				tabindex = nextTabIndex
+				nextTabIndex++
 			}
 
 			resline.ActionLinks = append(resline.ActionLinks, Resourcelink{
