@@ -99,10 +99,11 @@ func match(text string, term []rune, correction uint) uint {
 	var j, lastPos = 0, -1
 	for i, r := range text {
 		if term[j] == r {
+			// Add a cost when match not at start or match has skips (TODO: consider how much)
 			if j == 0 {
 				rnk += 5 * uint(i-lastPos-1)
 			} else {
-				rnk += uint(i - lastPos - 1)
+				rnk += 10 * uint(i-lastPos-1)
 			}
 			lastPos = i
 			j++
