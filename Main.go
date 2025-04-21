@@ -38,16 +38,16 @@ func main() {
 	bind.ServeMap("/tab/", browser.TabMap)
 	bind.ServeMap("/bookmark/", browser.BookmarkMap)
 	bind.ServeMap("/file/", file.FileMap)
+	bind.ServeMap("/start/", desktopactions.PowerActions)
 
 	bind.ServeFunc("GET /icon", icons.GetHandler, `query:"name"`, `query:"size,default=32"`)
 	bind.ServeFunc("GET /search", search.GetHandler, `query:"term"`)
-	bind.ServeFunc("GET /start", desktopactions.GetHandler)
-	bind.ServeFunc("POST /start", desktopactions.PostHandler, `query:"action"`)
 	bind.ServeFunc("GET /flash", notifications.FlashHandler)
 	//	bind.ServeFunc("POST /tabsink", browser.TabsDoPost, `query:"browserName,required"`, `body:"json"`)
 	//  bind.ServeFunc("POST /bookmarksink", browser.BookmarksDoPost, `body:"json"`)
 	bind.ServeFunc("GET /complete", completeHandler, `query:"prefix"`)
 	bind.ServeFunc("GET /desktop/search", desktop.SearchHandler, `query:"term"`)
+	bind.ServeFunc("GET /desktop/details", desktop.DetailsHandler, `query:"path"`)
 
 	http.HandleFunc("GET /watch", watch.ServeHTTP)
 	http.Handle("GET /desktop/", desktop.StaticServer)

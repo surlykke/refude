@@ -41,42 +41,23 @@ html, body {
 	width: 34px;
 	height: 34px;
 }
-.buttons {
-	display: flex;
-	flex-direction: row;
-	gap: 12px;
-	font-size: 0.9em;
-}
-.button:focus {
-	outline: none;
-	border-bottom: solid 1px beige;
-	font-color: white;
-}
-.button-icon {
-	width: 12px;
-	height: 12px;
-}
 .title, .title-sub {
 	outline: none;
 }
-
-
-/*.search-results {
-	display: flex;
-	flex-direction: column;
+.comment {
+	font-style: italic;
+	font-size: 0.8em;
+	color: gray;
 }
-
-.result {
-	display: flex;
-	flex-direction: row;
+.title:focus,.action:focus {
+	outline: none;
+	text-decoration: underline;		
+	font-color: white;
+	margin-bottom: 1px;
 }
-
-.details {*/
-	/*padding-left: 1em;*/
-/*	padding-bottom: 0.8em;
+.action {
+	font-size: 0.9em;
+	margin: 8px 0 0 10px;
 }
-.detail {
-	display: flex;
-}*/
 
 

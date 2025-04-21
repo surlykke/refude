@@ -8,14 +8,12 @@ package desktop
 import (
 	"bytes"
 	"embed"
-	"fmt"
 	"html/template"
 	"io/fs"
 	"net/http"
 
 	"github.com/surlykke/RefudeServices/lib/icon"
 	"github.com/surlykke/RefudeServices/lib/log"
-	"github.com/surlykke/RefudeServices/lib/relation"
 	"github.com/surlykke/RefudeServices/lib/response"
 	"github.com/surlykke/RefudeServices/search"
 )
@@ -24,6 +22,8 @@ import (
 var sources embed.FS
 
 var rowTemplate *template.Template
+var detailsTemplate *template.Template
+
 var StaticServer http.Handler
 
 func loadTemplate(name, relPath string) *template.Template {
@@ -37,8 +37,8 @@ func loadTemplate(name, relPath string) *template.Template {
 
 func init() {
 	rowTemplate = loadTemplate("rowTemplate", "html/rowTemplate.html")
+	detailsTemplate = loadTemplate("detailsTemplate", "html/detailsTemplate.html")
 
-	fmt.Println("Mapping SearchHandler")
 	var tmp http.Handler
 
 	if htmlDir, err := fs.Sub(sources, "html"); err == nil {
@@ -53,53 +53,49 @@ func init() {
 type Resourceline struct {
 	Icon        icon.Name
 	Title       string
-	ActionLinks []Resourcelink
-}
-
-type Resourcelink struct {
-	Relation  relation.Relation
-	Href      string
-	Icon      icon.Name
-	Title     string
-	Tabindex  int
-	Autofocus string
+	Comment     string
+	Href        string
+	Path        string
+	MoreActions bool
 }
 
 func SearchHandler(term string) response.Response {
 	var (
-		reslines         = make([]Resourceline, 0, 50)
-		nextTabIndex int = 1
+		lines []Resourceline
 	)
 
-	for _, entity := range search.Search(term) {
-		var resline = Resourceline{Icon: entity.Icon, Title: entity.Title, ActionLinks: make([]Resourcelink, 0, len(entity.Links))}
+	for _, r := range search.Search(term) {
 
-		for j, act := range entity.Actions {
-			var autofocus string
-			var tabindex = -1
-			if j == entity.FocusHint {
-				if nextTabIndex == 1 {
-					autofocus = "autofocus"
-				}
-				tabindex = nextTabIndex
-				nextTabIndex++
-			}
+		var line = Resourceline{Icon: r.Icon, Title: r.Title, Comment: r.MediaType.Short()}
 
-			resline.ActionLinks = append(resline.ActionLinks, Resourcelink{
-				Relation:  relation.Action,
-				Href:      act.Href(entity.Path),
-				Title:     act.Name,
-				Tabindex:  tabindex,
-				Autofocus: autofocus,
-			})
-
+		if len(r.Actions) > 0 {
+			line.Href = r.Actions[0].Href(r.Path)
+			line.Path = r.Path
 		}
-
-		reslines = append(reslines, resline)
+		line.MoreActions = len(r.Actions) > 1
+		lines = append(lines, line)
 	}
 
 	var b bytes.Buffer
-	if err := rowTemplate.Execute(&b, reslines); err != nil {
+	if err := rowTemplate.Execute(&b, lines); err != nil {
+		log.Error(err)
+		return response.ServerError(err)
+	} else {
+		return response.Html(b.Bytes())
+	}
+}
+
+type Detail struct {
+	Name string
+	Href string
+}
+
+func DetailsHandler(resPath string) response.Response {
+	var b bytes.Buffer
+	if base, ok := search.SearchByPath(resPath); !ok {
+		return response.NotFound()
+	} else if err := detailsTemplate.Execute(&b, base.ActionLinks()); err != nil {
+		log.Error(err)
 		return response.ServerError(err)
 	} else {
 		return response.Html(b.Bytes())

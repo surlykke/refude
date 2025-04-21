@@ -11,7 +11,10 @@ import (
 
 	"github.com/godbus/dbus/v5"
 	"github.com/surlykke/RefudeServices/lib/entity"
+	"github.com/surlykke/RefudeServices/lib/icon"
+	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/mediatype"
+	"github.com/surlykke/RefudeServices/lib/repo"
 	"github.com/surlykke/RefudeServices/lib/response"
 )
 
@@ -23,36 +26,35 @@ var actionMethod = map[string]string{
 	"suspend":  "org.freedesktop.login1.Manager.Suspend",
 }
 
+var PowerActions = repo.MakeSynkMap[string, *StartResource]()
+
 type StartResource struct {
 	entity.Base
+	dbusMethod string
 }
 
-var Start StartResource
+func (this *StartResource) DoPost(action string) response.Response {
+	if action != "" {
+		return response.NotFound()
+	} else if conn, err := dbus.SystemBus(); err != nil {
+		log.Warn(err)
+		return response.ServerError(err)
+	} else {
+		conn.Object("org.freedesktop.login1", "/org/freedesktop/login1").Call(this.dbusMethod, dbus.Flags(0), false)
+		return response.Accepted()
+	}
 
-var Resources = []*StartResource{&Start}
+}
 
 func init() {
-	Start = StartResource{Base: *entity.MakeBase("Power", "system-shut-down", mediatype.Start)}
-	Start.AddAction("shutdown", "Power off", "system-shutdown")
-	Start.AddAction("reboot", "Reboot", "system-reboot")
-	Start.AddAction("suspend", "Suspend", "system-suspend")
-	Start.Path = "/start"
-	Start.BuildLinks()
-}
+	var datas = [][]string{
+		{"shutdown", "Power off", "system-shutdown", "org.freedesktop.login1.Manager.PowerOff"},
+		{"reboot", "Reboot", "system-reboot", "org.freedesktop.login1.Manager.Reboot"},
+		{"suspend", "Suspend", "system-suspend", "org.freedesktop.login1.Manager.Suspend"}}
 
-func GetHandler() response.Response {
-	return response.Json(Start)
-}
-
-func PostHandler(action string) response.Response {
-	if method, ok := actionMethod[action]; ok {
-		if conn, err := dbus.SystemBus(); err != nil {
-			return response.ServerError(err)
-		} else {
-			conn.Object("org.freedesktop.login1", "/org/freedesktop/login1").Call(method, dbus.Flags(0), false)
-			return response.Accepted()
-		}
-	} else {
-		return response.NotFound()
+	for _, data := range datas {
+		var res = StartResource{Base: *entity.MakeBase(data[1], icon.Name(data[2]), mediatype.Start), dbusMethod: data[3]}
+		res.AddAction("", "", "")
+		PowerActions.Put(data[0], &res)
 	}
 }

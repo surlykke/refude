@@ -92,7 +92,7 @@ func makeServer(handlerFunction reflect.Value, deserializers []deserializer) fun
 	return func(w http.ResponseWriter, r *http.Request) {
 		var values = make([]reflect.Value, len(deserializers), len(deserializers))
 		var errs = make([]error, 0)
-		for i := 0; i < len(values); i++ {
+		for i := range values {
 			if val, err := deserializers[i](r); err != nil {
 				errs = append(errs, err)
 			} else {

@@ -47,7 +47,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 						Id:        d["id"],
 						BrowserId: msg.BrowserName,
 						Url:       d["url"]}
-					tab.AddAction("", msg.BrowserName+" tab", "")
+					tab.AddAction("", "Focus", "")
 					//tab.AddDeleteAction("close", title, "Close tab", "")
 
 					mapOfTabs[tab.Id] = tab
@@ -65,7 +65,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 							Base:        *entity.MakeBase(title, iconUrl, mediatype.Bookmark),
 							Id:          id,
 							ExternalUrl: bmUrl}
-						bookMark.AddAction("", "Bookmark", "")
+						bookMark.AddAction("", "Open", "")
 						mapOfBookmarks[bookMark.Id] = &bookMark
 					}
 

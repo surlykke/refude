@@ -150,7 +150,7 @@ func makeWindow(wId uint64, title string, iconName icon.Name, appId string, stat
 		AppId: appId,
 		State: state,
 	}
-	ww.AddAction("", "Window", "")
+	ww.AddAction("", "Focus", "")
 	//ww.AddAction("close", title, "Close window", "window-close")
 	return ww
 }

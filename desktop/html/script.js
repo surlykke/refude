@@ -2,16 +2,18 @@ let term = ""
 
 let setTerm = newTerm => {
 	document.getElementById("term").textContent = term = newTerm
-	search()
+	document.getElementById("search-results").dispatchEvent(new Event("search"))
 }
 
-let search = () => document.getElementById("search-results").dispatchEvent(new Event("search"))
-
-let selectedPath = () => document.activeElement?.dataset.path
+let doCtrlSpace = () => {
+	document.activeElement?.dispatchEvent(new Event("details"))
+}
 
 let doEscape = shiftKey => {
 	if (shiftKey) {
 		dismiss()
+	} else if (document.querySelector(".action")) {
+		setTerm(term)
 	} else if (term) {
 		setTerm("")
 	} else {
@@ -24,13 +26,15 @@ let doEnter = (ctrl, shift) => {
 		return
 	} else {
 		href = document.activeElement?.dataset.href
-		rel = document.activeElement?.dataset.rel
-
-		console.log("href:", href, "rel:", rel)
-		if (rel === "org.refude.action") {
+		if (href) {
 			fetch(href, { method: "post" }).then(resp => resp.ok && !shift && dismiss())
 		}
 	}
+}
+
+let setTabIndexes = () => {
+	document.querySelectorAll('[data-href]').forEach((e, i) => e.tabIndex = i + 1)
+	document.activeElement?.hasAttribute('tabindex') || document.querySelector('[tabIndex="1"]')?.focus()
 }
 
 let dismiss = () => window.close()
@@ -38,12 +42,13 @@ let dismiss = () => window.close()
 let onKeyDown = event => {
 
 	let { key, ctrlKey, altKey, shiftKey } = event;
-	console.log("onKeyDown:", key, ctrlKey, altKey, shiftKey)
 
 	if ((key === "Escape" && !ctrlKey && !altKey) || (key === 'o' && ctrlKey)) {
 		doEscape(shiftKey)
 	} else if (key === "Enter" && !altKey) {
-		doEnter(ctrlKey, shiftKey)
+		doEnter(ctrlKey, shiftKey) 
+	} else if (key === " " && ctrlKey) {
+		doCtrlSpace()
 	} else if (key === "Delete" && !altKey && ctrlKey) {
 		doDelete(shiftKey)
 	} else if (key === "Backspace" && !ctrlKey && !altKey && !shiftKey) {
@@ -73,9 +78,6 @@ let nextLink = up => {
 	}
 }
 
-let toggleClosed = element => element.classList.toggle("closed")
-
-window.addEventListener('htmx:noSSESourceError', (e) => console.log(e));
 document.addEventListener("keydown", onKeyDown)
 
 

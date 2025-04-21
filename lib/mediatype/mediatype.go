@@ -55,17 +55,17 @@ func (m MediaType) String() string {
 }
 
 var short = map[MediaType]string{
-	Application:  translate.Text("Application"),
-	Window:       translate.Text("Window"),
-	Tab:          translate.Text("Tab"),
-	File:         translate.Text("File"),
-	Device:       translate.Text("Device"),
-	Notification: translate.Text("Notification"),
-	Trayitem:     translate.Text("Trayitem"),
-	Menu:         translate.Text("Menu"),
-	Start:        translate.Text("Start"),
-	Mimetype:     translate.Text("Mimetype"),
-	Bookmark:     translate.Text("Bookmark"),
+	Application:  "Application",
+	Window:       "Window",
+	Tab:          "Tab",
+	File:         "File",
+	Device:       "Device",
+	Notification: "Notification",
+	Trayitem:     "Trayitem",
+	Menu:         "Menu",
+	Start:        "Start",
+	Mimetype:     "Mimetype",
+	Bookmark:     "Bookmark",
 }
 
 func (m *MediaType) MarshalJSON() ([]byte, error) {
@@ -73,5 +73,9 @@ func (m *MediaType) MarshalJSON() ([]byte, error) {
 }
 
 func (m MediaType) Short() string {
-	return short[m]
+	return translate.Text(short[m])
+}
+
+func (m MediaType) ShortPlural() string {
+	return translate.Text(short[m] + "s")
 }

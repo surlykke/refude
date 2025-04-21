@@ -1,24 +1,18 @@
-{{range .}}
-	<div class="line">
-		<div class="icon">
-			{{if .Icon}}
-				<img src="{{.Icon}}" height="32" width="32" class="icon">
-			{{end}}
+{{range $i, $l := .}}
+<div class="line">
+	<div class="icon">
+		{{if .Icon}}
+			<img src="{{.Icon}}" height="32" width="32" class="icon">
+		{{end}}
+	</div>
+	<div>
+		<div  class="title" class="title" data-path="{{.Path}}" data-href="{{.Href}}" data-path="{{.Path}}" 
+			{{if .MoreActions}}hx-get="/desktop/details" hx-trigger="details" hx-vals="js:{path: event.target.dataset.path}" hx-target="#div-{{$i}}" hx-swap="innerHtml" {{end}}>
+			{{.Title}}
 		</div>
-		<div>
-			<div  class="title" class="title" >
-				{{.Title}}
-			</div>
-			<div class="buttons">
-				{{ range .ActionLinks }} 
-					<div data-rel={{.Relation}} tabindex="{{.Tabindex}}" {{.Autofocus}} data-href={{.Href}} class="button">
-						{{if .Icon}}
-							<img src="{{.Icon}}" height="12" width="12" class="button-icon">
-						{{end}}
-						{{.Title}}
-			        </div>
-				{{ end }}
-			</div>
+		<div id="div-{{$i}}" hx-on::after-settle="setTabIndexes()">
+			<span class="comment">{{.Comment}}</span>
 		</div>
-    </div>
+	</div>
+</div>
 {{end}}

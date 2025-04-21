@@ -172,7 +172,7 @@ func readDesktopFile(filePath string, id string) (*DesktopApplication, error) {
 		da.Url = group.Entries["URL"]
 		da.Mimetypes = slice.Split(group.Entries["MimeType"], ";")
 		da.DesktopFile = filePath
-		da.AddAction("", "Application", "")
+		da.AddAction("", "Open", "")
 		da.DesktopActions = []DesktopAction{}
 		var actionNames = slice.Split(group.Entries["Actions"], ";")
 

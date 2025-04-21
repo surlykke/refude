@@ -20,11 +20,8 @@
 		<img class="search" src="/icon?name=transsearch" width="20" height="20"></img>
 		<span id="term"></span>
 		<span class="spacer"></span>
-		<!--span hx-trigger="load,trayChanged" hx-get="/desktop/tray"> </span-->
 	</div>
-	<!--div id="menu" hx-get="/desktop/tray/menu" hx-trigger="fetchMenu" hx-vals="js:{menuPath: currentMenu}"></div-->
-
-	<div id="search-results" hx-get="/desktop/search" hx-trigger="sse:search, search, load" hx-vals="js:{term: term}"> 
+	<div id="search-results" hx-get="/desktop/search" hx-trigger="sse:search, search, load" hx-vals="js:{term: term}" hx-on::after-settle="setTabIndexes()"> 
 	</div>
 </body>
 </html>

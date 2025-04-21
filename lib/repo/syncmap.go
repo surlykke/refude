@@ -93,12 +93,15 @@ func (this *SyncMap[K, V]) GetAll() []V {
 	return list
 }
 
-func (this *SyncMap[K, V]) GetForSearch(sink *[]entity.Base) {
+func (this *SyncMap[K, V]) GetForSearch() []entity.Base {
+	var bases = make([]entity.Base, 0, len(this.m))
 	for _, v := range this.GetAll() {
-		if !v.OmitFromSearch() {
-			*sink = append(*sink, *v.GetBase())
+		if v.OmitFromSearch() {
+			continue
 		}
+		bases = append(bases, *v.GetBase())
 	}
+	return bases
 }
 
 func (this *SyncMap[K, V]) DoGetSingle(id K) response.Response {
