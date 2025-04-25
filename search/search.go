@@ -6,6 +6,8 @@
 package search
 
 import (
+	"fmt"
+	"regexp"
 	"slices"
 	"strings"
 
@@ -33,45 +35,67 @@ type Ranked struct {
 	Rank        uint
 }
 
-func SearchType(termRunes []rune, mtype mediatype.MediaType) []Ranked {
-	switch mtype {
-	case mediatype.Notification:
-		return filter(termRunes, notifications.NotificationMap.GetForSearch())
-	case mediatype.Window:
-		return filter(termRunes, wayland.WindowMap.GetForSearch())
-	case mediatype.Tab:
-		return filter(termRunes, browser.TabMap.GetForSearch())
-	case mediatype.Application:
-		return filter(termRunes, applications.AppMap.GetForSearch())
-	case mediatype.Mimetype:
-		return filter(termRunes, applications.MimeMap.GetForSearch())
-	case mediatype.Bookmark:
-		return filter(termRunes, browser.BookmarkMap.GetForSearch())
-	case mediatype.Device:
-		return filter(termRunes, power.DeviceMap.GetForSearch())
-	case mediatype.File:
-		return filter(termRunes, file.FileMap.GetForSearch())
-	case mediatype.IconTheme:
-		return filter(termRunes, icons.ThemeMap.GetForSearch())
-	case mediatype.Start:
-		return filter(termRunes, desktopactions.PowerActions.GetForSearch())
-	default:
-		return []Ranked{}
+func Search(term string) []Ranked {
+	var re, length = buildRegexp(term)
+	var result = make([]Ranked, 0, 1000)
+
+	result = append(result, filter(re, length, notifications.NotificationMap.GetForSearch())...)
+	result = append(result, filter(re, length, wayland.WindowMap.GetForSearch())...)
+	result = append(result, filter(re, length, browser.TabMap.GetForSearch())...)
+
+	if length > 0 {
+		result = append(result, filter(re, length, applications.AppMap.GetForSearch())...)
 	}
+	if length > 2 {
+		result = append(result, filter(re, length, power.DeviceMap.GetForSearch())...)
+		result = append(result, filter(re, length, file.FileMap.GetForSearch())...)
+		result = append(result, filter(re, length, browser.BookmarkMap.GetForSearch())...)
+		result = append(result, filter(re, length, desktopactions.PowerActions.GetForSearch())...)
+	}
+
+	sort(result)
+	return result
 }
 
-func filter(termRunes []rune, bases []entity.Base) []Ranked {
+func buildRegexp(term string) (*regexp.Regexp, int) {
+	if term == "" {
+		return nil, 0
+	}
+
+	term = strings.ToLower(term)
+
+	var pattern = ""
+	var split []string = strings.Split(term, "")
+	var length = len(split)
+	if length == 1 {
+		pattern = regexp.QuoteMeta(split[0])
+	} else {
+		for i, s := range split {
+			var escaped = regexp.QuoteMeta(s)
+			if i < len(split)-1 {
+				pattern = pattern + fmt.Sprintf("%s[^%s]*", escaped, escaped)
+			} else {
+				pattern = pattern + escaped
+			}
+		}
+	}
+	fmt.Println("Searching:", pattern)
+	return regexp.MustCompile(pattern), length
+
+}
+
+func filter(re *regexp.Regexp, termLen int, bases []entity.Base) []Ranked {
 	var result = make([]Ranked, 0, len(bases))
 	for _, res := range bases {
-		var rank = match(res.Title, termRunes, 0)
+		var rank = match(res.Title, re, termLen)
 		for _, keyword := range res.Keywords {
-			if tmp := match(keyword, termRunes, 0); tmp < rank {
+			if tmp := match(keyword, re, termLen) + 20; tmp < rank {
 				rank = tmp
 			}
 		}
 		if res.MediaType == mediatype.Start || res.MediaType == mediatype.Application {
 			for _, act := range res.Actions {
-				if tmp := match(act.Name, termRunes, 0); tmp < rank {
+				if tmp := match(act.Name, re, termLen) + 40; tmp < rank {
 					rank = tmp
 				}
 			}
@@ -94,28 +118,6 @@ func sort(list []Ranked) {
 		return tmp
 	})
 
-}
-
-func Search(term string) []Ranked {
-	var termRunes = []rune(strings.ToLower(term))
-	var result = make([]Ranked, 0, 1000)
-
-	result = append(result, SearchType(termRunes, mediatype.Notification)...)
-	result = append(result, SearchType(termRunes, mediatype.Window)...)
-	result = append(result, SearchType(termRunes, mediatype.Tab)...)
-
-	if len(termRunes) > 0 {
-		result = append(result, SearchType(termRunes, mediatype.Application)...)
-	}
-	if len(termRunes) > 2 {
-		result = append(result, SearchType(termRunes, mediatype.Device)...)
-		result = append(result, SearchType(termRunes, mediatype.File)...)
-		result = append(result, SearchType(termRunes, mediatype.Bookmark)...)
-		result = append(result, SearchType(termRunes, mediatype.Start)...)
-	}
-
-	sort(result)
-	return result
 }
 
 func SearchByPath(path string) (entity.Base, bool) {
@@ -152,30 +154,15 @@ func SearchByPath(path string) (entity.Base, bool) {
 }
 
 // Kindof 'has Substring with skips'. So eg. 'nvim' matches 'neovim' or 'pwr' matches 'poweroff'
-func match(text string, term []rune, correction uint) uint {
-	if len(term) == 0 {
+func match(text string, re *regexp.Regexp, termLen int) uint {
+	text = strings.ToLower(text)
+	if re == nil {
 		return 0
 	}
 
-	var rnk uint = 0
-
-	text = strings.ToLower(text)
-	var j, lastPos = 0, -1
-	for i, r := range text {
-		if term[j] == r {
-			// Add a cost when match not at start or match has skips (TODO: consider how much)
-			if j == 0 {
-				rnk += 5 * uint(i-lastPos-1)
-			} else {
-				rnk += 10 * uint(i-lastPos-1)
-			}
-			lastPos = i
-			j++
-		}
-		if j >= len(term) {
-			return rnk + correction
-		}
+	if loc := re.FindStringIndex(text); loc == nil {
+		return maxRank
+	} else {
+		return uint(loc[0] + 5*((loc[1]-loc[0])-termLen))
 	}
-
-	return maxRank
 }
