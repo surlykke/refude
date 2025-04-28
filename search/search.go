@@ -6,8 +6,6 @@
 package search
 
 import (
-	"fmt"
-	"regexp"
 	"slices"
 	"strings"
 
@@ -36,72 +34,45 @@ type Ranked struct {
 }
 
 func Search(term string) []Ranked {
-	var re, length = buildRegexp(term)
+	var m = makeMatcher(term)
 	var result = make([]Ranked, 0, 1000)
 
-	result = append(result, filter(re, length, notifications.NotificationMap.GetForSearch())...)
-	result = append(result, filter(re, length, wayland.WindowMap.GetForSearch())...)
-	result = append(result, filter(re, length, browser.TabMap.GetForSearch())...)
+	result = append(result, filter(notifications.NotificationMap.GetForSearch(), m)...)
+	result = append(result, filter(wayland.WindowMap.GetForSearch(), m)...)
+	result = append(result, filter(browser.TabMap.GetForSearch(), m)...)
 
-	if length > 0 {
-		result = append(result, filter(re, length, applications.AppMap.GetForSearch())...)
+	if len(m.term) > 0 {
+		result = append(result, filter(applications.AppMap.GetForSearch(), m)...)
 	}
-	if length > 2 {
-		result = append(result, filter(re, length, power.DeviceMap.GetForSearch())...)
-		result = append(result, filter(re, length, file.FileMap.GetForSearch())...)
-		result = append(result, filter(re, length, browser.BookmarkMap.GetForSearch())...)
-		result = append(result, filter(re, length, desktopactions.PowerActions.GetForSearch())...)
+	if len(m.term) > 2 {
+		result = append(result, filter(power.DeviceMap.GetForSearch(), m)...)
+		result = append(result, filter(file.FileMap.GetForSearch(), m)...)
+		result = append(result, filter(browser.BookmarkMap.GetForSearch(), m)...)
+		result = append(result, filter(desktopactions.PowerActions.GetForSearch(), m)...)
 	}
 
 	sort(result)
 	return result
 }
 
-func buildRegexp(term string) (*regexp.Regexp, int) {
-	if term == "" {
-		return nil, 0
-	}
-
-	term = strings.ToLower(term)
-
-	var pattern = ""
-	var split []string = strings.Split(term, "")
-	var length = len(split)
-	if length == 1 {
-		pattern = regexp.QuoteMeta(split[0])
-	} else {
-		for i, s := range split {
-			var escaped = regexp.QuoteMeta(s)
-			if i < len(split)-1 {
-				pattern = pattern + fmt.Sprintf("%s[^%s]*", escaped, escaped)
-			} else {
-				pattern = pattern + escaped
-			}
-		}
-	}
-	fmt.Println("Searching:", pattern)
-	return regexp.MustCompile(pattern), length
-
-}
-
-func filter(re *regexp.Regexp, termLen int, bases []entity.Base) []Ranked {
+func filter(bases []entity.Base, m matcher) []Ranked {
 	var result = make([]Ranked, 0, len(bases))
 	for _, res := range bases {
-		var rank = match(res.Title, re, termLen)
+		var rankCalculated = m.match(res.Title)
 		for _, keyword := range res.Keywords {
-			if tmp := match(keyword, re, termLen) + 20; tmp < rank {
-				rank = tmp
+			if tmp := m.match(keyword) + 20; tmp < rankCalculated {
+				rankCalculated = tmp
 			}
 		}
 		if res.MediaType == mediatype.Start || res.MediaType == mediatype.Application {
 			for _, act := range res.Actions {
-				if tmp := match(act.Name, re, termLen) + 40; tmp < rank {
-					rank = tmp
+				if tmp := m.match(act.Name) + 40; tmp < rankCalculated {
+					rankCalculated = tmp
 				}
 			}
 		}
-		if rank < maxRank {
-			result = append(result, Ranked{Base: res, Rank: rank})
+		if rankCalculated < maxRank {
+			result = append(result, Ranked{Base: res, Rank: rankCalculated})
 		}
 
 	}
@@ -151,18 +122,4 @@ func SearchByPath(path string) (entity.Base, bool) {
 	}
 
 	return entity.Base{}, false
-}
-
-// Kindof 'has Substring with skips'. So eg. 'nvim' matches 'neovim' or 'pwr' matches 'poweroff'
-func match(text string, re *regexp.Regexp, termLen int) uint {
-	text = strings.ToLower(text)
-	if re == nil {
-		return 0
-	}
-
-	if loc := re.FindStringIndex(text); loc == nil {
-		return maxRank
-	} else {
-		return uint(loc[0] + 5*((loc[1]-loc[0])-termLen))
-	}
 }
