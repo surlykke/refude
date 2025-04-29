@@ -1,8 +1,17 @@
-# RefudeServices
+# Refude
 
-RefudeServices are a set restful of services for the desktop.  
+Refude is a window switcher and app launcher. With it, you can:
 
-The main purpose of RefudeServices is to serve as a backend for [refude](https://github.com/surlykke/refude).
+* Switch between windows
+* Focus tabs in your browser (providing your browser is chromium or a derivative thereof :-) )
+* Launch applications
+* Open files in your home catalog, your download catalog and a few other
+
+Refude also comes with an implementation of the dbus notification protocol, and can show notifications on screen.
+
+
+
+
 
 ## Install 
 

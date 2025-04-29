@@ -145,7 +145,7 @@ type WaylandWindow struct {
 
 func makeWindow(wId uint64, title string, iconName icon.Name, appId string, state WindowStateMask) *WaylandWindow {
 	var ww = &WaylandWindow{
-		Base:  *entity.MakeBase(title, iconName, mediatype.Window),
+		Base:  *entity.MakeBase(title, appId+" "+"window", iconName, mediatype.Window),
 		Wid:   wId,
 		AppId: appId,
 		State: state,

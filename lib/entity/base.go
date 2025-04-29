@@ -14,13 +14,14 @@ type Servable interface {
 }
 
 type Base struct {
-	Path      string `json:"-"`
-	Title     string
-	Icon      icon.Name
-	MediaType mediatype.MediaType
-	Links     []link.Link
-	Keywords  []string `json:"keywords"`
-	Actions   []Action `json:"actions"`
+	Path      string              `json:"-"`
+	Title     string              `json:"title"`
+	Subtitle  string              `json:"subtitle,omitempty"`
+	Icon      icon.Name           `json:"icon"`
+	MediaType mediatype.MediaType `json:"mediatype"`
+	Links     []link.Link         `json:"links"`
+	Keywords  []string            `json:"keywords"`
+	Actions   []Action            `json:"actions"`
 }
 
 type Action struct {
@@ -36,9 +37,10 @@ func (a Action) Href(path string) string {
 	return path
 }
 
-func MakeBase(title string, icon icon.Name, mediatype mediatype.MediaType, keywords ...string) *Base {
+func MakeBase(title string, subtitle string, icon icon.Name, mediatype mediatype.MediaType, keywords ...string) *Base {
 	return &Base{
 		Title:     translate.Text(title),
+		Subtitle:  translate.Text(subtitle),
 		Icon:      icon,
 		MediaType: mediatype,
 		Keywords:  translate.Texts(keywords),

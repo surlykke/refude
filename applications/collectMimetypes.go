@@ -82,12 +82,19 @@ func collectMimetypes() map[string]*Mimetype {
 				}
 			}
 
+			var expandedAcronym string
+			for _, tmpExpandedAcronym := range tmp.ExpandedAcronym {
+				if translate.LocaleMatch(tmpExpandedAcronym.Lang) || (tmpExpandedAcronym.Lang == "" && expandedAcronym == "") {
+					expandedAcronym = tmpExpandedAcronym.Text
+				}
+			}
+
 			if tmp.Icon.Name == "" {
 				tmp.Icon.Name = strings.Replace(tmp.Type, "/", "-", -1)
 			}
 			iconName = icon.Name(tmp.Icon.Name)
 
-			var mimeType = &Mimetype{Base: *entity.MakeBase(comment, iconName, mediatype.Mimetype), Id: tmp.Type}
+			var mimeType = &Mimetype{Base: *entity.MakeBase(comment, expandedAcronym, iconName, mediatype.Mimetype), Id: tmp.Type}
 
 			for _, tmpAcronym := range tmp.Acronym {
 				if translate.LocaleMatch(tmpAcronym.Lang) || (tmpAcronym.Lang == "" && mimeType.Acronym == "") {
@@ -126,7 +133,7 @@ func collectMimetypes() map[string]*Mimetype {
 
 	// Do a transitive closure on 'SubClassOf'
 	for _, mt := range res {
-		for i := 0; i < len(mt.SubClassOf); i++ {
+		for i := range mt.SubClassOf {
 			if ancestor, ok := res[mt.SubClassOf[i]]; ok {
 				for _, id := range ancestor.SubClassOf {
 					mt.SubClassOf = slice.AppendIfNotThere(mt.SubClassOf, id)

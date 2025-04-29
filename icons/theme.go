@@ -83,7 +83,7 @@ func readTheme(indexThemeFilePath string) (*IconTheme, bool) {
 
 	themeGroup := iniFile[0]
 
-	theme := IconTheme{Base: *entity.MakeBase(themeGroup.Entries["Name"], "", mediatype.IconTheme)}
+	theme := IconTheme{Base: *entity.MakeBase(themeGroup.Entries["Name"], themeGroup.Entries["Comment"], "", mediatype.IconTheme)}
 	theme.Id = themeId
 	theme.Comment = themeGroup.Entries["Comment"]
 	theme.Inherits = slice.Split(themeGroup.Entries["Inherits"], ",")

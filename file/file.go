@@ -82,7 +82,7 @@ func makeFileFromInfo(osPath string, fileInfo os.FileInfo) *File {
 	var mimetype, _ = magicmime.TypeByFile(osPath)
 	var icon = icon.Name(strings.ReplaceAll(mimetype, "/", "-"))
 	var f = File{
-		Base:        *entity.MakeBase(fileInfo.Name(), icon, mediatype.File),
+		Base:        *entity.MakeBase(fileInfo.Name(), osPath, icon, mediatype.File),
 		Name:        fileInfo.Name(),
 		Type:        fileType,
 		Permissions: fileInfo.Mode().String(),

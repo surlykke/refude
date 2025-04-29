@@ -146,7 +146,7 @@ func readDesktopFile(filePath string, id string) (*DesktopApplication, error) {
 
 		var keywords = slice.Split(group.Entries["Keywords"], ";")
 		var da = DesktopApplication{
-			Base:      *entity.MakeBase(title, icon.Name(iconName), mediatype.Application, keywords...),
+			Base:      *entity.MakeBase(title, group.Entries["Comment"], icon.Name(iconName), mediatype.Application, keywords...),
 			DesktopId: id,
 		}
 

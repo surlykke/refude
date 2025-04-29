@@ -53,7 +53,7 @@ func init() {
 		{"suspend", "Suspend", "system-suspend", "org.freedesktop.login1.Manager.Suspend"}}
 
 	for _, data := range datas {
-		var res = StartResource{Base: *entity.MakeBase(data[1], icon.Name(data[2]), mediatype.Start), dbusMethod: data[3]}
+		var res = StartResource{Base: *entity.MakeBase(data[1], "", icon.Name(data[2]), mediatype.Start), dbusMethod: data[3]}
 		res.AddAction("", "", "")
 		PowerActions.Put(data[0], &res)
 	}

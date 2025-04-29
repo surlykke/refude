@@ -90,7 +90,7 @@ func retrieveDevice(dbusPath dbus.ObjectPath) (string, *Device) {
 	var title = deviceTitle(device.Type, device.Model)
 	var iconName, _ = props["IconName"].Value().(string)
 
-	device.Base = *entity.MakeBase(title, icon.Name(iconName), mediatype.Device, "battery")
+	device.Base = *entity.MakeBase(title, "", icon.Name(iconName), mediatype.Device, "battery")
 	return device.Id, &device
 }
 

@@ -178,14 +178,14 @@ func Notify(
 	var title = sanitize(summary, []string{}, []string{})
 	body = sanitize(body, allowedTags, allowedEscapes)
 	notification := Notification{
-		Base:           *entity.MakeBase(title, iconName, mediatype.Notification),
+		Base:           *entity.MakeBase(title, app_name+" notification", iconName, mediatype.Notification),
 		NotificationId: id,
 		Body:           body,
 		Sender:         app_name,
 		Created:        time.Now(),
 		Urgency:        Normal,
 		NActions:       map[string]string{},
-		Hints:          map[string]interface{}{},
+		Hints:          map[string]any{},
 		iconName:       iconName,
 		IconSize:       sizeHint,
 	}
@@ -254,7 +254,7 @@ func getRawImage(v dbus.Variant) (image.ImageData, error) {
 	// I'll never be a fan of dbus...
 	if v.Signature().String() != "av" {
 		return id, errors.New("Not an array of variants")
-	} else if ifarray, ok := v.Value().([]interface{}); !ok {
+	} else if ifarray, ok := v.Value().([]any); !ok {
 		return id, errors.New("Value not an array of interface{}")
 	} else if len(ifarray) != 7 {
 		return id, errors.New("len not 7")
@@ -358,7 +358,7 @@ func Run() {
 
 	// Put StatusNotifierWatcher object up
 	_ = conn.ExportMethodTable(
-		map[string]interface{}{
+		map[string]any{
 			"GetCapabilities":      GetCapabilities,
 			"Notify":               Notify,
 			"CloseNotification":    CloseNotification,

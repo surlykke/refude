@@ -66,8 +66,7 @@ func SearchHandler(term string) response.Response {
 
 	for _, r := range search.Search(term) {
 
-		var line = Resourceline{Icon: r.Icon, Title: r.Title, Comment: r.MediaType.Short()}
-
+		var line = Resourceline{Icon: r.Icon, Title: r.Title, Comment: r.Subtitle}
 		if len(r.Actions) > 0 {
 			line.Href = r.Actions[0].Href(r.Path)
 			line.Path = r.Path

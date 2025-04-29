@@ -43,7 +43,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				var mapOfTabs = make(map[string]*Tab, len(msg.Data))
 				for _, d := range msg.Data {
 					var tab = &Tab{
-						Base:      *entity.MakeBase(truncate.CutEllipsisStrategy{}.Truncate(d["title"], 60), icon.Name(d["favicon"]), mediatype.Tab),
+						Base:      *entity.MakeBase(truncate.CutEllipsisStrategy{}.Truncate(d["title"], 60), msg.BrowserName+" tab", icon.Name(d["favicon"]), mediatype.Tab),
 						Id:        d["id"],
 						BrowserId: msg.BrowserName,
 						Url:       d["url"]}
@@ -62,7 +62,7 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 						var iconUrl = icon.Name("https://t0.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&url=" + url.QueryEscape(bmUrl))
 						var bookMark = Bookmark{
-							Base:        *entity.MakeBase(title, iconUrl, mediatype.Bookmark),
+							Base:        *entity.MakeBase(title, "", iconUrl, mediatype.Bookmark),
 							Id:          id,
 							ExternalUrl: bmUrl}
 						bookMark.AddAction("", "Open", "")
