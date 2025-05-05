@@ -40,7 +40,7 @@ type Device struct {
 	Luminosity       float64
 	TimeToEmpty      int64
 	TimeToFull       int64
-	Percentage       int8
+	Percentage       float64
 	IsPresent        bool
 	State            string
 	IsRechargeable   bool

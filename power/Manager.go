@@ -53,7 +53,7 @@ func retrieveDevicePaths() []dbus.ObjectPath {
 func retrieveDevice(dbusPath dbus.ObjectPath) (string, *Device) {
 
 	var device = Device{Id: dbusPath2id(dbusPath)}
-
+	device.DisplayDevice = dbusPath == displayDeviceDbusPath
 	var props = dbuscall.GetAllProps(dbusConn, upowerService, dbusPath, upowerDeviceInterface)
 
 	device.NativePath, _ = props["NativePath"].Value().(string)
@@ -61,7 +61,8 @@ func retrieveDevice(dbusPath dbus.ObjectPath) (string, *Device) {
 	device.Model, _ = props["Model"].Value().(string)
 	device.Serial, _ = props["Serial"].Value().(string)
 	device.UpdateTime, _ = props["UpdateTime"].Value().(uint64)
-	device.Type, _ = props["Type"].Value().(string)
+	var dType, _ = props["Type"].Value().(uint32)
+	device.Type = deviceType(dType)
 	device.PowerSupply, _ = props["PowerSupply"].Value().(bool)
 	device.HasHistory, _ = props["HasHistory"].Value().(bool)
 	device.HasStatistics, _ = props["HasStatistics"].Value().(bool)
@@ -76,9 +77,10 @@ func retrieveDevice(dbusPath dbus.ObjectPath) (string, *Device) {
 	device.TimeToEmpty, _ = props["TimeToEmpty"].Value().(int64)
 	device.TimeToFull, _ = props["TimeToFull"].Value().(int64)
 	var percentage, _ = props["Percentage"].Value().(float64)
-	device.Percentage = int8(100 * percentage)
+	device.Percentage = percentage
 	device.IsPresent, _ = props["IsPresent"].Value().(bool)
-	device.State, _ = props["State"].Value().(string)
+	var state, _ = props["State"].Value().(uint32)
+	device.State = deviceState(state)
 	device.IsRechargeable, _ = props["IsRechargeable"].Value().(bool)
 	device.Capacity, _ = props["Capacity"].Value().(float64)
 	var tech, _ = props["Technology"].Value().(uint32)
@@ -94,7 +96,7 @@ func retrieveDevice(dbusPath dbus.ObjectPath) (string, *Device) {
 	return device.Id, &device
 }
 
-var previousPercentage = 101
+var previousPercentage = float64(101)
 
 // Sufficiently random
 const notificationId uint32 = 1152165262
@@ -110,20 +112,17 @@ func updateTrayIcon() {
 
 func notifyOnLow() {
 	if displayDevice, ok := DeviceMap.Get(dbusPath2id(displayDeviceDbusPath)); ok {
-		var percentage = int(displayDevice.Percentage)
 		if displayDevice.State == "Discharging" {
-			if percentage <= 5 {
-				notifications.Notify("refude", notificationId, "dialog-warning", "Battery critical", fmt.Sprintf("At %d%%", percentage), []string{}, map[string]dbus.Variant{"urgency": dbus.MakeVariant(uint8(2))}, -1)
-			} else if percentage <= 10 && previousPercentage > 10 {
-				notifications.Notify("refude", notificationId, "dialog-information", "Battery", fmt.Sprintf("At %d%%", percentage), []string{}, map[string]dbus.Variant{}, 10000)
-			} else if percentage <= 15 && previousPercentage > 15 {
-				notifications.Notify("refude", notificationId, "dialog-information", "Battery", fmt.Sprintf("At %d%%", percentage), []string{}, map[string]dbus.Variant{}, 5000)
+			if displayDevice.Percentage <= 5 {
+				notifications.Notify("refude", notificationId, "dialog-warning", "Battery critical", fmt.Sprintf("At %.2f%%", displayDevice.Percentage), []string{}, map[string]dbus.Variant{"urgency": dbus.MakeVariant(uint8(2))}, -1)
+			} else if displayDevice.Percentage <= 10 && previousPercentage > 10 {
+				notifications.Notify("refude", notificationId, "dialog-information", "Battery", fmt.Sprintf("At %.2f%%", displayDevice.Percentage), []string{}, map[string]dbus.Variant{}, 10000)
+			} else if displayDevice.Percentage <= 15 && previousPercentage > 15 {
+				notifications.Notify("refude", notificationId, "dialog-information", "Battery", fmt.Sprintf("At %.2f%%", displayDevice.Percentage), []string{}, map[string]dbus.Variant{}, 5000)
 			}
-			previousPercentage = percentage
+			previousPercentage = displayDevice.Percentage
 		} else {
-			if percentage <= 15 {
-				notifications.CloseNotification(notificationId)
-			}
+			notifications.CloseNotification(notificationId)
 			previousPercentage = 101 // So when unplugging, and battery low, we get the relevant notification
 		}
 	}
