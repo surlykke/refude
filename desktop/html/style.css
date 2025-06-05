@@ -4,6 +4,9 @@ html, body {
     color:  lightgrey;
 	font-size: 1.1em;
 }
+::-webkit-scrollbar {
+	display: none;
+}
 /* ---------- Topbar ------------------ */
 .topbar {
 	display: flex;
