@@ -13,6 +13,7 @@ import (
 
 	"github.com/godbus/dbus/v5"
 	"github.com/godbus/dbus/v5/introspect"
+	"github.com/surlykke/RefudeServices/file"
 	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/entity"
 	"github.com/surlykke/RefudeServices/lib/icon"
@@ -283,10 +284,26 @@ func installFileIcon(hints map[string]dbus.Variant, key string) (icon.Name, bool
 	} else if path, ok := v.Value().(string); !ok {
 		log.Warn("Value not a string")
 		return "", true
+	} else if looksLikeAPath(path) {
+		if isAnImage(path) {
+			icons.AddFileIcon(path)
+			return icon.Name(path), true
+		} else {
+			log.Warn("Not an image:", path)
+			return "", false
+		}
 	} else {
-		icons.AddFileIcon(path)
-		return icon.Name(path), false
+		return icon.Name(path), true // Take it to be an icon name
 	}
+}
+
+func looksLikeAPath(path string) bool {
+	return strings.HasPrefix(path, "file:///") || strings.HasPrefix(path, "/")
+}
+
+func isAnImage(path string) bool {
+	var mimeType = file.MimeType(path)
+	return mimeType == "image/png" || mimeType == "image/svg+xml"
 }
 
 func CloseNotification(id uint32) {

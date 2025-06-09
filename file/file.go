@@ -70,9 +70,14 @@ func makeFileFromPath(path string) (*File, error) {
 	}
 }
 
+func MimeType(ospath string) string {
+	var s, _ = magicmime.TypeByFile(ospath)
+	return s
+}
+
 func MakeLinkFromPath(ospath string, name string) link.Link {
 	var title = name
-	var mimetype, _ = magicmime.TypeByFile(ospath)
+	var mimetype = MimeType(ospath)
 	var icon = icon.Name(strings.ReplaceAll(mimetype, "/", "-"))
 	return link.Link{Href: "/file" + gopath.Clean(ospath), Title: title, Icon: icon, Relation: relation.Related, Type: mediatype.File}
 }
