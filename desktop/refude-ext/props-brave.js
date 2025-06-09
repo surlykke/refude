@@ -1,2 +1,2 @@
 const browserName = "Brave"
-const showBookmarks = true
+const showBookmarks = false 
