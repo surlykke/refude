@@ -43,14 +43,13 @@ func show(handle uint64) {
 
 //export handle_title
 func handle_title(handle C.uintptr_t, c_title *C.char) {
-	windowUpdates <- windowUpdate{wId:uint64(handle), title:C.GoString(c_title)}
+	windowUpdates <- windowUpdate{wId: uint64(handle), title: C.GoString(c_title)}
 }
 
 //export handle_app_id
 func handle_app_id(handle C.uintptr_t, c_app_id *C.char) {
-	windowUpdates <- windowUpdate{wId: uint64(handle), appId:C.GoString(c_app_id)}
+	windowUpdates <- windowUpdate{wId: uint64(handle), appId: C.GoString(c_app_id)}
 }
-
 
 //export handle_output_enter
 func handle_output_enter(handle C.uintptr_t, output C.uintptr_t) {
@@ -77,7 +76,7 @@ func handle_state(handle C.uintptr_t, state C.wl_array) {
 		}
 
 	}
-	windowUpdates <- windowUpdate{wId:uint64(handle), state:windowStateMask + 1}
+	windowUpdates <- windowUpdate{wId: uint64(handle), state: windowStateMask + 1}
 }
 
 //export handle_done
@@ -88,7 +87,7 @@ func handle_parent(handle C.uintptr_t, parent C.uintptr_t) {}
 
 //export handle_closed
 func handle_closed(handle C.uintptr_t) {
-	removals <- uint64(handle)	
+	removals <- uint64(handle)
 }
 
 func setupAndRunAsWaylandClient() {

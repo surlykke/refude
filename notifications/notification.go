@@ -69,7 +69,7 @@ func (n *Notification) Expired() bool {
 }
 
 func (n *Notification) SoftExpired() bool {
-	return n.Urgency == Normal && n.Created.Add(6*time.Second).Before(time.Now()) ||
+	return n.Urgency == Normal && n.Created.Add(10*time.Second).Before(time.Now()) ||
 		n.Urgency == Low && n.Created.Add(2*time.Second).Before(time.Now())
 }
 

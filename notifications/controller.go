@@ -7,6 +7,7 @@ package notifications
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"strings"
 	"time"
@@ -21,6 +22,7 @@ import (
 	"github.com/surlykke/RefudeServices/lib/log"
 	"github.com/surlykke/RefudeServices/lib/mediatype"
 	"github.com/surlykke/RefudeServices/lib/response"
+	"github.com/surlykke/RefudeServices/notifygui"
 	"github.com/surlykke/RefudeServices/watch"
 )
 
@@ -227,11 +229,12 @@ func Notify(
 	NotificationMap.Put(id, &notification)
 	watch.Publish("resourceChanged", "/flash")
 	watch.Publish("search", "")
+	sendNotificationsToGui()
 
 	if notification.Urgency == Low {
-		time.AfterFunc(2050*time.Millisecond, func() { watch.Publish("resourceChanged", "/flash"); watch.Publish("search", "") })
+		time.AfterFunc(2050*time.Millisecond, sendNotificationsToGui)
 	} else if notification.Urgency == Normal {
-		time.AfterFunc(6050*time.Millisecond, func() { watch.Publish("resourceChanged", "/flash"); watch.Publish("search", "") })
+		time.AfterFunc(10050*time.Millisecond, sendNotificationsToGui)
 	}
 
 	return id, nil
@@ -350,6 +353,9 @@ func helper(src *string, dest *string, allowedPrefixes []string, endMarker strin
 }
 
 func Run() {
+	fmt.Println("notifications.Run")
+	notifygui.StartGui()
+
 	var err error
 	var reply dbus.RequestNameReply
 

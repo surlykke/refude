@@ -6,8 +6,11 @@
 package notifications
 
 import (
+	"fmt"
+
 	"github.com/surlykke/RefudeServices/icons"
 	"github.com/surlykke/RefudeServices/lib/repo"
+	"github.com/surlykke/RefudeServices/notifygui"
 	"github.com/surlykke/RefudeServices/watch"
 )
 
@@ -20,6 +23,7 @@ func removeNotification(id uint32, reason uint32) {
 		NotificationMap.Put(id, &copy)
 		conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", id, reason)
 		watch.Publish("resourceChanged", "/flash")
+		sendNotificationsToGui()
 		watch.Publish("search", "")
 	}
 }
@@ -38,6 +42,20 @@ func getFlash() (map[string]string, bool) {
 				"iconFilePath": icons.FindIcon(string(n.iconName), uint32(64)),
 			}, true
 		}
+
 	}
 	return nil, false
+}
+
+func sendNotificationsToGui() {
+	fmt.Println("Sending notifications to gui")
+	var notificationsAsStrings = make([][]string, 0, 20)
+	for _, n := range NotificationMap.GetAll() {
+		if n.Deleted || n.SoftExpired() {
+			continue
+		}
+		notificationsAsStrings = append(notificationsAsStrings, []string{n.Title, n.Body, icons.FindIcon(string(n.iconName), uint32(64))})
+	}
+	fmt.Println("Sending:", notificationsAsStrings)
+	notifygui.SendNotificationsToGui(notificationsAsStrings)
 }

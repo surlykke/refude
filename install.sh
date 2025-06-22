@@ -15,8 +15,6 @@ mkdir -p $GOBIN $BASH_COMPLETION_DIR $FISH_COMPLETION_DIR $HICOLOR_ICON_DIR $ASS
 go install 
 cd ${thisdir}/tools/refuc 
 go install 
-cd ${thisdir}/notifyclient
-go install
 cd ${thisdir}
 
 cp README.md $ASSETS_DIR

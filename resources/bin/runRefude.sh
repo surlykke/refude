@@ -5,7 +5,7 @@
 #
 
 killall RefudeServices
-# Wait for port 7938 be released
+# Wait for port to 7938 be released
 for i in {1..10}; do
 	if ! netstat -ltnp 2>/dev/null | grep 7938; then 
 		break
@@ -13,6 +13,8 @@ for i in {1..10}; do
 	sleep 0.5
 done
 
+# gtk4-layer-shell lib must be loaded before any wayland libs
+GTK_LAYER_SHELL_LIB=$(ldconfig -p | grep 'gtk4-layer-shell.so$' | sed 's/.*=>\s*//')
 LOGFILE=${XDG_RUNTIME_DIR:-/tmp}/RefudeServices.log
-nohup RefudeServices $REFUDE_SWITCHES >$LOGFILE 2>$LOGFILE &
+LD_PRELOAD=$GTK_LAYER_SHELL_LIB nohup RefudeServices $REFUDE_SWITCHES >$LOGFILE 2>$LOGFILE &
 
