@@ -1,5 +1,6 @@
 #include <gtk/gtk.h>
 #include <gtk4-layer-shell.h>
+#include <stdio.h>
 
 char *css = ".subjectLabel {font-size: 20px;} .bodyLabel {font-size: 16px;}";
 
@@ -21,19 +22,20 @@ static void setup(GtkApplication *app, gpointer user_data) {
   gtk_layer_init_for_window(GTK_WINDOW(win));
 
   char *default_monitor = getenv("DEFAULT_MONITOR");
-  if (default_monitor != NULL) {
-    GListModel *monitors = gdk_display_get_monitors(display);
-    for (int i = 0;; i++) {
-      GdkMonitor *m = g_list_model_get_item(monitors, i);
-      if (m != NULL) {
-        if (strcmp(default_monitor, gdk_monitor_get_connector(m)) == 0) {
-          gtk_layer_set_monitor(GTK_WINDOW(win), m);
-          printf("monitor set to %s\n", gdk_monitor_get_connector(m));
-          break;
-        }
-      } else {
+  if (default_monitor == NULL) {
+    default_monitor = "eDP-1";
+  }
+  GListModel *monitors = gdk_display_get_monitors(display);
+  for (int i = 0;; i++) {
+    GdkMonitor *m = g_list_model_get_item(monitors, i);
+    if (m != NULL) {
+      if (strcmp(default_monitor, gdk_monitor_get_connector(m)) == 0) {
+        gtk_layer_set_monitor(GTK_WINDOW(win), m);
+        printf("monitor set to %s\n", gdk_monitor_get_connector(m));
         break;
       }
+    } else {
+      break;
     }
   }
 
