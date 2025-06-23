@@ -79,6 +79,7 @@ func init() {
 func RunCmd(argv ...string) error {
 	var cmd = exec.Command(argv[0], argv[1:]...)
 
+	os.Unsetenv("LD_PRELOAD") // We don't want this passed on to launced apps
 	cmd.Dir = Home
 	cmd.Stdout = nil
 	cmd.Stderr = nil
