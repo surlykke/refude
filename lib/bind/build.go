@@ -38,7 +38,7 @@ func buildHandler(function any, tags ...string) func(w http.ResponseWriter, r *h
 	if funcType.NumIn() != len(tags) {
 		panic("Number of tags does not match number of function parameters")
 	}
-	var deserializers = make([]deserializer, len(tags), len(tags))
+	var deserializers = make([]deserializer, len(tags))
 	for i, tag := range tags {
 
 		var pb = readTag(reflect.StructTag(tag))

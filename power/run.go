@@ -25,21 +25,22 @@ func Run() {
 	}
 
 	for signal := range signals {
-		if signal.Name == "org.freedesktop.DBus.Properties.PropertiesChanged" {
+		switch signal.Name {
+		case "org.freedesktop.DBus.Properties.PropertiesChanged":
 			var id, device = retrieveDevice(signal.Path)
 			DeviceMap.Put(id, device)
 			if device.DisplayDevice {
 				showOnDesktop()
 			}
-		} else if signal.Name == "org.freedesktop.UPower.DeviceAdded" {
+		case "org.freedesktop.UPower.DeviceAdded":
 			if path, ok := getAddedRemovedPath(signal); ok {
 				DeviceMap.Put(retrieveDevice(path))
 			}
-		} else if signal.Name == "org.freedesktop.UPower.DeviceRemoved" {
+		case "org.freedesktop.UPower.DeviceRemoved":
 			if dbusPath, ok := signal.Body[0].(dbus.ObjectPath); ok {
 				DeviceMap.Remove(dbusPath2id(dbusPath))
 			}
-		} else {
+		default:
 			log.Warn("Update on unknown device: ", signal.Path)
 		}
 	}

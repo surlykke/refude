@@ -11,7 +11,6 @@
     "128": "icons/128.png"
   },
   "background": { "service_worker": "background.js"},
-  "permissions": ["notifications", "background"],
+  "permissions": ["tabs", "bookmarks"],
   "host_permissions": ["http://localhost:7938/*"]
-  
 }
