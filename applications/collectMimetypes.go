@@ -90,7 +90,7 @@ func collectMimetypes() map[string]*Mimetype {
 			}
 
 			if tmp.Icon.Name == "" {
-				tmp.Icon.Name = strings.Replace(tmp.Type, "/", "-", -1)
+				tmp.Icon.Name = strings.ReplaceAll(tmp.Type, "/", "-")
 			}
 			iconName = icon.Name(tmp.Icon.Name)
 

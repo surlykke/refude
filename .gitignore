@@ -7,3 +7,4 @@ plugins
 TODO
 rowTemplate-test.html
 compile_commands.json
+browserId.js

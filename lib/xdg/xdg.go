@@ -39,11 +39,11 @@ var VideosDir string
 
 func init() {
 	Home = clean(os.Getenv("HOME"))
-	ConfigHome = clean(notEmptyOr(os.Getenv("XDG_CONFIG_HOME"), Home+"/.config"))
-	ConfigDirs = cleanS(slice.Split(notEmptyOr(os.Getenv("XDG_CONFIG_DIRS"), "/etc/xdg"), ":"))
-	CacheHome = clean(notEmptyOr(os.Getenv("XDG_CACHE_HOME"), Home+"/.cache"))
-	DataHome = clean(notEmptyOr(os.Getenv("XDG_DATA_HOME"), Home+"/.local/share"))
-	DataDirs = cleanS(slice.Split(notEmptyOr(os.Getenv("XDG_DATA_DIRS"), "/usr/local/share:/usr/share"), ":"))
+	ConfigHome = clean(coalesce(os.Getenv("XDG_CONFIG_HOME"), Home+"/.config"))
+	ConfigDirs = cleanS(slice.Split(coalesce(os.Getenv("XDG_CONFIG_DIRS"), "/etc/xdg"), ":"))
+	CacheHome = clean(coalesce(os.Getenv("XDG_CACHE_HOME"), Home+"/.cache"))
+	DataHome = clean(coalesce(os.Getenv("XDG_DATA_HOME"), Home+"/.local/share"))
+	DataDirs = cleanS(slice.Split(coalesce(os.Getenv("XDG_DATA_DIRS"), "/usr/local/share:/usr/share"), ":"))
 	DataDirs = slice.Remove(DataDirs, DataHome)
 
 	IconBasedirs = []string{Home + "/.icons", DataHome + "/icons"} // Weirdly icontheme specification does not mention ~/.local/share/icons, which I consider to be an error
@@ -52,27 +52,27 @@ func init() {
 	}
 	PixmapDir = "/usr/share/pixmaps"
 
-	RuntimeDir = clean(notEmptyOr(os.Getenv("XDG_RUNTIME_DIR"), "/tmp"))
-	CurrentDesktop = slice.Split(notEmptyOr(os.Getenv("XDG_CURRENT_DESKTOP"), ""), ":")
-	Locale = notEmptyOr(os.Getenv("LANG"), "") // TODO Look at other env variables too
+	RuntimeDir = clean(coalesce(os.Getenv("XDG_RUNTIME_DIR"), "/tmp"))
+	CurrentDesktop = slice.Split(coalesce(os.Getenv("XDG_CURRENT_DESKTOP"), ""), ":")
+	Locale = coalesce(os.Getenv("LANG"), "") // TODO Look at other env variables too
 
 	// Strip away encoding part (ie. '.UTF-8')
 	if index := strings.Index(Locale, "."); index > -1 {
 		Locale = Locale[0:index]
 	}
-	SessionType = notEmptyOr(os.Getenv("XDG_SESSION_TYPE"), "")
+	SessionType = coalesce(os.Getenv("XDG_SESSION_TYPE"), "")
 
 	// User dirs. Defaults taken from my /etc/xdg/user-dirs.defaults. We probably should re-read that file on startup,
 	// but given that so many apps use these, I find it unlikely that they will change. (The defaults, that is)
 	var userDirs, _ = readUserDirs(Home, ConfigHome)
-	DesktopDir = clean(notEmptyOr(userDirs["XDG_DESKTOP_DIR"], Home+"/Desktop"))
-	DownloadDir = clean(notEmptyOr(userDirs["XDG_DOWNLOAD_DIR"], Home+"/Download"))
-	TemplatesDir = clean(notEmptyOr(userDirs["XDG_TEMPLATES_DIR"], Home+"/Templates"))
-	PublicshareDir = clean(notEmptyOr(userDirs["XDG_PUBLICSHARE_DIR"], Home+"/public"))
-	DocumentsDir = clean(notEmptyOr(userDirs["XDG_DOCUMENTS_DIR"], Home+"/Documents"))
-	MusicDir = clean(notEmptyOr(userDirs["XDG_MUSIC_DIR"], Home+"/Music"))
-	PicturesDir = clean(notEmptyOr(userDirs["XDG_PICTURES_DIR"], Home+"/Pictures"))
-	VideosDir = clean(notEmptyOr(userDirs["XDG_VIDEOS_DIR"], Home+"/Videos"))
+	DesktopDir = clean(coalesce(userDirs["XDG_DESKTOP_DIR"], Home+"/Desktop"))
+	DownloadDir = clean(coalesce(userDirs["XDG_DOWNLOAD_DIR"], Home+"/Download"))
+	TemplatesDir = clean(coalesce(userDirs["XDG_TEMPLATES_DIR"], Home+"/Templates"))
+	PublicshareDir = clean(coalesce(userDirs["XDG_PUBLICSHARE_DIR"], Home+"/public"))
+	DocumentsDir = clean(coalesce(userDirs["XDG_DOCUMENTS_DIR"], Home+"/Documents"))
+	MusicDir = clean(coalesce(userDirs["XDG_MUSIC_DIR"], Home+"/Music"))
+	PicturesDir = clean(coalesce(userDirs["XDG_PICTURES_DIR"], Home+"/Pictures"))
+	VideosDir = clean(coalesce(userDirs["XDG_VIDEOS_DIR"], Home+"/Videos"))
 
 }
 
@@ -93,12 +93,18 @@ func RunCmd(argv ...string) error {
 	}
 }
 
-func notEmptyOr(primary string, secondary string) string {
-	if primary != "" {
-		return primary
-	} else {
-		return secondary
+/*
+*
+
+	Returns the first non-empty of its arguments or "" if none found.
+*/
+func coalesce(args ...string) string {
+	for _, arg := range args {
+		if arg != "" {
+			return arg
+		}
 	}
+	return ""
 }
 
 func DirOrFileExists(dir string) bool {

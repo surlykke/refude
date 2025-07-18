@@ -47,11 +47,10 @@ func main() {
 	bind.ServeFunc("GET /complete", completeHandler, `query:"prefix"`)
 	bind.ServeFunc("GET /desktop/search", desktop.SearchHandler, `query:"term"`)
 	bind.ServeFunc("GET /desktop/details", desktop.DetailsHandler, `query:"path"`)
-	bind.ServeFunc("POST /browser/tabs", browser.TabsDoPost, `query:"browserName,required"`, `body:"json"`)
+	bind.ServeFunc("POST /browser/tabs", browser.TabsDoPost, `query:"browserId,required"`, `body:"json"`)
 
 	http.HandleFunc("GET /watch", watch.ServeHTTP)
 	http.Handle("GET /desktop/", desktop.StaticServer)
-	http.HandleFunc("GET /browser/socket", browser.ServeHTTP)
 	go icons.Run()
 	go wayland.Run(opts.IgnoreWinAppIds)
 	go applications.Run()
@@ -60,7 +59,6 @@ func main() {
 	}
 	go power.Run()
 	go file.Run()
-	go browser.Run()
 
 	if err := http.ListenAndServe(":7938", nil); err != nil {
 		log.Warn("http.ListenAndServe failed:", err)
