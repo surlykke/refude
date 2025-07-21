@@ -1,16 +1,14 @@
-# Refude
+# refude
 
-Refude is a window switcher and app launcher. With it, you can:
+refude is a window switcher and app launcher. With it, you can:
 
 * Switch between windows
 * Focus tabs in your browser (providing your browser is chromium or a derivative thereof :-) )
 * Launch applications
 * Open files in your home catalog, your download catalog and a few other
 
-Refude also comes with an implementation of the dbus notification protocol, and can show notifications on screen.
-
-
-
+refude also comes with 
+    * an implementation of the dbus notification protocol, and can show notifications on screen.
 
 
 ## Install 
@@ -24,8 +22,8 @@ Refude also comes with an implementation of the dbus notification protocol, and 
   sudo apt install golang git libmagic-dev libx11-dev
   ```
 1. cd /to/where/you/want/to/build
-1. git clone https://github.com/surlykke/RefudeServices
-1. cd RefudeServices
+1. git clone https://github.com/surlykke/refude
+1. cd refude
 1. ./install.sh
   
 Ensure that $HOME/.local/bin is in your PATH, then you can do:
@@ -36,13 +34,13 @@ runRefude.sh
 
 To check everything is up and running, you can do
 ```
-refuc /windows
+refuc /window/
 ```
 which should produce a http-response containing json describing open windows on your desktop.
 
 If not, then perhaps try:
 ```
-RefudeServices
+refude-server
 ```
 directly, which may yield useful errormessages.
 
