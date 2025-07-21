@@ -12,13 +12,13 @@ DESKTOP_FILE_DIR=${XDG_DATA_HOME:-${HOME}/.local/share}/applications
 ASSETS_DIR=${XDG_DATA_HOME:-${HOME}/.local/share}/RefudeServices
 mkdir -p $GOBIN $BASH_COMPLETION_DIR $FISH_COMPLETION_DIR $HICOLOR_ICON_DIR $ASSETS_DIR
 
+cd ${thisdir}/RefudeServices
 go install 
-cd ${thisdir}/tools/refuc 
-go install 
-cd ${thisdir}
-
-cp README.md $ASSETS_DIR
+cp ./runRefude.sh $GOBIN
 cp -R ./refudeicons/* $HICOLOR_ICON_DIR 
-cp resources/bin/* $GOBIN
-cp resources/completions/bash/* ${BASH_COMPLETION_DIR}
-cp resources/completions/fish/* ${FISH_COMPLETION_DIR}
+
+cd ${thisdir}/refuc 
+go install 
+cp completions/bash/* ${BASH_COMPLETION_DIR}
+cp completions/fish/* ${FISH_COMPLETION_DIR}
+

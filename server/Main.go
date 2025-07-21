@@ -1,0 +1,92 @@
+// Copyright (c) Christian Surlykke
+// This file is part of the RefudeServices project.
+// It is distributed under the GPL v2 license.
+// Please refer to the GPL2 file for a copy of the license.
+package main
+
+import (
+	"net/http"
+	"strings"
+
+	"github.com/surlykke/RefudeServices/server/applications"
+	"github.com/surlykke/RefudeServices/server/browser"
+	"github.com/surlykke/RefudeServices/server/desktop"
+	"github.com/surlykke/RefudeServices/server/desktopactions"
+	"github.com/surlykke/RefudeServices/server/file"
+	"github.com/surlykke/RefudeServices/server/icons"
+	"github.com/surlykke/RefudeServices/server/lib/bind"
+	"github.com/surlykke/RefudeServices/server/lib/log"
+	"github.com/surlykke/RefudeServices/server/lib/response"
+	"github.com/surlykke/RefudeServices/server/notifications"
+	"github.com/surlykke/RefudeServices/server/options"
+	"github.com/surlykke/RefudeServices/server/power"
+	"github.com/surlykke/RefudeServices/server/search"
+	"github.com/surlykke/RefudeServices/server/watch"
+	"github.com/surlykke/RefudeServices/server/wayland"
+
+	_ "net/http/pprof"
+)
+
+func main() {
+	var opts = options.GetOpts()
+	bind.ServeMap("/window/", wayland.WindowMap)
+	bind.ServeMap("/application/", applications.AppMap)
+	bind.ServeMap("/mimetype/", applications.MimeMap)
+	bind.ServeMap("/notification/", notifications.NotificationMap)
+	bind.ServeMap("/icontheme/", icons.ThemeMap)
+	bind.ServeMap("/device/", power.DeviceMap)
+	bind.ServeMap("/tab/", browser.TabMap)
+	bind.ServeMap("/bookmark/", browser.BookmarkMap)
+	bind.ServeMap("/file/", file.FileMap)
+	bind.ServeMap("/start/", desktopactions.PowerActions)
+
+	bind.ServeFunc("GET /icon", icons.GetHandler, `query:"name"`, `query:"size,default=32"`)
+	bind.ServeFunc("GET /search", search.GetHandler, `query:"term"`)
+	bind.ServeFunc("GET /flash", notifications.FlashHandler)
+	//  bind.ServeFunc("POST /bookmarksink", browser.BookmarksDoPost, `body:"json"`)
+	bind.ServeFunc("GET /complete", completeHandler, `query:"prefix"`)
+	bind.ServeFunc("GET /desktop/search", desktop.SearchHandler, `query:"term"`)
+	bind.ServeFunc("GET /desktop/details", desktop.DetailsHandler, `query:"path"`)
+	bind.ServeFunc("POST /browser/tabs", browser.TabsDoPost, `query:"browserId,required"`, `body:"json"`)
+
+	http.HandleFunc("GET /watch", watch.ServeHTTP)
+	http.Handle("GET /desktop/", desktop.StaticServer)
+	go icons.Run()
+	go wayland.Run(opts.IgnoreWinAppIds)
+	go applications.Run()
+	if !opts.NoNotifications {
+		go notifications.Run()
+	}
+	go power.Run()
+	go file.Run()
+
+	if err := http.ListenAndServe(":7938", nil); err != nil {
+		log.Warn("http.ListenAndServe failed:", err)
+	}
+
+}
+
+func completeHandler(prefix string) response.Response {
+	var filtered = make([]string, 0, 1000)
+	var allPaths = [][]string{
+		{"/flash", "/icon?name=", "/desktop/", "/complete?prefix=", "/search?", "/watch"},
+		icons.ThemeMap.GetPaths(),
+		wayland.WindowMap.GetPaths(),
+		applications.AppMap.GetPaths(),
+		applications.MimeMap.GetPaths(),
+		notifications.NotificationMap.GetPaths(),
+		power.DeviceMap.GetPaths(),
+		browser.TabMap.GetPaths(),
+		browser.BookmarkMap.GetPaths(),
+	}
+
+	for _, pathList := range allPaths {
+		for _, path := range pathList {
+			if strings.HasPrefix(path, prefix) {
+				filtered = append(filtered, path)
+			}
+		}
+	}
+
+	return response.Json(filtered)
+}
