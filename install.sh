@@ -12,13 +12,13 @@ DESKTOP_FILE_DIR=${XDG_DATA_HOME:-${HOME}/.local/share}/applications
 ASSETS_DIR=${XDG_DATA_HOME:-${HOME}/.local/share}/RefudeServices
 mkdir -p $GOBIN $BASH_COMPLETION_DIR $FISH_COMPLETION_DIR $HICOLOR_ICON_DIR $ASSETS_DIR
 
-cd ${thisdir}/RefudeServices
-go install 
+cd ${thisdir}/server
+go build -o  refude-server && mv ./refude-server $GOBIN # Annoyingly, go install does not allow specifying executable name
 cp ./runRefude.sh $GOBIN
 cp -R ./refudeicons/* $HICOLOR_ICON_DIR 
 
-cd ${thisdir}/refuc 
-go install 
-cp completions/bash/* ${BASH_COMPLETION_DIR}
-cp completions/fish/* ${FISH_COMPLETION_DIR}
+cd ${thisdir}/refuc
+go install
+cp ./completions/bash/* ${BASH_COMPLETION_DIR}
+cp ./completions/fish/* ${FISH_COMPLETION_DIR}
 
