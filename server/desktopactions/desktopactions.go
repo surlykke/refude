@@ -1,6 +1,6 @@
 // Copyright (c) Christian Surlykke
 //
-// This file is part of the RefudeServices project.
+// This file is part of the refude project.
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
 package desktopactions
@@ -10,12 +10,12 @@ import (
 	"time"
 
 	"github.com/godbus/dbus/v5"
-	"github.com/surlykke/RefudeServices/server/lib/entity"
-	"github.com/surlykke/RefudeServices/server/lib/icon"
-	"github.com/surlykke/RefudeServices/server/lib/log"
-	"github.com/surlykke/RefudeServices/server/lib/mediatype"
-	"github.com/surlykke/RefudeServices/server/lib/repo"
-	"github.com/surlykke/RefudeServices/server/lib/response"
+	"github.com/surlykke/refude/server/lib/entity"
+	"github.com/surlykke/refude/server/lib/icon"
+	"github.com/surlykke/refude/server/lib/log"
+	"github.com/surlykke/refude/server/lib/mediatype"
+	"github.com/surlykke/refude/server/lib/repo"
+	"github.com/surlykke/refude/server/lib/response"
 )
 
 var lastUpdated = atomic.Pointer[time.Time]{}

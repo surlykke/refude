@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"strconv"
 
-	"github.com/surlykke/RefudeServices/server/lib/log"
+	"github.com/surlykke/refude/server/lib/log"
 )
 
 type converter func(paramVal string) (reflect.Value, error)

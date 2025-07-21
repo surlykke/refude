@@ -5,13 +5,13 @@ import (
 	"strings"
 	"sync/atomic"
 
-	"github.com/surlykke/RefudeServices/server/applications"
-	"github.com/surlykke/RefudeServices/server/lib/entity"
-	"github.com/surlykke/RefudeServices/server/lib/icon"
-	"github.com/surlykke/RefudeServices/server/lib/mediatype"
-	"github.com/surlykke/RefudeServices/server/lib/repo"
-	"github.com/surlykke/RefudeServices/server/lib/response"
-	"github.com/surlykke/RefudeServices/server/watch"
+	"github.com/surlykke/refude/server/applications"
+	"github.com/surlykke/refude/server/lib/entity"
+	"github.com/surlykke/refude/server/lib/icon"
+	"github.com/surlykke/refude/server/lib/mediatype"
+	"github.com/surlykke/refude/server/lib/repo"
+	"github.com/surlykke/refude/server/lib/response"
+	"github.com/surlykke/refude/server/watch"
 )
 
 var WindowMap = repo.MakeSynkMap[uint64, *WaylandWindow]()

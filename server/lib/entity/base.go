@@ -1,11 +1,11 @@
 package entity
 
 import (
-	"github.com/surlykke/RefudeServices/server/lib/icon"
-	"github.com/surlykke/RefudeServices/server/lib/link"
-	"github.com/surlykke/RefudeServices/server/lib/mediatype"
-	"github.com/surlykke/RefudeServices/server/lib/relation"
-	"github.com/surlykke/RefudeServices/server/lib/translate"
+	"github.com/surlykke/refude/server/lib/icon"
+	"github.com/surlykke/refude/server/lib/link"
+	"github.com/surlykke/refude/server/lib/mediatype"
+	"github.com/surlykke/refude/server/lib/relation"
+	"github.com/surlykke/refude/server/lib/translate"
 )
 
 type Servable interface {

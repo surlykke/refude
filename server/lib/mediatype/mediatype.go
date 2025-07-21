@@ -3,7 +3,7 @@ package mediatype
 import (
 	"encoding/json"
 
-	"github.com/surlykke/RefudeServices/server/lib/translate"
+	"github.com/surlykke/refude/server/lib/translate"
 )
 
 type MediaType uint8

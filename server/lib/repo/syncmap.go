@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/surlykke/RefudeServices/server/lib/entity"
-	"github.com/surlykke/RefudeServices/server/lib/link"
-	"github.com/surlykke/RefudeServices/server/lib/response"
+	"github.com/surlykke/refude/server/lib/entity"
+	"github.com/surlykke/refude/server/lib/link"
+	"github.com/surlykke/refude/server/lib/response"
 )
 
 type SyncMap[K cmp.Ordered, V entity.Servable] struct {

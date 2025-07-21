@@ -1,9 +1,9 @@
 package browser
 
 import (
-	"github.com/surlykke/RefudeServices/server/lib/entity"
-	"github.com/surlykke/RefudeServices/server/lib/response"
-	"github.com/surlykke/RefudeServices/server/lib/xdg"
+	"github.com/surlykke/refude/server/lib/entity"
+	"github.com/surlykke/refude/server/lib/response"
+	"github.com/surlykke/refude/server/lib/xdg"
 )
 
 type Bookmark struct {

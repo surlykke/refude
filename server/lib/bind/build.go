@@ -9,10 +9,10 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/surlykke/RefudeServices/server/lib/entity"
-	"github.com/surlykke/RefudeServices/server/lib/log"
-	"github.com/surlykke/RefudeServices/server/lib/repo"
-	"github.com/surlykke/RefudeServices/server/lib/response"
+	"github.com/surlykke/refude/server/lib/entity"
+	"github.com/surlykke/refude/server/lib/log"
+	"github.com/surlykke/refude/server/lib/repo"
+	"github.com/surlykke/refude/server/lib/response"
 )
 
 func ServeFunc(path string, function any, tags ...string) {

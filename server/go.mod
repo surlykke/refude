@@ -1,4 +1,4 @@
-module github.com/surlykke/RefudeServices/server
+module github.com/surlykke/refude/server
 
 go 1.23.2
 

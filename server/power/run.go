@@ -1,6 +1,6 @@
 // Copyright (c) Christian Surlykke
 //
-// This file is part of the RefudeServices project.
+// This file is part of the refude project.
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
 package power
@@ -8,8 +8,8 @@ package power
 import (
 	"github.com/godbus/dbus/v5"
 
-	"github.com/surlykke/RefudeServices/server/lib/log"
-	"github.com/surlykke/RefudeServices/server/lib/repo"
+	"github.com/surlykke/refude/server/lib/log"
+	"github.com/surlykke/refude/server/lib/repo"
 )
 
 var DeviceMap = repo.MakeSynkMap[string, *Device]()

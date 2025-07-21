@@ -1,6 +1,6 @@
 // Copyright (c) Christian Surlykke
 //
-// This file is part of the RefudeServices project.
+// This file is part of the refude project.
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
 package notifications
@@ -8,10 +8,10 @@ package notifications
 import (
 	"fmt"
 
-	"github.com/surlykke/RefudeServices/server/icons"
-	"github.com/surlykke/RefudeServices/server/lib/repo"
-	"github.com/surlykke/RefudeServices/server/notifygui"
-	"github.com/surlykke/RefudeServices/server/watch"
+	"github.com/surlykke/refude/server/icons"
+	"github.com/surlykke/refude/server/lib/repo"
+	"github.com/surlykke/refude/server/notifygui"
+	"github.com/surlykke/refude/server/watch"
 )
 
 var NotificationMap = repo.MakeSynkMap[uint32, *Notification]()

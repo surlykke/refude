@@ -1,6 +1,6 @@
 // Copyright (c) Christian Surlykke
 //
-// This file is part of the RefudeServices project.
+// This file is part of the refude project.
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
 package search
@@ -9,17 +9,17 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/surlykke/RefudeServices/server/applications"
-	"github.com/surlykke/RefudeServices/server/browser"
-	"github.com/surlykke/RefudeServices/server/desktopactions"
-	"github.com/surlykke/RefudeServices/server/file"
-	"github.com/surlykke/RefudeServices/server/icons"
-	"github.com/surlykke/RefudeServices/server/lib/entity"
-	"github.com/surlykke/RefudeServices/server/lib/mediatype"
-	"github.com/surlykke/RefudeServices/server/lib/response"
-	"github.com/surlykke/RefudeServices/server/notifications"
-	"github.com/surlykke/RefudeServices/server/power"
-	"github.com/surlykke/RefudeServices/server/wayland"
+	"github.com/surlykke/refude/server/applications"
+	"github.com/surlykke/refude/server/browser"
+	"github.com/surlykke/refude/server/desktopactions"
+	"github.com/surlykke/refude/server/file"
+	"github.com/surlykke/refude/server/icons"
+	"github.com/surlykke/refude/server/lib/entity"
+	"github.com/surlykke/refude/server/lib/mediatype"
+	"github.com/surlykke/refude/server/lib/response"
+	"github.com/surlykke/refude/server/notifications"
+	"github.com/surlykke/refude/server/power"
+	"github.com/surlykke/refude/server/wayland"
 )
 
 const maxRank uint = 1000000

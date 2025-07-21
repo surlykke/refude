@@ -9,9 +9,9 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/surlykke/RefudeServices/server/lib/icon"
-	"github.com/surlykke/RefudeServices/server/lib/log"
-	"github.com/surlykke/RefudeServices/server/lib/xdg"
+	"github.com/surlykke/refude/server/lib/icon"
+	"github.com/surlykke/refude/server/lib/log"
+	"github.com/surlykke/refude/server/lib/xdg"
 )
 
 type IconPath struct {

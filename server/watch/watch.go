@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/surlykke/RefudeServices/server/lib/pubsub"
+	"github.com/surlykke/refude/server/lib/pubsub"
 )
 
 type event struct {

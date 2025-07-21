@@ -5,12 +5,12 @@ import (
 	"os"
 	"strings"
 
-	"github.com/surlykke/RefudeServices/server/lib/entity"
-	"github.com/surlykke/RefudeServices/server/lib/icon"
-	"github.com/surlykke/RefudeServices/server/lib/log"
-	"github.com/surlykke/RefudeServices/server/lib/mediatype"
-	"github.com/surlykke/RefudeServices/server/lib/slice"
-	"github.com/surlykke/RefudeServices/server/lib/translate"
+	"github.com/surlykke/refude/server/lib/entity"
+	"github.com/surlykke/refude/server/lib/icon"
+	"github.com/surlykke/refude/server/lib/log"
+	"github.com/surlykke/refude/server/lib/mediatype"
+	"github.com/surlykke/refude/server/lib/slice"
+	"github.com/surlykke/refude/server/lib/translate"
 )
 
 func collectMimetypes() map[string]*Mimetype {

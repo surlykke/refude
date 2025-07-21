@@ -4,9 +4,9 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/surlykke/RefudeServices/server/applications"
-	"github.com/surlykke/RefudeServices/server/lib/entity"
-	"github.com/surlykke/RefudeServices/server/lib/response"
+	"github.com/surlykke/refude/server/applications"
+	"github.com/surlykke/refude/server/lib/entity"
+	"github.com/surlykke/refude/server/lib/response"
 )
 
 type Tab struct {
