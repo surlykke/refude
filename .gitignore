@@ -1,10 +1,5 @@
-.idea
-RefudeServices.iml
-RefudeServices
-.vscode
-todo
-plugins
+server/server
+refuc/refuc
 TODO
-rowTemplate-test.html
 compile_commands.json
 browserId.js
