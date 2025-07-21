@@ -1,7 +1,7 @@
 #!/bin/bash
 cd $(dirname $0)
 
-for path in $(find . \( -name '*.go' -o -name '*.js' \) -not -name NamedColors.go -not -name scheme-handlers.go -not -exec grep -q GPL2 {} \; -print); do
+for path in $(find . \( -name '*.go' -o -name '*.js' -o -name '*.c' -o -name '*.h' \) -not -name NamedColors.go -not -name scheme-handlers.go -not -exec grep -q GPL2 {} \; -print); do
 	tmp=`mktemp`
 
 cat<< EOF > $tmp
