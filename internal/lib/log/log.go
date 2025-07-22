@@ -7,36 +7,25 @@ package log
 
 import (
 	"fmt"
+	"os"
 )
 
-const loglevel = 1 // 0: debug, 1: info, 2: warn, 3: error, 4: panic
+const loglevel uint8 = 0 // 0 warn, 1 error, >= 2 panic
 
-func Debug(v ...interface{}) {
-	if 0 >= loglevel {
-		fmt.Println(v...)
+func Warn(v ...any) {
+	if loglevel < 1 {
+		fmt.Fprintln(os.Stderr, v...)
 	}
 }
 
-func Info(v ...interface{}) {
-	if 1 >= loglevel {
-		fmt.Println(v...)
+func Error(v ...any) {
+	if loglevel < 2 {
+		fmt.Fprintln(os.Stderr, v...)
 	}
 }
 
-func Warn(v ...interface{}) {
-	if 1 >= loglevel {
-		fmt.Println(v...)
-	}
-}
-
-func Error(v ...interface{}) {
-	if 1 >= loglevel {
-		fmt.Println(v...)
-	}
-}
-
-func Panic(v ...interface{}) {
+func Panic(v ...any) {
 	var s = fmt.Sprintln(v...)
-	fmt.Print(s)
+	fmt.Fprintln(os.Stderr, s)
 	panic(s)
 }

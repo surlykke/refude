@@ -47,7 +47,7 @@ func readThemes(basedirs []string) map[string]*IconTheme {
 
 	for _, basedir := range basedirs {
 		if indexFilePaths, err := filepath.Glob(basedir + "/*/index.theme"); err != nil {
-			log.Info("Could not look for index.theme files:", err)
+			log.Warn("Could not look for index.theme files:", err)
 		} else {
 			for _, indexFilePath := range indexFilePaths {
 				if theme, ok := readTheme(indexFilePath); !ok {

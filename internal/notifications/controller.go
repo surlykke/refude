@@ -206,7 +206,7 @@ func Notify(
 					notification.Urgency = Critical
 				}
 			} else {
-				log.Info("urgency hint not of type uint8, rather:", reflect.TypeOf(val.Value()))
+				log.Warn("urgency hint not of type uint8, rather:", reflect.TypeOf(val.Value()))
 			}
 		}
 		if acceptableHintTypes[val.Signature().String()] {
