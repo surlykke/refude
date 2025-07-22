@@ -4,27 +4,10 @@
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
 //
-import { browserId } from "./browserId.js"
-const browserIdEncoded = encodeURIComponent(browserId)
+var port = chrome.runtime.connectNative('org.refude.native_messaging');
 
-const onTabUpdate = (tabId, changeInfo, tab) => {
-	if ("loading" === changeInfo.status) {
-		let url = new URL(tab.url)
-		if ("refude.focustab.localhost" === url.host) {
-			let taburl = url.searchParams.get('url')
-			chrome.tabs.remove(tabId)
-			chrome.tabs.query({ url: taburl }).then(tabs => {
-				tabs.forEach((t, i) => {
-					if (i === 0) {
-						chrome.tabs.update(t.id, { active: true })
-						chrome.windows.update(t.windowId, { focused: true })
-					} else {
-						chrome.tabs.remove(t.id)
-					}
-				})
-			})
-		}
-	} else if ("complete" === changeInfo.staus) {
+const onTabUpdate = (_tabId, changeInfo, _tab) => {
+	if ("complete" === changeInfo.staus) {
 		reportTabs()
 	}
 }
@@ -35,15 +18,18 @@ const onTabRemove = () => {
 
 const reportTabs = () => {
 	chrome.tabs.query({}, tabs => {
-		let data = tabs.map(t => {
-			return {
-				id: "" + t.id,
-				title: t.title,
-				url: t.url,
-				favicon: t.favIconUrl
-			}
-		})
-		fetch(`http://localhost:7938/browser/tabs?browserId=${browserIdEncoded}`, { method: "post", body: JSON.stringify(data) })
+		let data = {
+			type: "tabs",
+			list: tabs.map(t => {
+				return {
+					id: "" + t.id,
+					title: t.title,
+					url: t.url,
+					favicon: t.favIconUrl
+				}
+			})
+		}
+		port.postMessage(data)
 	})
 }
 
@@ -68,6 +54,22 @@ const reportTabs = () => {
 		console.log("sending bookmarks:", msg)
 	})
 }*/
+
+
+port.onMessage.addListener(function(obj) {
+	let tabId = parseInt(obj.tabId)
+	if (tabId && "focus" === obj.cmd) {
+		chrome.tabs.get(tabId).then(t => {
+			chrome.tabs.update(tabId, { active: true })
+			chrome.windows.update(t.windowId, { focused: true })
+		})
+	}
+});
+
+port.onDisconnect.addListener(function() {
+	// TODO Set up alarm
+	console.log('Disconnected');
+});
 
 chrome.tabs.onUpdated.addListener(onTabUpdate)
 chrome.tabs.onRemoved.addListener(onTabRemove)

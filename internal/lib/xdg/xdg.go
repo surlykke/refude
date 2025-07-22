@@ -37,6 +37,8 @@ var MusicDir string
 var PicturesDir string
 var VideosDir string
 
+var NmSocketPath string
+
 func init() {
 	Home = clean(os.Getenv("HOME"))
 	ConfigHome = clean(coalesce(os.Getenv("XDG_CONFIG_HOME"), Home+"/.config"))
@@ -74,6 +76,7 @@ func init() {
 	PicturesDir = clean(coalesce(userDirs["XDG_PICTURES_DIR"], Home+"/Pictures"))
 	VideosDir = clean(coalesce(userDirs["XDG_VIDEOS_DIR"], Home+"/Videos"))
 
+	NmSocketPath = RuntimeDir + "/org.refude.nm-socket"
 }
 
 func RunCmd(argv ...string) error {

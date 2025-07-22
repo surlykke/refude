@@ -43,17 +43,16 @@ func main() {
 	bind.ServeFunc("GET /icon", icons.GetHandler, `query:"name"`, `query:"size,default=32"`)
 	bind.ServeFunc("GET /search", search.GetHandler, `query:"term"`)
 	bind.ServeFunc("GET /flash", notifications.FlashHandler)
-	//  bind.ServeFunc("POST /bookmarksink", browser.BookmarksDoPost, `body:"json"`)
 	bind.ServeFunc("GET /complete", completeHandler, `query:"prefix"`)
 	bind.ServeFunc("GET /desktop/search", desktop.SearchHandler, `query:"term"`)
 	bind.ServeFunc("GET /desktop/details", desktop.DetailsHandler, `query:"path"`)
-	bind.ServeFunc("POST /browser/tabs", browser.TabsDoPost, `query:"browserId,required"`, `body:"json"`)
 
 	http.HandleFunc("GET /watch", watch.ServeHTTP)
 	http.Handle("GET /desktop/", desktop.StaticServer)
 	go icons.Run()
 	go wayland.Run(opts.IgnoreWinAppIds)
 	go applications.Run()
+	go browser.Run()
 	if !opts.NoNotifications {
 		go notifications.Run()
 	}

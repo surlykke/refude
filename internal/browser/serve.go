@@ -3,53 +3,49 @@
 // This file is part of the refude project.
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
-//
 package browser
 
 import (
-	"net/url"
-	"strings"
+	"encoding/binary"
+	"encoding/json"
+	"fmt"
+	"net"
+	"os"
 
-	"github.com/surlykke/refude/internal/applications"
+	"github.com/pkg/errors"
 	"github.com/surlykke/refude/internal/lib/entity"
 	"github.com/surlykke/refude/internal/lib/icon"
+	"github.com/surlykke/refude/internal/lib/log"
 	"github.com/surlykke/refude/internal/lib/mediatype"
+	"github.com/surlykke/refude/internal/lib/pubsub"
 	"github.com/surlykke/refude/internal/lib/repo"
-	"github.com/surlykke/refude/internal/lib/response"
+	"github.com/surlykke/refude/internal/lib/utils"
+	"github.com/surlykke/refude/internal/lib/xdg"
 	"github.com/surlykke/refude/internal/watch"
 )
 
 var TabMap = repo.MakeSynkMap[string, *Tab]()
 var BookmarkMap = repo.MakeSynkMap[string, *Bookmark]()
 
-type sinkData struct {
-	Id      string    `json:"id"`
-	Url     string    `json:"url"`
-	Title   string    `json:"title"`
-	Favicon icon.Name `json:"favicon"`
+type browserCommand struct {
+	BrowserId string `json:"browserId"`
+	Cmd       string `json:"cmd"` // "focus" or "close"
+	TabId     string `json:"tabId"`
 }
 
-func TabsDoPost(browserId string, dataList []sinkData) response.Response {
-	if browserTitle, _, ok := applications.GetTitleAndIcon(browserId); ok {
-		var mapOfTabs = make(map[string]*Tab, len(dataList))
-		for _, d := range dataList {
-			if len(d.Title) > 60 { // Shorten title a bit
-				d.Title = d.Title[0:60] + "..."
-			}
-			var tab = &Tab{Base: *entity.MakeBase(d.Title, browserTitle+" tab", d.Favicon, mediatype.Tab), Id: d.Id, BrowserId: browserId, Url: d.Url}
-			tab.AddAction("", browserTitle+" tab", "")
-			mapOfTabs[d.Id] = tab
-		}
+var browserCommands = pubsub.MakePublisher[browserCommand]()
 
-		TabMap.Replace(mapOfTabs, func(t *Tab) bool { return t.BrowserId == browserId })
-		watch.Publish("search", "")
-		return response.Accepted()
-	} else {
-		return response.NotFound()
+type postData struct {
+	Type string `json:"type"` // "tabs" or "bookmarks"
+	List []struct {
+		Id      string    `json:"id"`
+		Url     string    `json:"url"`
+		Title   string    `json:"title"`
+		Favicon icon.Name `json:"favicon"`
 	}
 }
 
-func BookmarksDoPost(dataList []sinkData) response.Response {
+/*func BookmarksDoPost(dataList []sinkData) response.Response {
 	var mapOfBookmarks = make(map[string]*Bookmark, len(dataList))
 	for _, data := range dataList {
 		if data.Url == "" {
@@ -63,54 +59,93 @@ func BookmarksDoPost(dataList []sinkData) response.Response {
 	}
 	BookmarkMap.ReplaceAll(mapOfBookmarks)
 	return response.Accepted()
-}
+}*/
 
-/*
-*
-
-		Try to figure which browser from the useragent.
-	    Alas google-chrome and chromium have identical useragents, so if both chrome and chromium are installed,
-	    all tabs will appear as chrome tabs, and activating a tab will open/focus it in chrome.
-
-		Examples
-		Chrome: 	Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36
-		Chromium:	Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36
-		Brave: 		Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36
-		Firefox: 	Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:140.0) Gecko/20100101 Firefox/140.0
-		Edge: 		Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36 Edg/129.0.0.0
-
-		Rules (taken from MDN)
-
-		Browser name	Must contain			Must not contain
-		----------------------------------------------------------------
-		Firefox			Firefox/xyz				Seamonkey/xyz
-		Seamonkey		Seamonkey/xyz
-		Chrome			Chrome/xyz				Chromium/xyz or Edg./xyz // NOTE No longer correct
-		Chromium		Chromium/xyz                                     //  -----  "  -----------
-		Safari			Safari/xyz *			Chrome/xyz or Chromium/xyz
-		Opera 15+		(Blink-based engine)	OPR/xyz
-		Opera 12-		(Presto-based engine)	Opera/xyz
-*/
-func GuessBrowser(userAgent string) (appId, name string) {
-	if strings.Contains(userAgent, "Firefox/") {
-		return firefoxId, firefoxName
-	} else if strings.Contains(userAgent, "Chrome/") {
-		if strings.Contains(userAgent, "Edg/") {
-			return edgeId, edgeName
-		} else {
-			return chromeId, chromeName
-		}
+func Run() {
+	fmt.Println("Listening on", xdg.NmSocketPath)
+	os.Remove(xdg.NmSocketPath)
+	if listener, err := net.Listen("unix", xdg.NmSocketPath); err != nil {
+		log.Warn(err)
+		return
 	} else {
-		return "", ""
+		for {
+			if conn, err := listener.Accept(); err != nil {
+				log.Warn(err)
+			} else {
+				go receiver(conn)
+			}
+		}
 	}
 }
 
-var chromeId, chromeName = "google-chrome", "Google Chrome" // TODO
-var firefoxId, firefoxName = "firefox_firefox", "Firefox"
-var edgeId, edgeName = "microsoft-edge", "Microsoft Edge"
+func receiver(conn net.Conn) {
+	defer conn.Close()
+	fmt.Println("Receive starting")
+	if data, err := readMsg(conn); err != nil {
+		return
+	} else {
+		var browserId = string(data)
+		fmt.Println("Connected with", browserId)
+		go sender(browserId, conn)
 
-/**
- */
+		for {
+			var brd postData
+			if data, err := readMsg(conn); err != nil {
+				log.Warn(err)
+				return
+			} else if err := json.Unmarshal(data, &brd); err != nil {
+				log.Warn("Invalid json:\n", string(data))
+			} else {
+				if brd.Type == "tabs" {
+					fmt.Println("Got tabs")
+					var mapOfTabs = make(map[string]*Tab, len(brd.List))
+					for _, d := range brd.List {
+						if len(d.Title) > 60 { // Shorten title a bit
+							d.Title = d.Title[0:60] + "..."
+						}
+						var tab = &Tab{Base: *entity.MakeBase(d.Title, browserId+" tab", d.Favicon, mediatype.Tab), Id: d.Id, BrowserId: browserId, Url: d.Url}
+						tab.AddAction("", browserId+" tab", "")
+						mapOfTabs[d.Id] = tab
+					}
+					fmt.Println("Replacing:", mapOfTabs)
+					TabMap.Replace(mapOfTabs, func(t *Tab) bool { return t.BrowserId == browserId })
+					watch.Publish("search", "")
+				}
+			}
+		}
+	}
+}
 
-/**
- */
+func readMsg(conn net.Conn) ([]byte, error) {
+	var sizeBuf = make([]byte, 4)
+	var dataBuf = make([]byte, 65536)
+	var size uint32
+	if n, err := conn.Read(sizeBuf); err != nil || n < 4 {
+		return nil, errors.Wrap(err, fmt.Sprintf("read: %d", n))
+	} else if _, err = binary.Decode(sizeBuf, binary.NativeEndian, &size); err != nil {
+		return nil, err
+	} else {
+		var read uint32 = 0
+		for read < size {
+			if n, err := conn.Read(dataBuf[read:]); err != nil {
+				return nil, err
+			} else {
+				read = read + uint32(n)
+			}
+		}
+		return dataBuf[0:size], nil
+	}
+}
+
+func sender(browserId string, conn net.Conn) {
+	var subscription = browserCommands.Subscribe()
+	for {
+		var cmd = subscription.Next()
+		if cmd.BrowserId == browserId {
+			b, _ := json.Marshal(cmd)
+			if _, err := conn.Write(utils.PrependWithLength(b)); err != nil {
+				return
+			}
+		}
+	}
+}

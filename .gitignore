@@ -1,5 +1,6 @@
-server/server
-refuc/refuc
+refude-server
+refude-nm
+refuc
 TODO
 compile_commands.json
 browserId.js
