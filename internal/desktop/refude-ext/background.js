@@ -7,7 +7,7 @@
 var port = chrome.runtime.connectNative('org.refude.native_messaging');
 
 const onTabUpdate = (_tabId, changeInfo, _tab) => {
-	if ("complete" === changeInfo.staus) {
+	if ("complete" === changeInfo.status) {
 		reportTabs()
 	}
 }
