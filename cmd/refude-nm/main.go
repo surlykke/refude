@@ -3,7 +3,6 @@
 // This file is part of the refude project.
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
-//
 package main
 
 import (
@@ -12,6 +11,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"sync/atomic"
 	"time"
 
 	"github.com/shirou/gopsutil/v4/process"
@@ -20,7 +20,8 @@ import (
 	"github.com/surlykke/refude/internal/lib/xdg"
 )
 
-var socketPath = xdg.RuntimeDir + "/org.refude.nm-socket"
+var refudeConnection atomic.Value
+var callerMessage []byte
 
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "-test" {
@@ -28,40 +29,43 @@ func main() {
 		os.Exit(0)
 	}
 
+	if parentProcess, err := process.NewProcess(int32(os.Getppid())); err != nil {
+		panic("Could not determine parent")
+	} else if parentPath, err := parentProcess.Exe(); err != nil {
+		panic("Could not get path of parent")
+	} else {
+		callerMessage = utils.PrependWithLength([]byte(parentPath))
+	}
+
+	go relayRefudeToStdout()
+	relayStdinToRefude()
+}
+
+func relayRefudeToStdout() {
 	for {
-		toStdErr("connecting...")
-		if conn, err := net.Dial("unix", socketPath); err != nil {
+		if conn, err := net.Dial("unix", xdg.NmSocketPath); err != nil {
 			time.Sleep(10 * time.Second)
 		} else {
-			toStdErr("connected...")
-			sendCaller(conn)
-			go relay(conn, os.Stdin)
-			relay(os.Stdout, conn)
+			refudeConnection.Store(conn)
+			if _, err := conn.Write(callerMessage); err == nil {
+				io.Copy(os.Stdout, conn)
+			}
+			refudeConnection.Store(io.Discard)
 			conn.Close()
 		}
 	}
 }
 
-func relay(dst io.Writer, src io.Reader) {
+func relayStdinToRefude() error {
 	var buf = make([]byte, 65536)
 	for {
-		if n, err := src.Read(buf); err != nil {
-			return
-		} else if _, err := dst.Write(buf[0:n]); err != nil {
-			return
-		}
-	}
-}
-
-func sendCaller(conn net.Conn) {
-	if parentProcess, err := process.NewProcess(int32(os.Getppid())); err != nil {
-		log.Panic("Could not determine parent")
-	} else if exe, err := parentProcess.Exe(); err != nil {
-		log.Panic("Could not get exe path of parent")
-	} else {
-		var bufToSend = utils.PrependWithLength([]byte(exe))
-		if _, err := conn.Write(bufToSend); err != nil {
-			log.Panic("prepend error", err)
+		if n, err := os.Stdin.Read(buf); err == io.EOF {
+			os.Exit(0) // Browser has exited
+		} else if err != nil {
+			log.Warn(err)
+			os.Exit(1) // Shouldn't happen
+		} else {
+			refudeConnection.Load().(io.Writer).Write(buf[0:n])
 		}
 	}
 }
@@ -85,6 +89,7 @@ func runTest() {
 	var buf = make([]byte, 65536)
 	for {
 		n, _ := os.Stdin.Read(buf)
+		log.Info("runTest, sending", utils.PrependWithLength(buf[0:n]))
 		var tmp = utils.PrependWithLength(buf[0:n])
 		cmdStdin.Write(tmp)
 	}

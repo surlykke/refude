@@ -21,6 +21,7 @@ import (
 	"github.com/surlykke/refude/internal/lib/mediatype"
 	"github.com/surlykke/refude/internal/lib/pubsub"
 	"github.com/surlykke/refude/internal/lib/repo"
+	"github.com/surlykke/refude/internal/lib/response"
 	"github.com/surlykke/refude/internal/lib/utils"
 	"github.com/surlykke/refude/internal/lib/xdg"
 	"github.com/surlykke/refude/internal/watch"
@@ -32,7 +33,7 @@ var BookmarkMap = repo.MakeSynkMap[string, *Bookmark]()
 // Data sent to the browser
 type browserCommand struct {
 	BrowserId string `json:"browserId"`
-	Cmd       string `json:"cmd"` // "focus" or "close"
+	Cmd       string `json:"cmd"` // "report", "focus" or "close"
 	TabId     string `json:"tabId"`
 }
 
@@ -88,8 +89,8 @@ func receive(conn net.Conn) {
 	} else {
 		var browserId = string(data)
 		defer clean(browserId)
-
 		var browserName = browserNameFromId(browserId)
+		log.Info("Connected to", browserName)
 		go send(browserId, conn)
 
 		for {
@@ -98,7 +99,7 @@ func receive(conn net.Conn) {
 				log.Info("Disconnected from", browserName)
 				return
 			} else if err != nil {
-				log.Warn(err, "- disconnecting")
+				log.Warn(err, "- disconnecting from", browserName)
 				return
 			} else if err := json.Unmarshal(data, &brd); err != nil {
 				log.Warn("Invalid json:\n", string(data))
@@ -124,6 +125,7 @@ func readMsg(conn net.Conn) ([]byte, error) {
 	var dataBuf = make([]byte, 65536)
 	var size uint32
 	if n, err := conn.Read(sizeBuf); err != nil {
+		log.Warn("readMsg, err:", err)
 		return nil, err
 	} else if n < 4 {
 		return nil, errors.New(fmt.Sprintf("Expected at least 4 bytes, got: %d", n))
@@ -153,17 +155,30 @@ func browserNameFromId(id string) string {
 
 }
 
+var reportCommand = response.ToJson(browserCommand{Cmd: "report"})
+
 func send(browserId string, conn net.Conn) {
 	var subscription = browserCommands.Subscribe()
+	if err := writeMsg(conn, reportCommand); err != nil {
+		log.Warn(err)
+		return
+	}
 	for {
 		var cmd = subscription.Next()
 		if cmd.BrowserId == browserId {
-			b, _ := json.Marshal(cmd)
-			if _, err := conn.Write(utils.PrependWithLength(b)); err != nil {
+			if err := writeMsg(conn, response.ToJson(cmd)); err != nil {
 				return
 			}
 		}
 	}
+}
+
+func writeMsg(conn net.Conn, msg []byte) error {
+	var _, err = conn.Write(utils.PrependWithLength(msg))
+	if err != nil && err != io.ErrClosedPipe {
+		log.Warn(err)
+	}
+	return err
 }
 
 func clean(browserId string) {

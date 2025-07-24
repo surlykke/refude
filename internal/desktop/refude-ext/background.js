@@ -6,16 +6,6 @@
 //
 var port = chrome.runtime.connectNative('org.refude.native_messaging');
 
-const onTabUpdate = (_tabId, changeInfo, _tab) => {
-	if ("complete" === changeInfo.status) {
-		reportTabs()
-	}
-}
-
-const onTabRemove = () => {
-	reportTabs()
-}
-
 const reportTabs = () => {
 	chrome.tabs.query({}, tabs => {
 		let data = {
@@ -57,26 +47,23 @@ const reportTabs = () => {
 
 
 port.onMessage.addListener(function(obj) {
-	let tabId = parseInt(obj.tabId)
-	if (tabId && "focus" === obj.cmd) {
-		chrome.tabs.get(tabId).then(t => {
-			chrome.tabs.update(tabId, { active: true })
-			chrome.windows.update(t.windowId, { focused: true })
-		})
+	if ("report" === obj.cmd) {
+		reportTabs()
+	} else if ("focus" === obj.cmd) {
+		let tabId = parseInt(obj.tabId)
+		if (tabId) {
+			chrome.tabs.get(tabId).then(t => {
+				chrome.tabs.update(tabId, { active: true })
+				chrome.windows.update(t.windowId, { focused: true })
+			})
+		}
 	}
 });
 
-port.onDisconnect.addListener(function() {
-	// TODO Set up alarm
-	console.log('Disconnected');
-});
-
-chrome.tabs.onUpdated.addListener(onTabUpdate)
-chrome.tabs.onRemoved.addListener(onTabRemove)
-reportTabs()
+chrome.tabs.onUpdated.addListener((_tabId, changeInfo, _tab) => "complete" === changeInfo.status && reportTabs())
+chrome.tabs.onRemoved.addListener(reportTabs)
 /*
 chrome.bookmarks.onChanged.addListener(reportBookmarks)
-chrome.bookmarks.onCreated.addListener(reportBookmarks)
 chrome.bookmarks.onRemoved.addListener(reportBookmarks)
 reportBoookmarks()
 */
