@@ -10,22 +10,67 @@ import (
 	"os"
 )
 
-const loglevel uint8 = 0 // 0 warn, 1 error, >= 2 panic
+type logLevel uint8
+
+const (
+	debug logLevel = iota
+	info
+	warn
+	error_
+	fatal
+	panic_
+)
+
+var BaseLevel logLevel = info
+
+func (l logLevel) String() string {
+	switch l {
+	case debug:
+		return "DEBUG"
+	case info:
+		return "INFO"
+	case warn:
+		return "WARN"
+	case error_:
+		return "ERROR"
+	case fatal:
+		return "FATAL"
+	case panic_:
+		return "PANIC"
+	default:
+		return ""
+	}
+}
+
+func Debug(v ...any) {
+	writeMsg(debug, v)
+}
+
+func Info(v ...any) {
+	writeMsg(info, v)
+}
 
 func Warn(v ...any) {
-	if loglevel < 1 {
-		fmt.Fprintln(os.Stderr, v...)
-	}
+	writeMsg(warn, v)
 }
 
 func Error(v ...any) {
-	if loglevel < 2 {
-		fmt.Fprintln(os.Stderr, v...)
-	}
+	writeMsg(error_, v)
+}
+
+func Fatal(v ...any) {
+	writeMsg(fatal, v)
+	os.Exit(1)
 }
 
 func Panic(v ...any) {
-	var s = fmt.Sprintln(v...)
-	fmt.Fprintln(os.Stderr, s)
-	panic(s)
+	writeMsg(panic_, v)
+	panic("")
+}
+
+func writeMsg(level logLevel, v []any) {
+	if level >= BaseLevel {
+		fmt.Fprint(os.Stderr, level, ": ")
+		fmt.Fprintln(os.Stderr, v...)
+	}
 }

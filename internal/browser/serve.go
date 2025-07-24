@@ -9,6 +9,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"strings"
@@ -86,31 +87,34 @@ func receive(conn net.Conn) {
 		return
 	} else {
 		var browserId = string(data)
+		defer clean(browserId)
+
 		var browserName = browserNameFromId(browserId)
 		go send(browserId, conn)
 
 		for {
 			var brd browserData
-			if data, err := readMsg(conn); err != nil {
-				log.Warn(err)
+			if data, err := readMsg(conn); err == io.EOF {
+				log.Info("Disconnected from", browserName)
+				return
+			} else if err != nil {
+				log.Warn(err, "- disconnecting")
 				return
 			} else if err := json.Unmarshal(data, &brd); err != nil {
 				log.Warn("Invalid json:\n", string(data))
-			} else {
-				if brd.Type == "tabs" {
-					var mapOfTabs = make(map[string]*Tab, len(brd.List))
-					for _, d := range brd.List {
-						if len(d.Title) > 60 { // Shorten title a bit
-							d.Title = d.Title[0:60] + "..."
-						}
-						var tab = &Tab{Base: *entity.MakeBase(d.Title, browserName+" tab", d.Favicon, mediatype.Tab), Id: d.Id, BrowserId: browserId, Url: d.Url}
-						tab.AddAction("", browserId+" tab", "")
-						mapOfTabs[d.Id] = tab
+			} else if brd.Type == "tabs" {
+				var mapOfTabs = make(map[string]*Tab, len(brd.List))
+				for _, d := range brd.List {
+					if len(d.Title) > 60 { // Shorten title a bit
+						d.Title = d.Title[0:60] + "..."
 					}
-					TabMap.Replace(mapOfTabs, func(t *Tab) bool { return t.BrowserId == browserId })
-					watch.Publish("search", "")
+					var tab = &Tab{Base: *entity.MakeBase(d.Title, browserName+" tab", d.Favicon, mediatype.Tab), Id: d.Id, BrowserId: browserId, Url: d.Url}
+					tab.AddAction("", browserId+" tab", "")
+					mapOfTabs[d.Id] = tab
 				}
-			}
+				TabMap.Replace(mapOfTabs, func(t *Tab) bool { return t.BrowserId == browserId })
+				watch.Publish("search", "")
+			} // TODO: bookmarks
 		}
 	}
 }
@@ -119,11 +123,12 @@ func readMsg(conn net.Conn) ([]byte, error) {
 	var sizeBuf = make([]byte, 4)
 	var dataBuf = make([]byte, 65536)
 	var size uint32
-	if n, err := conn.Read(sizeBuf); err != nil || n < 4 {
-		return nil, errors.Wrap(err, fmt.Sprintf("read: %d", n))
-	} else if _, err = binary.Decode(sizeBuf, binary.NativeEndian, &size); err != nil {
+	if n, err := conn.Read(sizeBuf); err != nil {
 		return nil, err
+	} else if n < 4 {
+		return nil, errors.New(fmt.Sprintf("Expected at least 4 bytes, got: %d", n))
 	} else {
+		binary.Decode(sizeBuf, binary.NativeEndian, &size) // Only errors if buf too small
 		var read uint32 = 0
 		for read < size {
 			if n, err := conn.Read(dataBuf[read:]); err != nil {
@@ -142,7 +147,7 @@ func browserNameFromId(id string) string {
 	} else if strings.Contains(id, "msedge") {
 		return "Edge"
 	} else {
-		// TODO: brave, chromium, vivaldi, firefox
+		// TODO: brave, chromium, vivaldi, firefox...
 		return id
 	}
 
@@ -159,4 +164,8 @@ func send(browserId string, conn net.Conn) {
 			}
 		}
 	}
+}
+
+func clean(browserId string) {
+	TabMap.Replace(map[string]*Tab{}, func(t *Tab) bool { return t.BrowserId == browserId })
 }
