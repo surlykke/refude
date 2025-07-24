@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/surlykke/refude/internal/lib/entity"
@@ -27,6 +28,7 @@ import (
 var TabMap = repo.MakeSynkMap[string, *Tab]()
 var BookmarkMap = repo.MakeSynkMap[string, *Bookmark]()
 
+// Data sent to the browser
 type browserCommand struct {
 	BrowserId string `json:"browserId"`
 	Cmd       string `json:"cmd"` // "focus" or "close"
@@ -35,7 +37,8 @@ type browserCommand struct {
 
 var browserCommands = pubsub.MakePublisher[browserCommand]()
 
-type postData struct {
+// Data comming from the browser
+type browserData struct {
 	Type string `json:"type"` // "tabs" or "bookmarks"
 	List []struct {
 		Id      string    `json:"id"`
@@ -71,22 +74,23 @@ func Run() {
 			if conn, err := listener.Accept(); err != nil {
 				log.Warn(err)
 			} else {
-				go receiver(conn)
+				go receive(conn)
 			}
 		}
 	}
 }
 
-func receiver(conn net.Conn) {
+func receive(conn net.Conn) {
 	defer conn.Close()
 	if data, err := readMsg(conn); err != nil {
 		return
 	} else {
 		var browserId = string(data)
-		go sender(browserId, conn)
+		var browserName = browserNameFromId(browserId)
+		go send(browserId, conn)
 
 		for {
-			var brd postData
+			var brd browserData
 			if data, err := readMsg(conn); err != nil {
 				log.Warn(err)
 				return
@@ -99,7 +103,7 @@ func receiver(conn net.Conn) {
 						if len(d.Title) > 60 { // Shorten title a bit
 							d.Title = d.Title[0:60] + "..."
 						}
-						var tab = &Tab{Base: *entity.MakeBase(d.Title, browserId+" tab", d.Favicon, mediatype.Tab), Id: d.Id, BrowserId: browserId, Url: d.Url}
+						var tab = &Tab{Base: *entity.MakeBase(d.Title, browserName+" tab", d.Favicon, mediatype.Tab), Id: d.Id, BrowserId: browserId, Url: d.Url}
 						tab.AddAction("", browserId+" tab", "")
 						mapOfTabs[d.Id] = tab
 					}
@@ -132,7 +136,19 @@ func readMsg(conn net.Conn) ([]byte, error) {
 	}
 }
 
-func sender(browserId string, conn net.Conn) {
+func browserNameFromId(id string) string {
+	if strings.Contains(id, "chrome") {
+		return "Chrome"
+	} else if strings.Contains(id, "msedge") {
+		return "Edge"
+	} else {
+		// TODO: brave, chromium, vivaldi, firefox
+		return id
+	}
+
+}
+
+func send(browserId string, conn net.Conn) {
 	var subscription = browserCommands.Subscribe()
 	for {
 		var cmd = subscription.Next()
