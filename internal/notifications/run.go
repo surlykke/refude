@@ -6,8 +6,6 @@
 package notifications
 
 import (
-	"fmt"
-
 	"github.com/surlykke/refude/internal/icons"
 	"github.com/surlykke/refude/internal/lib/repo"
 	"github.com/surlykke/refude/internal/notifygui"
@@ -48,7 +46,6 @@ func getFlash() (map[string]string, bool) {
 }
 
 func sendNotificationsToGui() {
-	fmt.Println("Sending notifications to gui")
 	var notificationsAsStrings = make([][]string, 0, 20)
 	for _, n := range NotificationMap.GetAll() {
 		if n.Deleted || n.SoftExpired() {
@@ -56,6 +53,5 @@ func sendNotificationsToGui() {
 		}
 		notificationsAsStrings = append(notificationsAsStrings, []string{n.Title, n.Body, icons.FindIcon(string(n.iconName), uint32(64))})
 	}
-	fmt.Println("Sending:", notificationsAsStrings)
 	notifygui.SendNotificationsToGui(notificationsAsStrings)
 }

@@ -62,7 +62,6 @@ type postData struct {
 }*/
 
 func Run() {
-	fmt.Println("Listening on", xdg.NmSocketPath)
 	os.Remove(xdg.NmSocketPath)
 	if listener, err := net.Listen("unix", xdg.NmSocketPath); err != nil {
 		log.Warn(err)
@@ -80,12 +79,10 @@ func Run() {
 
 func receiver(conn net.Conn) {
 	defer conn.Close()
-	fmt.Println("Receive starting")
 	if data, err := readMsg(conn); err != nil {
 		return
 	} else {
 		var browserId = string(data)
-		fmt.Println("Connected with", browserId)
 		go sender(browserId, conn)
 
 		for {
@@ -97,7 +94,6 @@ func receiver(conn net.Conn) {
 				log.Warn("Invalid json:\n", string(data))
 			} else {
 				if brd.Type == "tabs" {
-					fmt.Println("Got tabs")
 					var mapOfTabs = make(map[string]*Tab, len(brd.List))
 					for _, d := range brd.List {
 						if len(d.Title) > 60 { // Shorten title a bit
@@ -107,7 +103,6 @@ func receiver(conn net.Conn) {
 						tab.AddAction("", browserId+" tab", "")
 						mapOfTabs[d.Id] = tab
 					}
-					fmt.Println("Replacing:", mapOfTabs)
 					TabMap.Replace(mapOfTabs, func(t *Tab) bool { return t.BrowserId == browserId })
 					watch.Publish("search", "")
 				}

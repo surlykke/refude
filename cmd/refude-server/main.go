@@ -23,8 +23,6 @@ import (
 	"github.com/surlykke/refude/internal/search"
 	"github.com/surlykke/refude/internal/watch"
 	"github.com/surlykke/refude/internal/wayland"
-
-	_ "net/http/pprof"
 )
 
 func main() {

@@ -3,7 +3,6 @@
 // This file is part of the refude project.
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
-//
 package repo
 
 import (
@@ -119,7 +118,6 @@ func (this *SyncMap[K, V]) DoGetSingle(id K) response.Response {
 }
 
 func (this *SyncMap[K, V]) DoGetAll() response.Response {
-	fmt.Println("GetAllHandler")
 	return response.Json(this.GetAll())
 }
 

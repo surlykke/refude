@@ -7,7 +7,6 @@ package notifications
 
 import (
 	"errors"
-	"fmt"
 	"reflect"
 	"strings"
 	"time"
@@ -353,7 +352,6 @@ func helper(src *string, dest *string, allowedPrefixes []string, endMarker strin
 }
 
 func Run() {
-	fmt.Println("notifications.Run")
 	notifygui.StartGui()
 
 	var err error
