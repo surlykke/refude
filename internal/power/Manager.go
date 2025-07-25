@@ -9,10 +9,9 @@ import (
 	"fmt"
 
 	"github.com/godbus/dbus/v5"
-	dbuscall "github.com/surlykke/refude/internal/lib/dbusutils"
 	"github.com/surlykke/refude/internal/lib/entity"
 	"github.com/surlykke/refude/internal/lib/icon"
-	"github.com/surlykke/refude/internal/lib/mediatype"
+	"github.com/surlykke/refude/internal/lib/utils"
 	"github.com/surlykke/refude/internal/notifications"
 )
 
@@ -54,7 +53,7 @@ func retrieveDevice(dbusPath dbus.ObjectPath) (string, *Device) {
 
 	var device = Device{Id: dbusPath2id(dbusPath)}
 	device.DisplayDevice = dbusPath == displayDeviceDbusPath
-	var props = dbuscall.GetAllProps(dbusConn, upowerService, dbusPath, upowerDeviceInterface)
+	var props = utils.GetAllProps(dbusConn, upowerService, dbusPath, upowerDeviceInterface)
 
 	device.NativePath, _ = props["NativePath"].Value().(string)
 	device.Vendor, _ = props["Vendor"].Value().(string)
@@ -92,7 +91,7 @@ func retrieveDevice(dbusPath dbus.ObjectPath) (string, *Device) {
 	var title = deviceTitle(device.Type, device.Model)
 	var iconName, _ = props["IconName"].Value().(string)
 
-	device.Base = *entity.MakeBase(title, "", icon.Name(iconName), mediatype.Device, "battery")
+	device.Base = *entity.MakeBase(title, "", icon.Name(iconName), entity.Device, "battery")
 	return device.Id, &device
 }
 

@@ -3,7 +3,6 @@
 // This file is part of the refude project.
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
-//
 package wayland
 
 import (
@@ -14,13 +13,11 @@ import (
 	"github.com/surlykke/refude/internal/applications"
 	"github.com/surlykke/refude/internal/lib/entity"
 	"github.com/surlykke/refude/internal/lib/icon"
-	"github.com/surlykke/refude/internal/lib/mediatype"
-	"github.com/surlykke/refude/internal/lib/repo"
 	"github.com/surlykke/refude/internal/lib/response"
 	"github.com/surlykke/refude/internal/watch"
 )
 
-var WindowMap = repo.MakeSynkMap[uint64, *WaylandWindow]()
+var WindowMap = entity.MakeMap[uint64, *WaylandWindow]()
 
 var windowUpdates = make(chan windowUpdate)
 var removals = make(chan uint64)
@@ -151,7 +148,7 @@ type WaylandWindow struct {
 
 func makeWindow(wId uint64, title string, iconName icon.Name, appId string, state WindowStateMask) *WaylandWindow {
 	var ww = &WaylandWindow{
-		Base:  *entity.MakeBase(title, appId+" "+"window", iconName, mediatype.Window),
+		Base:  *entity.MakeBase(title, appId+" "+"window", iconName, entity.Window),
 		Wid:   wId,
 		AppId: appId,
 		State: state,

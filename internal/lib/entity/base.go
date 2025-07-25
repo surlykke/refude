@@ -3,14 +3,10 @@
 // This file is part of the refude project.
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
-//
 package entity
 
 import (
 	"github.com/surlykke/refude/internal/lib/icon"
-	"github.com/surlykke/refude/internal/lib/link"
-	"github.com/surlykke/refude/internal/lib/mediatype"
-	"github.com/surlykke/refude/internal/lib/relation"
 	"github.com/surlykke/refude/internal/lib/translate"
 )
 
@@ -20,14 +16,14 @@ type Servable interface {
 }
 
 type Base struct {
-	Path      string              `json:"-"`
-	Title     string              `json:"title"`
-	Subtitle  string              `json:"subtitle,omitempty"`
-	Icon      icon.Name           `json:"icon"`
-	MediaType mediatype.MediaType `json:"mediatype"`
-	Links     []link.Link         `json:"links"`
-	Keywords  []string            `json:"keywords"`
-	Actions   []Action            `json:"actions"`
+	Path      string    `json:"-"`
+	Title     string    `json:"title"`
+	Subtitle  string    `json:"subtitle,omitempty"`
+	Icon      icon.Name `json:"icon"`
+	MediaType MediaType `json:"mediatype"`
+	Links     []Link    `json:"links"`
+	Keywords  []string  `json:"keywords"`
+	Actions   []Action  `json:"actions"`
 }
 
 type Action struct {
@@ -43,7 +39,7 @@ func (a Action) Href(path string) string {
 	return path
 }
 
-func MakeBase(title string, subtitle string, icon icon.Name, mediatype mediatype.MediaType, keywords ...string) *Base {
+func MakeBase(title string, subtitle string, icon icon.Name, mediatype MediaType, keywords ...string) *Base {
 	return &Base{
 		Title:     translate.Text(title),
 		Subtitle:  translate.Text(subtitle),
@@ -64,10 +60,10 @@ func (this *Base) GetBase() *Base {
 // ------------ Don't call after published ------------------
 
 func (this *Base) BuildLinks() {
-	this.Links = make([]link.Link, 1+len(this.Actions), 1+len(this.Actions))
-	this.Links[0] = link.Link{Href: this.Path, Title: this.Title, Icon: this.Icon, Relation: relation.Self}
+	this.Links = make([]Link, 1+len(this.Actions))
+	this.Links[0] = Link{Href: this.Path, Title: this.Title, Icon: this.Icon, Relation: Self}
 	for i, action := range this.Actions {
-		this.Links[i+1] = link.Link{Href: action.Href(this.Path), Title: action.Name, Relation: relation.Action}
+		this.Links[i+1] = Link{Href: action.Href(this.Path), Title: action.Name, Relation: OrgRefudeAction}
 	}
 }
 
@@ -75,10 +71,10 @@ func (this *Base) AddAction(id string, name string, iconUrl icon.Name) {
 	this.Actions = append(this.Actions, Action{Id: id, Name: translate.Text(name)})
 }
 
-func (this *Base) ActionLinks() []link.Link {
-	var actionLinks = make([]link.Link, 0, len(this.Links))
+func (this *Base) ActionLinks() []Link {
+	var actionLinks = make([]Link, 0, len(this.Links))
 	for _, l := range this.Links {
-		if l.Relation == relation.Action || l.Relation == relation.Delete {
+		if l.Relation == OrgRefudeAction || l.Relation == OrgRefudeDelete {
 			actionLinks = append(actionLinks, l)
 		}
 	}
@@ -86,5 +82,5 @@ func (this *Base) ActionLinks() []link.Link {
 }
 
 /*func (this *ResourceData) AddDeleteAction(actionId string, title string, comment string, iconName icon.Name) {
-	this.Links = append(this.Links, Link{Href: href.Of(this.Path).P("action", actionId), Title: title, Comment: comment, Icon: iconName, Relation: relation.Delete})
+	this.Links = append(this.Links, Link{Href: href.Of(this.Path).P("action", actionId), Title: title, Comment: comment, Icon: iconName, Relation: entity.Delete})
 }*/

@@ -16,10 +16,7 @@ import (
 	"github.com/surlykke/refude/internal/applications"
 	"github.com/surlykke/refude/internal/lib/entity"
 	"github.com/surlykke/refude/internal/lib/icon"
-	"github.com/surlykke/refude/internal/lib/link"
 	"github.com/surlykke/refude/internal/lib/log"
-	"github.com/surlykke/refude/internal/lib/mediatype"
-	"github.com/surlykke/refude/internal/lib/relation"
 	"github.com/surlykke/refude/internal/lib/response"
 )
 
@@ -75,11 +72,11 @@ func MimeType(ospath string) string {
 	return s
 }
 
-func MakeLinkFromPath(ospath string, name string) link.Link {
+func MakeLinkFromPath(ospath string, name string) entity.Link {
 	var title = name
 	var mimetype = MimeType(ospath)
 	var icon = icon.Name(strings.ReplaceAll(mimetype, "/", "-"))
-	return link.Link{Href: "/file" + gopath.Clean(ospath), Title: title, Icon: icon, Relation: relation.Related, Type: mediatype.File}
+	return entity.Link{Href: "/file" + gopath.Clean(ospath), Title: title, Icon: icon, Relation: entity.Related, Type: entity.File}
 }
 
 func makeFileFromInfo(osPath string, fileInfo os.FileInfo) *File {
@@ -87,7 +84,7 @@ func makeFileFromInfo(osPath string, fileInfo os.FileInfo) *File {
 	var mimetype, _ = magicmime.TypeByFile(osPath)
 	var icon = icon.Name(strings.ReplaceAll(mimetype, "/", "-"))
 	var f = File{
-		Base:        *entity.MakeBase(fileInfo.Name(), osPath, icon, mediatype.File),
+		Base:        *entity.MakeBase(fileInfo.Name(), osPath, icon, entity.File),
 		Name:        fileInfo.Name(),
 		Type:        fileType,
 		Permissions: fileInfo.Mode().String(),

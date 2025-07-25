@@ -3,7 +3,6 @@
 // This file is part of the refude project.
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
-//
 package applications
 
 import (
@@ -14,8 +13,6 @@ import (
 	"github.com/surlykke/refude/internal/lib/entity"
 	"github.com/surlykke/refude/internal/lib/icon"
 	"github.com/surlykke/refude/internal/lib/log"
-	"github.com/surlykke/refude/internal/lib/mediatype"
-	"github.com/surlykke/refude/internal/lib/slice"
 	"github.com/surlykke/refude/internal/lib/translate"
 )
 
@@ -100,7 +97,7 @@ func collectMimetypes() map[string]*Mimetype {
 			}
 			iconName = icon.Name(tmp.Icon.Name)
 
-			var mimeType = &Mimetype{Base: *entity.MakeBase(comment, expandedAcronym, iconName, mediatype.Mimetype), Id: tmp.Type}
+			var mimeType = &Mimetype{Base: *entity.MakeBase(comment, expandedAcronym, iconName, entity.Mimetype), Id: tmp.Type}
 
 			for _, tmpAcronym := range tmp.Acronym {
 				if translate.LocaleMatch(tmpAcronym.Lang) || (tmpAcronym.Lang == "" && mimeType.Acronym == "") {
@@ -115,15 +112,15 @@ func collectMimetypes() map[string]*Mimetype {
 			}
 
 			for _, aliasStruct := range tmp.Alias {
-				mimeType.Aliases = slice.AppendIfNotThere(mimeType.Aliases, aliasStruct.Type)
+				mimeType.Aliases = appendIfNotThere(mimeType.Aliases, aliasStruct.Type)
 			}
 
 			for _, tmpGlob := range tmp.Glob {
-				mimeType.Globs = slice.AppendIfNotThere(mimeType.Globs, tmpGlob.Pattern)
+				mimeType.Globs = appendIfNotThere(mimeType.Globs, tmpGlob.Pattern)
 			}
 
 			for _, tmpSubClassOf := range tmp.SubClassOf {
-				mimeType.SubClassOf = slice.AppendIfNotThere(mimeType.SubClassOf, tmpSubClassOf.Type)
+				mimeType.SubClassOf = appendIfNotThere(mimeType.SubClassOf, tmpSubClassOf.Type)
 			}
 
 			if tmp.GenericIcon.Name != "" {
@@ -142,7 +139,7 @@ func collectMimetypes() map[string]*Mimetype {
 		for i := range mt.SubClassOf {
 			if ancestor, ok := res[mt.SubClassOf[i]]; ok {
 				for _, id := range ancestor.SubClassOf {
-					mt.SubClassOf = slice.AppendIfNotThere(mt.SubClassOf, id)
+					mt.SubClassOf = appendIfNotThere(mt.SubClassOf, id)
 				}
 			}
 		}

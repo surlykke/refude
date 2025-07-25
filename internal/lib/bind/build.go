@@ -3,7 +3,6 @@
 // This file is part of the refude project.
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
-//
 package bind
 
 import (
@@ -17,15 +16,15 @@ import (
 
 	"github.com/surlykke/refude/internal/lib/entity"
 	"github.com/surlykke/refude/internal/lib/log"
-	"github.com/surlykke/refude/internal/lib/repo"
 	"github.com/surlykke/refude/internal/lib/response"
+	"github.com/surlykke/refude/internal/lib/utils"
 )
 
 func ServeFunc(path string, function any, tags ...string) {
 	http.HandleFunc(path, buildHandler(function, tags...))
 }
 
-func ServeMap[K cmp.Ordered, V entity.Servable](prefix string, m *repo.SyncMap[K, V]) {
+func ServeMap[K cmp.Ordered, V entity.Servable](prefix string, m *entity.EntityMap[K, V]) {
 	m.SetPrefix(prefix)
 	ServeFunc("GET "+prefix+"{id...}", m.DoGetSingle, `path:"id"`)
 	ServeFunc("GET "+prefix+"{$}", m.DoGetAll)
@@ -139,7 +138,7 @@ func readTag(tag reflect.StructTag) parameterBinding {
 		panic("tag should start with 'query', 'path' or 'body'")
 	}
 
-	var elements = strings.Split(bindingDetails, ",")
+	var elements = utils.Split(bindingDetails, ",")
 	if len(elements) == 0 {
 		panic("value for " + pb.bindingType + " empty")
 	}

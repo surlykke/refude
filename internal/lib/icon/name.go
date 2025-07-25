@@ -4,6 +4,7 @@
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
 //
+// Not in icons package to avoid import cycle between icons and entity
 package icon
 
 import (

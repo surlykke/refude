@@ -7,12 +7,12 @@ package notifications
 
 import (
 	"github.com/surlykke/refude/internal/icons"
-	"github.com/surlykke/refude/internal/lib/repo"
+	"github.com/surlykke/refude/internal/lib/entity"
 	"github.com/surlykke/refude/internal/notifygui"
 	"github.com/surlykke/refude/internal/watch"
 )
 
-var NotificationMap = repo.MakeSynkMap[uint32, *Notification]()
+var NotificationMap = entity.MakeMap[uint32, *Notification]()
 
 func removeNotification(id uint32, reason uint32) {
 	if n, ok := NotificationMap.Get(id); ok && !n.Deleted {

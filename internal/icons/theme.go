@@ -7,13 +7,13 @@ package icons
 
 import (
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 
 	"github.com/surlykke/refude/internal/lib/entity"
 	"github.com/surlykke/refude/internal/lib/log"
-	"github.com/surlykke/refude/internal/lib/mediatype"
-	"github.com/surlykke/refude/internal/lib/slice"
+	"github.com/surlykke/refude/internal/lib/utils"
 	"github.com/surlykke/refude/internal/lib/xdg"
 )
 
@@ -83,21 +83,20 @@ func readTheme(indexThemeFilePath string) (*IconTheme, bool) {
 
 	themeGroup := iniFile[0]
 
-	theme := IconTheme{Base: *entity.MakeBase(themeGroup.Entries["Name"], themeGroup.Entries["Comment"], "", mediatype.IconTheme)}
+	theme := IconTheme{Base: *entity.MakeBase(themeGroup.Entries["Name"], themeGroup.Entries["Comment"], "", entity.IconTheme)}
 	theme.Id = themeId
 	theme.Comment = themeGroup.Entries["Comment"]
-	theme.Inherits = slice.Split(themeGroup.Entries["Inherits"], ",")
+	theme.Inherits = utils.Split(themeGroup.Entries["Inherits"], ",")
 	theme.Dirs = make([]IconDir, 0, 50)
 	var addedDirs = make(map[string]bool)
-	directories := slice.Split(themeGroup.Entries["Directories"], ",")
+	directories := utils.Split(themeGroup.Entries["Directories"], ",")
 	if len(directories) == 0 {
 		log.Warn("Ignoring theme ", themeId, " - no directories")
 		return nil, false
 	}
 	for _, iniGroup := range iniFile[1:] {
 
-		if !slice.Contains(directories, iniGroup.Name) {
-			//fmt.Fprintln(os.Stderr, iniGroup.Name, " not found in Directories")
+		if !slices.Contains(directories, iniGroup.Name) {
 			continue
 		}
 

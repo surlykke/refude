@@ -15,7 +15,6 @@ import (
 	"github.com/surlykke/refude/internal/file"
 	"github.com/surlykke/refude/internal/icons"
 	"github.com/surlykke/refude/internal/lib/entity"
-	"github.com/surlykke/refude/internal/lib/mediatype"
 	"github.com/surlykke/refude/internal/lib/response"
 	"github.com/surlykke/refude/internal/notifications"
 	"github.com/surlykke/refude/internal/power"
@@ -64,7 +63,7 @@ func filter(bases []entity.Base, m matcher) []Ranked {
 				rankCalculated = tmp
 			}
 		}
-		if res.MediaType == mediatype.Start || res.MediaType == mediatype.Application {
+		if res.MediaType == entity.Start || res.MediaType == entity.Application {
 			for _, act := range res.Actions {
 				if tmp := m.match(act.Name) + 40; tmp < rankCalculated {
 					rankCalculated = tmp

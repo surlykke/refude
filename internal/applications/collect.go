@@ -6,7 +6,7 @@
 package applications
 
 import (
-	"github.com/surlykke/refude/internal/lib/slice"
+	"slices"
 )
 
 type Collection struct {
@@ -29,7 +29,7 @@ func collect() Collection {
 	for appId, app := range collection.Apps {
 		for _, mimetypeId := range app.Mimetypes {
 			if mimetype, ok := collection.Mimetypes[mimetypeId]; ok {
-				mimetype.Applications = slice.AppendIfNotThere(mimetype.Applications, appId)
+				mimetype.Applications = appendIfNotThere(mimetype.Applications, appId)
 			}
 		}
 	}
@@ -44,7 +44,7 @@ func collect() Collection {
 				if superType, ok := collection.Mimetypes[superId]; ok {
 					getHandlersForSupertypes(superType)
 					for _, app := range superType.Applications {
-						mt.Applications = slice.AppendIfNotThere(mt.Applications, app)
+						mt.Applications = appendIfNotThere(mt.Applications, app)
 					}
 				}
 			}
@@ -58,4 +58,32 @@ func collect() Collection {
 	}
 
 	return collection
+}
+
+func appendIfNotThere(list []string, otherList ...string) []string {
+	for _, other := range otherList {
+		var found = false
+		if slices.Contains(list, other) {
+			found = true
+		}
+		if !found {
+			list = append(list, other)
+		}
+	}
+	return list
+}
+
+func remove(list []string, otherList ...string) []string {
+	var pos = 0
+	for i := 0; i < len(list); i++ {
+		var found = false
+		if slices.Contains(otherList, list[i]) {
+			found = true
+		}
+		if !found {
+			list[pos] = list[i]
+			pos += 1
+		}
+	}
+	return list[0:pos]
 }

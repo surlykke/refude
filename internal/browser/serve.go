@@ -18,17 +18,15 @@ import (
 	"github.com/surlykke/refude/internal/lib/entity"
 	"github.com/surlykke/refude/internal/lib/icon"
 	"github.com/surlykke/refude/internal/lib/log"
-	"github.com/surlykke/refude/internal/lib/mediatype"
 	"github.com/surlykke/refude/internal/lib/pubsub"
-	"github.com/surlykke/refude/internal/lib/repo"
 	"github.com/surlykke/refude/internal/lib/response"
 	"github.com/surlykke/refude/internal/lib/utils"
 	"github.com/surlykke/refude/internal/lib/xdg"
 	"github.com/surlykke/refude/internal/watch"
 )
 
-var TabMap = repo.MakeSynkMap[string, *Tab]()
-var BookmarkMap = repo.MakeSynkMap[string, *Bookmark]()
+var TabMap = entity.MakeMap[string, *Tab]()
+var BookmarkMap = entity.MakeMap[string, *Bookmark]()
 
 // Data sent to the browser
 type browserCommand struct {
@@ -57,7 +55,7 @@ type browserData struct {
 			continue
 		}
 		var iconUrl = icon.Name("https://t0.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&url=" + url.QueryEscape(data.Url))
-		var bookMark = Bookmark{Base: *entity.MakeBase(data.Title, " ", iconUrl, mediatype.Bookmark), Id: data.Id, ExternalUrl: data.Url}
+		var bookMark = Bookmark{Base: *entity.MakeBase(data.Title, " ", iconUrl, entity.Bookmark), Id: data.Id, ExternalUrl: data.Url}
 		bookMark.AddAction("", "Bookmark", "")
 		mapOfBookmarks[data.Id] = &bookMark
 
@@ -109,7 +107,7 @@ func receive(conn net.Conn) {
 					if len(d.Title) > 60 { // Shorten title a bit
 						d.Title = d.Title[0:60] + "..."
 					}
-					var tab = &Tab{Base: *entity.MakeBase(d.Title, browserName+" tab", d.Favicon, mediatype.Tab), Id: d.Id, BrowserId: browserId, Url: d.Url}
+					var tab = &Tab{Base: *entity.MakeBase(d.Title, browserName+" tab", d.Favicon, entity.Tab), Id: d.Id, BrowserId: browserId, Url: d.Url}
 					tab.AddAction("", browserId+" tab", "")
 					mapOfTabs[d.Id] = tab
 				}
@@ -148,6 +146,8 @@ func browserNameFromId(id string) string {
 		return "Chrome"
 	} else if strings.Contains(id, "msedge") {
 		return "Edge"
+	} else if strings.Contains(id, "brave") {
+		return "Brave"
 	} else {
 		// TODO: brave, chromium, vivaldi, firefox...
 		return id

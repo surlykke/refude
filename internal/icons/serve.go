@@ -13,15 +13,15 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/surlykke/refude/internal/lib/entity"
 	"github.com/surlykke/refude/internal/lib/icon"
 	"github.com/surlykke/refude/internal/lib/image"
 	"github.com/surlykke/refude/internal/lib/log"
-	"github.com/surlykke/refude/internal/lib/repo"
 	"github.com/surlykke/refude/internal/lib/response"
 	"github.com/surlykke/refude/internal/lib/xdg"
 )
 
-var ThemeMap = repo.MakeSynkMap[string, *IconTheme]()
+var ThemeMap = entity.MakeMap[string, *IconTheme]()
 
 func Run() {
 	collectThemes()

@@ -10,7 +10,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/surlykke/refude/internal/lib/entity"
-	"github.com/surlykke/refude/internal/lib/mediatype"
 )
 
 const freedesktopOrgXml = "/usr/share/mime/packages/freedesktop.org.xml"
@@ -36,7 +35,7 @@ func MakeMimetype(id string) (*Mimetype, error) {
 		return nil, errors.New("Incomprehensible mimetype: " + id)
 	} else {
 		var mt = Mimetype{
-			Base:        *entity.MakeBase("", "", "", mediatype.Mimetype),
+			Base:        *entity.MakeBase("", "", "", entity.Mimetype),
 			Id:          id,
 			Aliases:     []string{},
 			Globs:       []string{},

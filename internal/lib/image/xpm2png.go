@@ -15,6 +15,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/surlykke/refude/internal/lib/utils"
 )
 
 var stringPattern = regexp.MustCompile("^[^\"]*(\".*\")[^\"]*$")
@@ -33,7 +35,7 @@ func extractString(line string) (string, bool) {
 
 func extractStrings(bytes []byte) []string {
 	var res []string
-	for _, line := range strings.Split(string(bytes), "\n") {
+	for _, line := range utils.Split(string(bytes), "\n") {
 		if s, ok := extractString(line); ok {
 			res = append(res, s)
 		}

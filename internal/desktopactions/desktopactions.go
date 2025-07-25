@@ -13,8 +13,6 @@ import (
 	"github.com/surlykke/refude/internal/lib/entity"
 	"github.com/surlykke/refude/internal/lib/icon"
 	"github.com/surlykke/refude/internal/lib/log"
-	"github.com/surlykke/refude/internal/lib/mediatype"
-	"github.com/surlykke/refude/internal/lib/repo"
 	"github.com/surlykke/refude/internal/lib/response"
 )
 
@@ -26,7 +24,7 @@ var actionMethod = map[string]string{
 	"suspend":  "org.freedesktop.login1.Manager.Suspend",
 }
 
-var PowerActions = repo.MakeSynkMap[string, *StartResource]()
+var PowerActions = entity.MakeMap[string, *StartResource]()
 
 type StartResource struct {
 	entity.Base
@@ -53,7 +51,7 @@ func init() {
 		{"suspend", "Suspend", "system-suspend", "org.freedesktop.login1.Manager.Suspend"}}
 
 	for _, data := range datas {
-		var res = StartResource{Base: *entity.MakeBase(data[1], "", icon.Name(data[2]), mediatype.Start), dbusMethod: data[3]}
+		var res = StartResource{Base: *entity.MakeBase(data[1], "", icon.Name(data[2]), entity.Start), dbusMethod: data[3]}
 		res.AddAction("", "", "")
 		PowerActions.Put(data[0], &res)
 	}

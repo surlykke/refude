@@ -10,17 +10,17 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
+	"github.com/surlykke/refude/internal/lib/entity"
 	"github.com/surlykke/refude/internal/lib/icon"
 	"github.com/surlykke/refude/internal/lib/log"
 	"github.com/surlykke/refude/internal/lib/pubsub"
-	"github.com/surlykke/refude/internal/lib/repo"
 	"github.com/surlykke/refude/internal/lib/xdg"
 )
 
 var AppEvents = pubsub.MakePublisher[struct{}]()
 
-var AppMap = repo.MakeSynkMap[string, *DesktopApplication]()
-var MimeMap = repo.MakeSynkMap[string, *Mimetype]()
+var AppMap = entity.MakeMap[string, *DesktopApplication]()
+var MimeMap = entity.MakeMap[string, *Mimetype]()
 
 func Run() {
 	var desktopFileEvents = make(chan struct{})

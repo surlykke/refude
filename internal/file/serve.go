@@ -10,12 +10,12 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/surlykke/refude/internal/applications"
+	"github.com/surlykke/refude/internal/lib/entity"
 	"github.com/surlykke/refude/internal/lib/log"
-	"github.com/surlykke/refude/internal/lib/repo"
 	"github.com/surlykke/refude/internal/lib/xdg"
 )
 
-var FileMap = repo.MakeSynkMap[string, *File]()
+var FileMap = entity.MakeMap[string, *File]()
 
 func Run() {
 	var watchedDirs []string

@@ -19,7 +19,6 @@ import (
 	"github.com/surlykke/refude/internal/lib/icon"
 	"github.com/surlykke/refude/internal/lib/image"
 	"github.com/surlykke/refude/internal/lib/log"
-	"github.com/surlykke/refude/internal/lib/mediatype"
 	"github.com/surlykke/refude/internal/lib/response"
 	"github.com/surlykke/refude/internal/notifygui"
 	"github.com/surlykke/refude/internal/watch"
@@ -180,7 +179,7 @@ func Notify(
 	var title = sanitize(summary, []string{}, []string{})
 	body = sanitize(body, allowedTags, allowedEscapes)
 	notification := Notification{
-		Base:           *entity.MakeBase(title, app_name+" notification", iconName, mediatype.Notification),
+		Base:           *entity.MakeBase(title, app_name+" notification", iconName, entity.Notification),
 		NotificationId: id,
 		Body:           body,
 		Sender:         app_name,

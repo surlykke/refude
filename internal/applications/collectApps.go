@@ -3,13 +3,13 @@
 // This file is part of the refude project.
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
-//
 package applications
 
 import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -17,8 +17,7 @@ import (
 	"github.com/surlykke/refude/internal/lib/entity"
 	"github.com/surlykke/refude/internal/lib/icon"
 	"github.com/surlykke/refude/internal/lib/log"
-	"github.com/surlykke/refude/internal/lib/mediatype"
-	"github.com/surlykke/refude/internal/lib/slice"
+	"github.com/surlykke/refude/internal/lib/utils"
 	"github.com/surlykke/refude/internal/lib/xdg"
 )
 
@@ -52,17 +51,35 @@ func collectApplications(applicationsDir string, apps map[string]*DesktopApplica
 			return nil
 		}
 
-		var id = strings.Replace(filePath[len(applicationsDir)+1:], "/", "-", -1)
-		app, err := readDesktopFile(filePath, stripDesktopSuffix(id))
+		var id = strings.ReplaceAll(filePath[len(applicationsDir)+1:], "/", "-")
+		app, err := readDesktopFile(filePath, trimAndStripDesktopSuffix(id))
 		if err != nil {
 			log.Warn("Error processing ", filePath, ":\n\t", err)
 			return nil
 		}
 
-		if app.Hidden ||
-			(len(app.OnlyShowIn) > 0 && !slice.ElementsInCommon(xdg.CurrentDesktop, app.OnlyShowIn)) ||
-			(len(app.NotShowIn) > 0 && slice.ElementsInCommon(xdg.CurrentDesktop, app.NotShowIn)) {
+		if app.Hidden {
 			return nil
+		}
+
+		if len(app.OnlyShowIn) > 0 && len(xdg.CurrentDesktop) > 0 {
+			var match = false
+			for _, osi := range app.OnlyShowIn {
+				if slices.Contains(xdg.CurrentDesktop, osi) {
+					match = true
+					break
+				}
+
+			}
+			if !match {
+				return nil
+			}
+		}
+
+		for _, d := range xdg.CurrentDesktop {
+			if slices.Contains(app.NotShowIn, d) {
+				return nil
+			}
 		}
 
 		var executableName = app.Exec
@@ -85,10 +102,10 @@ func readMimeappsList(path string, apps map[string]*DesktopApplication, defaultA
 	if iniFile, err := xdg.ReadIniFile(path); err == nil {
 		if addedAssociations := iniFile.FindGroup("Added Associations"); addedAssociations != nil {
 			for mimetypeId, appIds := range addedAssociations.Entries {
-				for _, appId := range slice.Split(appIds, ";") {
-					appId = stripDesktopSuffix(appId)
+				for _, appId := range utils.Split(appIds, ";") {
+					appId = trimAndStripDesktopSuffix(appId)
 					if app, ok := apps[appId]; ok {
-						app.Mimetypes = slice.AppendIfNotThere(app.Mimetypes, mimetypeId)
+						app.Mimetypes = appendIfNotThere(app.Mimetypes, mimetypeId)
 					}
 				}
 			}
@@ -96,16 +113,16 @@ func readMimeappsList(path string, apps map[string]*DesktopApplication, defaultA
 
 		if removedAssociations := iniFile.FindGroup("Removed Associations"); removedAssociations != nil {
 			for mimetypeId, appIds := range removedAssociations.Entries {
-				for _, appId := range slice.Split(appIds, ";") {
-					appId = stripDesktopSuffix(appId)
+				for _, appId := range utils.Split(appIds, ";") {
+					appId = trimAndStripDesktopSuffix(appId)
 					if app, ok := apps[appId]; ok {
-						app.Mimetypes = slice.Remove(app.Mimetypes, mimetypeId)
+						app.Mimetypes = remove(app.Mimetypes, mimetypeId)
 					}
 				}
 				if defaultAppIds, ok := defaultApps[mimetypeId]; ok {
-					for _, appId := range slice.Split(appIds, ";") {
-						appId = stripDesktopSuffix(appId)
-						defaultAppIds = slice.Remove(defaultAppIds, appId)
+					for _, appId := range utils.Split(appIds, ";") {
+						appId = trimAndStripDesktopSuffix(appId)
+						defaultAppIds = remove(defaultAppIds, appId)
 					}
 					defaultApps[mimetypeId] = defaultAppIds
 				}
@@ -116,13 +133,13 @@ func readMimeappsList(path string, apps map[string]*DesktopApplication, defaultA
 			for mimetypeId, defaultAppIds := range defaultApplications.Entries {
 				var oldDefaultAppIds = defaultApps[mimetypeId]
 				var newDefaultAppIds = make([]string, 0, len(defaultAppIds)+len(oldDefaultAppIds))
-				for _, appId := range slice.Split(defaultAppIds, ";") {
-					appId = stripDesktopSuffix(appId)
-					newDefaultAppIds = slice.AppendIfNotThere(newDefaultAppIds, appId)
+				for _, appId := range utils.Split(defaultAppIds, ";") {
+					appId = trimAndStripDesktopSuffix(appId)
+					newDefaultAppIds = appendIfNotThere(newDefaultAppIds, appId)
 				}
 				for _, appId := range oldDefaultAppIds {
-					appId = stripDesktopSuffix(appId)
-					newDefaultAppIds = slice.AppendIfNotThere(newDefaultAppIds, appId)
+					appId = trimAndStripDesktopSuffix(appId)
+					newDefaultAppIds = appendIfNotThere(newDefaultAppIds, appId)
 				}
 				defaultApps[mimetypeId] = newDefaultAppIds
 			}
@@ -150,9 +167,9 @@ func readDesktopFile(filePath string, id string) (*DesktopApplication, error) {
 			return nil, errors.New("desktop file invalid, no 'Name' given")
 		}
 
-		var keywords = slice.Split(group.Entries["Keywords"], ";")
+		var keywords = utils.Split(group.Entries["Keywords"], ";")
 		var da = DesktopApplication{
-			Base:      *entity.MakeBase(title, group.Entries["Comment"], icon.Name(iconName), mediatype.Application, keywords...),
+			Base:      *entity.MakeBase(title, group.Entries["Comment"], icon.Name(iconName), entity.Application, keywords...),
 			DesktopId: id,
 		}
 
@@ -164,28 +181,28 @@ func readDesktopFile(filePath string, id string) (*DesktopApplication, error) {
 		da.GenericName = group.Entries["GenericName"]
 		da.NoDisplay = group.Entries["NoDisplay"] == "true"
 		da.Hidden = group.Entries["Hidden"] == "true"
-		da.OnlyShowIn = slice.Split(group.Entries["OnlyShowIn"], ";")
-		da.NotShowIn = slice.Split(group.Entries["NotShowIn"], ";")
+		da.OnlyShowIn = utils.Split(group.Entries["OnlyShowIn"], ";")
+		da.NotShowIn = utils.Split(group.Entries["NotShowIn"], ";")
 		da.DbusActivatable = group.Entries["DBusActivatable"] == "true"
 		da.TryExec = group.Entries["TryExec"]
 		da.Exec = group.Entries["Exec"]
 		da.WorkingDir = group.Entries["Path"]
 		da.Terminal = group.Entries["Terminal"] == "true"
-		da.Categories = slice.Split(group.Entries["Categories"], ";")
-		da.Implements = slice.Split(group.Entries["Implements"], ";")
+		da.Categories = utils.Split(group.Entries["Categories"], ";")
+		da.Implements = utils.Split(group.Entries["Implements"], ";")
 		da.StartupNotify = group.Entries["StartupNotify"] == "true"
 		da.StartupWmClass = group.Entries["StartupWMClass"]
 		da.Url = group.Entries["URL"]
-		da.Mimetypes = slice.Split(group.Entries["MimeType"], ";")
+		da.Mimetypes = utils.Split(group.Entries["MimeType"], ";")
 		da.DesktopFile = filePath
 		da.AddAction("", "Open", "")
 		da.DesktopActions = []DesktopAction{}
-		var actionNames = slice.Split(group.Entries["Actions"], ";")
+		var actionNames = utils.Split(group.Entries["Actions"], ";")
 
 		for _, actionGroup := range iniFile[1:] {
 			if !strings.HasPrefix(actionGroup.Name, "Desktop Action ") {
 				log.Warn(da.DesktopId, ", ", "Unknown group type: ", actionGroup.Name, " - ignoring\n")
-			} else if currentAction := actionGroup.Name[15:]; !slice.Contains(actionNames, currentAction) {
+			} else if currentAction := actionGroup.Name[15:]; !slices.Contains(actionNames, currentAction) {
 				log.Warn(da.DesktopId, ", undeclared action: ", currentAction, " - ignoring\n")
 			} else {
 				var name = actionGroup.Entries["Name"]
@@ -210,6 +227,6 @@ func readDesktopFile(filePath string, id string) (*DesktopApplication, error) {
 
 var desktopSuffix = regexp.MustCompile(`\.desktop$`)
 
-func stripDesktopSuffix(fileName string) string {
-	return desktopSuffix.ReplaceAllString(fileName, "")
+func trimAndStripDesktopSuffix(fileName string) string {
+	return strings.TrimSuffix(strings.TrimSpace(fileName), ".desktop")
 }

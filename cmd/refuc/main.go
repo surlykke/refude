@@ -3,21 +3,21 @@
 // This file is part of the RefudeServices project.
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
-//
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/textproto"
 	"os"
 	"regexp"
 	"strings"
+
+	"github.com/surlykke/refude/internal/lib/utils"
 )
 
 const operators = "GET POST PATCH DELETE"
@@ -35,7 +35,7 @@ func (hm *HeaderMap) String() string {
 }
 
 func (hm *HeaderMap) Set(s string) error {
-	var tmp = strings.Split(s, ":")
+	var tmp = utils.Split(s, ":")
 	if len(tmp) != 2 || len(textproto.TrimString(tmp[0])) == 0 || len(textproto.TrimString(tmp[1])) == 0 {
 		return errors.New("Header should be of form <key>:<value>")
 	} else {
@@ -72,10 +72,8 @@ func perform(method string, headerMap map[string]string, path string) (string, m
 		return "", nil, nil, err
 	}
 
-	if headerMap != nil {
-		for key, value := range headerMap {
-			request.Header.Set(key, value)
-		}
+	for key, value := range headerMap {
+		request.Header.Set(key, value)
 	}
 
 	response, err := client.Do(request)
@@ -83,7 +81,7 @@ func perform(method string, headerMap map[string]string, path string) (string, m
 		return "", nil, nil, err
 	}
 
-	body, err := ioutil.ReadAll(response.Body)
+	body, err := io.ReadAll(response.Body)
 	if err != nil {
 		fail(err.Error())
 	}
@@ -107,9 +105,9 @@ func getStringlist(collectionPath string) []string {
 	return collectionPaths
 }
 
-var argReg = regexp.MustCompile("\\s+")
+var argReg = regexp.MustCompile(`\s+`)
 
-func completions(argStr string, filter bool) []string {
+func completions(argStr string, _ bool) []string {
 	var args = argReg.Split(argStr, -1)
 	var argc = len(args)
 	if argc < 2 {
@@ -174,23 +172,12 @@ func main() {
 	}
 
 	fmt.Fprint(os.Stderr, protoAndStatus, "\r\n")
-	var isJson bool
 	for name, values := range headers {
 		for _, val := range values {
 			fmt.Fprint(os.Stderr, name, ":", val, "\r\n")
-			if name == "Content-Type" && (val == "application/json" || strings.HasSuffix(val, "+json")) {
-				isJson = true
-			}
 		}
 	}
 
 	fmt.Fprint(os.Stderr, "\r\n")
-	if isJson {
-		var buf bytes.Buffer
-		if json.Indent(&buf, body, "", "    "); err == nil {
-			body = buf.Bytes()
-		}
-	}
-
 	fmt.Println(string(body))
 }

@@ -8,11 +8,11 @@ package power
 import (
 	"github.com/godbus/dbus/v5"
 
+	"github.com/surlykke/refude/internal/lib/entity"
 	"github.com/surlykke/refude/internal/lib/log"
-	"github.com/surlykke/refude/internal/lib/repo"
 )
 
-var DeviceMap = repo.MakeSynkMap[string, *Device]()
+var DeviceMap = entity.MakeMap[string, *Device]()
 
 func Run() {
 	var signals = subscribe()

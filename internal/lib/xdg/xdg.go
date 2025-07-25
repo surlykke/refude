@@ -9,10 +9,11 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"slices"
 	"strings"
 	"syscall"
 
-	"github.com/surlykke/refude/internal/lib/slice"
+	"github.com/surlykke/refude/internal/lib/utils"
 )
 
 var Home string
@@ -42,11 +43,11 @@ var NmSocketPath string
 func init() {
 	Home = clean(os.Getenv("HOME"))
 	ConfigHome = clean(coalesce(os.Getenv("XDG_CONFIG_HOME"), Home+"/.config"))
-	ConfigDirs = cleanS(slice.Split(coalesce(os.Getenv("XDG_CONFIG_DIRS"), "/etc/xdg"), ":"))
+	ConfigDirs = cleanS(utils.Split(coalesce(os.Getenv("XDG_CONFIG_DIRS"), "/etc/xdg"), ":"))
 	CacheHome = clean(coalesce(os.Getenv("XDG_CACHE_HOME"), Home+"/.cache"))
 	DataHome = clean(coalesce(os.Getenv("XDG_DATA_HOME"), Home+"/.local/share"))
-	DataDirs = cleanS(slice.Split(coalesce(os.Getenv("XDG_DATA_DIRS"), "/usr/local/share:/usr/share"), ":"))
-	DataDirs = slice.Remove(DataDirs, DataHome)
+	DataDirs = cleanS(utils.Split(coalesce(os.Getenv("XDG_DATA_DIRS"), "/usr/local/share:/usr/share"), ":"))
+	DataDirs = slices.DeleteFunc(DataDirs, func(s string) bool { return s == DataHome })
 
 	IconBasedirs = []string{Home + "/.icons", DataHome + "/icons"} // Weirdly icontheme specification does not mention ~/.local/share/icons, which I consider to be an error
 	for _, dataDir := range DataDirs {
@@ -55,7 +56,7 @@ func init() {
 	PixmapDir = "/usr/share/pixmaps"
 
 	RuntimeDir = clean(coalesce(os.Getenv("XDG_RUNTIME_DIR"), "/tmp"))
-	CurrentDesktop = slice.Split(coalesce(os.Getenv("XDG_CURRENT_DESKTOP"), ""), ":")
+	CurrentDesktop = utils.Split(coalesce(os.Getenv("XDG_CURRENT_DESKTOP"), ""), ":")
 	Locale = coalesce(os.Getenv("LANG"), "") // TODO Look at other env variables too
 
 	// Strip away encoding part (ie. '.UTF-8')
