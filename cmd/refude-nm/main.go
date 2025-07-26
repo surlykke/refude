@@ -11,7 +11,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
-	"sync/atomic"
+	"sync"
 	"time"
 
 	"github.com/shirou/gopsutil/v4/process"
@@ -20,7 +20,6 @@ import (
 	"github.com/surlykke/refude/internal/lib/xdg"
 )
 
-var refudeConnection atomic.Value
 var callerMessage []byte
 
 func main() {
@@ -36,7 +35,6 @@ func main() {
 	} else {
 		callerMessage = utils.PrependWithLength([]byte(parentPath))
 	}
-
 	go relayRefudeToStdout()
 	relayStdinToRefude()
 }
@@ -46,11 +44,13 @@ func relayRefudeToStdout() {
 		if conn, err := net.Dial("unix", xdg.NmSocketPath); err != nil {
 			time.Sleep(10 * time.Second)
 		} else {
-			refudeConnection.Store(conn)
+			setRefudeWriter(conn)
 			if _, err := conn.Write(callerMessage); err == nil {
+				log.Info("Connected to refude")
 				io.Copy(os.Stdout, conn)
+				log.Info("Disonnected from refude")
 			}
-			refudeConnection.Store(io.Discard)
+			setRefudeWriter(io.Discard)
 			conn.Close()
 		}
 	}
@@ -65,9 +65,24 @@ func relayStdinToRefude() error {
 			log.Warn(err)
 			os.Exit(1) // Shouldn't happen
 		} else {
-			refudeConnection.Load().(io.Writer).Write(buf[0:n])
+			getRefudeWriter().Write(buf[0:n])
 		}
 	}
+}
+
+var refudeWriter io.Writer = io.Discard
+var refudeWriterLock sync.Mutex
+
+func getRefudeWriter() io.Writer {
+	refudeWriterLock.Lock()
+	defer refudeWriterLock.Unlock()
+	return refudeWriter
+}
+
+func setRefudeWriter(w io.Writer) {
+	refudeWriterLock.Lock()
+	defer refudeWriterLock.Unlock()
+	refudeWriter = w
 }
 
 func toStdErr(v ...any) {
@@ -100,6 +115,6 @@ func testRelayStdout(cmdStdout io.ReadCloser) {
 	for {
 		cmdStdout.Read(buf)
 		data := utils.StripLength(buf)
-		fmt.Println(len(data), ":", string(data))
+		fmt.Println("From test: len(data)", ":", string(data))
 	}
 }
