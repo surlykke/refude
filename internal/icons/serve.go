@@ -7,6 +7,7 @@ package icons
 
 import (
 	"fmt"
+	"log"
 	"math"
 	"net/url"
 	"os"
@@ -16,7 +17,6 @@ import (
 	"github.com/surlykke/refude/internal/lib/entity"
 	"github.com/surlykke/refude/internal/lib/icon"
 	"github.com/surlykke/refude/internal/lib/image"
-	"github.com/surlykke/refude/internal/lib/log"
 	"github.com/surlykke/refude/internal/lib/response"
 	"github.com/surlykke/refude/internal/lib/xdg"
 )
@@ -61,7 +61,7 @@ func getPngFromXpm(filePath string) []byte {
 	if pngBytes, ok = xpmCache[filePath]; !ok {
 		var err error
 		if pngBytes, err = image.Xpmfile2png(filePath); err != nil {
-			log.Warn("Error converting xpm file:", err)
+			log.Print("Error converting xpm file:", err)
 			xpmCache[filePath] = nil
 		}
 	}
@@ -95,14 +95,14 @@ func AddARGBIcon(argbIcon image.ARGBIcon) icon.Name {
 	for _, pixMap := range argbIcon.Images {
 		if pixMap.Width == pixMap.Height { // else ignore
 			if png, err := pixMap.AsPng(); err != nil {
-				log.Warn("Unable to convert image", err)
+				log.Print("Unable to convert image", err)
 			} else {
 				var (
 					size = pixMap.Width
 					path = fmt.Sprintf("%s/%s_%d.png", sessionIconsDir, iconName, size)
 				)
 				if err := os.WriteFile(path, png, 0700); err != nil {
-					log.Warn("Could not write", path, err)
+					log.Print("Could not write", path, err)
 				} else {
 					iconPaths = append(iconPaths, IconPath{Path: path, MinSize: size, MaxSize: size})
 				}
@@ -124,12 +124,12 @@ func AddFileIcon(filePath string) {
 func AddRawImageIcon(imageData image.ImageData) icon.Name {
 	iconName := icon.Name(image.ImageDataHashName(imageData))
 	if png, err := imageData.AsPng(); err != nil {
-		log.Warn("Error converting image", err)
+		log.Print("Error converting image", err)
 		return ""
 	} else {
 		var path = fmt.Sprintf("%s/%s.png", sessionIconsDir, iconName)
 		if err := os.WriteFile(path, png, 0700); err != nil {
-			log.Warn("Could not write", path, err)
+			log.Print("Could not write", path, err)
 			return ""
 		} else {
 			addSessionIconSinglePath(iconName, path)
@@ -142,7 +142,7 @@ func AddPngIcon(png []byte) icon.Name {
 	var iconName = icon.Name(image.HashName(png))
 	var path = fmt.Sprintf("%s/%s.png", sessionIconsDir, iconName)
 	if err := os.WriteFile(path, png, 0700); err != nil {
-		log.Warn("Could not write", path, err)
+		log.Print("Could not write", path, err)
 		return ""
 	} else {
 		addSessionIconSinglePath(iconName, path)

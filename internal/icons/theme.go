@@ -6,13 +6,13 @@
 package icons
 
 import (
+	"log"
 	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
 
 	"github.com/surlykke/refude/internal/lib/entity"
-	"github.com/surlykke/refude/internal/lib/log"
 	"github.com/surlykke/refude/internal/lib/utils"
 	"github.com/surlykke/refude/internal/lib/xdg"
 )
@@ -35,7 +35,7 @@ type IconDir struct {
 func collectThemes() {
 	var mapOfThemes = readThemes(xdg.IconBasedirs)
 	if _, ok := mapOfThemes["hicolor"]; !ok {
-		log.Warn("Found no hicolor theme - unable to serve icons")
+		log.Print("Found no hicolor theme - unable to serve icons")
 		return
 	}
 
@@ -47,11 +47,11 @@ func readThemes(basedirs []string) map[string]*IconTheme {
 
 	for _, basedir := range basedirs {
 		if indexFilePaths, err := filepath.Glob(basedir + "/*/index.theme"); err != nil {
-			log.Warn("Could not look for index.theme files:", err)
+			log.Print("Could not look for index.theme files:", err)
 		} else {
 			for _, indexFilePath := range indexFilePaths {
 				if theme, ok := readTheme(indexFilePath); !ok {
-					log.Warn("Could not read", indexFilePath)
+					log.Print("Could not read", indexFilePath)
 				} else if _, ok := themeMap[theme.Id]; !ok {
 					themeMap[theme.Id] = theme
 				}
@@ -66,13 +66,13 @@ func readTheme(indexThemeFilePath string) (*IconTheme, bool) {
 	var themeId = filepath.Base(filepath.Dir(indexThemeFilePath))
 
 	if themeId == "." || themeId == ".." || themeId == "/" {
-		log.Warn("Could not figure theme id from path:", indexThemeFilePath)
+		log.Print("Could not figure theme id from path:", indexThemeFilePath)
 		return nil, false
 	}
 
 	iniFile, err := xdg.ReadIniFile(indexThemeFilePath)
 	if err != nil {
-		log.Warn("Error reading theme:", err)
+		log.Print("Error reading theme:", err)
 		return nil, false
 	}
 
@@ -91,7 +91,7 @@ func readTheme(indexThemeFilePath string) (*IconTheme, bool) {
 	var addedDirs = make(map[string]bool)
 	directories := utils.Split(themeGroup.Entries["Directories"], ",")
 	if len(directories) == 0 {
-		log.Warn("Ignoring theme ", themeId, " - no directories")
+		log.Print("Ignoring theme ", themeId, " - no directories")
 		return nil, false
 	}
 	for _, iniGroup := range iniFile[1:] {
@@ -101,7 +101,7 @@ func readTheme(indexThemeFilePath string) (*IconTheme, bool) {
 		}
 
 		if addedDirs[iniGroup.Name] {
-			log.Warn(iniGroup.Name, "encountered more than once")
+			log.Print(iniGroup.Name, "encountered more than once")
 			continue
 		}
 

@@ -6,12 +6,12 @@
 package file
 
 import (
+	"log"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/surlykke/refude/internal/applications"
 	"github.com/surlykke/refude/internal/lib/entity"
-	"github.com/surlykke/refude/internal/lib/log"
 	"github.com/surlykke/refude/internal/lib/xdg"
 )
 
@@ -28,7 +28,7 @@ func Run() {
 	for _, dir := range []string{xdg.Home, xdg.DesktopDir, xdg.DownloadDir, xdg.TemplatesDir, xdg.PublicshareDir, xdg.DocumentsDir, xdg.MusicDir, xdg.PicturesDir, xdg.VideosDir} {
 		if xdg.DirOrFileExists(dir) {
 			if err := watcher.Add(dir); err != nil {
-				log.Warn("Not watching", dir, err)
+				log.Print("Not watching", dir, err)
 			} else {
 				watchedDirs = append(watchedDirs, dir)
 			}

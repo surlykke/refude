@@ -6,13 +6,13 @@
 package applications
 
 import (
+	"log"
 	"strings"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/surlykke/refude/internal/lib/entity"
 	"github.com/surlykke/refude/internal/lib/icon"
-	"github.com/surlykke/refude/internal/lib/log"
 	"github.com/surlykke/refude/internal/lib/pubsub"
 	"github.com/surlykke/refude/internal/lib/xdg"
 )
@@ -81,7 +81,7 @@ func watchForDesktopFiles(events chan struct{}) {
 	for _, f := range filesToWatch {
 		if xdg.DirOrFileExists(f) {
 			if err := watcher.Add(f); err != nil {
-				log.Warn("Could not watch:", f, ":", err)
+				log.Print("Could not watch:", f, ":", err)
 			}
 		}
 	}

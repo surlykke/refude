@@ -3,14 +3,12 @@
 // This file is part of the refude project.
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
-//
 package bind
 
 import (
+	"log"
 	"reflect"
 	"strconv"
-
-	"github.com/surlykke/refude/internal/lib/log"
 )
 
 type converter func(paramVal string) (reflect.Value, error)

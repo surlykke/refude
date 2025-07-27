@@ -8,11 +8,11 @@ package xdg
 import (
 	"bufio"
 	"errors"
+	"log"
 	"os"
 	"regexp"
 	"strings"
 
-	"github.com/surlykke/refude/internal/lib/log"
 	"github.com/surlykke/refude/internal/lib/translate"
 )
 
@@ -52,7 +52,7 @@ func ReadIniFile(path string) (IniFile, error) {
 			continue
 		} else if m := headerLine.FindStringSubmatch(scanner.Text()); len(m) > 0 {
 			if currentGroup = iniFile.FindGroup(m[1]); currentGroup != nil {
-				log.Warn("iniFile", path, " has duplicate group entry: ", m[1])
+				log.Print("iniFile", path, " has duplicate group entry: ", m[1])
 			} else {
 				currentGroup = &Group{m[1], make(map[string]string)}
 				iniFile = append(iniFile, currentGroup)
@@ -65,7 +65,7 @@ func ReadIniFile(path string) (IniFile, error) {
 				currentGroup.Entries[m[1]] = m[4]
 			}
 		} else {
-			log.Warn(path, ":", scanner.Text(), " - not recognized")
+			log.Print(path, ":", scanner.Text(), " - not recognized")
 		}
 	}
 
@@ -112,7 +112,7 @@ func readUserDirs(home string, configHome string) (map[string]string, error) {
 				var path = strings.ReplaceAll(m[2], "$HOME", home) // TODO Should we check that path exists, and if not fall back to default?
 				res[envVarName] = path
 			} else {
-				log.Warn("Could not comprehend", scanner.Text())
+				log.Print("Could not comprehend", scanner.Text())
 			}
 		}
 	}

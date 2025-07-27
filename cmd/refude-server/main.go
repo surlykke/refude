@@ -5,6 +5,7 @@
 package main
 
 import (
+	"log"
 	"net/http"
 	"strings"
 
@@ -15,7 +16,6 @@ import (
 	"github.com/surlykke/refude/internal/file"
 	"github.com/surlykke/refude/internal/icons"
 	"github.com/surlykke/refude/internal/lib/bind"
-	"github.com/surlykke/refude/internal/lib/log"
 	"github.com/surlykke/refude/internal/lib/response"
 	"github.com/surlykke/refude/internal/notifications"
 	"github.com/surlykke/refude/internal/options"
@@ -58,7 +58,7 @@ func main() {
 	go file.Run()
 
 	if err := http.ListenAndServe(":7938", nil); err != nil {
-		log.Warn("http.ListenAndServe failed:", err)
+		log.Print("http.ListenAndServe failed:", err)
 	}
 
 }

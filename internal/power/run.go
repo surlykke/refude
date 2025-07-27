@@ -6,10 +6,11 @@
 package power
 
 import (
+	"log"
+
 	"github.com/godbus/dbus/v5"
 
 	"github.com/surlykke/refude/internal/lib/entity"
-	"github.com/surlykke/refude/internal/lib/log"
 )
 
 var DeviceMap = entity.MakeMap[string, *Device]()
@@ -41,7 +42,7 @@ func Run() {
 				DeviceMap.Remove(dbusPath2id(dbusPath))
 			}
 		default:
-			log.Warn("Update on unknown device: ", signal.Path)
+			log.Print("Update on unknown device: ", signal.Path)
 		}
 	}
 }

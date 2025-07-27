@@ -10,10 +10,10 @@ import (
 	"embed"
 	"html/template"
 	"io/fs"
+	"log"
 	"net/http"
 
 	"github.com/surlykke/refude/internal/lib/icon"
-	"github.com/surlykke/refude/internal/lib/log"
 	"github.com/surlykke/refude/internal/lib/response"
 	"github.com/surlykke/refude/internal/search"
 )
@@ -77,7 +77,7 @@ func SearchHandler(term string) response.Response {
 
 	var b bytes.Buffer
 	if err := rowTemplate.Execute(&b, lines); err != nil {
-		log.Error(err)
+		log.Print(err)
 		return response.ServerError(err)
 	} else {
 		return response.Html(b.Bytes())
@@ -94,7 +94,7 @@ func DetailsHandler(resPath string) response.Response {
 	if base, ok := search.SearchByPath(resPath); !ok {
 		return response.NotFound()
 	} else if err := detailsTemplate.Execute(&b, base.ActionLinks()); err != nil {
-		log.Error(err)
+		log.Print(err)
 		return response.ServerError(err)
 	} else {
 		return response.Html(b.Bytes())

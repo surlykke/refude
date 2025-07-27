@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"os"
 	"strings"
@@ -17,7 +18,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/surlykke/refude/internal/lib/entity"
 	"github.com/surlykke/refude/internal/lib/icon"
-	"github.com/surlykke/refude/internal/lib/log"
 	"github.com/surlykke/refude/internal/lib/pubsub"
 	"github.com/surlykke/refude/internal/lib/response"
 	"github.com/surlykke/refude/internal/lib/utils"
@@ -67,12 +67,12 @@ type browserData struct {
 func Run() {
 	os.Remove(xdg.NmSocketPath)
 	if listener, err := net.Listen("unix", xdg.NmSocketPath); err != nil {
-		log.Warn(err)
+		log.Print(err)
 		return
 	} else {
 		for {
 			if conn, err := listener.Accept(); err != nil {
-				log.Warn(err)
+				log.Print(err)
 			} else {
 				go receive(conn)
 			}
@@ -88,19 +88,19 @@ func receive(conn net.Conn) {
 		var browserId = string(data)
 		defer clean(browserId)
 		var browserName = browserNameFromId(browserId)
-		log.Info("Connected to", browserName)
+		log.Print("Connected to", browserName)
 		go send(browserId, conn)
 
 		for {
 			var brd browserData
 			if data, err := readMsg(conn); err == io.EOF {
-				log.Info("Disconnected from", browserName)
+				log.Print("Disconnected from", browserName)
 				return
 			} else if err != nil {
-				log.Warn(err, "- disconnecting from", browserName)
+				log.Print(err, "- disconnecting from", browserName)
 				return
 			} else if err := json.Unmarshal(data, &brd); err != nil {
-				log.Warn("Invalid json:\n", string(data))
+				log.Print("Invalid json:\n", string(data))
 			} else if brd.Type == "tabs" {
 				var mapOfTabs = make(map[string]*Tab, len(brd.List))
 				for _, d := range brd.List {
@@ -123,7 +123,7 @@ func readMsg(conn net.Conn) ([]byte, error) {
 	var dataBuf = make([]byte, 65536)
 	var size uint32
 	if n, err := conn.Read(sizeBuf); err != nil {
-		log.Warn("readMsg, err:", err)
+		log.Print("readMsg, err:", err)
 		return nil, err
 	} else if n < 4 {
 		return nil, errors.New(fmt.Sprintf("Expected at least 4 bytes, got: %d", n))
@@ -160,7 +160,7 @@ var reportCommand = response.ToJson(browserCommand{Cmd: "report"})
 func send(browserId string, conn net.Conn) {
 	var subscription = browserCommands.Subscribe()
 	if err := writeMsg(conn, reportCommand); err != nil {
-		log.Warn(err)
+		log.Print(err)
 		return
 	}
 	for {
@@ -176,7 +176,7 @@ func send(browserId string, conn net.Conn) {
 func writeMsg(conn net.Conn, msg []byte) error {
 	var _, err = conn.Write(utils.PrependWithLength(msg))
 	if err != nil && err != io.ErrClosedPipe {
-		log.Warn(err)
+		log.Print(err)
 	}
 	return err
 }

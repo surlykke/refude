@@ -7,6 +7,7 @@ package notifications
 
 import (
 	"errors"
+	"log"
 	"reflect"
 	"strings"
 	"time"
@@ -18,7 +19,6 @@ import (
 	"github.com/surlykke/refude/internal/lib/entity"
 	"github.com/surlykke/refude/internal/lib/icon"
 	"github.com/surlykke/refude/internal/lib/image"
-	"github.com/surlykke/refude/internal/lib/log"
 	"github.com/surlykke/refude/internal/lib/response"
 	"github.com/surlykke/refude/internal/notifygui"
 	"github.com/surlykke/refude/internal/watch"
@@ -204,7 +204,7 @@ func Notify(
 					notification.Urgency = Critical
 				}
 			} else {
-				log.Warn("urgency hint not of type uint8, rather:", reflect.TypeOf(val.Value()))
+				log.Print("urgency hint not of type uint8, rather:", reflect.TypeOf(val.Value()))
 			}
 		}
 		if acceptableHintTypes[val.Signature().String()] {
@@ -242,7 +242,7 @@ func installRawImageIcon(hints map[string]dbus.Variant, key string) (icon.Name, 
 	if v, ok := hints[key]; !ok {
 		return "", 0, false
 	} else if imageData, err := getRawImage(v); err != nil {
-		log.Warn("Error converting variant to image data:", err)
+		log.Print("Error converting variant to image data:", err)
 		return "", 0, false
 	} else {
 		return icons.AddRawImageIcon(imageData), uint32(imageData.Width), true
@@ -283,14 +283,14 @@ func installFileIcon(hints map[string]dbus.Variant, key string) (icon.Name, bool
 	if v, ok := hints[key]; !ok {
 		return "", false
 	} else if path, ok := v.Value().(string); !ok {
-		log.Warn("Value not a string")
+		log.Print("Value not a string")
 		return "", true
 	} else if looksLikeAPath(path) {
 		if isAnImage(path) {
 			icons.AddFileIcon(path)
 			return icon.Name(path), true
 		} else {
-			log.Warn("Not an image:", path)
+			log.Print("Not an image:", path)
 			return "", false
 		}
 	} else {
@@ -358,7 +358,7 @@ func Run() {
 
 	defer func() {
 		if err := recover(); err != nil {
-			log.Warn(err, "- hence Notifications not running")
+			log.Print(err, "- hence Notifications not running")
 		}
 	}()
 

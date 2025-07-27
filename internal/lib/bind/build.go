@@ -10,12 +10,12 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log"
 	"net/http"
 	"reflect"
 	"strings"
 
 	"github.com/surlykke/refude/internal/lib/entity"
-	"github.com/surlykke/refude/internal/lib/log"
 	"github.com/surlykke/refude/internal/lib/response"
 	"github.com/surlykke/refude/internal/lib/utils"
 )
@@ -106,7 +106,7 @@ func makeServer(handlerFunction reflect.Value, deserializers []deserializer) fun
 		}
 		if len(errs) > 0 {
 			var joinedErrors = errors.Join(errs...)
-			log.Warn("Responding unprocessable entity:", joinedErrors)
+			log.Print("Responding unprocessable entity:", joinedErrors)
 			response.UnprocessableEntity(joinedErrors).Send(w)
 		} else {
 			handlerFunction.Call(values)[0].Interface().(response.Response).Send(w)

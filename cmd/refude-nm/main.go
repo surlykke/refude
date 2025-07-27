@@ -8,6 +8,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"os"
 	"os/exec"
@@ -15,7 +16,6 @@ import (
 	"time"
 
 	"github.com/shirou/gopsutil/v4/process"
-	"github.com/surlykke/refude/internal/lib/log"
 	"github.com/surlykke/refude/internal/lib/utils"
 	"github.com/surlykke/refude/internal/lib/xdg"
 )
@@ -46,9 +46,9 @@ func relayRefudeToStdout() {
 		} else {
 			setRefudeWriter(conn)
 			if _, err := conn.Write(callerMessage); err == nil {
-				log.Info("Connected to refude")
+				log.Print("Connected to refude")
 				io.Copy(os.Stdout, conn)
-				log.Info("Disonnected from refude")
+				log.Print("Disonnected from refude")
 			}
 			setRefudeWriter(io.Discard)
 			conn.Close()
@@ -62,7 +62,7 @@ func relayStdinToRefude() error {
 		if n, err := os.Stdin.Read(buf); err == io.EOF {
 			os.Exit(0) // Browser has exited
 		} else if err != nil {
-			log.Warn(err)
+			log.Print(err)
 			os.Exit(1) // Shouldn't happen
 		} else {
 			getRefudeWriter().Write(buf[0:n])
@@ -104,7 +104,7 @@ func runTest() {
 	var buf = make([]byte, 65536)
 	for {
 		n, _ := os.Stdin.Read(buf)
-		log.Info("runTest, sending", utils.PrependWithLength(buf[0:n]))
+		log.Print("runTest, sending", utils.PrependWithLength(buf[0:n]))
 		var tmp = utils.PrependWithLength(buf[0:n])
 		cmdStdin.Write(tmp)
 	}

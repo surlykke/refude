@@ -7,6 +7,7 @@ package file
 
 import (
 	"io/fs"
+	"log"
 	"os"
 	gopath "path"
 	"path/filepath"
@@ -16,7 +17,6 @@ import (
 	"github.com/surlykke/refude/internal/applications"
 	"github.com/surlykke/refude/internal/lib/entity"
 	"github.com/surlykke/refude/internal/lib/icon"
-	"github.com/surlykke/refude/internal/lib/log"
 	"github.com/surlykke/refude/internal/lib/response"
 )
 
@@ -100,10 +100,10 @@ func makeFileFromInfo(osPath string, fileInfo os.FileInfo) *File {
 
 func readEntries(dir string) []fs.DirEntry {
 	if file, err := os.Open(dir); err != nil {
-		log.Warn("Could not open", dir, err)
+		log.Print("Could not open", dir, err)
 		return nil
 	} else if entries, err := file.ReadDir(-1); err != nil {
-		log.Warn("Could not read", dir, err)
+		log.Print("Could not read", dir, err)
 		return nil
 	} else {
 		return entries

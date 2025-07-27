@@ -6,13 +6,13 @@
 package desktopactions
 
 import (
+	"log"
 	"sync/atomic"
 	"time"
 
 	"github.com/godbus/dbus/v5"
 	"github.com/surlykke/refude/internal/lib/entity"
 	"github.com/surlykke/refude/internal/lib/icon"
-	"github.com/surlykke/refude/internal/lib/log"
 	"github.com/surlykke/refude/internal/lib/response"
 )
 
@@ -35,7 +35,7 @@ func (this *StartResource) DoPost(action string) response.Response {
 	if action != "" {
 		return response.NotFound()
 	} else if conn, err := dbus.SystemBus(); err != nil {
-		log.Warn(err)
+		log.Print(err)
 		return response.ServerError(err)
 	} else {
 		conn.Object("org.freedesktop.login1", "/org/freedesktop/login1").Call(this.dbusMethod, dbus.Flags(0), false)

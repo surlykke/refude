@@ -9,10 +9,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os/exec"
 	"time"
-
-	"github.com/surlykke/refude/internal/lib/log"
 )
 
 func get(cmd string, args ...string) []byte {
@@ -47,7 +46,7 @@ func main() {
 	var bytes = collect()
 	err := json.Unmarshal(bytes, &m)
 	if err != nil {
-		log.Error("unmarshal err:", err)
+		log.Print("unmarshal err:", err)
 	}
 	var end = time.Now()
 	fmt.Println(end.Sub(start))

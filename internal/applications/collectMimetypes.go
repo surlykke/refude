@@ -7,12 +7,12 @@ package applications
 
 import (
 	"encoding/xml"
+	"log"
 	"os"
 	"strings"
 
 	"github.com/surlykke/refude/internal/lib/entity"
 	"github.com/surlykke/refude/internal/lib/icon"
-	"github.com/surlykke/refude/internal/lib/log"
 	"github.com/surlykke/refude/internal/lib/translate"
 )
 
@@ -22,7 +22,7 @@ func collectMimetypes() map[string]*Mimetype {
 	for id, comment := range schemeHandlers {
 		var mimetype, err = MakeMimetype(id)
 		if err != nil {
-			log.Warn("Problem making mimetype", id)
+			log.Print("Problem making mimetype", id)
 		} else {
 			mimetype.Comment = comment
 			res[id] = mimetype
@@ -65,16 +65,16 @@ func collectMimetypes() map[string]*Mimetype {
 
 	xmlInput, err := os.ReadFile(freedesktopOrgXml)
 	if err != nil {
-		log.Warn("Unable to open ", freedesktopOrgXml, ": ", err)
+		log.Print("Unable to open ", freedesktopOrgXml, ": ", err)
 	}
 	parseErr := xml.Unmarshal(xmlInput, &xmlCollector)
 	if parseErr != nil {
-		log.Warn("Error parsing: ", parseErr)
+		log.Print("Error parsing: ", parseErr)
 	}
 
 	for _, tmp := range xmlCollector.MimeTypes {
 		if !mimetypePattern.MatchString(tmp.Type) {
-			log.Warn("Incomprehensible mimetype:", tmp.Type)
+			log.Print("Incomprehensible mimetype:", tmp.Type)
 		} else {
 			var comment = ""
 			var iconName icon.Name = ""

@@ -6,6 +6,7 @@
 package applications
 
 import (
+	"log"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -16,7 +17,6 @@ import (
 	"github.com/surlykke/refude/internal/icons"
 	"github.com/surlykke/refude/internal/lib/entity"
 	"github.com/surlykke/refude/internal/lib/icon"
-	"github.com/surlykke/refude/internal/lib/log"
 	"github.com/surlykke/refude/internal/lib/utils"
 	"github.com/surlykke/refude/internal/lib/xdg"
 )
@@ -54,7 +54,7 @@ func collectApplications(applicationsDir string, apps map[string]*DesktopApplica
 		var id = strings.ReplaceAll(filePath[len(applicationsDir)+1:], "/", "-")
 		app, err := readDesktopFile(filePath, trimAndStripDesktopSuffix(id))
 		if err != nil {
-			log.Warn("Error processing ", filePath, ":\n\t", err)
+			log.Print("Error processing ", filePath, ":\n\t", err)
 			return nil
 		}
 
@@ -201,9 +201,9 @@ func readDesktopFile(filePath string, id string) (*DesktopApplication, error) {
 
 		for _, actionGroup := range iniFile[1:] {
 			if !strings.HasPrefix(actionGroup.Name, "Desktop Action ") {
-				log.Warn(da.DesktopId, ", ", "Unknown group type: ", actionGroup.Name, " - ignoring\n")
+				log.Print(da.DesktopId, ", ", "Unknown group type: ", actionGroup.Name, " - ignoring\n")
 			} else if currentAction := actionGroup.Name[15:]; !slices.Contains(actionNames, currentAction) {
-				log.Warn(da.DesktopId, ", undeclared action: ", currentAction, " - ignoring\n")
+				log.Print(da.DesktopId, ", undeclared action: ", currentAction, " - ignoring\n")
 			} else {
 				var name = actionGroup.Entries["Name"]
 				if name == "" {
