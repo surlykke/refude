@@ -88,13 +88,13 @@ func receive(conn net.Conn) {
 		var browserId = string(data)
 		defer clean(browserId)
 		var browserName = browserNameFromId(browserId)
-		log.Print("Connected to", browserName)
+		log.Print("Connected to ", browserName)
 		go send(browserId, conn)
 
 		for {
 			var brd browserData
 			if data, err := readMsg(conn); err == io.EOF {
-				log.Print("Disconnected from", browserName)
+				log.Print("Disconnected from ", browserName)
 				return
 			} else if err != nil {
 				log.Print(err, "- disconnecting from", browserName)
@@ -123,7 +123,9 @@ func readMsg(conn net.Conn) ([]byte, error) {
 	var dataBuf = make([]byte, 65536)
 	var size uint32
 	if n, err := conn.Read(sizeBuf); err != nil {
-		log.Print("readMsg, err:", err)
+		if err != io.EOF {
+			log.Print("readMsg, err:", err)
+		}
 		return nil, err
 	} else if n < 4 {
 		return nil, errors.New(fmt.Sprintf("Expected at least 4 bytes, got: %d", n))
@@ -148,8 +150,10 @@ func browserNameFromId(id string) string {
 		return "Edge"
 	} else if strings.Contains(id, "brave") {
 		return "Brave"
+	} else if strings.Contains(id, "vivaldi") {
+		return "Vivaldi"
 	} else {
-		// TODO: brave, chromium, vivaldi, firefox...
+		// TODO: chromium, firefox...
 		return id
 	}
 
