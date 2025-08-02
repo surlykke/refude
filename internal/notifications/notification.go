@@ -10,16 +10,15 @@ import (
 	"time"
 
 	"github.com/surlykke/refude/internal/lib/entity"
-	"github.com/surlykke/refude/internal/lib/icon"
 	"github.com/surlykke/refude/internal/lib/response"
 )
 
 type Urgency uint8
 
 const (
-	Low      Urgency = 0
-	Normal           = 1
-	Critical         = 2
+	Low Urgency = iota
+	Normal
+	Critical
 )
 
 var (
@@ -60,7 +59,7 @@ type Notification struct {
 	Urgency        Urgency
 	NActions       map[string]string `json:"actions"`
 	Hints          map[string]interface{}
-	iconName       icon.Name
+	iconName       string
 	IconSize       uint32 `json:",omitempty"`
 }
 
@@ -78,8 +77,8 @@ func (this *Notification) OmitFromSearch() bool {
 }
 
 func (n *Notification) DoPost(action string) response.Response {
-	if action == "" && len(n.Actions) > 0 {
-		action = n.Actions[0].Id
+	if action == "" && len(n.Meta.Actions) > 0 {
+		action = n.Meta.Actions[0].Id
 	}
 	if _, ok := n.NActions[action]; ok {
 		if err := conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".ActionInvoked", n.NotificationId, action); err != nil {

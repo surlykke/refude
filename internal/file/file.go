@@ -9,14 +9,12 @@ import (
 	"io/fs"
 	"log"
 	"os"
-	gopath "path"
 	"path/filepath"
 	"strings"
 
 	"github.com/rakyll/magicmime"
 	"github.com/surlykke/refude/internal/applications"
 	"github.com/surlykke/refude/internal/lib/entity"
-	"github.com/surlykke/refude/internal/lib/icon"
 	"github.com/surlykke/refude/internal/lib/response"
 )
 
@@ -72,19 +70,12 @@ func MimeType(ospath string) string {
 	return s
 }
 
-func MakeLinkFromPath(ospath string, name string) entity.Link {
-	var title = name
-	var mimetype = MimeType(ospath)
-	var icon = icon.Name(strings.ReplaceAll(mimetype, "/", "-"))
-	return entity.Link{Href: "/file" + gopath.Clean(ospath), Title: title, Icon: icon, Relation: entity.Related, Type: entity.File}
-}
-
 func makeFileFromInfo(osPath string, fileInfo os.FileInfo) *File {
 	var fileType = getFileType(fileInfo.Mode())
 	var mimetype, _ = magicmime.TypeByFile(osPath)
-	var icon = icon.Name(strings.ReplaceAll(mimetype, "/", "-"))
+	var icon = strings.ReplaceAll(mimetype, "/", "-")
 	var f = File{
-		Base:        *entity.MakeBase(fileInfo.Name(), osPath, icon, entity.File),
+		Base:        *entity.MakeBase(fileInfo.Name(), osPath, icon, "File"),
 		Name:        fileInfo.Name(),
 		Type:        fileType,
 		Permissions: fileInfo.Mode().String(),
@@ -111,8 +102,8 @@ func readEntries(dir string) []fs.DirEntry {
 }
 
 func (f *File) DoPost(action string) response.Response {
-	if action == "" && len(f.Actions) > 0 {
-		action = f.Actions[0].Id
+	if action == "" && len(f.Meta.Actions) > 0 {
+		action = f.Meta.Actions[0].Id
 	}
 	if applications.OpenFile(action, f.OsPath) {
 		return response.Accepted()

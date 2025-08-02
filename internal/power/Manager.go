@@ -10,7 +10,6 @@ import (
 
 	"github.com/godbus/dbus/v5"
 	"github.com/surlykke/refude/internal/lib/entity"
-	"github.com/surlykke/refude/internal/lib/icon"
 	"github.com/surlykke/refude/internal/lib/utils"
 	"github.com/surlykke/refude/internal/notifications"
 )
@@ -91,7 +90,7 @@ func retrieveDevice(dbusPath dbus.ObjectPath) (string, *Device) {
 	var title = deviceTitle(device.Type, device.Model)
 	var iconName, _ = props["IconName"].Value().(string)
 
-	device.Base = *entity.MakeBase(title, "", icon.Name(iconName), entity.Device, "battery")
+	device.Base = *entity.MakeBase(title, "", iconName, "Power device", "battery")
 	return device.Id, &device
 }
 

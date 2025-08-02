@@ -9,16 +9,13 @@ import (
 	"fmt"
 	"log"
 	"math"
-	"net/url"
 	"os"
 	"strings"
 	"sync"
 
 	"github.com/surlykke/refude/internal/lib/entity"
-	"github.com/surlykke/refude/internal/lib/icon"
 	"github.com/surlykke/refude/internal/lib/image"
 	"github.com/surlykke/refude/internal/lib/response"
-	"github.com/surlykke/refude/internal/lib/xdg"
 )
 
 var ThemeMap = entity.MakeMap[string, *IconTheme]()
@@ -72,7 +69,7 @@ var xpmCache = make(map[string][]byte)
 var xpmCacheLock sync.Mutex
 
 func FindIcon(iconName string, size uint32) string {
-	var icon = icon.Name(iconName)
+	var icon = iconName
 	if iconPaths, ok := getIconPaths(icon); ok {
 		return bestSizeMatch(iconPaths, size)
 	} else if lastDash := strings.LastIndex(iconName, "-"); lastDash > -1 {
@@ -89,8 +86,8 @@ func FindIcon(iconName string, size uint32) string {
 
 }
 
-func AddARGBIcon(argbIcon image.ARGBIcon) icon.Name {
-	var iconName = icon.Name(image.ARGBIconHashName(argbIcon))
+func AddARGBIcon(argbIcon image.ARGBIcon) string {
+	var iconName = image.ARGBIconHashName(argbIcon)
 	var iconPaths = make([]IconPath, 0, len(argbIcon.Images))
 	for _, pixMap := range argbIcon.Images {
 		if pixMap.Width == pixMap.Height { // else ignore
@@ -118,11 +115,11 @@ func AddARGBIcon(argbIcon image.ARGBIcon) icon.Name {
 }
 
 func AddFileIcon(filePath string) {
-	addSessionIconSinglePath(icon.Name(filePath), filePath)
+	addSessionIconSinglePath(filePath, filePath)
 }
 
-func AddRawImageIcon(imageData image.ImageData) icon.Name {
-	iconName := icon.Name(image.ImageDataHashName(imageData))
+func AddRawImageIcon(imageData image.ImageData) string {
+	iconName := image.ImageDataHashName(imageData)
 	if png, err := imageData.AsPng(); err != nil {
 		log.Print("Error converting image", err)
 		return ""
@@ -138,8 +135,8 @@ func AddRawImageIcon(imageData image.ImageData) icon.Name {
 	return iconName
 }
 
-func AddPngIcon(png []byte) icon.Name {
-	var iconName = icon.Name(image.HashName(png))
+func AddPngIcon(png []byte) string {
+	var iconName = image.HashName(png)
 	var path = fmt.Sprintf("%s/%s.png", sessionIconsDir, iconName)
 	if err := os.WriteFile(path, png, 0700); err != nil {
 		log.Print("Could not write", path, err)
@@ -152,27 +149,6 @@ func AddPngIcon(png []byte) icon.Name {
 
 func AddBasedir(path string) {
 	// FIXME
-}
-
-func UrlFromName(name string) string {
-	if strings.Index(name, "/") > -1 {
-		// So its a path..
-		if strings.HasPrefix(name, "file:///") {
-			name = name[7:]
-		} else if strings.HasPrefix(name, "file://") {
-			name = xdg.Home + "/" + name[7:]
-		} else if !strings.HasPrefix(name, "/") {
-			name = xdg.Home + "/" + name
-		}
-
-		AddFileIcon(name)
-		// Maybe: Check that path points to iconfile..
-	}
-	if name != "" {
-		return "http://localhost:7938/icon?name=" + url.QueryEscape(name)
-	} else {
-		return ""
-	}
 }
 
 func bestSizeMatch(iconPaths []IconPath, size uint32) string {

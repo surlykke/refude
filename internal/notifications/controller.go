@@ -17,7 +17,6 @@ import (
 	"github.com/surlykke/refude/internal/file"
 	"github.com/surlykke/refude/internal/icons"
 	"github.com/surlykke/refude/internal/lib/entity"
-	"github.com/surlykke/refude/internal/lib/icon"
 	"github.com/surlykke/refude/internal/lib/image"
 	"github.com/surlykke/refude/internal/lib/response"
 	"github.com/surlykke/refude/internal/notifygui"
@@ -158,7 +157,7 @@ func Notify(
 
 	// Get image
 
-	var iconName icon.Name
+	var iconName string
 	var ok bool
 
 	var sizeHint uint32
@@ -167,7 +166,7 @@ func Notify(
 			if iconName, ok = installFileIcon(hints, "image-path"); !ok {
 				if iconName, ok = installFileIcon(hints, "image_path"); !ok {
 					if "" != app_icon {
-						iconName = icon.Name(app_icon)
+						iconName = app_icon
 					} else {
 						iconName, sizeHint, _ = installRawImageIcon(hints, "icon_data")
 					}
@@ -179,7 +178,7 @@ func Notify(
 	var title = sanitize(summary, []string{}, []string{})
 	body = sanitize(body, allowedTags, allowedEscapes)
 	notification := Notification{
-		Base:           *entity.MakeBase(title, app_name+" notification", iconName, entity.Notification),
+		Base:           *entity.MakeBase(title, app_name+" notification", iconName, "Notification"),
 		NotificationId: id,
 		Body:           body,
 		Sender:         app_name,
@@ -238,7 +237,7 @@ func Notify(
 	return id, nil
 }
 
-func installRawImageIcon(hints map[string]dbus.Variant, key string) (icon.Name, uint32, bool) {
+func installRawImageIcon(hints map[string]dbus.Variant, key string) (string, uint32, bool) {
 	if v, ok := hints[key]; !ok {
 		return "", 0, false
 	} else if imageData, err := getRawImage(v); err != nil {
@@ -279,7 +278,7 @@ func getRawImage(v dbus.Variant) (image.ImageData, error) {
 	}
 }
 
-func installFileIcon(hints map[string]dbus.Variant, key string) (icon.Name, bool) {
+func installFileIcon(hints map[string]dbus.Variant, key string) (string, bool) {
 	if v, ok := hints[key]; !ok {
 		return "", false
 	} else if path, ok := v.Value().(string); !ok {
@@ -288,13 +287,13 @@ func installFileIcon(hints map[string]dbus.Variant, key string) (icon.Name, bool
 	} else if looksLikeAPath(path) {
 		if isAnImage(path) {
 			icons.AddFileIcon(path)
-			return icon.Name(path), true
+			return path, true
 		} else {
 			log.Print("Not an image:", path)
 			return "", false
 		}
 	} else {
-		return icon.Name(path), true // Take it to be an icon name
+		return path, true // Take it to be an icon name
 	}
 }
 

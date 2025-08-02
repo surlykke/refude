@@ -12,7 +12,6 @@ import (
 	"strings"
 
 	"github.com/surlykke/refude/internal/lib/entity"
-	"github.com/surlykke/refude/internal/lib/icon"
 	"github.com/surlykke/refude/internal/lib/translate"
 )
 
@@ -77,7 +76,7 @@ func collectMimetypes() map[string]*Mimetype {
 			log.Print("Incomprehensible mimetype:", tmp.Type)
 		} else {
 			var comment = ""
-			var iconName icon.Name = ""
+			var iconName string = ""
 
 			for _, tmpComment := range tmp.Comment {
 				if translate.LocaleMatch(tmpComment.Lang) || (tmpComment.Lang == "" && comment == "") {
@@ -95,9 +94,9 @@ func collectMimetypes() map[string]*Mimetype {
 			if tmp.Icon.Name == "" {
 				tmp.Icon.Name = strings.ReplaceAll(tmp.Type, "/", "-")
 			}
-			iconName = icon.Name(tmp.Icon.Name)
+			iconName = tmp.Icon.Name
 
-			var mimeType = &Mimetype{Base: *entity.MakeBase(comment, expandedAcronym, iconName, entity.Mimetype), Id: tmp.Type}
+			var mimeType = &Mimetype{Base: *entity.MakeBase(comment, expandedAcronym, iconName, "Mimetype"), Id: tmp.Type}
 
 			for _, tmpAcronym := range tmp.Acronym {
 				if translate.LocaleMatch(tmpAcronym.Lang) || (tmpAcronym.Lang == "" && mimeType.Acronym == "") {

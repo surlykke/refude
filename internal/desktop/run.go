@@ -13,7 +13,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/surlykke/refude/internal/lib/icon"
+	"github.com/surlykke/refude/internal/lib/entity"
 	"github.com/surlykke/refude/internal/lib/response"
 	"github.com/surlykke/refude/internal/search"
 )
@@ -51,7 +51,7 @@ func init() {
 }
 
 type Resourceline struct {
-	Icon        icon.Name
+	Icon        string
 	Title       string
 	Comment     string
 	Href        string
@@ -66,12 +66,13 @@ func SearchHandler(term string) response.Response {
 
 	for _, r := range search.Search(term) {
 
-		var line = Resourceline{Icon: r.Icon, Title: r.Title, Comment: r.Subtitle}
-		if len(r.Actions) > 0 {
-			line.Href = r.Actions[0].Href(r.Path)
-			line.Path = r.Path
+		var line = Resourceline{Icon: string(r.Icon), Title: r.Title, Comment: r.Subtitle}
+		var links = r.Links(entity.OrgRefudeAction)
+		if len(links) > 0 {
+			line.Href = links[0].Href
+			line.Path = r.Meta.Path
 		}
-		line.MoreActions = len(r.Actions) > 1
+		line.MoreActions = len(links) > 1
 		lines = append(lines, line)
 	}
 
@@ -93,7 +94,7 @@ func DetailsHandler(resPath string) response.Response {
 	var b bytes.Buffer
 	if base, ok := search.SearchByPath(resPath); !ok {
 		return response.NotFound()
-	} else if err := detailsTemplate.Execute(&b, base.ActionLinks()); err != nil {
+	} else if err := detailsTemplate.Execute(&b, base.Links()); err != nil {
 		log.Print(err)
 		return response.ServerError(err)
 	} else {

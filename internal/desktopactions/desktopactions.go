@@ -12,7 +12,6 @@ import (
 
 	"github.com/godbus/dbus/v5"
 	"github.com/surlykke/refude/internal/lib/entity"
-	"github.com/surlykke/refude/internal/lib/icon"
 	"github.com/surlykke/refude/internal/lib/response"
 )
 
@@ -51,7 +50,7 @@ func init() {
 		{"suspend", "Suspend", "system-suspend", "org.freedesktop.login1.Manager.Suspend"}}
 
 	for _, data := range datas {
-		var res = StartResource{Base: *entity.MakeBase(data[1], "", icon.Name(data[2]), entity.Start), dbusMethod: data[3]}
+		var res = StartResource{Base: *entity.MakeBase(data[1], "", data[2], "Power action"), dbusMethod: data[3]}
 		res.AddAction("", "", "")
 		PowerActions.Put(data[0], &res)
 	}

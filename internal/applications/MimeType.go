@@ -35,7 +35,7 @@ func MakeMimetype(id string) (*Mimetype, error) {
 		return nil, errors.New("Incomprehensible mimetype: " + id)
 	} else {
 		var mt = Mimetype{
-			Base:        *entity.MakeBase("", "", "", entity.Mimetype),
+			Base:        *entity.MakeBase("", "", "", "Mimetype"),
 			Id:          id,
 			Aliases:     []string{},
 			Globs:       []string{},

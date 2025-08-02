@@ -12,7 +12,6 @@ import (
 
 	"github.com/surlykke/refude/internal/applications"
 	"github.com/surlykke/refude/internal/lib/entity"
-	"github.com/surlykke/refude/internal/lib/icon"
 	"github.com/surlykke/refude/internal/lib/response"
 	"github.com/surlykke/refude/internal/watch"
 )
@@ -47,7 +46,7 @@ func Run(ignWin map[string]bool) {
 
 			var (
 				title    string
-				iconName icon.Name
+				iconName string
 				appId    string
 				state    WindowStateMask
 			)
@@ -146,9 +145,9 @@ type WaylandWindow struct {
 	State WindowStateMask
 }
 
-func makeWindow(wId uint64, title string, iconName icon.Name, appId string, state WindowStateMask) *WaylandWindow {
+func makeWindow(wId uint64, title string, iconName string, appId string, state WindowStateMask) *WaylandWindow {
 	var ww = &WaylandWindow{
-		Base:  *entity.MakeBase(title, appId+" "+"window", iconName, entity.Window),
+		Base:  *entity.MakeBase(title, appId+" "+"window", iconName, "Window"),
 		Wid:   wId,
 		AppId: appId,
 		State: state,

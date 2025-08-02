@@ -12,7 +12,6 @@ import (
 	"strings"
 
 	"github.com/surlykke/refude/internal/lib/entity"
-	"github.com/surlykke/refude/internal/lib/icon"
 	"github.com/surlykke/refude/internal/lib/response"
 
 	"github.com/surlykke/refude/internal/lib/xdg"
@@ -56,7 +55,7 @@ type DesktopAction struct {
 	id   string
 	Name string
 	Exec string
-	Icon icon.Name
+	Icon string
 }
 
 func (d *DesktopApplication) DoPost(action string) response.Response {

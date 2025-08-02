@@ -47,8 +47,7 @@ func (this *EntityMap[K, V]) Put(k K, v V) {
 }
 
 func (this *EntityMap[K, V]) put(k K, v V) {
-	v.GetBase().Path = fmt.Sprintf("%s%v", this.basepath, k)
-	v.GetBase().BuildLinks()
+	v.GetBase().Meta.Path = fmt.Sprintf("%s%v", this.basepath, k)
 	this.m[k] = v
 }
 
@@ -134,14 +133,13 @@ func (this *EntityMap[K, V]) GetPaths() []string {
 	this.lock.Lock()
 	defer this.lock.Unlock()
 	for _, v := range this.m {
-		paths = append(paths, v.GetBase().Path)
+		paths = append(paths, v.GetBase().Meta.Path)
 	}
 	return paths
 }
 
 func (this *EntityMap[K, V]) setPaths() {
 	for k, v := range this.m {
-		v.GetBase().Path = fmt.Sprintf("%s%v", this.basepath, k)
-		v.GetBase().BuildLinks()
+		v.GetBase().Meta.Path = fmt.Sprintf("%s%v", this.basepath, k)
 	}
 }

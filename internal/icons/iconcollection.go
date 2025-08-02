@@ -15,7 +15,6 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/surlykke/refude/internal/lib/icon"
 	"github.com/surlykke/refude/internal/lib/xdg"
 )
 
@@ -33,11 +32,11 @@ func init() {
 	}
 }
 
-var themedIcons = make(map[icon.Name][]IconPath)
-var sessionIcons = make(map[icon.Name][]IconPath)
+var themedIcons = make(map[string][]IconPath)
+var sessionIcons = make(map[string][]IconPath)
 var iconLock sync.Mutex
 
-func getIconPaths(icon icon.Name) ([]IconPath, bool) {
+func getIconPaths(icon string) ([]IconPath, bool) {
 	iconLock.Lock()
 	defer iconLock.Unlock()
 	if iconPaths, ok := themedIcons[icon]; ok {
@@ -50,7 +49,7 @@ func getIconPaths(icon icon.Name) ([]IconPath, bool) {
 
 }
 
-func addSessionIcon(icon icon.Name, iconPaths []IconPath) {
+func addSessionIcon(icon string, iconPaths []IconPath) {
 	iconLock.Lock()
 	defer iconLock.Unlock()
 	if _, ok := themedIcons[icon]; !ok {
@@ -58,12 +57,12 @@ func addSessionIcon(icon icon.Name, iconPaths []IconPath) {
 	}
 }
 
-func addSessionIconSinglePath(icon icon.Name, path string) {
+func addSessionIconSinglePath(icon string, path string) {
 	addSessionIcon(icon, []IconPath{{Path: path, MinSize: 1, MaxSize: 1}})
 }
 
 func collectIcons() {
-	var collected = make(map[icon.Name][]IconPath, 500)
+	var collected = make(map[string][]IconPath, 500)
 	collectThemeIcons(collected)
 	collectOtherIcons(collected)
 	iconLock.Lock()
@@ -78,7 +77,7 @@ icon scale is ignored (TODO)
 We prefer an icon from theme with not-matching size over icon from parent theme with matching size. This should
 give a gui a more consistent look
 */
-func collectThemeIcons(collected map[icon.Name][]IconPath) {
+func collectThemeIcons(collected map[string][]IconPath) {
 	var searchOrder = determineSearchOrder()
 	for _, themeId := range searchOrder {
 		for name, iconPaths := range collectIconsFromTheme(themeId) {
@@ -89,8 +88,8 @@ func collectThemeIcons(collected map[icon.Name][]IconPath) {
 	}
 }
 
-func collectIconsFromTheme(themeId string) map[icon.Name][]IconPath {
-	var iconsFromTheme = make(map[icon.Name][]IconPath)
+func collectIconsFromTheme(themeId string) map[string][]IconPath {
+	var iconsFromTheme = make(map[string][]IconPath)
 	var theme, _ = ThemeMap.Get(themeId)
 	for _, basedir := range xdg.IconBasedirs {
 		for _, themeDir := range theme.Dirs {
@@ -110,7 +109,7 @@ func collectIconsFromTheme(themeId string) map[icon.Name][]IconPath {
 	return iconsFromTheme
 }
 
-func collectOtherIcons(collected map[icon.Name][]IconPath) {
+func collectOtherIcons(collected map[string][]IconPath) {
 	var dirsToLookAt = make([]string, 0, len(xdg.IconBasedirs)+1)
 	dirsToLookAt = append(dirsToLookAt, xdg.IconBasedirs...)
 	dirsToLookAt = append(dirsToLookAt, xdg.PixmapDir)
@@ -128,13 +127,13 @@ func collectOtherIcons(collected map[icon.Name][]IconPath) {
 	}
 }
 
-func nameAndPath(filePath string) (icon.Name, string, error) {
+func nameAndPath(filePath string) (string, string, error) {
 	var fileName, ext = gopath.Base(filePath), gopath.Ext(filePath)
 	if !(ext == ".png" || ext == ".svg" || ext == ".xpm") {
 		return "", "", errors.New("unknown icon format: " + filePath)
 	}
 	fileName = fileName[:len(fileName)-4]
-	return icon.Name(fileName), filePath, nil
+	return fileName, filePath, nil
 }
 
 func determineSearchOrder() []string {

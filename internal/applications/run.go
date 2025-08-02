@@ -12,7 +12,6 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/surlykke/refude/internal/lib/entity"
-	"github.com/surlykke/refude/internal/lib/icon"
 	"github.com/surlykke/refude/internal/lib/pubsub"
 	"github.com/surlykke/refude/internal/lib/xdg"
 )
@@ -49,7 +48,7 @@ func GetHandlers(mimetype string) []*DesktopApplication {
 	return apps
 }
 
-func GetTitleAndIcon(appId string) (string, icon.Name, bool) {
+func GetTitleAndIcon(appId string) (string, string, bool) {
 	if appId != "" {
 		if da, ok := AppMap.Get(appId); ok {
 			return da.Title, da.Icon, true

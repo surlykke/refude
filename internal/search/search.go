@@ -28,8 +28,8 @@ func GetHandler(term string) response.Response {
 }
 
 type Ranked struct {
-	entity.Base // Basen dether
-	Rank        uint
+	entity.Base
+	Rank uint `json:"-"`
 }
 
 func Search(term string) []Ranked {
@@ -58,16 +58,9 @@ func filter(bases []entity.Base, m matcher) []Ranked {
 	var result = make([]Ranked, 0, len(bases))
 	for _, res := range bases {
 		var rankCalculated = m.match(res.Title)
-		for _, keyword := range res.Keywords {
+		for _, keyword := range res.Meta.Keywords {
 			if tmp := m.match(keyword) + 20; tmp < rankCalculated {
 				rankCalculated = tmp
-			}
-		}
-		if res.MediaType == entity.Start || res.MediaType == entity.Application {
-			for _, act := range res.Actions {
-				if tmp := m.match(act.Name) + 40; tmp < rankCalculated {
-					rankCalculated = tmp
-				}
 			}
 		}
 		if rankCalculated < maxRank {
@@ -115,7 +108,7 @@ func SearchByPath(path string) (entity.Base, bool) {
 	}
 
 	for _, b := range bases {
-		if b.Path == path {
+		if b.Meta.Path == path {
 			return b, true
 		}
 	}

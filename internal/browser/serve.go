@@ -17,7 +17,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/surlykke/refude/internal/lib/entity"
-	"github.com/surlykke/refude/internal/lib/icon"
 	"github.com/surlykke/refude/internal/lib/pubsub"
 	"github.com/surlykke/refude/internal/lib/response"
 	"github.com/surlykke/refude/internal/lib/utils"
@@ -41,10 +40,10 @@ var browserCommands = pubsub.MakePublisher[browserCommand]()
 type browserData struct {
 	Type string `json:"type"` // "tabs" or "bookmarks"
 	List []struct {
-		Id      string    `json:"id"`
-		Url     string    `json:"url"`
-		Title   string    `json:"title"`
-		Favicon icon.Name `json:"favicon"`
+		Id      string `json:"id"`
+		Url     string `json:"url"`
+		Title   string `json:"title"`
+		Favicon string `json:"favicon"`
 	}
 }
 
@@ -107,7 +106,7 @@ func receive(conn net.Conn) {
 					if len(d.Title) > 60 { // Shorten title a bit
 						d.Title = d.Title[0:60] + "..."
 					}
-					var tab = &Tab{Base: *entity.MakeBase(d.Title, browserName+" tab", d.Favicon, entity.Tab), Id: d.Id, BrowserId: browserId, Url: d.Url}
+					var tab = &Tab{Base: *entity.MakeBase(d.Title, browserName+" tab", d.Favicon, "Browser tab"), Id: d.Id, BrowserId: browserId, Url: d.Url}
 					tab.AddAction("", browserId+" tab", "")
 					mapOfTabs[d.Id] = tab
 				}

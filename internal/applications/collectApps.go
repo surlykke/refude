@@ -16,7 +16,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/surlykke/refude/internal/icons"
 	"github.com/surlykke/refude/internal/lib/entity"
-	"github.com/surlykke/refude/internal/lib/icon"
 	"github.com/surlykke/refude/internal/lib/utils"
 	"github.com/surlykke/refude/internal/lib/xdg"
 )
@@ -169,7 +168,7 @@ func readDesktopFile(filePath string, id string) (*DesktopApplication, error) {
 
 		var keywords = utils.Split(group.Entries["Keywords"], ";")
 		var da = DesktopApplication{
-			Base:      *entity.MakeBase(title, group.Entries["Comment"], icon.Name(iconName), entity.Application, keywords...),
+			Base:      *entity.MakeBase(title, group.Entries["Comment"], iconName, "Application", keywords...),
 			DesktopId: id,
 		}
 
@@ -209,7 +208,7 @@ func readDesktopFile(filePath string, id string) (*DesktopApplication, error) {
 				if name == "" {
 					return nil, errors.New("Desktop file invalid, action " + actionGroup.Name + " has no default 'Name'")
 				}
-				var iconUrl = icon.Name(actionGroup.Entries["Icon"])
+				var iconUrl = actionGroup.Entries["Icon"]
 				da.DesktopActions = append(da.DesktopActions, DesktopAction{
 					id:   currentAction,
 					Name: name,
