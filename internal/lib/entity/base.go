@@ -81,7 +81,11 @@ func buildLinks(meta *Meta, rel ...Relation) []Link {
 	}
 	if len(rel) == 0 || slices.Index(rel, OrgRefudeAction) > -1 {
 		for _, action := range meta.Actions {
-			links = append(links, Link{Href: meta.Path, Title: action.Name, Icon: action.Icon, Relation: OrgRefudeAction})
+			var href = meta.Path
+			if action.Id != "" {
+				href = href + "?action=" + action.Id
+			}
+			links = append(links, Link{Href: href, Title: action.Name, Icon: action.Icon, Relation: OrgRefudeAction})
 		}
 	}
 	return links
