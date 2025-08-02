@@ -3,6 +3,8 @@ cd `dirname $0`
 set -x
 set -e 
 
+rm ./refuc ./refude-nm ./refude-server 2>/dev/null || :
+
 export GOBIN=${GOBIN:-${HOME}/.local/bin}
 BASH_COMPLETION_DIR=${XDG_DATA_HOME:-${HOME}/.local/share}/bash/completions
 FISH_COMPLETION_DIR=${XDG_CONFIG_HOME:-${HOME}/.config}/fish/completions
