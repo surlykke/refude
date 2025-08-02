@@ -76,6 +76,10 @@ func perform(method string, headerMap map[string]string, path string) (string, m
 		request.Header.Set(key, value)
 	}
 
+	if _, ok := headerMap["Accepts"]; !ok {
+		request.Header.Set("Accept", "*/*")
+	}
+
 	response, err := client.Do(request)
 	if err != nil {
 		return "", nil, nil, err
