@@ -79,7 +79,7 @@ func Image(contentType string, bytes []byte) Response {
 
 // We don't care about embedding in html, so no escaping
 // (The standard encoder escapes '&', which is annoying when having links in json)
-func ToJson(res interface{}) []byte {
+func ToJson(res any) []byte {
 	var buf = bytes.NewBuffer([]byte{})
 	var encoder = json.NewEncoder(buf)
 	encoder.SetEscapeHTML(false)
@@ -89,7 +89,7 @@ func ToJson(res interface{}) []byte {
 	return buf.Bytes()
 }
 
-func ToPrettyJson(res interface{}) []byte {
+func ToPrettyJson(res any) []byte {
 	if b, err := json.MarshalIndent(res, "", "    "); err != nil {
 		panic(err)
 	} else {

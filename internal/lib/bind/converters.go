@@ -104,39 +104,15 @@ func toUint64(paramVal string) (reflect.Value, error) {
 }
 
 func toFloat32(paramVal string) (reflect.Value, error) {
-	var f64, err = floatHelper(paramVal, 32)
+	var f64, err = strconv.ParseFloat(paramVal, 32)
 	return reflect.ValueOf(float32(f64)), err
 }
 
 func toFloat64(paramVal string) (reflect.Value, error) {
-	var f64, err = floatHelper(paramVal, 64)
+	var f64, err = strconv.ParseFloat(paramVal, 64)
 	return reflect.ValueOf(f64), err
 }
 
 func toString(paramVal string) (reflect.Value, error) {
 	return reflect.ValueOf(paramVal), nil
-}
-
-func intHelper(str string, bitsize int) (int64, error) {
-	if str == "" {
-		return 0, nil
-	} else {
-		return strconv.ParseInt(str, 10, bitsize)
-	}
-}
-
-func uIntHelper(str string, bitsize int) (uint64, error) {
-	if str == "" {
-		return 0, nil
-	} else {
-		return strconv.ParseUint(str, 10, bitsize)
-	}
-}
-
-func floatHelper(str string, bitsize int) (float64, error) {
-	if str == "" {
-		return 0, nil
-	} else {
-		return strconv.ParseFloat(str, bitsize)
-	}
 }

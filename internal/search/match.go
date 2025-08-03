@@ -3,7 +3,6 @@
 // This file is part of the refude project.
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
-//
 package search
 
 import (
@@ -58,8 +57,8 @@ type matcher struct {
 func makeMatcher(term string) matcher {
 	var m = matcher{term: []rune(strings.ToLower(term))}
 	if len(term) > 1 {
-		m.curstate = make([]int, len(m.term)-1, len(m.term)-1)
-		m.nextstate = make([]int, len(m.term)-1, len(m.term)-1)
+		m.curstate = make([]int, len(m.term)-1)
+		m.nextstate = make([]int, len(m.term)-1)
 	}
 	return m
 }
