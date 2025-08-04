@@ -1,10 +1,8 @@
 #!/bin/bash
 cd $(dirname $0)
 
-for path in $(find . \( -name '*.go' -o -name '*.js' -o -name '*.c' -o -name '*.h' \) -not -name NamedColors.go -not -name scheme-handlers.go -not -exec grep -q GPL2 {} \; -print); do
-	tmp=`mktemp`
-
-cat<< EOF > $tmp
+HEADER=$(
+cat<<-EOF
 // Copyright (c) Christian Surlykke
 //
 // This file is part of the refude project.
@@ -12,7 +10,22 @@ cat<< EOF > $tmp
 // Please refer to the GPL2 file for a copy of the license.
 //
 EOF
+)
 
-	cat $path >> $tmp
-	mv $tmp $path
+
+for path in $(find . \( -name '*.go' -o -name '*.js' -o -name '*.c' -o -name '*.h' \) \
+		-not -name NamedColors.go \
+		-not -name scheme-handlers.go \
+		-not -name wlr-foreign-toplevel-management-unstable-v1-client-protocol.h \
+		-not -name sse.js \
+		-not -name htmx.min.js \
+		-not -exec grep -q GPL2 {} \; -print); do
+	if [[ "--dry-run" == "$1" ]]; then
+		echo $path
+	else 
+		tmp=`mktemp`
+		echo "$HEADER" > $tmp
+		cat $path >> $tmp
+		mv $tmp $path
+	fi
 done
