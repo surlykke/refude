@@ -13,9 +13,9 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/surlykke/refude/internal/lib/bind"
 	"github.com/surlykke/refude/internal/lib/entity"
 	"github.com/surlykke/refude/internal/lib/image"
-	"github.com/surlykke/refude/internal/lib/response"
 )
 
 var ThemeMap = entity.MakeMap[string, *IconTheme]()
@@ -25,10 +25,10 @@ func Run() {
 	collectIcons()
 }
 
-func GetHandler(name string, size uint32) response.Response {
+func GetHandler(name string, size uint32) bind.Response {
 	var iconFilePath = FindIcon(name, size)
 	if iconFilePath == "" {
-		return response.NotFound()
+		return bind.NotFound()
 	}
 
 	var (
@@ -38,16 +38,16 @@ func GetHandler(name string, size uint32) response.Response {
 	)
 	if strings.HasSuffix(iconFilePath, ".xpm") {
 		if bytes = getPngFromXpm(iconFilePath); bytes == nil {
-			return response.NotFound()
+			return bind.NotFound()
 		}
 	} else if bytes, err = os.ReadFile(iconFilePath); err != nil {
-		return response.NotFound()
+		return bind.NotFound()
 	}
 
 	if strings.HasSuffix(iconFilePath, ".svg") {
 		contentType = "image/svg+xml"
 	}
-	return response.Image(contentType, bytes)
+	return bind.Image(contentType, bytes)
 }
 
 func getPngFromXpm(filePath string) []byte {

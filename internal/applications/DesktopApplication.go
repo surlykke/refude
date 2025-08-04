@@ -11,9 +11,8 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/surlykke/refude/internal/lib/bind"
 	"github.com/surlykke/refude/internal/lib/entity"
-	"github.com/surlykke/refude/internal/lib/response"
-
 	"github.com/surlykke/refude/internal/lib/xdg"
 )
 
@@ -58,7 +57,7 @@ type DesktopAction struct {
 	Icon string
 }
 
-func (d *DesktopApplication) DoPost(action string) response.Response {
+func (d *DesktopApplication) DoPost(action string) bind.Response {
 	if action == "" {
 		return postHelper(d.Exec, d.Terminal)
 	} else {
@@ -68,14 +67,14 @@ func (d *DesktopApplication) DoPost(action string) response.Response {
 			}
 		}
 	}
-	return response.NotFound()
+	return bind.NotFound()
 }
 
-func postHelper(exec string, terminal bool) response.Response {
+func postHelper(exec string, terminal bool) bind.Response {
 	if err := run(exec, "", terminal); err != nil {
-		return response.ServerError(err)
+		return bind.ServerError(err)
 	} else {
-		return response.Accepted()
+		return bind.Accepted()
 	}
 }
 

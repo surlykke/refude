@@ -14,8 +14,8 @@ import (
 	"github.com/surlykke/refude/internal/desktopactions"
 	"github.com/surlykke/refude/internal/file"
 	"github.com/surlykke/refude/internal/icons"
+	"github.com/surlykke/refude/internal/lib/bind"
 	"github.com/surlykke/refude/internal/lib/entity"
-	"github.com/surlykke/refude/internal/lib/response"
 	"github.com/surlykke/refude/internal/notifications"
 	"github.com/surlykke/refude/internal/power"
 	"github.com/surlykke/refude/internal/wayland"
@@ -23,8 +23,8 @@ import (
 
 const maxRank uint = 1000000
 
-func GetHandler(term string) response.Response {
-	return response.Json(Search(term))
+func GetHandler(term string) bind.Response {
+	return bind.Json(Search(term))
 }
 
 type Ranked struct {

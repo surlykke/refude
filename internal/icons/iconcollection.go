@@ -155,7 +155,7 @@ func determineSearchOrder() []string {
 }
 
 func determineDefaultThemeId() string {
-	var iconThemeDefPattern = regexp.MustCompile("gtk-icon-theme-name=(\\S+)")
+	var iconThemeDefPattern = regexp.MustCompile(`gtk-icon-theme-name=(\S+)`)
 
 	if defaultThemeId, ok := os.LookupEnv("REFUDE_ICON_THEME"); ok {
 		return defaultThemeId

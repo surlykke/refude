@@ -16,9 +16,9 @@ import (
 	"github.com/godbus/dbus/v5/introspect"
 	"github.com/surlykke/refude/internal/file"
 	"github.com/surlykke/refude/internal/icons"
+	"github.com/surlykke/refude/internal/lib/bind"
 	"github.com/surlykke/refude/internal/lib/entity"
 	"github.com/surlykke/refude/internal/lib/image"
-	"github.com/surlykke/refude/internal/lib/response"
 	"github.com/surlykke/refude/internal/notifygui"
 	"github.com/surlykke/refude/internal/watch"
 )
@@ -112,13 +112,13 @@ var acceptableHintTypes = map[string]bool{
 }
 
 const (
-	Expired   uint32 = 1
-	Dismissed        = 2
-	Closed           = 3
+	Expired uint32 = 1
+	Dismissed
+	Closed
 )
 
 var conn *dbus.Conn
-var ids = make(chan uint32, 0)
+var ids = make(chan uint32)
 
 func generate(out chan uint32) {
 	for id := uint32(1); ; id++ {
@@ -389,11 +389,11 @@ func Run() {
 	_ = conn.Export(introspect.Introspectable(INTROSPECT_XML), NOTIFICATIONS_PATH, INTROSPECT_INTERFACE)
 }
 
-func FlashHandler() response.Response {
+func FlashHandler() bind.Response {
 	if flash, ok := getFlash(); !ok {
-		return response.NotFound()
+		return bind.NotFound()
 	} else {
-		return response.Json(flash)
+		return bind.Json(flash)
 	}
 
 }

@@ -13,8 +13,8 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/surlykke/refude/internal/lib/bind"
 	"github.com/surlykke/refude/internal/lib/entity"
-	"github.com/surlykke/refude/internal/lib/response"
 	"github.com/surlykke/refude/internal/search"
 )
 
@@ -59,7 +59,7 @@ type Resourceline struct {
 	MoreActions bool
 }
 
-func SearchHandler(term string) response.Response {
+func SearchHandler(term string) bind.Response {
 	var (
 		lines []Resourceline
 	)
@@ -79,9 +79,9 @@ func SearchHandler(term string) response.Response {
 	var b bytes.Buffer
 	if err := rowTemplate.Execute(&b, lines); err != nil {
 		log.Print(err)
-		return response.ServerError(err)
+		return bind.ServerError(err)
 	} else {
-		return response.Html(b.Bytes())
+		return bind.Html(b.Bytes())
 	}
 }
 
@@ -90,14 +90,14 @@ type Detail struct {
 	Href string
 }
 
-func DetailsHandler(resPath string) response.Response {
+func DetailsHandler(resPath string) bind.Response {
 	var b bytes.Buffer
 	if base, ok := search.SearchByPath(resPath); !ok {
-		return response.NotFound()
+		return bind.NotFound()
 	} else if err := detailsTemplate.Execute(&b, base.Links()); err != nil {
 		log.Print(err)
-		return response.ServerError(err)
+		return bind.ServerError(err)
 	} else {
-		return response.Html(b.Bytes())
+		return bind.Html(b.Bytes())
 	}
 }

@@ -8,8 +8,8 @@ package browser
 import (
 	"strings"
 
+	"github.com/surlykke/refude/internal/lib/bind"
 	"github.com/surlykke/refude/internal/lib/entity"
-	"github.com/surlykke/refude/internal/lib/response"
 )
 
 type Tab struct {
@@ -19,9 +19,9 @@ type Tab struct {
 	Url       string
 }
 
-func (this *Tab) DoPost(action string) response.Response {
+func (this *Tab) DoPost(action string) bind.Response {
 	browserCommands.Publish(browserCommand{BrowserId: this.BrowserId, TabId: this.Id, Cmd: "focus"})
-	return response.Accepted()
+	return bind.Accepted()
 }
 
 func (this *Tab) OmitFromSearch() bool {

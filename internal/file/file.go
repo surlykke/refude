@@ -14,8 +14,8 @@ import (
 
 	"github.com/rakyll/magicmime"
 	"github.com/surlykke/refude/internal/applications"
+	"github.com/surlykke/refude/internal/lib/bind"
 	"github.com/surlykke/refude/internal/lib/entity"
-	"github.com/surlykke/refude/internal/lib/response"
 )
 
 func init() {
@@ -101,13 +101,13 @@ func readEntries(dir string) []fs.DirEntry {
 	}
 }
 
-func (f *File) DoPost(action string) response.Response {
+func (f *File) DoPost(action string) bind.Response {
 	if action == "" && len(f.Meta.Actions) > 0 {
 		action = f.Meta.Actions[0].Id
 	}
 	if applications.OpenFile(action, f.OsPath) {
-		return response.Accepted()
+		return bind.Accepted()
 	} else {
-		return response.NotFound()
+		return bind.NotFound()
 	}
 }

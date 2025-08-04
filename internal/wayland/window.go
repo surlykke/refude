@@ -11,8 +11,8 @@ import (
 	"sync/atomic"
 
 	"github.com/surlykke/refude/internal/applications"
+	"github.com/surlykke/refude/internal/lib/bind"
 	"github.com/surlykke/refude/internal/lib/entity"
-	"github.com/surlykke/refude/internal/lib/response"
 	"github.com/surlykke/refude/internal/watch"
 )
 
@@ -157,21 +157,21 @@ func makeWindow(wId uint64, title string, iconName string, appId string, state W
 	return ww
 }
 
-func (this *WaylandWindow) DoDelete() response.Response {
+func (this *WaylandWindow) DoDelete() bind.Response {
 	close(this.Wid)
-	return response.Accepted()
+	return bind.Accepted()
 }
 
 func (this *WaylandWindow) OmitFromSearch() bool {
 	return strings.HasPrefix(this.Title, "Refude desktop") || ignoredWindows[this.AppId]
 }
 
-func (this *WaylandWindow) DoPost(action string) response.Response {
+func (this *WaylandWindow) DoPost(action string) bind.Response {
 	if "" == action {
 		activate(this.Wid)
-		return response.Accepted()
+		return bind.Accepted()
 	} else {
-		return response.NotFound()
+		return bind.NotFound()
 	}
 }
 

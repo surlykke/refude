@@ -6,110 +6,119 @@
 package bind
 
 import (
-	"cmp"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"reflect"
-	"strings"
-
-	"github.com/surlykke/refude/internal/lib/entity"
-	"github.com/surlykke/refude/internal/lib/response"
-	"github.com/surlykke/refude/internal/lib/utils"
 )
 
-func ServeFunc(path string, function any, tags ...string) {
-	http.HandleFunc(path, buildHandler(function, tags...))
-}
-
-func ServeMap[K cmp.Ordered, V entity.Servable](prefix string, m *entity.EntityMap[K, V]) {
-	m.SetPrefix(prefix)
-	ServeFunc("GET "+prefix+"{id...}", m.DoGetSingle, `path:"id"`)
-	ServeFunc("GET "+prefix+"{$}", m.DoGetAll)
-	ServeFunc("POST "+prefix+"{id...}", m.DoPost, `path:"id"`, `query:"action"`)
-}
-
-func buildHandler(function any, tags ...string) func(w http.ResponseWriter, r *http.Request) {
+func MakeAdapter(function any, bindings ...binding) (func(r *http.Request) Response, error) {
 	var functionVal = reflect.ValueOf(function)
 	var funcType = functionVal.Type()
-	if funcType.Kind() != reflect.Func {
-		panic("Not a function")
-	}
-	if funcType.NumOut() != 1 || funcType.Out(0) != reflect.TypeOf(response.Response{}) {
-		panic("function does not return respond2.Response")
-	}
-	if funcType.NumIn() != len(tags) {
-		panic("Number of tags does not match number of function parameters")
-	}
-	var deserializers = make([]deserializer, len(tags))
-	for i, tag := range tags {
 
-		var pb = readTag(reflect.StructTag(tag))
-		if pb.bindingType == "body" {
-			deserializers[i] = makeJsonBodyDeserializer(funcType.In(i))
+	if funcType.Kind() != reflect.Func {
+		return nil, errors.New("Not a function")
+	}
+
+	if funcType.NumOut() != 1 || funcType.Out(0) != reflect.TypeOf(Response{}) {
+		return nil, errors.New("function does not have a single return value or type Response")
+	}
+
+	if funcType.NumIn() != len(bindings) {
+		return nil, errors.New("Number of bindings does not match number of function parameters")
+	}
+
+	var deserializers = make([]deserializer, len(bindings))
+	var errs = []error{}
+
+	for i, b := range bindings {
+		if d, err := makeDeserializer(b, funcType.In(i)); err != nil {
+			errs = append(errs, err)
 		} else {
-			var conv = getConverter(funcType.In(i))
-			deserializers[i] = makeParmDeserializer("query" == pb.bindingType, pb.name, pb.required, pb.defaultValue, conv)
+			deserializers[i] = d
 		}
 	}
 
-	return makeServer(functionVal, deserializers)
+	if len(errs) > 0 {
+		return nil, errors.Join(errs...)
+	} else {
+		return func(r *http.Request) Response {
+			var values = make([]reflect.Value, len(deserializers))
+			var errs = []error{}
+			for i := range values {
+				if val, err := deserializers[i](r); err != nil {
+					errs = append(errs, err)
+				} else {
+					values[i] = val
+				}
+			}
+			if len(errs) > 0 {
+				fmt.Println("Return unprocessable entity", errs)
+				return UnprocessableEntity(errors.Join(errs...))
+			} else {
+				return functionVal.Call(values)[0].Interface().(Response)
+			}
+		}, nil
+	}
+}
+
+func Adapter(function any, bindings ...binding) func(r *http.Request) Response {
+	if adapter, err := MakeAdapter(function, bindings...); err != nil {
+		panic(err)
+	} else {
+		return adapter
+	}
+}
+
+func ServeFunc(function any, bindings ...binding) func(w http.ResponseWriter, r *http.Request) {
+	var adapter = Adapter(function, bindings...)
+	return func(w http.ResponseWriter, r *http.Request) {
+		adapter(r).Send(w)
+	}
 }
 
 type deserializer func(r *http.Request) (reflect.Value, error)
 
-func makeJsonBodyDeserializer(target reflect.Type) deserializer {
-	return func(r *http.Request) (reflect.Value, error) {
-		var valPtr = reflect.New(target)
-		if bytes, err := io.ReadAll(r.Body); err != nil {
-			return reflect.Value{}, err
+func makeDeserializer(b binding, _type reflect.Type) (deserializer, error) {
+	if b.kind == body {
+		if b.qualifier == "json" {
+			return func(r *http.Request) (reflect.Value, error) {
+				var valPtr = reflect.New(_type)
+				if bytes, err := io.ReadAll(r.Body); err != nil {
+					return reflect.Value{}, err
+				} else {
+					err = json.Unmarshal(bytes, valPtr.Interface())
+					return valPtr.Elem(), err
+				}
+			}, nil
 		} else {
-			err = json.Unmarshal(bytes, valPtr.Interface())
-			return valPtr.Elem(), err
+			return nil, errors.New("Unrecognized body type: " + b.qualifier + ". Only 'json' is supported")
 		}
-	}
-}
-
-func makeParmDeserializer(fromQuery bool, name string, required bool, _default string, conv converter) deserializer {
-	return func(r *http.Request) (reflect.Value, error) {
-		var val string
-		if fromQuery {
-			if r.URL.Query().Has(name) {
-				val = r.URL.Query()[name][0] // TODO lists
-			}
+	} else {
+		var conv, err = getConverter(_type)
+		if err != nil {
+			return nil, err
+		}
+		if b.kind == query {
+			return func(r *http.Request) (reflect.Value, error) {
+				var val string
+				if r.URL.Query().Has(b.qualifier) {
+					val = r.URL.Query()[b.qualifier][0] // TODO: lists
+				} else if !b.optional {
+					return reflect.Value{}, errors.New("query parameter '" + b.qualifier + "' required and not given")
+				} else {
+					val = b.defaultValue
+				}
+				return conv(val)
+			}, nil
+		} else if b.kind == path {
+			return func(r *http.Request) (reflect.Value, error) {
+				return conv(r.PathValue(b.qualifier))
+			}, nil
 		} else {
-			val = r.PathValue(name)
-		}
-		if val == "" {
-			val = _default
-		}
-		if val == "" && required {
-			return reflect.Value{}, errors.New("query parameter '" + name + "' required and not given")
-		}
-		return conv(val)
-	}
-
-}
-
-func makeServer(handlerFunction reflect.Value, deserializers []deserializer) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		var values = make([]reflect.Value, len(deserializers))
-		var errs = make([]error, 0)
-		for i := range values {
-			if val, err := deserializers[i](r); err != nil {
-				errs = append(errs, err)
-			} else {
-				values[i] = val
-			}
-		}
-		if len(errs) > 0 {
-			var joinedErrors = errors.Join(errs...)
-			log.Print("Responding unprocessable entity:", joinedErrors)
-			response.UnprocessableEntity(joinedErrors).Send(w)
-		} else {
-			handlerFunction.Call(values)[0].Interface().(response.Response).Send(w)
+			panic("Should not happen")
 		}
 	}
 }
@@ -119,49 +128,4 @@ type parameterBinding struct {
 	name         string
 	required     bool
 	defaultValue string
-}
-
-func readTag(tag reflect.StructTag) parameterBinding {
-	var (
-		pb             parameterBinding
-		bindingDetails string
-		ok             bool
-	)
-
-	if bindingDetails, ok = tag.Lookup("query"); ok {
-		pb.bindingType = "query"
-	} else if bindingDetails, ok = tag.Lookup("path"); ok {
-		pb.bindingType = "path"
-	} else if bindingDetails, ok = tag.Lookup("body"); ok {
-		pb.bindingType = "body"
-	} else {
-		panic("tag should start with 'query', 'path' or 'body'")
-	}
-
-	var elements = utils.Split(bindingDetails, ",")
-	if len(elements) == 0 {
-		panic("value for " + pb.bindingType + " empty")
-	}
-	pb.name = elements[0]
-	for i := 1; i < len(elements); i++ {
-		if elements[i] == "required" {
-			pb.required = true
-		} else if strings.HasPrefix(elements[i], "default=") {
-			pb.defaultValue = elements[i][8:]
-		} else {
-			panic("only 'required' or 'default=<value>' allowed as qualifiers")
-		}
-	}
-	if pb.bindingType == "body" {
-		if pb.name != "json" {
-			panic("Only 'json' supported for 'body:'")
-		} else if pb.required || pb.defaultValue != "" {
-			panic("'required' or 'default' not allowed for 'body:'")
-		}
-	} else {
-		if pb.required && pb.defaultValue != "" {
-			panic("'default' cannot be given when 'required'")
-		}
-	}
-	return pb
 }

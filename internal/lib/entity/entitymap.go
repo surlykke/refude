@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/surlykke/refude/internal/lib/response"
+	"github.com/surlykke/refude/internal/lib/bind"
 )
 
 type EntityMap[K cmp.Ordered, V Servable] struct {
@@ -25,12 +25,6 @@ func MakeMap[K cmp.Ordered, V Servable]() *EntityMap[K, V] {
 	}
 
 	return m
-}
-
-// Called before trafic begins
-func (this *EntityMap[K, V]) SetPrefix(basepath string) {
-	this.basepath = basepath
-	this.setPaths()
 }
 
 func (this *EntityMap[K, V]) Get(k K) (V, bool) {
@@ -106,23 +100,23 @@ func (this *EntityMap[K, V]) GetForSearch() []Base {
 	return bases
 }
 
-func (this *EntityMap[K, V]) DoGetSingle(id K) response.Response {
+func (this *EntityMap[K, V]) DoGetSingle(id K) bind.Response {
 	if v, ok := this.Get(id); ok {
-		return response.Json(v)
+		return bind.Json(v)
 	} else {
-		return response.NotFound()
+		return bind.NotFound()
 	}
 }
 
-func (this *EntityMap[K, V]) DoGetAll() response.Response {
-	return response.Json(this.GetAll())
+func (this *EntityMap[K, V]) DoGetAll() bind.Response {
+	return bind.Json(this.GetAll())
 }
 
-func (this *EntityMap[K, V]) DoPost(id K, action string) response.Response {
+func (this *EntityMap[K, V]) DoPost(id K, action string) bind.Response {
 	if v, ok := this.Get(id); !ok {
-		return response.NotFound()
+		return bind.NotFound()
 	} else if postable, ok := any(v).(Postable); !ok {
-		return response.NotAllowed()
+		return bind.NotAllowed()
 	} else {
 		return postable.DoPost(action)
 	}
@@ -136,6 +130,11 @@ func (this *EntityMap[K, V]) GetPaths() []string {
 		paths = append(paths, v.GetBase().Meta.Path)
 	}
 	return paths
+}
+
+func (this *EntityMap[K, V]) SetPrefix(prefix string) {
+	this.basepath = prefix
+	this.setPaths()
 }
 
 func (this *EntityMap[K, V]) setPaths() {

@@ -16,9 +16,9 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/surlykke/refude/internal/lib/bind"
 	"github.com/surlykke/refude/internal/lib/entity"
 	"github.com/surlykke/refude/internal/lib/pubsub"
-	"github.com/surlykke/refude/internal/lib/response"
 	"github.com/surlykke/refude/internal/lib/utils"
 	"github.com/surlykke/refude/internal/lib/xdg"
 	"github.com/surlykke/refude/internal/watch"
@@ -47,7 +47,7 @@ type browserData struct {
 	}
 }
 
-/*func BookmarksDoPost(dataList []sinkData) response.Response {
+/*func BookmarksDoPost(dataList []sinkData) bind.Response {
 	var mapOfBookmarks = make(map[string]*Bookmark, len(dataList))
 	for _, data := range dataList {
 		if data.Url == "" {
@@ -60,7 +60,7 @@ type browserData struct {
 
 	}
 	BookmarkMap.ReplaceAll(mapOfBookmarks)
-	return response.Accepted()
+	return bind.Accepted()
 }*/
 
 func Run() {
@@ -159,7 +159,7 @@ func browserNameFromId(id string) string {
 
 }
 
-var reportCommand = response.ToJson(browserCommand{Cmd: "report"})
+var reportCommand = bind.ToJson(browserCommand{Cmd: "report"})
 
 func send(browserId string, conn net.Conn) {
 	var subscription = browserCommands.Subscribe()
@@ -170,7 +170,7 @@ func send(browserId string, conn net.Conn) {
 	for {
 		var cmd = subscription.Next()
 		if cmd.BrowserId == browserId {
-			if err := writeMsg(conn, response.ToJson(cmd)); err != nil {
+			if err := writeMsg(conn, bind.ToJson(cmd)); err != nil {
 				return
 			}
 		}

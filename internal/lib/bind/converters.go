@@ -6,46 +6,45 @@
 package bind
 
 import (
-	"log"
+	"fmt"
 	"reflect"
 	"strconv"
 )
 
 type converter func(paramVal string) (reflect.Value, error)
 
-func getConverter(t reflect.Type) converter {
+func getConverter(t reflect.Type) (converter, error) {
 	switch t.Kind() {
 	case reflect.Bool:
-		return toBool
+		return toBool, nil
 	case reflect.Int:
-		return toInt
+		return toInt, nil
 	case reflect.Int8:
-		return toInt8
+		return toInt8, nil
 	case reflect.Int16:
-		return toInt16
+		return toInt16, nil
 	case reflect.Int32:
-		return toInt32
+		return toInt32, nil
 	case reflect.Int64:
-		return toInt64
+		return toInt64, nil
 	case reflect.Uint:
-		return toUint
+		return toUint, nil
 	case reflect.Uint8:
-		return toUint8
+		return toUint8, nil
 	case reflect.Uint16:
-		return toUint16
+		return toUint16, nil
 	case reflect.Uint32:
-		return toUint32
+		return toUint32, nil
 	case reflect.Uint64:
-		return toUint64
+		return toUint64, nil
 	case reflect.Float32:
-		return toFloat32
+		return toFloat32, nil
 	case reflect.Float64:
-		return toFloat64
+		return toFloat64, nil
 	case reflect.String:
-		return toString
+		return toString, nil
 	default:
-		log.Panic("Parameter type not supported", t, t.Kind())
-		return nil
+		return nil, fmt.Errorf("Parameter type not supported: %s", t.Kind())
 	}
 }
 

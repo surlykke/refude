@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/godbus/dbus/v5"
+	"github.com/surlykke/refude/internal/lib/bind"
 	"github.com/surlykke/refude/internal/lib/entity"
-	"github.com/surlykke/refude/internal/lib/response"
 )
 
 var lastUpdated = atomic.Pointer[time.Time]{}
@@ -30,15 +30,15 @@ type StartResource struct {
 	dbusMethod string
 }
 
-func (this *StartResource) DoPost(action string) response.Response {
+func (this *StartResource) DoPost(action string) bind.Response {
 	if action != "" {
-		return response.NotFound()
+		return bind.NotFound()
 	} else if conn, err := dbus.SystemBus(); err != nil {
 		log.Print(err)
-		return response.ServerError(err)
+		return bind.ServerError(err)
 	} else {
 		conn.Object("org.freedesktop.login1", "/org/freedesktop/login1").Call(this.dbusMethod, dbus.Flags(0), false)
-		return response.Accepted()
+		return bind.Accepted()
 	}
 
 }

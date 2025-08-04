@@ -10,7 +10,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/surlykke/refude/internal/lib/response"
+	"github.com/surlykke/refude/internal/lib/bind"
 	"github.com/surlykke/refude/internal/lib/translate"
 )
 
@@ -121,9 +121,9 @@ const (
 // -------------- Serve -------------------------
 
 type Postable interface {
-	DoPost(string) response.Response
+	DoPost(string) bind.Response
 }
 
 type Deleteable interface {
-	DoDelete() response.Response
+	DoDelete() bind.Response
 }
