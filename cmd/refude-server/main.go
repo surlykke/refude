@@ -56,12 +56,12 @@ func main() {
 
 	ServeMap(desktopactions.PowerActions, "/start/")
 
-	http.HandleFunc("GET /icon", bind.ServeFunc(icons.GetHandler, bind.Query("name"), bind.QueryOpt("size", "32")))
-	http.HandleFunc("GET /search", bind.ServeFunc(search.GetHandler, bind.Query("term")))
-	http.HandleFunc("GET /flash", bind.ServeFunc(notifications.FlashHandler))
-	http.HandleFunc("GET /complete", bind.ServeFunc(completeHandler, bind.Query("prefix")))
-	http.HandleFunc("GET /desktop/search", bind.ServeFunc(desktop.SearchHandler, bind.Query("term")))
-	http.HandleFunc("GET /desktop/details", bind.ServeFunc(desktop.DetailsHandler, bind.Query("path")))
+	http.Handle("GET /icon", bind.HandlerFunc(icons.GetHandler, bind.Query("name"), bind.QueryOr("size", "32")))
+	http.Handle("GET /search", bind.HandlerFunc(search.GetHandler, bind.Query("term")))
+	http.Handle("GET /flash", bind.HandlerFunc(notifications.FlashHandler))
+	http.Handle("GET /complete", bind.HandlerFunc(completeHandler, bind.Query("prefix")))
+	http.Handle("GET /desktop/search", bind.HandlerFunc(desktop.SearchHandler, bind.Query("term")))
+	http.Handle("GET /desktop/details", bind.HandlerFunc(desktop.DetailsHandler, bind.Query("path")))
 
 	http.HandleFunc("GET /watch", watch.ServeHTTP)
 	http.Handle("GET /desktop/", desktop.StaticServer)
@@ -72,11 +72,11 @@ func main() {
 
 }
 
-func ServeMap[K cmp.Ordered, V entity.Servable](em *entity.EntityMap[K, V], pathPrefix string) {
-	em.SetPrefix(pathPrefix)
-	http.HandleFunc("GET "+pathPrefix+"{id...}", bind.ServeFunc(em.DoGetSingle, bind.Path("id")))
-	http.HandleFunc("GET "+pathPrefix+"{$}", bind.ServeFunc(em.DoGetAll))
-	http.HandleFunc("POST "+pathPrefix+"{id...}", bind.ServeFunc(em.DoPost, bind.Path("id"), bind.QueryOpt("action", "")))
+func ServeMap[K cmp.Ordered, V entity.Servable](m *entity.EntityMap[K, V], pathPrefix string) {
+	m.SetPrefix(pathPrefix)
+	http.Handle("GET "+pathPrefix+"{id...}", bind.HandlerFunc(m.DoGet, bind.Path("id")))
+	http.Handle("GET "+pathPrefix+"{$}", bind.HandlerFunc(m.DoGetList))
+	http.Handle("POST "+pathPrefix+"{id...}", bind.HandlerFunc(m.DoPost, bind.Path("id"), bind.QueryOr("action", "")))
 }
 
 func completeHandler(prefix string) bind.Response {

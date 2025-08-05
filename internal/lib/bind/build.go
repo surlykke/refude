@@ -72,7 +72,7 @@ func Adapter(function any, bindings ...binding) func(r *http.Request) Response {
 	}
 }
 
-func ServeFunc(function any, bindings ...binding) func(w http.ResponseWriter, r *http.Request) {
+func HandlerFunc(function any, bindings ...binding) http.HandlerFunc {
 	var adapter = Adapter(function, bindings...)
 	return func(w http.ResponseWriter, r *http.Request) {
 		adapter(r).Send(w)

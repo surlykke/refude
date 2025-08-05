@@ -3,7 +3,6 @@
 // This file is part of the refude project.
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
-//
 package bind
 
 const (
@@ -23,7 +22,7 @@ func Query(queryParameter string) binding {
 	return binding{kind: query, qualifier: queryParameter}
 }
 
-func QueryOpt(queryParameter string, defaultValue string) binding {
+func QueryOr(queryParameter string, defaultValue string) binding {
 	return binding{kind: query, qualifier: queryParameter, optional: true, defaultValue: defaultValue}
 }
 

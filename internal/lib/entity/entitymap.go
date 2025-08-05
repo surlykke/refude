@@ -100,7 +100,7 @@ func (this *EntityMap[K, V]) GetForSearch() []Base {
 	return bases
 }
 
-func (this *EntityMap[K, V]) DoGetSingle(id K) bind.Response {
+func (this *EntityMap[K, V]) DoGet(id K) bind.Response {
 	if v, ok := this.Get(id); ok {
 		return bind.Json(v)
 	} else {
@@ -108,7 +108,7 @@ func (this *EntityMap[K, V]) DoGetSingle(id K) bind.Response {
 	}
 }
 
-func (this *EntityMap[K, V]) DoGetAll() bind.Response {
+func (this *EntityMap[K, V]) DoGetList() bind.Response {
 	return bind.Json(this.GetAll())
 }
 
