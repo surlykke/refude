@@ -14,8 +14,8 @@ import (
 
 	"github.com/rakyll/magicmime"
 	"github.com/surlykke/refude/internal/applications"
-	"github.com/surlykke/refude/internal/lib/bind"
 	"github.com/surlykke/refude/internal/lib/entity"
+	"github.com/surlykke/refude/pkg/bind"
 )
 
 func init() {

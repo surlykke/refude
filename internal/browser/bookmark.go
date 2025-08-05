@@ -6,9 +6,9 @@
 package browser
 
 import (
-	"github.com/surlykke/refude/internal/lib/bind"
 	"github.com/surlykke/refude/internal/lib/entity"
 	"github.com/surlykke/refude/internal/lib/xdg"
+	"github.com/surlykke/refude/pkg/bind"
 )
 
 type Bookmark struct {

@@ -11,9 +11,9 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/surlykke/refude/internal/lib/bind"
 	"github.com/surlykke/refude/internal/lib/entity"
 	"github.com/surlykke/refude/internal/lib/xdg"
+	"github.com/surlykke/refude/pkg/bind"
 )
 
 type DesktopApplication struct {

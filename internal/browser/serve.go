@@ -16,12 +16,12 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/surlykke/refude/internal/lib/bind"
 	"github.com/surlykke/refude/internal/lib/entity"
-	"github.com/surlykke/refude/internal/lib/pubsub"
 	"github.com/surlykke/refude/internal/lib/utils"
 	"github.com/surlykke/refude/internal/lib/xdg"
 	"github.com/surlykke/refude/internal/watch"
+	"github.com/surlykke/refude/pkg/bind"
+	"github.com/surlykke/refude/pkg/pubsub"
 )
 
 var TabMap = entity.MakeMap[string, *Tab]()

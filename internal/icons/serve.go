@@ -13,9 +13,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/surlykke/refude/internal/lib/bind"
 	"github.com/surlykke/refude/internal/lib/entity"
 	"github.com/surlykke/refude/internal/lib/image"
+	"github.com/surlykke/refude/pkg/bind"
 )
 
 var ThemeMap = entity.MakeMap[string, *IconTheme]()

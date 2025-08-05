@@ -16,11 +16,11 @@ import (
 	"github.com/godbus/dbus/v5/introspect"
 	"github.com/surlykke/refude/internal/file"
 	"github.com/surlykke/refude/internal/icons"
-	"github.com/surlykke/refude/internal/lib/bind"
 	"github.com/surlykke/refude/internal/lib/entity"
 	"github.com/surlykke/refude/internal/lib/image"
 	"github.com/surlykke/refude/internal/notifygui"
 	"github.com/surlykke/refude/internal/watch"
+	"github.com/surlykke/refude/pkg/bind"
 )
 
 const NOTIFICATIONS_SERVICE = "org.freedesktop.Notifications"

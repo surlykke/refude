@@ -16,7 +16,6 @@ import (
 	"github.com/surlykke/refude/internal/desktopactions"
 	"github.com/surlykke/refude/internal/file"
 	"github.com/surlykke/refude/internal/icons"
-	"github.com/surlykke/refude/internal/lib/bind"
 	"github.com/surlykke/refude/internal/lib/entity"
 	"github.com/surlykke/refude/internal/notifications"
 	"github.com/surlykke/refude/internal/options"
@@ -24,6 +23,7 @@ import (
 	"github.com/surlykke/refude/internal/search"
 	"github.com/surlykke/refude/internal/watch"
 	"github.com/surlykke/refude/internal/wayland"
+	"github.com/surlykke/refude/pkg/bind"
 )
 
 func main() {

@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/surlykke/refude/internal/lib/bind"
+	"github.com/surlykke/refude/pkg/bind"
 )
 
 type EntityMap[K cmp.Ordered, V Servable] struct {

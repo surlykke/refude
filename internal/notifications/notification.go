@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/surlykke/refude/internal/lib/bind"
 	"github.com/surlykke/refude/internal/lib/entity"
+	"github.com/surlykke/refude/pkg/bind"
 )
 
 type Urgency uint8

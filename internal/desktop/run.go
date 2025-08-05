@@ -13,9 +13,9 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/surlykke/refude/internal/lib/bind"
 	"github.com/surlykke/refude/internal/lib/entity"
 	"github.com/surlykke/refude/internal/search"
+	"github.com/surlykke/refude/pkg/bind"
 )
 
 //go:embed html

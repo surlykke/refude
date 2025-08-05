@@ -10,8 +10,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/surlykke/refude/internal/lib/bind"
 	"github.com/surlykke/refude/internal/lib/translate"
+	"github.com/surlykke/refude/pkg/bind"
 )
 
 type Servable interface {

@@ -30,10 +30,6 @@ func Path(pathParameter string) binding {
 	return binding{kind: path, qualifier: pathParameter}
 }
 
-func PathOpt(pathParameter string, defaultValue string) binding {
-	return binding{kind: path, qualifier: pathParameter, optional: true, defaultValue: defaultValue}
-}
-
 func Body(bodyType string) binding {
 	return binding{kind: path, qualifier: bodyType}
 }

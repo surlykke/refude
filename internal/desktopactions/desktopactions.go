@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/godbus/dbus/v5"
-	"github.com/surlykke/refude/internal/lib/bind"
 	"github.com/surlykke/refude/internal/lib/entity"
+	"github.com/surlykke/refude/pkg/bind"
 )
 
 var lastUpdated = atomic.Pointer[time.Time]{}

@@ -12,8 +12,8 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/surlykke/refude/internal/lib/entity"
-	"github.com/surlykke/refude/internal/lib/pubsub"
 	"github.com/surlykke/refude/internal/lib/xdg"
+	"github.com/surlykke/refude/pkg/pubsub"
 )
 
 var AppEvents = pubsub.MakePublisher[struct{}]()
