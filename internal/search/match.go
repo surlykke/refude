@@ -20,11 +20,12 @@ import (
 *    'fgabhiabjkclmn'    'abjkc'           6
 *
 * We can do that with a regular expression like `a[^a]* b[^c]* c`, where the terms `[^a]* ` and `[^c]'` will
-* make the matched subtring start at the latest possible point and start at the earliest possible point.
+* make the matched subtring start at the latest possible point and  at the earliest possible point.
 *
 * If we search for a longer term, eg. 'abcd' the regexp would be: `a[^a]* b.* c[^d]* d`
 * If we search for a term of length 2, eg. 'ab', it's: `a[^a]* [^b]* b`
 *
+* We do not use regexp for this, but rather a function coded specifically for these types of regular expressions.
 *
 * function findMatches implements that. Given a term of length, say 4, eg 'abcd' it maintains an array, 'state' of length 3 of integers.
 *
@@ -32,19 +33,18 @@ import (
 * 'c' we set state[1] = -1 and state[2] = 7.
 *
 *  As another example lets search for 'abc' in 'fffababcggg'. As we read through 'fffababcggg', state will evolve as:
-*        Text position    letter read     state
-*			 0				   f		  [-1, -1]
-*			 1				   f		  [-1, -1]
-*			 2				   f		  [-1, -1]
-*			 3				   a		  [ 3, -1]
-*			 4				   b		  [-1,  3]
-*			 5				   a		  [ 5,  3]
-*			 6				   b		  [-1,  5]
-*			 7				   c		  [-1, -1]
-*			 8				   g		  [-1, -1]    yield match [5:8]
-*			 9				   g		  [-1, -1]
-*			10				   g		  [-1, -1]
-*
+* Text position         letter read    match   state
+*             0                   f            [-1, -1]
+*             1                   f            [-1, -1]
+*             2                   f            [-1, -1]
+*             3                   a            [ 3, -1]
+*             4                   b            [-1,  3]
+*             5                   a            [ 5,  3]
+*             6                   b            [-1,  5]
+*             7                   c    [5:8]   [-1, -1]
+*             8                   g            [-1, -1]
+*             9                   g            [-1, -1]
+*            10                   g            [-1, -1]
 *
  */
 
@@ -63,14 +63,14 @@ func makeMatcher(term string) matcher {
 	return m
 }
 
-func (m matcher) match(text string) uint {
+func (this matcher) match(text string) uint {
 	text = strings.ToLower(text)
-	switch len(m.term) {
+	switch len(this.term) {
 	case 0:
 		return 0
 	case 1:
 		for pos, r := range text {
-			if m.term[0] == r {
+			if this.term[0] == r {
 				return uint(pos)
 			}
 		}
@@ -78,32 +78,32 @@ func (m matcher) match(text string) uint {
 	default:
 		var res = maxRank
 
-		for i := range m.curstate {
-			m.curstate[i] = -1
+		for i := range this.curstate {
+			this.curstate[i] = -1
 		}
 
 		for textpos, r := range text {
-			if r == m.term[0] {
-				m.nextstate[0] = textpos
+			if r == this.term[0] {
+				this.nextstate[0] = textpos
 			} else {
-				m.nextstate[0] = m.curstate[0]
+				this.nextstate[0] = this.curstate[0]
 			}
-			for i := 1; i < len(m.term)-1; i++ {
-				if m.term[i] == r && m.curstate[i-1] > -1 {
-					m.nextstate[i], m.nextstate[i-1] = m.curstate[i-1], -1
+			for i := 1; i < len(this.term)-1; i++ {
+				if this.term[i] == r && this.curstate[i-1] > -1 {
+					this.nextstate[i], this.nextstate[i-1] = this.curstate[i-1], -1
 				} else {
-					m.nextstate[i] = m.curstate[i]
+					this.nextstate[i] = this.curstate[i]
 				}
 			}
-			if m.term[len(m.term)-1] == r && m.curstate[len(m.term)-2] > -1 {
-				var start, end = m.curstate[len(m.term)-2], textpos + 1
-				var tmp = uint(start + 5*(end-start-len(m.term)))
+			if this.term[len(this.term)-1] == r && this.curstate[len(this.term)-2] > -1 {
+				var start, end = this.curstate[len(this.term)-2], textpos + 1
+				var tmp = uint(start + 5*(end-start-len(this.term)))
 				if tmp < res {
 					res = tmp
 				}
-				m.nextstate[len(m.term)-2] = -1
+				this.nextstate[len(this.term)-2] = -1
 			}
-			m.curstate, m.nextstate = m.nextstate, m.curstate
+			this.curstate, this.nextstate = this.nextstate, this.curstate
 		}
 		return res
 	}

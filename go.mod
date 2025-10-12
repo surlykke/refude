@@ -7,7 +7,6 @@ require (
 	github.com/godbus/dbus/v5 v5.1.0
 	github.com/jessevdk/go-flags v1.6.1
 	github.com/pkg/errors v0.9.1
-	github.com/rakyll/magicmime v0.1.0
 	github.com/shirou/gopsutil/v4 v4.25.6
 	golang.org/x/net v0.42.0
 )

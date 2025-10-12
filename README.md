@@ -3,7 +3,7 @@
 refude is a window switcher and app launcher. With it, you can:
 
 * Switch between windows
-* Focus tabs in your browser (providing your browser is chromium or a derivative thereof :-) )
+* Jump to tabs in your browser (providing your browser is chromium or a derivative thereof )
 * Launch applications
 * Open files in your home catalog, your download catalog and a few other
 
@@ -57,3 +57,12 @@ may be useful.
 
 You are also welcome to file bug-reports, obviously.
 
+## Usage 
+
+With refude-server running, in your browser, go to: 
+
+```
+http://localhost:7938/desktop
+```
+
+It should show a list of your currently open windows
