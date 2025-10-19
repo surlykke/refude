@@ -6,14 +6,24 @@
 package applications
 
 import (
+	"os"
 	"regexp"
 
 	"github.com/pkg/errors"
 	"github.com/surlykke/refude/internal/lib/entity"
+	"github.com/surlykke/refude/internal/lib/xdg"
 )
 
-// const freedesktopOrgXml = "/usr/share/mime/packages/freedesktop.org.xml"
-const freedesktopOrgXml = "/etc/profiles/per-user/chr/share/mime/packages/freedesktop.org.xml" // FIXME
+var freedesktopOrgXml = ""
+
+func init() {
+	for _, dir := range xdg.DataDirs {
+		if _, err := os.Stat(dir + "/mime/packages/freedesktop.org.xml"); err == nil {
+			freedesktopOrgXml = dir + "/mime/packages/freedesktop.org.xml"
+			return
+		}
+	}
+}
 
 type Mimetype struct {
 	entity.Base
