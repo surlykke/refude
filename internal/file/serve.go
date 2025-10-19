@@ -68,7 +68,7 @@ func scanDirs(watchedDirs []string) {
 		for _, entry := range readEntries(dir) {
 			var name = entry.Name()
 			var path = dir + "/" + name
-			if file, err := makeFileFromPath(path); err == nil {
+			if file, err := makeFileFromPath(path); err == nil && file != nil {
 				collected[path[1:]] = file
 			}
 		}

@@ -7,6 +7,7 @@ package power
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/godbus/dbus/v5"
 	"github.com/surlykke/refude/internal/lib/entity"
@@ -45,6 +46,10 @@ func subscribe() chan *dbus.Signal {
 
 func retrieveDevicePaths() []dbus.ObjectPath {
 	enumCall := dbusConn.Object(upowerService, upowerPath).Call(upowerInterface+".EnumerateDevices", dbus.Flags(0))
+	if enumCall.Err != nil {
+		log.Println("Error on call to upower:", enumCall.Err)
+		return nil
+	}
 	return append(enumCall.Body[0].([]dbus.ObjectPath), displayDeviceDbusPath)
 }
 

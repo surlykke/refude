@@ -12,7 +12,8 @@ import (
 	"github.com/surlykke/refude/internal/lib/entity"
 )
 
-const freedesktopOrgXml = "/usr/share/mime/packages/freedesktop.org.xml"
+// const freedesktopOrgXml = "/usr/share/mime/packages/freedesktop.org.xml"
+const freedesktopOrgXml = "/etc/profiles/per-user/chr/share/mime/packages/freedesktop.org.xml" // FIXME
 
 type Mimetype struct {
 	entity.Base
