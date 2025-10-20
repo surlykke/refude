@@ -5,9 +5,12 @@
 // Please refer to the GPL2 file for a copy of the license.
 package wayland
 
+// gtk4-layer-shell is not used here, but in notifygui.c. It needs to be loaded
+// before wayland-client, hence its added to LDFLAGS
+
 /*
 #cgo CFLAGS: -I. -I${SRCDIR}
-#cgo LDFLAGS: -lwayland-client
+#cgo LDFLAGS: -lgtk4-layer-shell -lwayland-client
 
 #include <stdint.h>
 #include <wayland-client-core.h>

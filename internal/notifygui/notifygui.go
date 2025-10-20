@@ -6,7 +6,7 @@
 package notifygui
 
 /*
-  #cgo pkg-config: gtk4 gtk4-layer-shell-0
+ #cgo pkg-config: gtk4 gtk4-layer-shell-0
  #include <stdio.h>
  #include <stdlib.h>
  #include "notifygui.h"
