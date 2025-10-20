@@ -8,8 +8,8 @@
   fetchFromGitHub,
   pkg-config,
   kdePackages,
+  gtk4-layer-shell,
   gtk4,
-  gtk4-layer-shell
   # more dependencies would go here...
 }: # this means end of named parameters
 
@@ -42,6 +42,12 @@ buildGoModule rec {
   nativeBuildInputs = [ pkg-config ];
 
   buildInputs = [ kdePackages.wayland gtk4 gtk4-layer-shell ];
+
+  postInstall = 
+  ''
+	mkdir -p $out/bin
+	cp cmd/refude-server/runRefude.sh $out/bin
+  '';
 
   meta = {
     description = "Window switcher and more";
