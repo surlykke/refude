@@ -94,7 +94,7 @@ func DetailsHandler(resPath string) bind.Response {
 	var b bytes.Buffer
 	if base, ok := search.SearchByPath(resPath); !ok {
 		return bind.NotFound()
-	} else if err := detailsTemplate.Execute(&b, base.Links()); err != nil {
+	} else if err := detailsTemplate.Execute(&b, base.Links(entity.OrgRefudeAction)); err != nil {
 		log.Print(err)
 		return bind.ServerError(err)
 	} else {

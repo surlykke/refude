@@ -192,6 +192,7 @@ func Notify(
 
 	for i := 0; i+1 < len(actions); i = i + 2 {
 		notification.NActions[actions[i]] = actions[i+1]
+		notification.Base.AddAction(actions[i], actions[i+1], "")
 	}
 
 	for name, val := range hints {

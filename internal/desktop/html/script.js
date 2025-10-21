@@ -11,10 +11,6 @@ let setTerm = newTerm => {
 	document.getElementById("search-results").dispatchEvent(new Event("search"))
 }
 
-let doCtrlSpace = () => {
-	document.activeElement?.dispatchEvent(new Event("details"))
-}
-
 let doEscape = shiftKey => {
 	if (shiftKey) {
 		dismiss()
@@ -29,7 +25,7 @@ let doEscape = shiftKey => {
 
 let doEnter = (ctrl, shift) => {
 	if (ctrl) {
-		return
+		document.activeElement?.dispatchEvent(new Event("details"))
 	} else {
 		href = document.activeElement?.dataset.href
 		if (href) {
@@ -46,15 +42,12 @@ let setTabIndexes = () => {
 let dismiss = () => window.close()
 
 let onKeyDown = event => {
-
 	let { key, ctrlKey, altKey, shiftKey } = event;
 
 	if ((key === "Escape" && !ctrlKey && !altKey) || (key === 'o' && ctrlKey)) {
 		doEscape(shiftKey)
 	} else if (key === "Enter" && !altKey) {
 		doEnter(ctrlKey, shiftKey) 
-	} else if (key === " " && ctrlKey) {
-		doCtrlSpace()
 	} else if (key === "Delete" && !altKey && ctrlKey) {
 		doDelete(shiftKey)
 	} else if (key === "Backspace" && !ctrlKey && !altKey && !shiftKey) {

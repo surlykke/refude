@@ -7,7 +7,6 @@ package entity
 
 import (
 	"encoding/json"
-	"slices"
 	"strings"
 
 	"github.com/surlykke/refude/internal/lib/translate"
@@ -71,22 +70,32 @@ func (this *Base) GetBase() *Base {
 }
 
 func (this *Base) Links(rel ...Relation) []Link {
-	return buildLinks(&this.Meta)
+	var tmp = buildLinks(&this.Meta)
+	if len(rel) > 0 {
+		var pos = 0
+		for i := 0; i < len(tmp); i++ {
+			for _, r := range rel {
+				if tmp[i].Relation == r {
+					tmp[pos] = tmp[i]
+					pos++
+					break
+				}
+			}
+		}
+		tmp = tmp[0:pos]
+	}
+	return tmp
 }
 
-func buildLinks(meta *Meta, rel ...Relation) []Link {
+func buildLinks(meta *Meta) []Link {
 	var links = make([]Link, 0, 1+len(meta.Actions))
-	if len(rel) == 0 || slices.Index(rel, Self) > -1 {
-		links = append(links, Link{Href: meta.Path, Relation: Self})
-	}
-	if len(rel) == 0 || slices.Index(rel, OrgRefudeAction) > -1 {
-		for _, action := range meta.Actions {
-			var href = meta.Path
-			if action.Id != "" {
-				href = href + "?action=" + action.Id
-			}
-			links = append(links, Link{Href: href, Title: action.Name, Icon: action.Icon, Relation: OrgRefudeAction})
+	links = append(links, Link{Href: meta.Path, Relation: Self})
+	for _, action := range meta.Actions {
+		var href = meta.Path
+		if action.Id != "" {
+			href = href + "?action=" + action.Id
 		}
+		links = append(links, Link{Href: href, Title: action.Name, Icon: action.Icon, Relation: OrgRefudeAction})
 	}
 	return links
 }
