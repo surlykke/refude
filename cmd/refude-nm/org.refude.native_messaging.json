@@ -1,8 +1,0 @@
-{
-  "name": "org.refude.native_messaging",
-  "description": "Refude browserextension messaging",
-  "path": "GOBIN/refude-nm",
-  "type": "stdio",
-  "allowed_origins": ["chrome-extension://lcnmbmoiobgochkfoenopkgnoojgbeio/"]
-}
-
