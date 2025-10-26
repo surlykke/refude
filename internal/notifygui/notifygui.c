@@ -51,7 +51,7 @@ static void setup(GtkApplication *app, gpointer user_data)
         }
     }
 
-    gtk_layer_set_layer(GTK_WINDOW(win), GTK_LAYER_SHELL_LAYER_TOP);
+    gtk_layer_set_layer(GTK_WINDOW(win), GTK_LAYER_SHELL_LAYER_OVERLAY);
     gtk_layer_set_anchor(GTK_WINDOW(win), GTK_LAYER_SHELL_EDGE_TOP, true);
     gtk_layer_set_anchor(GTK_WINDOW(win), GTK_LAYER_SHELL_EDGE_RIGHT, true);
     gtk_layer_set_margin(GTK_WINDOW(win), GTK_LAYER_SHELL_EDGE_TOP, 5);
@@ -100,8 +100,6 @@ int updateInMainLoop(void *dataV)
         char *subject = data->notifications[3 * i];
         char *body = data->notifications[3 * i + 1];
         char *iconPath = data->notifications[3 * i + 2];
-
-        printf("subject, body, iconpath: %s, %s, %s\n", subject, body, iconPath);
 
         GtkWidget *hbox, *iconImage, *vbox, *subjectLabel, *bodyLabel;
         hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
