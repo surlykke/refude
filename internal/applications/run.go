@@ -13,10 +13,7 @@ import (
 	"github.com/fsnotify/fsnotify"
 	"github.com/surlykke/refude/internal/lib/entity"
 	"github.com/surlykke/refude/internal/lib/xdg"
-	"github.com/surlykke/refude/pkg/pubsub"
 )
-
-var AppEvents = pubsub.MakePublisher[struct{}]()
 
 var AppMap = entity.MakeMap[string, *DesktopApplication]()
 var MimeMap = entity.MakeMap[string, *Mimetype]()
@@ -29,7 +26,6 @@ func Run() {
 		var collection Collection = collect()
 		AppMap.ReplaceAll(collection.Apps)
 		MimeMap.ReplaceAll(collection.Mimetypes)
-		AppEvents.Publish(struct{}{})
 
 		<-desktopFileEvents
 	}

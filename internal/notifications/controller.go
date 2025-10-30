@@ -18,8 +18,6 @@ import (
 	"github.com/surlykke/refude/internal/icons"
 	"github.com/surlykke/refude/internal/lib/entity"
 	"github.com/surlykke/refude/internal/lib/image"
-	"github.com/surlykke/refude/internal/notifygui"
-	"github.com/surlykke/refude/internal/watch"
 	"github.com/surlykke/refude/pkg/bind"
 )
 
@@ -186,7 +184,7 @@ func Notify(
 		Urgency:        Normal,
 		NActions:       map[string]string{},
 		Hints:          map[string]any{},
-		iconName:       iconName,
+		IconName:       iconName,
 		IconSize:       sizeHint,
 	}
 
@@ -212,28 +210,26 @@ func Notify(
 		}
 	}
 
-	if expire_timeout <= 0 {
-		if notification.Urgency == Low {
-			expire_timeout = 10_000
-		} else if notification.Urgency == Normal {
-			expire_timeout = 60_000
-		} else {
-			expire_timeout = 3_600_000
+	switch notification.Urgency {
+	case Low:
+		if expire_timeout >= 2_000 || expire_timeout < 0 {
+			expire_timeout = 2_000
 		}
+	case Normal:
+		if expire_timeout >= 10_000 || expire_timeout < 0 {
+			expire_timeout = 10_000
+		}
+	default:
+		expire_timeout = 3_600_000
+	}
+
+	if expire_timeout < 3_600_000 {
+		time.AfterFunc(time.Duration(expire_timeout+50)*time.Millisecond, func() { removeNotification(id, Expired) })
 	}
 
 	notification.Expires = time.Now().Add(time.Duration(expire_timeout) * time.Millisecond)
 
 	NotificationMap.Put(id, &notification)
-	watch.Publish("resourceChanged", "/flash")
-	watch.Publish("search", "")
-	sendNotificationsToGui()
-
-	if notification.Urgency == Low {
-		time.AfterFunc(2050*time.Millisecond, sendNotificationsToGui)
-	} else if notification.Urgency == Normal {
-		time.AfterFunc(10050*time.Millisecond, sendNotificationsToGui)
-	}
 
 	return id, nil
 }
@@ -351,8 +347,6 @@ func helper(src *string, dest *string, allowedPrefixes []string, endMarker strin
 }
 
 func Run() {
-	notifygui.StartGui()
-
 	var err error
 	var reply dbus.RequestNameReply
 

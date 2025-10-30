@@ -39,10 +39,10 @@ func Run() {
 	var scanScheduled = false
 	scanDirs(watchedDirs)
 	go func() {
-		var appSubscription = applications.AppEvents.Subscribe()
+		var appSubscription = applications.AppMap.Events.Subscribe()
 		for {
-			scanEv <- appSubscription.Next()
-
+			appSubscription.Next()
+			scanEv <- struct{}{}
 		}
 	}()
 

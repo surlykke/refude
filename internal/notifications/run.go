@@ -8,8 +8,6 @@ package notifications
 import (
 	"github.com/surlykke/refude/internal/icons"
 	"github.com/surlykke/refude/internal/lib/entity"
-	"github.com/surlykke/refude/internal/notifygui"
-	"github.com/surlykke/refude/internal/watch"
 )
 
 var NotificationMap = entity.MakeMap[uint32, *Notification]()
@@ -20,9 +18,6 @@ func removeNotification(id uint32, reason uint32) {
 		copy.Deleted = true
 		NotificationMap.Put(id, &copy)
 		conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", id, reason)
-		watch.Publish("resourceChanged", "/flash")
-		sendNotificationsToGui()
-		watch.Publish("search", "")
 	}
 }
 
@@ -37,21 +32,10 @@ func getFlash() (map[string]string, bool) {
 			return map[string]string{
 				"subject":      n.Title,
 				"body":         n.Body,
-				"iconFilePath": icons.FindIcon(string(n.iconName), uint32(64)),
+				"iconFilePath": icons.FindIcon(string(n.IconName), uint32(64)),
 			}, true
 		}
 
 	}
 	return nil, false
-}
-
-func sendNotificationsToGui() {
-	var notificationsAsStrings = make([][]string, 0, 20)
-	for _, n := range NotificationMap.GetAll() {
-		if n.Deleted || n.SoftExpired() {
-			continue
-		}
-		notificationsAsStrings = append(notificationsAsStrings, []string{n.Title, n.Body, icons.FindIcon(string(n.iconName), uint32(64))})
-	}
-	notifygui.SendNotificationsToGui(notificationsAsStrings)
 }

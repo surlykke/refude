@@ -6,7 +6,6 @@
 package file
 
 import (
-	"fmt"
 	"io/fs"
 	"log"
 	"mime"
@@ -62,7 +61,6 @@ func makeFileFromPath(path string) (*File, error) {
 
 func MimeType(ospath string) string {
 	var ext = filepath.Ext(ospath)
-	fmt.Println("MimeType, ext:", ext, ", type:", mime.TypeByExtension(ext))
 	if ext != "" {
 		return mime.TypeByExtension(ext)
 	} else {

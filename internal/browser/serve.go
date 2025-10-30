@@ -19,7 +19,6 @@ import (
 	"github.com/surlykke/refude/internal/lib/entity"
 	"github.com/surlykke/refude/internal/lib/utils"
 	"github.com/surlykke/refude/internal/lib/xdg"
-	"github.com/surlykke/refude/internal/watch"
 	"github.com/surlykke/refude/pkg/bind"
 	"github.com/surlykke/refude/pkg/pubsub"
 )
@@ -111,7 +110,6 @@ func receive(conn net.Conn) {
 					mapOfTabs[d.Id] = tab
 				}
 				TabMap.Replace(mapOfTabs, func(t *Tab) bool { return t.BrowserId == browserId })
-				watch.Publish("search", "")
 			} // TODO: bookmarks
 		}
 	}

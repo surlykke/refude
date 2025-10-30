@@ -11,17 +11,25 @@ import (
 	"sync"
 
 	"github.com/surlykke/refude/pkg/bind"
+	"github.com/surlykke/refude/pkg/pubsub"
 )
+
+type Event struct {
+	Event string
+	Data  string
+}
 
 type EntityMap[K cmp.Ordered, V Servable] struct {
 	m        map[K]V
 	lock     sync.Mutex
 	basepath string
+	Events   *pubsub.Publisher[Event]
 }
 
 func MakeMap[K cmp.Ordered, V Servable]() *EntityMap[K, V] {
 	var m = &EntityMap[K, V]{
-		m: make(map[K]V),
+		m:      make(map[K]V),
+		Events: pubsub.MakePublisher[Event](),
 	}
 
 	return m
@@ -38,25 +46,14 @@ func (this *EntityMap[K, V]) Put(k K, v V) {
 	this.lock.Lock()
 	defer this.lock.Unlock()
 	this.put(k, v)
-}
-
-func (this *EntityMap[K, V]) put(k K, v V) {
-	v.GetBase().Meta.Path = fmt.Sprintf("%s%v", this.basepath, k)
-	this.m[k] = v
+	this.publishWithId(k)
 }
 
 func (this *EntityMap[K, V]) Remove(k K) (V, bool) {
 	this.lock.Lock()
 	defer this.lock.Unlock()
+	this.publishWithId(k)
 	return this.remove(k)
-}
-
-func (this *EntityMap[K, V]) remove(k K) (V, bool) {
-	v, ok := this.m[k]
-	if ok {
-		delete(this.m, k)
-	}
-	return v, ok
 }
 
 func (this *EntityMap[K, V]) Replace(newVals map[K]V, remove func(V) bool) {
@@ -70,6 +67,7 @@ func (this *EntityMap[K, V]) Replace(newVals map[K]V, remove func(V) bool) {
 	for k, v := range newVals {
 		this.put(k, v)
 	}
+	this.publish()
 }
 
 func (this *EntityMap[K, V]) ReplaceAll(newSet map[K]V) {
@@ -77,6 +75,7 @@ func (this *EntityMap[K, V]) ReplaceAll(newSet map[K]V) {
 	defer this.lock.Unlock()
 	this.m = newSet
 	this.setPaths()
+	this.publish()
 }
 
 func (this *EntityMap[K, V]) GetAll() []V {
@@ -133,8 +132,31 @@ func (this *EntityMap[K, V]) GetPaths() []string {
 }
 
 func (this *EntityMap[K, V]) SetPrefix(prefix string) {
+	this.lock.Lock()
+	defer this.lock.Unlock()
 	this.basepath = prefix
 	this.setPaths()
+}
+
+func (this *EntityMap[K, V]) put(k K, v V) {
+	v.GetBase().Meta.Path = fmt.Sprintf("%s%v", this.basepath, k)
+	this.m[k] = v
+}
+
+func (this *EntityMap[K, V]) remove(k K) (V, bool) {
+	v, ok := this.m[k]
+	if ok {
+		delete(this.m, k)
+	}
+	return v, ok
+}
+
+func (this *EntityMap[K, V]) publishWithId(id K) {
+	this.Events.Publish(Event{Event: this.basepath, Data: fmt.Sprintf("%v", id)})
+}
+
+func (this *EntityMap[K, V]) publish() {
+	this.Events.Publish(Event{Event: this.basepath, Data: ""})
 }
 
 func (this *EntityMap[K, V]) setPaths() {

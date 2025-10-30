@@ -12,33 +12,45 @@ package notifygui
  #include "notifygui.h"
 */
 import "C"
+import (
+	"github.com/surlykke/refude/internal/icons"
+	"github.com/surlykke/refude/internal/notifications"
+)
 
 func StartGui() {
 	go C.run()
 }
 
-var notificationsChan = make(chan [][]string, 20)
-
-func SendNotificationsToGui(notifications [][]string) {
-	notificationsChan <- notifications
-
-}
-
 //export GuiReady
 func GuiReady() {
-	go sendNotificationsToGui()
+	go run()
+}
+
+func run() {
+	var notificationEvents = notifications.NotificationMap.Events.Subscribe()
+	sendNotificationsToGui()
+	for {
+		notificationEvents.Next()
+		sendNotificationsToGui()
+	}
 }
 
 func sendNotificationsToGui() {
-	for notifications := range notificationsChan {
-		var cStrings = make([]*C.char, 0, 100)
-		for _, n := range notifications {
-			cStrings = append(cStrings, C.CString(n[0]), C.CString(n[1]), C.CString(n[2]))
+	var notificationsAsStrings = make([][]string, 0, 20)
+	for _, n := range notifications.NotificationMap.GetAll() {
+		if n.Deleted || n.SoftExpired() {
+			continue
 		}
-		if len(cStrings) > 0 {
-			C.update(&cStrings[0], C.int(len(cStrings)/3))
-		} else {
-			C.update(nil, C.int(0))
-		}
+		notificationsAsStrings = append(notificationsAsStrings, []string{n.Title, n.Body, icons.FindIcon(n.IconName, uint32(64))})
+	}
+
+	var cStrings = make([]*C.char, 0, 100)
+	for _, n := range notificationsAsStrings {
+		cStrings = append(cStrings, C.CString(n[0]), C.CString(n[1]), C.CString(n[2]))
+	}
+	if len(cStrings) > 0 {
+		C.update(&cStrings[0], C.int(len(cStrings)/3))
+	} else {
+		C.update(nil, C.int(0))
 	}
 }

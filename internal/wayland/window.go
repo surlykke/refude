@@ -12,7 +12,6 @@ import (
 
 	"github.com/surlykke/refude/internal/applications"
 	"github.com/surlykke/refude/internal/lib/entity"
-	"github.com/surlykke/refude/internal/watch"
 	"github.com/surlykke/refude/pkg/bind"
 )
 
@@ -38,12 +37,8 @@ func Run(ignWin map[string]bool) {
 	go watchAppCollections(appEvents)
 
 	for {
-		var publish = false
 		select {
 		case upd := <-windowUpdates:
-			publish = (upd.title != "" && upd.title != "Refude Desktop") || upd.appId != ""
-			//func MakeWindow(wId uint64, title, comment string, iconName icon.Name, appId string, state WindowStateMask) *WaylandWindow {
-
 			var (
 				title    string
 				iconName string
@@ -73,7 +68,6 @@ func Run(ignWin map[string]bool) {
 
 			WindowMap.Put(upd.wId, makeWindow(upd.wId, title, iconName, appId, state))
 		case id := <-removals:
-			publish = true
 			WindowMap.Remove(id)
 		case _ = <-appEvents:
 			for _, w := range WindowMap.GetAll() {
@@ -86,16 +80,14 @@ func Run(ignWin map[string]bool) {
 				}
 			}
 		}
-		if publish {
-			watch.Publish("search", "")
-		}
 	}
 }
 
 func watchAppCollections(sink chan struct{}) {
-	var subscription = applications.AppEvents.Subscribe()
+	var subscription = applications.AppMap.Events.Subscribe()
 	for {
-		sink <- subscription.Next()
+		subscription.Next()
+		sink <- struct{}{}
 	}
 }
 

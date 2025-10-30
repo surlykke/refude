@@ -59,7 +59,7 @@ type Notification struct {
 	Urgency        Urgency
 	NActions       map[string]string `json:"actions"`
 	Hints          map[string]interface{}
-	iconName       string
+	IconName       string
 	IconSize       uint32 `json:",omitempty"`
 }
 

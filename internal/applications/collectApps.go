@@ -9,7 +9,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"regexp"
 	"slices"
 	"strings"
 
@@ -223,8 +222,6 @@ func readDesktopFile(filePath string, id string) (*DesktopApplication, error) {
 	}
 
 }
-
-var desktopSuffix = regexp.MustCompile(`\.desktop$`)
 
 func trimAndStripDesktopSuffix(fileName string) string {
 	return strings.TrimSuffix(strings.TrimSpace(fileName), ".desktop")

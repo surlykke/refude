@@ -18,6 +18,7 @@ import (
 	"github.com/surlykke/refude/internal/icons"
 	"github.com/surlykke/refude/internal/lib/entity"
 	"github.com/surlykke/refude/internal/notifications"
+	"github.com/surlykke/refude/internal/notifygui"
 	"github.com/surlykke/refude/internal/options"
 	"github.com/surlykke/refude/internal/power"
 	"github.com/surlykke/refude/internal/search"
@@ -39,6 +40,7 @@ func main() {
 	if !opts.NoNotifications {
 		ServeMap(notifications.NotificationMap, "/notification/")
 		go notifications.Run()
+		go notifygui.StartGui()
 	}
 
 	ServeMap(icons.ThemeMap, "/icontheme/")
@@ -64,6 +66,7 @@ func main() {
 	http.Handle("GET /desktop/details", bind.HandlerFunc(desktop.DetailsHandler, bind.Query("path")))
 
 	http.HandleFunc("GET /watch", watch.ServeHTTP)
+	go watch.Run()
 	http.Handle("GET /desktop/", desktop.StaticServer)
 
 	if err := http.ListenAndServe(":7938", nil); err != nil {

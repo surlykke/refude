@@ -9,6 +9,13 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/surlykke/refude/internal/applications"
+	"github.com/surlykke/refude/internal/browser"
+	"github.com/surlykke/refude/internal/file"
+	"github.com/surlykke/refude/internal/lib/entity"
+	"github.com/surlykke/refude/internal/notifications"
+	"github.com/surlykke/refude/internal/power"
+	"github.com/surlykke/refude/internal/wayland"
 	"github.com/surlykke/refude/pkg/pubsub"
 )
 
@@ -17,18 +24,28 @@ type event struct {
 	data  string
 }
 
-var events = pubsub.MakePublisher[event]()
+var aggregatedEvents = pubsub.MakePublisher[entity.Event]()
 
-func Publish(evt string, data string) {
-	events.Publish(event{evt, data})
+func follow(events *pubsub.Publisher[entity.Event]) {
+	var subscription = events.Subscribe()
+	for {
+		aggregatedEvents.Publish(subscription.Next())
+	}
 }
 
-func ResourceChanged(path string) {
-	Publish("resourceChanged", path)
+func Run() {
+	go follow(applications.AppMap.Events)
+	go follow(applications.MimeMap.Events)
+	go follow(wayland.WindowMap.Events)
+	go follow(notifications.NotificationMap.Events)
+	go follow(browser.BookmarkMap.Events)
+	go follow(browser.TabMap.Events)
+	go follow(power.DeviceMap.Events)
+	go follow(file.FileMap.Events)
 }
 
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	var subscription = events.Subscribe()
+	var subscription = aggregatedEvents.Subscribe()
 
 	w.Header().Set("Connection", "keep-alive")
 	w.Header().Set("Content-Type", "text/event-stream")
@@ -38,9 +55,9 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	for {
 		var evt = subscription.Next()
-		if _, err := fmt.Fprintf(w, "event:%s\n", evt.event); err != nil {
+		if _, err := fmt.Fprintf(w, "event:%s\n", evt.Event); err != nil {
 			return
-		} else if _, err := fmt.Fprintf(w, "data:%s\n\n", evt.data); err != nil {
+		} else if _, err := fmt.Fprintf(w, "data:%s\n\n", evt.Data); err != nil {
 			return
 		}
 		w.(http.Flusher).Flush()
