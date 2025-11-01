@@ -20,6 +20,12 @@ buildGoModule rec {
   ''
 	mkdir -p $out/bin
 	cp cmd/refude-server/runRefude.sh $out/bin
+	mkdir -p $out/.local/share/bash/completions
+	cp cmd/refuc/completions/bash/* $out/.local/share/bash/completions
+	mkdir -p $out/.local/share/fish/completions
+	cp cmd/refuc/completions/fish/* $out/.local/share/fish/completions
+	mkdir -p $out/share/icons/hicolor
+	cp -R internal/refudeicons/* $out/share/icons/hicolor/
   '';
 
   meta = {

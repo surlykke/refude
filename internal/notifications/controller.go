@@ -18,7 +18,6 @@ import (
 	"github.com/surlykke/refude/internal/icons"
 	"github.com/surlykke/refude/internal/lib/entity"
 	"github.com/surlykke/refude/internal/lib/image"
-	"github.com/surlykke/refude/pkg/bind"
 )
 
 const NOTIFICATIONS_SERVICE = "org.freedesktop.Notifications"
@@ -384,11 +383,13 @@ func Run() {
 	_ = conn.Export(introspect.Introspectable(INTROSPECT_XML), NOTIFICATIONS_PATH, INTROSPECT_INTERFACE)
 }
 
-func FlashHandler() bind.Response {
-	if flash, ok := getFlash(); !ok {
-		return bind.NotFound()
-	} else {
-		return bind.Json(flash)
-	}
+var NotificationMap = entity.MakeMap[uint32, *Notification]()
 
+func removeNotification(id uint32, reason uint32) {
+	if n, ok := NotificationMap.Get(id); ok && !n.Deleted {
+		var copy = *n
+		copy.Deleted = true
+		NotificationMap.Put(id, &copy)
+		conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", id, reason)
+	}
 }

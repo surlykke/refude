@@ -47,7 +47,7 @@ func main() {
 	go icons.Run()
 
 	ServeMap(power.DeviceMap, "/device/")
-	go power.Run()
+	go power.Run(opts.NoTrayBattery)
 
 	ServeMap(browser.TabMap, "/tab/")
 	go browser.Run()
@@ -60,7 +60,6 @@ func main() {
 
 	http.Handle("GET /icon", bind.HandlerFunc(icons.GetHandler, bind.Query("name"), bind.QueryOr("size", "32")))
 	http.Handle("GET /search", bind.HandlerFunc(search.GetHandler, bind.Query("term")))
-	http.Handle("GET /flash", bind.HandlerFunc(notifications.FlashHandler))
 	http.Handle("GET /complete", bind.HandlerFunc(completeHandler, bind.Query("prefix")))
 	http.Handle("GET /desktop/search", bind.HandlerFunc(desktop.SearchHandler, bind.Query("term")))
 	http.Handle("GET /desktop/details", bind.HandlerFunc(desktop.DetailsHandler, bind.Query("path")))

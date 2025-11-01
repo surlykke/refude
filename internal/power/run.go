@@ -15,7 +15,7 @@ import (
 
 var DeviceMap = entity.MakeMap[string, *Device]()
 
-func Run() {
+func Run(dontShowTrayBattery bool) {
 	var signals = subscribe()
 
 	DeviceMap.Put(retrieveDevice(displayDeviceDbusPath))
@@ -23,6 +23,9 @@ func Run() {
 
 	for _, dbusPath := range retrieveDevicePaths() {
 		DeviceMap.Put(retrieveDevice(dbusPath))
+	}
+	if !dontShowTrayBattery {
+		go tray_applet_run()
 	}
 
 	for signal := range signals {
