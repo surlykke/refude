@@ -22,5 +22,4 @@ cp ./cmd/refuc/completions/bash/* ${BASH_COMPLETION_DIR}
 cp ./cmd/refuc/completions/fish/* ${FISH_COMPLETION_DIR}
 
 go install ./cmd/refude-nm 
-sed "s@GOBIN@${GOBIN}@g" ./cmd/refude-nm/org.refude.native_messaging.json > ${ASSETS_DIR}/org.refude.native_messaging.json
 
