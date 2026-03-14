@@ -19,7 +19,7 @@ package wayland
 extern struct wl_display *wl_display;
 
 void initManager();
-int wl_display_dispatch();
+int wl_display_dispatch(struct wl_display *display);
 typedef struct wl_output* wl_output;
 typedef struct zwlr_foreign_toplevel_handle_v1 *toplevel_handle;
 typedef struct wl_array* wl_array;
