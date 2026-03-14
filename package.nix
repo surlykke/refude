@@ -12,7 +12,8 @@ buildGoModule rec {
   version = "0.1";
 
   src = lib.cleanSource ./.;
-  vendorHash = "sha256-tfcuyrrxxw5RF33vo2qXH7jnSiYXbKpw3UrNtrsRc30=";
+	#  vendorHash = "sha256-tfcuyrrxxw5RF33vo2qXH7jnSiYXbKpw3UrNtrsRc30=";
+  vendorHash = "sha256-My7MYFUNB/C6rFcfPfKXAHOSocsUchM8Dc04W55e4Sg=";
   subPackages = [ "cmd/refude-server" "cmd/refuc" "cmd/refude-nm" ];
   nativeBuildInputs = [ pkg-config ];
   buildInputs = [ kdePackages.wayland gtk4 gtk4-layer-shell ];
