@@ -100,12 +100,12 @@ func Xpm2png(data []byte) ([]byte, error) {
 		return nil, err
 	} else {
 		var img = image.NewRGBA(image.Rect(0, 0, width, heigth))
-		for i := 0; i < heigth; i++ {
+		for i := range heigth {
 			var line = xpm[1+colors+i]
 			if len(line) != charsPrColor*width {
 				return nil, errors.New("Wrong length of line: '" + line + "'")
 			} else {
-				for j := 0; j < width; j++ {
+				for j := range width {
 					var key = line[charsPrColor*j : charsPrColor*j+charsPrColor]
 					if color, ok := colorMap[key]; !ok {
 						return nil, errors.New("Unknown color '" + key + "' in '" + line + "'")

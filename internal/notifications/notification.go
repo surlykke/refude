@@ -58,7 +58,7 @@ type Notification struct {
 	Deleted        bool
 	Urgency        Urgency
 	NActions       map[string]string `json:"actions"`
-	Hints          map[string]interface{}
+	Hints          map[string]any
 	IconName       string
 	IconSize       uint32 `json:",omitempty"`
 }

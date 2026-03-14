@@ -7,6 +7,7 @@ package entity
 
 import (
 	"encoding/json"
+	"slices"
 	"strings"
 
 	"github.com/surlykke/refude/internal/lib/translate"
@@ -77,12 +78,9 @@ func (this *Base) Links(rel ...Relation) []Link {
 	if len(rel) > 0 {
 		var pos = 0
 		for i := 0; i < len(tmp); i++ {
-			for _, r := range rel {
-				if tmp[i].Relation == r {
-					tmp[pos] = tmp[i]
-					pos++
-					break
-				}
+			if slices.Contains(rel, tmp[i].Relation) {
+				tmp[pos] = tmp[i]
+				pos++
 			}
 		}
 		tmp = tmp[0:pos]

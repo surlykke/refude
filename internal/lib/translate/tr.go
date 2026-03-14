@@ -3,12 +3,12 @@
 // This file is part of the refude project.
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
-//
 package translate
 
 import (
 	"os"
 	"regexp"
+	"slices"
 )
 
 var lcMessage string
@@ -79,10 +79,5 @@ func Texts(texts []string) []string {
 }
 
 func LocaleMatch(loc string) bool {
-	for _, lm := range lcMatchers {
-		if loc == lm {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(lcMatchers, loc)
 }

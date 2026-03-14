@@ -75,7 +75,7 @@ func appendIfNotThere(list []string, otherList ...string) []string {
 
 func remove(list []string, otherList ...string) []string {
 	var pos = 0
-	for i := 0; i < len(list); i++ {
+	for i := range list {
 		var found = false
 		if slices.Contains(otherList, list[i]) {
 			found = true

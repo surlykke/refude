@@ -56,7 +56,7 @@ func (a *ARGBImage) AsPng() ([]byte, error) {
 func X11IconHashName(arr []uint32) string {
 	var hasher = sha256.New()
 	var bytes = make([]byte, 4*len(arr), 4*len(arr))
-	for i := 0; i < len(arr); i++ {
+	for i := range arr {
 		bytes[4*i], bytes[4*i+1], bytes[4*i+2], bytes[4*i+3] = byte(arr[i]>>24)&0xFF, byte(arr[i]>>16)&0xFF, byte(arr[i]>>8)&0xFF, byte(arr[i]&0xFF)
 	}
 	hasher.Write(bytes)

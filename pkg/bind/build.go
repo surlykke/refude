@@ -22,7 +22,7 @@ func MakeAdapter(function any, bindings ...binding) (func(r *http.Request) Respo
 		return nil, errors.New("Not a function")
 	}
 
-	if funcType.NumOut() != 1 || funcType.Out(0) != reflect.TypeOf(Response{}) {
+	if funcType.NumOut() != 1 || funcType.Out(0) != reflect.TypeFor[Response]() {
 		return nil, errors.New("function does not have a single return value or type Response")
 	}
 
