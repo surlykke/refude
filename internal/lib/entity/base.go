@@ -54,7 +54,10 @@ func MakeBase(title string, subtitle string, icon string, kind string, keywords 
 }
 
 func adjustIcon(icon string) string {
-	if strings.HasPrefix(icon, "http://") || strings.HasPrefix(icon, "https://") || strings.HasPrefix(icon, "/icon?name=") {
+	icon = strings.TrimSpace(icon)
+	if icon == "" {
+		return ""
+	} else if strings.HasPrefix(icon, "http://") || strings.HasPrefix(icon, "https://") || strings.HasPrefix(icon, "/icon?name=") {
 		return icon
 	} else {
 		return "/icon?name=" + icon
