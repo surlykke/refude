@@ -6,12 +6,9 @@
 package entity
 
 import (
-	"encoding/json"
-	"slices"
 	"strings"
 
 	"github.com/surlykke/refude/internal/lib/translate"
-	"github.com/surlykke/refude/pkg/bind"
 )
 
 type Servable interface {
@@ -24,17 +21,10 @@ type Base struct {
 	Subtitle string `json:"subtitle,omitempty"`
 	Icon     string `json:"icon"`
 	Kind     string `json:"type"`
-	Meta     Meta   `json:"links"`
-}
-
-type Meta struct {
-	Path     string
-	Actions  []Action
-	Keywords []string // TODO Maybe a function, including keywords from actions
-}
-
-func (this *Meta) MarshalJSON() ([]byte, error) {
-	return json.Marshal(buildLinks(this))
+	Path     string `json:"path"`
+	Links    map[Relation][]Link
+	Keywords []string
+	Actions  []Action `json:"-"`
 }
 
 type Action struct {
@@ -50,7 +40,8 @@ func MakeBase(title string, subtitle string, icon string, kind string, keywords 
 		Subtitle: translate.Text(subtitle),
 		Icon:     icon,
 		Kind:     kind,
-		Meta:     Meta{Keywords: translate.Texts(keywords)},
+		Keywords: translate.Texts(keywords),
+		Links:    make(map[Relation][]Link),
 	}
 }
 
@@ -73,37 +64,30 @@ func (this *Base) GetBase() *Base {
 	return this
 }
 
-func (this *Base) Links(rel ...Relation) []Link {
-	var tmp = buildLinks(&this.Meta)
-	if len(rel) > 0 {
-		var pos = 0
-		for i := 0; i < len(tmp); i++ {
-			if slices.Contains(rel, tmp[i].Relation) {
-				tmp[pos] = tmp[i]
-				pos++
-			}
-		}
-		tmp = tmp[0:pos]
+// Call before serving
+func (this *Base) SetPath(path string) {
+	this.Path = path
+	this.Links = make(map[Relation][]Link)
+	this.Links[Self] = []Link{{Href: path}}
+	for _, a := range this.Actions {
+		this.Links[OrgRefudeAction] = append(this.Links[OrgRefudeAction], Link{Href: path + "?action=" + a.Id, Title: a.Name, Icon: a.Icon})
 	}
-	return tmp
 }
 
-func buildLinks(meta *Meta) []Link {
-	var links = make([]Link, 0, 1+len(meta.Actions))
-	links = append(links, Link{Href: meta.Path, Relation: Self})
-	for _, action := range meta.Actions {
-		var href = meta.Path
-		if action.Id != "" {
-			href = href + "?action=" + action.Id
+func (this *Base) GetLinks(rel ...Relation) []Link {
+	var tmp = []Link{}
+	for _, r := range rel {
+		if l, ok := this.Links[r]; ok {
+			tmp = append(tmp, l...)
 		}
-		links = append(links, Link{Href: href, Title: action.Name, Icon: action.Icon, Relation: OrgRefudeAction})
 	}
-	return links
+
+	return tmp
 }
 
 func (this *Base) AddAction(id string, name string, icon string) {
 	icon = adjustIcon(icon)
-	this.Meta.Actions = append(this.Meta.Actions, Action{Id: id, Name: translate.Text(name)})
+	this.Actions = append(this.Actions, Action{Id: id, Name: translate.Text(name)})
 }
 
 /*func (this *ResourceData) AddDeleteAction(actionId string, title string, comment string, iconName icon.Name) {
@@ -131,9 +115,9 @@ const (
 // -------------- Serve -------------------------
 
 type Postable interface {
-	DoPost(string) bind.Response
+	DoPost(string) (bool, error)
 }
 
 type Deleteable interface {
-	DoDelete() bind.Response
+	DoDelete() error
 }

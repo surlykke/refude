@@ -13,9 +13,10 @@ import (
 	"github.com/surlykke/refude/internal/lib/entity"
 )
 
-var DeviceMap = entity.MakeMap[string, *Device]()
+var DeviceMap = entity.MakeMap[string, *Device]("/device/")
 
 func Run(dontShowTrayBattery bool) {
+	DeviceMap.Serve()
 	var signals = subscribe()
 
 	DeviceMap.Put(retrieveDevice(displayDeviceDbusPath))

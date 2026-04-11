@@ -12,10 +12,9 @@ import (
 
 	"github.com/surlykke/refude/internal/applications"
 	"github.com/surlykke/refude/internal/lib/entity"
-	"github.com/surlykke/refude/pkg/bind"
 )
 
-var WindowMap = entity.MakeMap[uint64, *WaylandWindow]()
+var WindowMap = entity.MakeMap[uint64, *WaylandWindow]("/window/")
 
 var windowUpdates = make(chan windowUpdate)
 var removals = make(chan uint64)
@@ -29,6 +28,7 @@ type windowUpdate struct {
 }
 
 func Run(ignWin map[string]bool) {
+	WindowMap.Serve()
 	ignoredWindows = ignWin
 
 	go setupAndRunAsWaylandClient()
@@ -132,9 +132,9 @@ func (wsm WindowStateMask) MarshalJSON() ([]byte, error) {
 
 type WaylandWindow struct {
 	entity.Base
-	Wid   uint64 `json:"-"`
-	AppId string `json:"app_id"`
-	State WindowStateMask
+	Wid   uint64          `json:"-"`
+	AppId string          `json:"app_id"`
+	State WindowStateMask `json:"state"`
 }
 
 func makeWindow(wId uint64, title string, iconName string, appId string, state WindowStateMask) *WaylandWindow {
@@ -149,21 +149,21 @@ func makeWindow(wId uint64, title string, iconName string, appId string, state W
 	return ww
 }
 
-func (this *WaylandWindow) DoDelete() bind.Response {
+func (this *WaylandWindow) DoDelete() error {
 	close(this.Wid)
-	return bind.Accepted()
+	return nil
 }
 
 func (this *WaylandWindow) OmitFromSearch() bool {
 	return strings.HasPrefix(this.Title, "Refude desktop") || ignoredWindows[this.AppId]
 }
 
-func (this *WaylandWindow) DoPost(action string) bind.Response {
+func (this *WaylandWindow) DoPost(action string) (bool, error) {
 	if "" == action {
 		activate(this.Wid)
-		return bind.Accepted()
+		return true, nil
 	} else {
-		return bind.NotFound()
+		return false, nil
 	}
 }
 

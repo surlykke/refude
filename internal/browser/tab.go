@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/surlykke/refude/internal/lib/entity"
-	"github.com/surlykke/refude/pkg/bind"
 )
 
 type Tab struct {
@@ -19,9 +18,9 @@ type Tab struct {
 	Url       string
 }
 
-func (this *Tab) DoPost(action string) bind.Response {
+func (this *Tab) DoPost(action string) (bool, error) {
 	browserCommands.Publish(browserCommand{BrowserId: this.BrowserId, TabId: this.Id, Cmd: "focus"})
-	return bind.Accepted()
+	return true, nil
 }
 
 func (this *Tab) OmitFromSearch() bool {

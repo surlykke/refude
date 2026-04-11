@@ -5,7 +5,6 @@
 package main
 
 import (
-	"cmp"
 	"log"
 	"net/http"
 	"strings"
@@ -16,7 +15,9 @@ import (
 	"github.com/surlykke/refude/internal/desktopactions"
 	"github.com/surlykke/refude/internal/file"
 	"github.com/surlykke/refude/internal/icons"
-	"github.com/surlykke/refude/internal/lib/entity"
+	"github.com/surlykke/refude/internal/lib/respond"
+	"github.com/surlykke/refude/internal/lib/utils"
+	"github.com/surlykke/refude/internal/network"
 	"github.com/surlykke/refude/internal/notifications"
 	"github.com/surlykke/refude/internal/notifygui"
 	"github.com/surlykke/refude/internal/options"
@@ -24,49 +25,27 @@ import (
 	"github.com/surlykke/refude/internal/search"
 	"github.com/surlykke/refude/internal/watch"
 	"github.com/surlykke/refude/internal/wayland"
-	"github.com/surlykke/refude/pkg/bind"
 )
 
 func main() {
 	var opts = options.GetOpts()
 
-	ServeMap(wayland.WindowMap, "/window/")
 	go wayland.Run(opts.IgnoreWinAppIds)
-
-	ServeMap(applications.AppMap, "/application/")
-	ServeMap(applications.MimeMap, "/mimetype/")
 	go applications.Run()
+	go notifications.Run(opts.NoNotifications)
+	go notifygui.StartGui(opts.NoNotifications)
 
-	if !opts.NoNotifications {
-		ServeMap(notifications.NotificationMap, "/notification/")
-		go notifications.Run()
-		go notifygui.StartGui()
-	}
-
-	ServeMap(icons.ThemeMap, "/icontheme/")
 	go icons.Run()
-
-	ServeMap(power.DeviceMap, "/device/")
 	go power.Run(opts.NoTrayBattery)
-
-	ServeMap(browser.TabMap, "/tab/")
 	go browser.Run()
-
-	ServeMap(browser.BookmarkMap, "/bookmark/")
-	ServeMap(file.FileMap, "/file/")
 	go file.Run()
-
-	ServeMap(desktopactions.PowerActions, "/start/")
-
-	http.Handle("GET /icon", bind.HandlerFunc(icons.GetHandler, bind.Query("name"), bind.QueryOr("size", "32")))
-	http.Handle("GET /search", bind.HandlerFunc(search.GetHandler, bind.Query("term")))
-	http.Handle("GET /complete", bind.HandlerFunc(completeHandler, bind.Query("prefix")))
-	http.Handle("GET /desktop/search", bind.HandlerFunc(desktop.SearchHandler, bind.Query("term")))
-	http.Handle("GET /desktop/details", bind.HandlerFunc(desktop.DetailsHandler, bind.Query("path")))
-
-	http.HandleFunc("GET /watch", watch.ServeHTTP)
+	go desktopactions.Run()
+	go desktop.Run()
+	go search.Run()
+	go network.Run()
 	go watch.Run()
-	http.Handle("GET /desktop/", desktop.StaticServer)
+
+	http.HandleFunc("GET /complete", CompleteHandler)
 
 	if err := http.ListenAndServe(":7938", nil); err != nil {
 		log.Print("http.ListenAndServe failed:", err)
@@ -74,14 +53,7 @@ func main() {
 
 }
 
-func ServeMap[K cmp.Ordered, V entity.Servable](m *entity.EntityMap[K, V], pathPrefix string) {
-	m.SetPrefix(pathPrefix)
-	http.Handle("GET "+pathPrefix+"{id...}", bind.HandlerFunc(m.DoGet, bind.Path("id")))
-	http.Handle("GET "+pathPrefix+"{$}", bind.HandlerFunc(m.DoGetList))
-	http.Handle("POST "+pathPrefix+"{id...}", bind.HandlerFunc(m.DoPost, bind.Path("id"), bind.QueryOr("action", "")))
-}
-
-func completeHandler(prefix string) bind.Response {
+func CompleteHandler(w http.ResponseWriter, r *http.Request) {
 	var filtered = make([]string, 0, 1000)
 	var allPaths = [][]string{
 		{"/flash", "/icon?name=", "/desktop/", "/complete?prefix=", "/search?", "/watch"},
@@ -94,7 +66,7 @@ func completeHandler(prefix string) bind.Response {
 		browser.TabMap.GetPaths(),
 		browser.BookmarkMap.GetPaths(),
 	}
-
+	var prefix = utils.QueryParam(r, "prefix")
 	for _, pathList := range allPaths {
 		for _, path := range pathList {
 			if strings.HasPrefix(path, prefix) {
@@ -103,5 +75,5 @@ func completeHandler(prefix string) bind.Response {
 		}
 	}
 
-	return bind.Json(filtered)
+	respond.AsJson(w, filtered)
 }

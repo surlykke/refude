@@ -8,7 +8,6 @@ package browser
 import (
 	"github.com/surlykke/refude/internal/lib/entity"
 	"github.com/surlykke/refude/internal/lib/xdg"
-	"github.com/surlykke/refude/pkg/bind"
 )
 
 type Bookmark struct {
@@ -17,9 +16,9 @@ type Bookmark struct {
 	ExternalUrl string
 }
 
-func (this *Bookmark) DoPost(action string) bind.Response {
+func (this *Bookmark) DoPost(action string) (bool, error) {
 	xdg.RunCmd("xdg-open", this.ExternalUrl)
-	return bind.Accepted()
+	return true, nil
 }
 
 // We use this for icon url

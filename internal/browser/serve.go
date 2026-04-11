@@ -17,14 +17,14 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/surlykke/refude/internal/lib/entity"
+	"github.com/surlykke/refude/internal/lib/respond"
 	"github.com/surlykke/refude/internal/lib/utils"
 	"github.com/surlykke/refude/internal/lib/xdg"
-	"github.com/surlykke/refude/pkg/bind"
 	"github.com/surlykke/refude/pkg/pubsub"
 )
 
-var TabMap = entity.MakeMap[string, *Tab]()
-var BookmarkMap = entity.MakeMap[string, *Bookmark]()
+var TabMap = entity.MakeMap[string, *Tab]("/tab/")
+var BookmarkMap = entity.MakeMap[string, *Bookmark]("/bookmark/")
 
 // Data sent to the browser
 type browserCommand struct {
@@ -63,6 +63,9 @@ type browserData struct {
 }*/
 
 func Run() {
+	TabMap.Serve()
+	BookmarkMap.Serve()
+
 	os.Remove(xdg.NmSocketPath)
 	if listener, err := net.Listen("unix", xdg.NmSocketPath); err != nil {
 		log.Print(err)
@@ -157,7 +160,7 @@ func browserNameFromId(id string) string {
 
 }
 
-var reportCommand = bind.ToJson(browserCommand{Cmd: "report"})
+var reportCommand = respond.ToJson(browserCommand{Cmd: "report"})
 
 func send(browserId string, conn net.Conn) {
 	var subscription = browserCommands.Subscribe()
@@ -168,7 +171,7 @@ func send(browserId string, conn net.Conn) {
 	for {
 		var cmd = subscription.Next()
 		if cmd.BrowserId == browserId {
-			if err := writeMsg(conn, bind.ToJson(cmd)); err != nil {
+			if err := writeMsg(conn, respond.ToJson(cmd)); err != nil {
 				return
 			}
 		}

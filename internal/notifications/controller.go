@@ -345,7 +345,12 @@ func helper(src *string, dest *string, allowedPrefixes []string, endMarker strin
 	*src = (*src)[endMarkerPos+1:]
 }
 
-func Run() {
+func Run(noNotifications bool) {
+	if noNotifications {
+		return
+	}
+
+	NotificationMap.Serve()
 	var err error
 	var reply dbus.RequestNameReply
 
@@ -383,7 +388,7 @@ func Run() {
 	_ = conn.Export(introspect.Introspectable(INTROSPECT_XML), NOTIFICATIONS_PATH, INTROSPECT_INTERFACE)
 }
 
-var NotificationMap = entity.MakeMap[uint32, *Notification]()
+var NotificationMap = entity.MakeMap[uint32, *Notification]("/notification/")
 
 func removeNotification(id uint32, reason uint32) {
 	if n, ok := NotificationMap.Get(id); ok && !n.Deleted {

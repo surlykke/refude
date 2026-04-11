@@ -6,34 +6,28 @@
 package utils
 
 import (
-	"fmt"
-
 	"github.com/godbus/dbus/v5"
 )
 
-const INTROSPECT_INTERFACE = "org.freedesktop.DBus.Introspectable"
 const PROPERTIES_INTERFACE = "org.freedesktop.DBus.Properties"
 
-func GetSingleProp(conn *dbus.Conn, service string, path dbus.ObjectPath, dbusInterface string, propName string) (dbus.Variant, bool) {
-	if call := conn.Object(service, path).Call(PROPERTIES_INTERFACE+".Get", dbus.Flags(0), dbusInterface, propName); call.Err != nil {
-		return dbus.Variant{}, false
+func Call[T any](conn *dbus.Conn, service string, dest dbus.ObjectPath, method string, args ...any) (T, error) {
+	var t T
+	var obj = conn.Object(service, dest)
+	var call = obj.Call(method, 0, args...)
+	if call.Err != nil {
+		return t, call.Err
+	} else if err := call.Store(&t); err != nil {
+		return t, err
 	} else {
-		return call.Body[0].(dbus.Variant), true
+		return t, nil
 	}
 }
 
-func GetAllProps(conn *dbus.Conn, service string, dbusPath dbus.ObjectPath, dbusInterface string) map[string]dbus.Variant {
-	if call := conn.Object(service, dbusPath).Call(PROPERTIES_INTERFACE+".GetAll", dbus.Flags(0), dbusInterface); call.Err != nil {
-		return map[string]dbus.Variant{}
-	} else {
-		return call.Body[0].(map[string]dbus.Variant)
-	}
+func Prop[T any](conn *dbus.Conn, service string, dest dbus.ObjectPath, iface string, name string) (T, error) {
+	return Call[T](conn, service, dest, "org.freedesktop.DBus.Properties.Get", iface, name)
 }
 
-func Introspect(conn *dbus.Conn, service string, dbusPath dbus.ObjectPath) string {
-	if call := conn.Object(service, dbusPath).Call(INTROSPECT_INTERFACE+".Introspect", dbus.Flags(0)); call.Err != nil {
-		return fmt.Sprintln(call.Err)
-	} else {
-		return call.Body[0].(string)
-	}
+func Props(conn *dbus.Conn, service string, dest dbus.ObjectPath, iface string) (map[string]any, error) {
+	return Call[map[string]any](conn, service, dest, "org.freedesktop.DBus.Properties.GetAll", iface)
 }

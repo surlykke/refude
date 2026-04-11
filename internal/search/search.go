@@ -6,6 +6,7 @@
 package search
 
 import (
+	"net/http"
 	"slices"
 	"strings"
 
@@ -15,17 +16,21 @@ import (
 	"github.com/surlykke/refude/internal/file"
 	"github.com/surlykke/refude/internal/icons"
 	"github.com/surlykke/refude/internal/lib/entity"
+	"github.com/surlykke/refude/internal/lib/respond"
+	"github.com/surlykke/refude/internal/lib/utils"
+	"github.com/surlykke/refude/internal/network"
 	"github.com/surlykke/refude/internal/notifications"
 	"github.com/surlykke/refude/internal/power"
 	"github.com/surlykke/refude/internal/wayland"
-	"github.com/surlykke/refude/pkg/bind"
 )
 
-const maxRank uint = 1000000
-
-func GetHandler(term string) bind.Response {
-	return bind.Json(Search(term))
+func Run() {
+	http.HandleFunc("GET /search", func(w http.ResponseWriter, r *http.Request) {
+		respond.AsJson(w, Search(utils.QueryParam(r, "term")))
+	})
 }
+
+const maxRank uint = 1000000
 
 type Ranked struct {
 	entity.Base
@@ -44,6 +49,7 @@ func Search(term string) []Ranked {
 		result = append(result, filter(applications.AppMap.GetForSearch(), m)...)
 	}
 	if len(m.term) > 2 {
+		result = append(result, filter(network.Connections.GetForSearch(), m)...)
 		result = append(result, filter(power.DeviceMap.GetForSearch(), m)...)
 		result = append(result, filter(file.FileMap.GetForSearch(), m)...)
 		result = append(result, filter(browser.BookmarkMap.GetForSearch(), m)...)
@@ -58,7 +64,7 @@ func filter(bases []entity.Base, m matcher) []Ranked {
 	var result = make([]Ranked, 0, len(bases))
 	for _, res := range bases {
 		var rankCalculated = m.match(res.Title)
-		for _, keyword := range res.Meta.Keywords {
+		for _, keyword := range res.Keywords {
 			if tmp := m.match(keyword) + 20; tmp < rankCalculated {
 				rankCalculated = tmp
 			}
@@ -108,7 +114,7 @@ func SearchByPath(path string) (entity.Base, bool) {
 	}
 
 	for _, b := range bases {
-		if b.Meta.Path == path {
+		if b.Path == path {
 			return b, true
 		}
 	}

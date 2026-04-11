@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/surlykke/refude/internal/lib/entity"
-	"github.com/surlykke/refude/pkg/bind"
 )
 
 type Urgency uint8
@@ -76,22 +75,20 @@ func (this *Notification) OmitFromSearch() bool {
 	return this.Deleted || this.Expired() || (this.NActions["default"] == "" && this.SoftExpired())
 }
 
-func (n *Notification) DoPost(action string) bind.Response {
-	if action == "" && len(n.Meta.Actions) > 0 {
-		action = n.Meta.Actions[0].Id
-	}
+func (n *Notification) DoPost(action string) (bool, error) {
+	// FIXME
 	if _, ok := n.NActions[action]; ok {
 		if err := conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".ActionInvoked", n.NotificationId, action); err != nil {
-			return bind.ServerError(err)
+			return false, err
 		} else {
-			return bind.Accepted()
+			return true, nil
 		}
 	} else {
-		return bind.NotFound()
+		return false, nil
 	}
 }
 
-func (n *Notification) DoDelete() bind.Response {
+func (n *Notification) DoDelete() error {
 	removeNotification(n.NotificationId, Dismissed)
-	return bind.Ok()
+	return nil
 }

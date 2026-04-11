@@ -13,7 +13,6 @@ import (
 
 	"github.com/surlykke/refude/internal/lib/entity"
 	"github.com/surlykke/refude/internal/lib/xdg"
-	"github.com/surlykke/refude/pkg/bind"
 )
 
 type DesktopApplication struct {
@@ -57,7 +56,7 @@ type DesktopAction struct {
 	Icon string
 }
 
-func (d *DesktopApplication) DoPost(action string) bind.Response {
+func (d *DesktopApplication) DoPost(action string) (bool, error) {
 	if action == "" {
 		return postHelper(d.Exec, d.Terminal)
 	} else {
@@ -67,14 +66,14 @@ func (d *DesktopApplication) DoPost(action string) bind.Response {
 			}
 		}
 	}
-	return bind.NotFound()
+	return false, nil
 }
 
-func postHelper(exec string, terminal bool) bind.Response {
+func postHelper(exec string, terminal bool) (bool, error) {
 	if err := run(exec, "", terminal); err != nil {
-		return bind.ServerError(err)
+		return false, err
 	} else {
-		return bind.Accepted()
+		return true, nil
 	}
 }
 

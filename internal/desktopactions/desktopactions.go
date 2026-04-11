@@ -12,7 +12,6 @@ import (
 
 	"github.com/godbus/dbus/v5"
 	"github.com/surlykke/refude/internal/lib/entity"
-	"github.com/surlykke/refude/pkg/bind"
 )
 
 var lastUpdated = atomic.Pointer[time.Time]{}
@@ -23,22 +22,26 @@ var actionMethod = map[string]string{
 	"suspend":  "org.freedesktop.login1.Manager.Suspend",
 }
 
-var PowerActions = entity.MakeMap[string, *StartResource]()
+var PowerActions = entity.MakeMap[string, *StartResource]("/start/")
+
+func Run() {
+	PowerActions.Serve()
+}
 
 type StartResource struct {
 	entity.Base
 	dbusMethod string
 }
 
-func (this *StartResource) DoPost(action string) bind.Response {
+func (this *StartResource) DoPost(action string) (bool, error) {
 	if action != "" {
-		return bind.NotFound()
+		return false, nil
 	} else if conn, err := dbus.SystemBus(); err != nil {
 		log.Print(err)
-		return bind.ServerError(err)
+		return false, err
 	} else {
 		conn.Object("org.freedesktop.login1", "/org/freedesktop/login1").Call(this.dbusMethod, dbus.Flags(0), false)
-		return bind.Accepted()
+		return true, nil
 	}
 
 }

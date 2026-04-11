@@ -14,8 +14,9 @@ import (
 	"net/http"
 
 	"github.com/surlykke/refude/internal/lib/entity"
+	"github.com/surlykke/refude/internal/lib/respond"
+	"github.com/surlykke/refude/internal/lib/utils"
 	"github.com/surlykke/refude/internal/search"
-	"github.com/surlykke/refude/pkg/bind"
 )
 
 //go:embed html
@@ -50,6 +51,12 @@ func init() {
 
 }
 
+func Run() {
+	http.HandleFunc("GET /desktop/search", SearchHandler)
+	http.HandleFunc("GET /desktop/details", DetailsHandler)
+	http.Handle("GET /desktop/", StaticServer)
+}
+
 type Resourceline struct {
 	Icon        string
 	Title       string
@@ -59,18 +66,19 @@ type Resourceline struct {
 	MoreActions bool
 }
 
-func SearchHandler(term string) bind.Response {
+func SearchHandler(w http.ResponseWriter, r *http.Request) {
 	var (
 		lines []Resourceline
+		term  = utils.QueryParam(r, "term")
 	)
 
 	for _, r := range search.Search(term) {
 
 		var line = Resourceline{Icon: string(r.Icon), Title: r.Title, Comment: r.Subtitle}
-		var links = r.Links(entity.OrgRefudeAction)
+		var links = r.GetLinks(entity.OrgRefudeAction)
 		if len(links) > 0 {
 			line.Href = links[0].Href
-			line.Path = r.Meta.Path
+			line.Path = r.Path
 		}
 		line.MoreActions = len(links) > 1
 		lines = append(lines, line)
@@ -78,10 +86,9 @@ func SearchHandler(term string) bind.Response {
 
 	var b bytes.Buffer
 	if err := rowTemplate.Execute(&b, lines); err != nil {
-		log.Print(err)
-		return bind.ServerError(err)
+		respond.ServerError(w, err)
 	} else {
-		return bind.Html(b.Bytes())
+		respond.AsHtml(w, string(b.Bytes()))
 	}
 }
 
@@ -90,14 +97,14 @@ type Detail struct {
 	Href string
 }
 
-func DetailsHandler(resPath string) bind.Response {
+func DetailsHandler(w http.ResponseWriter, r *http.Request) {
 	var b bytes.Buffer
+	var resPath = utils.QueryParam(r, "path")
 	if base, ok := search.SearchByPath(resPath); !ok {
-		return bind.NotFound()
-	} else if err := detailsTemplate.Execute(&b, base.Links(entity.OrgRefudeAction)); err != nil {
-		log.Print(err)
-		return bind.ServerError(err)
+		respond.NotFound(w)
+	} else if err := detailsTemplate.Execute(&b, base.GetLinks(entity.OrgRefudeAction)); err != nil {
+		respond.ServerError(w, err)
 	} else {
-		return bind.Html(b.Bytes())
+		respond.AsHtml(w, string(b.Bytes()))
 	}
 }

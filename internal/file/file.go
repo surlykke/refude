@@ -15,7 +15,6 @@ import (
 
 	"github.com/surlykke/refude/internal/applications"
 	"github.com/surlykke/refude/internal/lib/entity"
-	"github.com/surlykke/refude/pkg/bind"
 )
 
 func getFileType(m os.FileMode) string {
@@ -104,13 +103,10 @@ func readEntries(dir string) []fs.DirEntry {
 	}
 }
 
-func (f *File) DoPost(action string) bind.Response {
-	if action == "" && len(f.Meta.Actions) > 0 {
-		action = f.Meta.Actions[0].Id
-	}
+func (f *File) DoPost(action string) (bool, error) {
 	if applications.OpenFile(action, f.OsPath) {
-		return bind.Accepted()
+		return true, nil
 	} else {
-		return bind.NotFound()
+		return false, nil
 	}
 }

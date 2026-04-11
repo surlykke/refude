@@ -8,9 +8,11 @@ package entity
 import (
 	"cmp"
 	"fmt"
+	"net/http"
 	"sync"
 
-	"github.com/surlykke/refude/pkg/bind"
+	"github.com/surlykke/refude/internal/lib/respond"
+	"github.com/surlykke/refude/internal/lib/utils"
 	"github.com/surlykke/refude/pkg/pubsub"
 )
 
@@ -20,15 +22,16 @@ type Event struct {
 }
 
 type EntityMap[K cmp.Ordered, V Servable] struct {
-	m        map[K]V
-	lock     sync.Mutex
-	basepath string
-	Events   *pubsub.Publisher[Event]
+	m      map[K]V
+	lock   sync.Mutex
+	Prefix string
+	Events *pubsub.Publisher[Event]
 }
 
-func MakeMap[K cmp.Ordered, V Servable]() *EntityMap[K, V] {
+func MakeMap[K cmp.Ordered, V Servable](prefix string) *EntityMap[K, V] {
 	var m = &EntityMap[K, V]{
 		m:      make(map[K]V),
+		Prefix: prefix,
 		Events: pubsub.MakePublisher[Event](),
 	}
 
@@ -71,10 +74,12 @@ func (this *EntityMap[K, V]) Replace(newVals map[K]V, remove func(V) bool) {
 }
 
 func (this *EntityMap[K, V]) ReplaceAll(newSet map[K]V) {
+	for id, v := range newSet {
+		v.GetBase().SetPath(fmt.Sprintf("%s%v", this.Prefix, id))
+	}
 	this.lock.Lock()
 	defer this.lock.Unlock()
 	this.m = newSet
-	this.setPaths()
 	this.publish()
 }
 
@@ -99,47 +104,18 @@ func (this *EntityMap[K, V]) GetForSearch() []Base {
 	return bases
 }
 
-func (this *EntityMap[K, V]) DoGet(id K) bind.Response {
-	if v, ok := this.Get(id); ok {
-		return bind.Json(v)
-	} else {
-		return bind.NotFound()
-	}
-}
-
-func (this *EntityMap[K, V]) DoGetList() bind.Response {
-	return bind.Json(this.GetAll())
-}
-
-func (this *EntityMap[K, V]) DoPost(id K, action string) bind.Response {
-	if v, ok := this.Get(id); !ok {
-		return bind.NotFound()
-	} else if postable, ok := any(v).(Postable); !ok {
-		return bind.NotAllowed()
-	} else {
-		return postable.DoPost(action)
-	}
-}
-
 func (this *EntityMap[K, V]) GetPaths() []string {
 	var paths = make([]string, 0, len(this.m))
 	this.lock.Lock()
 	defer this.lock.Unlock()
-	for _, v := range this.m {
-		paths = append(paths, v.GetBase().Meta.Path)
+	for id, _ := range this.m {
+		paths = append(paths, fmt.Sprintf("%s%v", this.Prefix, id))
 	}
 	return paths
 }
 
-func (this *EntityMap[K, V]) SetPrefix(prefix string) {
-	this.lock.Lock()
-	defer this.lock.Unlock()
-	this.basepath = prefix
-	this.setPaths()
-}
-
 func (this *EntityMap[K, V]) put(k K, v V) {
-	v.GetBase().Meta.Path = fmt.Sprintf("%s%v", this.basepath, k)
+	v.GetBase().SetPath(fmt.Sprintf("%s%v", this.Prefix, k))
 	this.m[k] = v
 }
 
@@ -152,15 +128,59 @@ func (this *EntityMap[K, V]) remove(k K) (V, bool) {
 }
 
 func (this *EntityMap[K, V]) publishWithId(id K) {
-	this.Events.Publish(Event{Event: this.basepath, Data: fmt.Sprintf("%v", id)})
+	this.Events.Publish(Event{Event: this.Prefix, Data: fmt.Sprintf("%v", id)})
 }
 
 func (this *EntityMap[K, V]) publish() {
-	this.Events.Publish(Event{Event: this.basepath, Data: ""})
+	this.Events.Publish(Event{Event: this.Prefix, Data: ""})
 }
 
-func (this *EntityMap[K, V]) setPaths() {
-	for k, v := range this.m {
-		v.GetBase().Meta.Path = fmt.Sprintf("%s%v", this.basepath, k)
+func (this *EntityMap[K, V]) Serve() {
+	http.HandleFunc("GET "+this.Prefix+"{id...}", func(w http.ResponseWriter, r *http.Request) {
+		var id = r.PathValue("id")
+		if id == "" {
+			respond.AsJson(w, this.GetAll())
+		} else if v, ok := this.GetByStr(id); !ok {
+			respond.NotFound(w)
+		} else {
+			respond.AsJson(w, v)
+		}
+	})
+	http.HandleFunc("POST "+this.Prefix+"{id...}", func(w http.ResponseWriter, r *http.Request) {
+		if v, ok := this.GetByStr(r.PathValue("id")); !ok {
+			respond.NotFound(w)
+		} else if postable, ok := any(v).(Postable); !ok {
+			respond.NotAllowed(w)
+		} else {
+			if ok, err := postable.DoPost(utils.QueryParam(r, "action")); err != nil {
+				respond.ServerError(w, err)
+			} else if !ok {
+				respond.NotFound(w)
+			} else {
+				respond.Accepted(w)
+			}
+		}
+	})
+	http.HandleFunc("DELETE "+this.Prefix+"{id...}", func(w http.ResponseWriter, r *http.Request) {
+		if v, ok := this.GetByStr(r.PathValue("id")); !ok {
+			respond.NotFound(w)
+		} else if deleteable, ok := any(v).(Deleteable); !ok {
+			respond.NotAllowed(w)
+		} else if err := deleteable.DoDelete(); err != nil {
+			respond.ServerError(w, err)
+		} else {
+			respond.Accepted(w)
+		}
+	})
+
+}
+
+func (this *EntityMap[K, V]) GetByStr(idStr string) (V, bool) {
+	var id K
+	if err := utils.Convert(idStr, &id); err != nil {
+		var zeroval V
+		return zeroval, false
+	} else {
+		return this.Get(id)
 	}
 }

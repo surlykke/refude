@@ -9,45 +9,62 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"net/http"
 	"os"
 	"strings"
 	"sync"
 
 	"github.com/surlykke/refude/internal/lib/entity"
 	"github.com/surlykke/refude/internal/lib/image"
-	"github.com/surlykke/refude/pkg/bind"
+	"github.com/surlykke/refude/internal/lib/respond"
+	"github.com/surlykke/refude/internal/lib/utils"
 )
 
-var ThemeMap = entity.MakeMap[string, *IconTheme]()
+var ThemeMap = entity.MakeMap[string, *IconTheme]("/icontheme/")
 
 func Run() {
+	ThemeMap.Serve()
+	http.HandleFunc("GET /icon", GetHandler)
+
 	collectThemes()
 	collectIcons()
 }
 
-func GetHandler(name string, size uint32) bind.Response {
+func GetHandler(w http.ResponseWriter, r *http.Request) {
+	var name = utils.QueryParam(r, "name")
+	var sizeS = utils.QueryParam(r, "size")
+	var size uint32 = 32
+	if sizeS != "" {
+		if err := utils.Convert(sizeS, &size); err != nil {
+			respond.UnprocessableEntity(w, err)
+			return
+		}
+	}
 	var iconFilePath = FindIcon(name, size)
 	if iconFilePath == "" {
-		return bind.NotFound()
-	}
+		respond.NotFound(w)
+	} else {
 
-	var (
-		contentType string = "image/png"
-		bytes       []byte
-		err         error
-	)
-	if strings.HasSuffix(iconFilePath, ".xpm") {
-		if bytes = getPngFromXpm(iconFilePath); bytes == nil {
-			return bind.NotFound()
+		var (
+			contentType string = "image/png"
+			bytes       []byte
+			err         error
+		)
+		if strings.HasSuffix(iconFilePath, ".xpm") {
+			if bytes = getPngFromXpm(iconFilePath); bytes == nil {
+				respond.NotFound(w)
+				return
+			}
+		} else if bytes, err = os.ReadFile(iconFilePath); err != nil {
+			respond.NotFound(w)
+			return
 		}
-	} else if bytes, err = os.ReadFile(iconFilePath); err != nil {
-		return bind.NotFound()
-	}
 
-	if strings.HasSuffix(iconFilePath, ".svg") {
-		contentType = "image/svg+xml"
+		if strings.HasSuffix(iconFilePath, ".svg") {
+			contentType = "image/svg+xml"
+		}
+		respond.As(w, contentType, bytes)
 	}
-	return bind.Image(contentType, bytes)
 }
 
 func getPngFromXpm(filePath string) []byte {

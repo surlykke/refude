@@ -34,6 +34,8 @@ func follow(events *pubsub.Publisher[entity.Event]) {
 }
 
 func Run() {
+	http.HandleFunc("GET /watch", ServeHTTP)
+
 	go follow(applications.AppMap.Events)
 	go follow(applications.MimeMap.Events)
 	go follow(wayland.WindowMap.Events)

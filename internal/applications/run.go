@@ -15,10 +15,12 @@ import (
 	"github.com/surlykke/refude/internal/lib/xdg"
 )
 
-var AppMap = entity.MakeMap[string, *DesktopApplication]()
-var MimeMap = entity.MakeMap[string, *Mimetype]()
+var AppMap = entity.MakeMap[string, *DesktopApplication]("/application/")
+var MimeMap = entity.MakeMap[string, *Mimetype]("/mimetype/")
 
 func Run() {
+	AppMap.Serve()
+	MimeMap.Serve()
 	var desktopFileEvents = make(chan struct{})
 	go watchForDesktopFiles(desktopFileEvents)
 

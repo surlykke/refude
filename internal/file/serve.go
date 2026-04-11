@@ -15,9 +15,10 @@ import (
 	"github.com/surlykke/refude/internal/lib/xdg"
 )
 
-var FileMap = entity.MakeMap[string, *File]()
+var FileMap = entity.MakeMap[string, *File]("/file/")
 
 func Run() {
+	FileMap.Serve()
 	var watchedDirs []string
 
 	watcher, err := fsnotify.NewWatcher()

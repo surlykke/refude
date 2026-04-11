@@ -17,7 +17,10 @@ import (
 	"github.com/surlykke/refude/internal/notifications"
 )
 
-func StartGui() {
+func StartGui(noNotifications bool) {
+	if noNotifications {
+		return
+	}
 	go C.run()
 }
 
