@@ -63,7 +63,7 @@ func GetHandler(w http.ResponseWriter, r *http.Request) {
 		if strings.HasSuffix(iconFilePath, ".svg") {
 			contentType = "image/svg+xml"
 		}
-		respond.As(w, contentType, bytes)
+		respond.Bytes(w, contentType, bytes)
 	}
 }
 
