@@ -41,9 +41,6 @@ func run() {
 func sendNotificationsToGui() {
 	var notificationsAsStrings = make([][]string, 0, 20)
 	for _, n := range notifications.NotificationMap.GetAll() {
-		if n.Deleted || n.SoftExpired() {
-			continue
-		}
 		notificationsAsStrings = append(notificationsAsStrings, []string{n.Title, n.Body, icons.FindIcon(n.IconName, uint32(64))})
 	}
 

@@ -191,7 +191,7 @@ func Notify(
 		notification.NActions[actions[i]] = actions[i+1]
 		notification.Base.AddAction(actions[i], actions[i+1], "")
 	}
-
+		
 	for name, val := range hints {
 		if name == "urgency" {
 			if b, ok := val.Value().(uint8); ok {
@@ -222,14 +222,10 @@ func Notify(
 		expire_timeout = 3_600_000
 	}
 
-	if expire_timeout < 3_600_000 {
-		time.AfterFunc(time.Duration(expire_timeout+50)*time.Millisecond, func() { removeNotification(id, Expired) })
-	}
-
 	notification.Expires = time.Now().Add(time.Duration(expire_timeout) * time.Millisecond)
-
 	NotificationMap.Put(id, &notification)
-
+	ExpiredNotificationsMap.Remove(id)
+	
 	return id, nil
 }
 
@@ -345,12 +341,27 @@ func helper(src *string, dest *string, allowedPrefixes []string, endMarker strin
 	*src = (*src)[endMarkerPos+1:]
 }
 
+func reaper() {
+	var ticker = time.NewTicker(500*time.Millisecond)
+	for range ticker.C {
+		for _, n := range NotificationMap.GetAll() {
+			if n.Expires.Before(time.Now()) {
+				// Slightly racy - I know
+				removeNotification(n.NotificationId, Expired)
+				ExpiredNotificationsMap.Put(n.NotificationId, n)
+			}
+		}
+	}
+}	
+
 func Run(noNotifications bool) {
 	if noNotifications {
 		return
 	}
 
 	NotificationMap.Serve()
+	ExpiredNotificationsMap.Serve()
+	go reaper()
 	var err error
 	var reply dbus.RequestNameReply
 
@@ -389,12 +400,12 @@ func Run(noNotifications bool) {
 }
 
 var NotificationMap = entity.MakeMap[uint32, *Notification]("/notification/")
+var ExpiredNotificationsMap = entity.MakeMap[uint32, *Notification]("/expired_notifications/")
 
-func removeNotification(id uint32, reason uint32) {
-	if n, ok := NotificationMap.Get(id); ok && !n.Deleted {
-		var copy = *n
-		copy.Deleted = true
-		NotificationMap.Put(id, &copy)
+func removeNotification(id uint32, reason uint32) (*Notification, bool) {
+	if n, ok := NotificationMap.Remove(id); ok {
 		conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", id, reason)
+		return n, true
 	}
+	return nil, false
 }

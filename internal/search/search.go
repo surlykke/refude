@@ -55,6 +55,9 @@ func Search(term string) []Ranked {
 		result = append(result, filter(browser.BookmarkMap.GetForSearch(), m)...)
 		result = append(result, filter(desktopactions.PowerActions.GetForSearch(), m)...)
 	}
+	if len(m.term) > 3 {
+		result = append(result, filter(notifications.ExpiredNotificationsMap.GetForSearch(), m)...)
+	}
 
 	sort(result)
 	return result

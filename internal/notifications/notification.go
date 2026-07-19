@@ -66,15 +66,6 @@ func (n *Notification) Expired() bool {
 	return time.Now().After(time.Time(n.Expires))
 }
 
-func (n *Notification) SoftExpired() bool {
-	return n.Urgency == Normal && n.Created.Add(10*time.Second).Before(time.Now()) ||
-		n.Urgency == Low && n.Created.Add(2*time.Second).Before(time.Now())
-}
-
-func (this *Notification) OmitFromSearch() bool {
-	return this.Deleted || this.Expired() || (this.NActions["default"] == "" && this.SoftExpired())
-}
-
 func (n *Notification) DoPost(action string) (bool, error) {
 	// FIXME
 	if _, ok := n.NActions[action]; ok {
