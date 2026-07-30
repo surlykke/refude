@@ -11,7 +11,7 @@ import (
 
 	"github.com/surlykke/refude/internal/applications"
 	"github.com/surlykke/refude/internal/browser"
-	"github.com/surlykke/refude/internal/desktop"
+	"github.com/surlykke/refude/internal/desktop/pwa"
 	"github.com/surlykke/refude/internal/desktopactions"
 	"github.com/surlykke/refude/internal/file"
 	"github.com/surlykke/refude/internal/icons"
@@ -40,7 +40,7 @@ func main() {
 	go browser.Run()
 	go file.Run()
 	go desktopactions.Run()
-	go desktop.Run()
+	go pwa.Run()
 	go search.Run()
 	go network.Run()
 	go watch.Run()

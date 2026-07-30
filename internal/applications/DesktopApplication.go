@@ -17,10 +17,8 @@ import (
 
 type DesktopApplication struct {
 	entity.Base
-	Comment         string `json:",omitempty"`
 	Type            string
 	Version         string `json:",omitempty"`
-	GenericName     string `json:",omitempty"`
 	NoDisplay       bool
 	Hidden          bool
 	OnlyShowIn      []string

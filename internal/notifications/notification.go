@@ -50,7 +50,6 @@ func (ut UnixTime) MarshalJSON() ([]byte, error) {
 type Notification struct {
 	entity.Base
 	NotificationId uint32
-	Body           string
 	Sender         string
 	Created        time.Time
 	Expires        time.Time

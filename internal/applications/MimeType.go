@@ -28,7 +28,6 @@ func init() {
 type Mimetype struct {
 	entity.Base
 	Id              string
-	Comment         string
 	Acronym         string `json:",omitempty"`
 	ExpandedAcronym string `json:",omitempty"`
 	Aliases         []string
@@ -46,7 +45,7 @@ func MakeMimetype(id string) (*Mimetype, error) {
 		return nil, errors.New("Incomprehensible mimetype: " + id)
 	} else {
 		var mt = Mimetype{
-			Base:        *entity.MakeBase("", "", "", "Mimetype"),
+			Base:        *entity.MakeBase("", "", "", "", "Mimetype"),
 			Id:          id,
 			Aliases:     []string{},
 			Globs:       []string{},

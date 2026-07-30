@@ -20,7 +20,6 @@ import (
 type IconTheme struct {
 	entity.Base
 	Id       string
-	Comment  string
 	Inherits []string
 	Dirs     []IconDir
 }
@@ -83,7 +82,7 @@ func readTheme(indexThemeFilePath string) (*IconTheme, bool) {
 
 	themeGroup := iniFile[0]
 
-	theme := IconTheme{Base: *entity.MakeBase(themeGroup.Entries["Name"], themeGroup.Entries["Comment"], "", "Icon theme")}
+	theme := IconTheme{Base: *entity.MakeBase(themeGroup.Entries["Name"], "", themeGroup.Entries["Comment"], "", "Icon theme")}
 	theme.Id = themeId
 	theme.Comment = themeGroup.Entries["Comment"]
 	theme.Inherits = utils.Split(themeGroup.Entries["Inherits"], ",")

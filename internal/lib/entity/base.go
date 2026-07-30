@@ -19,6 +19,7 @@ type Servable interface {
 type Base struct {
 	Title    string `json:"title"`
 	Subtitle string `json:"subtitle,omitempty"`
+	Comment  string `json:"comment,omitempty"`
 	Icon     string `json:"icon"`
 	Kind     string `json:"type"`
 	Path     string `json:"path"`
@@ -33,11 +34,12 @@ type Action struct {
 	Icon string
 }
 
-func MakeBase(title string, subtitle string, icon string, kind string, keywords ...string) *Base {
+func MakeBase(title string, subtitle string, comment string, icon string, kind string, keywords ...string) *Base {
 	icon = adjustIcon(icon)
 	return &Base{
 		Title:    translate.Text(title),
 		Subtitle: translate.Text(subtitle),
+		Comment:  comment,
 		Icon:     icon,
 		Kind:     kind,
 		Keywords: translate.Texts(keywords),

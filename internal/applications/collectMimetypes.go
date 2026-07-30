@@ -75,8 +75,16 @@ func collectMimetypes() map[string]*Mimetype {
 		if !mimetypePattern.MatchString(tmp.Type) {
 			log.Print("Incomprehensible mimetype:", tmp.Type)
 		} else {
+			var acronym = ""
 			var comment = ""
+			var expandedAcronym string
 			var iconName string = ""
+
+			for _, tmpAcronym := range tmp.Acronym {
+				if translate.LocaleMatch(tmpAcronym.Lang) || (tmpAcronym.Lang == "" && acronym == "") {
+					acronym = tmpAcronym.Text
+				}
+			}
 
 			for _, tmpComment := range tmp.Comment {
 				if translate.LocaleMatch(tmpComment.Lang) || (tmpComment.Lang == "" && comment == "") {
@@ -84,7 +92,6 @@ func collectMimetypes() map[string]*Mimetype {
 				}
 			}
 
-			var expandedAcronym string
 			for _, tmpExpandedAcronym := range tmp.ExpandedAcronym {
 				if translate.LocaleMatch(tmpExpandedAcronym.Lang) || (tmpExpandedAcronym.Lang == "" && expandedAcronym == "") {
 					expandedAcronym = tmpExpandedAcronym.Text
@@ -96,7 +103,7 @@ func collectMimetypes() map[string]*Mimetype {
 			}
 			iconName = tmp.Icon.Name
 
-			var mimeType = &Mimetype{Base: *entity.MakeBase(comment, expandedAcronym, iconName, "Mimetype"), Id: tmp.Type}
+			var mimeType = &Mimetype{Base: *entity.MakeBase(acronym, comment, expandedAcronym, iconName, "Mimetype"), Id: tmp.Type}
 
 			for _, tmpAcronym := range tmp.Acronym {
 				if translate.LocaleMatch(tmpAcronym.Lang) || (tmpAcronym.Lang == "" && mimeType.Acronym == "") {

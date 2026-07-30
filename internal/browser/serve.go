@@ -108,7 +108,7 @@ func receive(conn net.Conn) {
 					if len(d.Title) > 60 { // Shorten title a bit
 						d.Title = d.Title[0:60] + "..."
 					}
-					var tab = &Tab{Base: *entity.MakeBase(d.Title, browserName+" tab", d.Favicon, "Browser tab"), Id: d.Id, BrowserId: browserId, Url: d.Url}
+					var tab = &Tab{Base: *entity.MakeBase(d.Title, browserName+" tab", "", d.Favicon, "Browser tab"), Id: d.Id, BrowserId: browserId, Url: d.Url}
 					tab.AddAction("", "Focus "+browserName+" tab", "")
 					mapOfTabs[d.Id] = tab
 				}

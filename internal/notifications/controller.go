@@ -175,9 +175,8 @@ func Notify(
 	var title = sanitize(summary, []string{}, []string{})
 	body = sanitize(body, allowedTags, allowedEscapes)
 	notification := Notification{
-		Base:           *entity.MakeBase(title, app_name+" notification", iconName, "Notification"),
+		Base:           *entity.MakeBase(title, app_name+" notification", body, iconName, "Notification"),
 		NotificationId: id,
-		Body:           body,
 		Sender:         app_name,
 		Created:        time.Now(),
 		Urgency:        Normal,
@@ -186,6 +185,7 @@ func Notify(
 		IconName:       iconName,
 		IconSize:       sizeHint,
 	}
+	notification.Comment = body
 
 	for i := 0; i+1 < len(actions); i = i + 2 {
 		notification.NActions[actions[i]] = actions[i+1]

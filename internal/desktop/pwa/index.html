@@ -4,15 +4,14 @@
 <head>
 	<meta charset="utf-8">
 	<link rel="shortcut icon" href="favicon.ico">
-	<link rel="stylesheet" href="./style.css">
-  	<link rel="manifest" href="./manifest.json" />
+	<link rel="stylesheet" href="style.css">
+  	<link rel="manifest" href="manifest.json" />
 	<script type="application/javascript" src="script.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 	<script type="application/javascript" src="htmx.min.js"></script>
-	<script type="application/javascript" src="sse.js"></script>
 </head>
 
-<!--body hx-ext="sse" sse-connect="/watch"-->
-<body>
+<body onkeydown="onKeyDown(event)"  hx-on::after-settle="afterSettle(event)">
 	<div class="topbar">
 		<span class="heading">
 			Refude desktop
@@ -21,7 +20,8 @@
 		<span id="term"></span>
 		<span class="spacer"></span>
 	</div>
-	<div id="search-results" hx-get="/desktop/search" hx-trigger="sse:search, search, load" hx-vals="js:{term: term}" hx-on::after-settle="setTabIndexes()"> 
+	<div id="dummy" x-data="{}" @toggleShowDetails="console.log('Received toggleShowDetails')"/>
+	<div id="search-results" hx-get="/desktop/search" hx-trigger="load, search" hx-vals="js:{term: term}"/> 
 	</div>
 </body>
 </html>
