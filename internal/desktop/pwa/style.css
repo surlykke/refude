@@ -47,7 +47,7 @@ html, body {
 .title, .title-sub {
 	outline: none;
 }
-.comment {
+.subtitle {
 	font-style: italic;
 	font-size: 0.8em;
 	color: gray;

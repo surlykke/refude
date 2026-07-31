@@ -9,11 +9,11 @@
 		<div class="title" {{if .Actions}} hx-post="{{.Path}}?action={{(index .Actions 0).Id}}" hx-trigger="activate" {{end}} tabindex="0" @toggleshowdetails="showDetails = !showDetails">
 			{{.Title}}
 		</div>
-		<div class="comment" x-show="!showDetails">
+		<div class="subtitle" {{if .Actions}}x-show="!showDetails"{{end}}>
 			{{.Subtitle}}
 		</div>
-		{{if .Comment}}
-		<div class="description" x-show="showDetails">
+		{{if and .Comment (eq .Kind "Notification")}}
+		<div class="comment" x-show="showDetails">
 			{{.Comment}}
 		</div>
 		{{end}}

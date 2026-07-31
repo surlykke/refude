@@ -18,7 +18,8 @@ import (
 	"github.com/surlykke/refude/internal/search"
 )
 
-//go:embed index.html 256.png htmx.min.js manifest.json script.js style.css
+//go:embed index.html 256.png manifest.json style.css script.js htmx.2.0.10.min.js alpine.3.15.12.min.js
+ 
 var staticFiles embed.FS
 
 //go:embed searchTemplate.html
