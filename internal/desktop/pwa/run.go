@@ -8,21 +8,20 @@ package pwa
 import (
 	"bytes"
 	"embed"
-	"fmt"
 	"html/template"
 	"log"
 	"net/http"
 
+	"github.com/surlykke/refude/internal/lib/entity"
 	"github.com/surlykke/refude/internal/lib/respond"
 	"github.com/surlykke/refude/internal/lib/utils"
 	"github.com/surlykke/refude/internal/search"
 )
 
 //go:embed index.html 256.png manifest.json style.css script.js htmx.2.0.10.min.js alpine.3.15.12.min.js
- 
 var staticFiles embed.FS
 
-//go:embed searchTemplate.html
+//go:embed searchTemplate.gohtml
 var searchTemplateFile embed.FS
 
 var searchTemplate *template.Template
@@ -31,16 +30,50 @@ var StaticServer http.Handler
 func init() {
 	StaticServer = http.StripPrefix("/desktop/", http.FileServer(http.FS(staticFiles)))
 
-	bytes, _ := searchTemplateFile.ReadFile("searchTemplate.html")
-	fmt.Println("searchTemplate.html", len(bytes), "bytes")
+	bytes, _ := searchTemplateFile.ReadFile("searchTemplate.gohtml")
 	searchTemplate = template.Must(template.New("searchTemplate").Parse(string(bytes)))
+}
+
+type View struct {
+	Title        string
+	Subtitle     string
+	Details      string
+	Icon         string
+	PostAction   string
+	OtherActions []Action
+}
+
+type Action struct {
+	Title      string
+	PostAction string
+}
+
+func Make(base entity.Base) View {
+	var v = View{
+		Title:    base.Title,
+		Subtitle: base.Subtitle,
+		Icon:     base.Icon,
+	}
+	if len(base.Actions) > 0 {
+		v.PostAction = base.Path + "?action=" + base.Actions[0].Id
+	}
+	for i, a := range base.Actions {
+		if i > 0 {
+			v.OtherActions = append(v.OtherActions, Action{Title: a.Name, PostAction: base.Path + "?action=" + a.Id})
+		}
+	}
+	return v
 }
 
 func doSearch(w http.ResponseWriter, r *http.Request) {
 	var term string = utils.QueryParam(r, "term")
-	var resources = search.Search(term)
+	var rankedList = search.Search(term)
+	var views = make([]View, 0, len(rankedList))
+	for _, ranked := range rankedList {
+		views = append(views, Make(ranked.Base))
+	}
 	var b bytes.Buffer
-	if err := searchTemplate.Execute(&b, resources); err != nil {
+	if err := searchTemplate.Execute(&b, views); err != nil {
 		log.Println("Error rendering searchTemplate:", err)
 		respond.ServerError(w, err)
 	} else {

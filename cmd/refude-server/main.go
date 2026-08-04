@@ -17,7 +17,6 @@ import (
 	"github.com/surlykke/refude/internal/icons"
 	"github.com/surlykke/refude/internal/lib/respond"
 	"github.com/surlykke/refude/internal/lib/utils"
-	"github.com/surlykke/refude/internal/network"
 	"github.com/surlykke/refude/internal/notifications"
 	"github.com/surlykke/refude/internal/notifygui"
 	"github.com/surlykke/refude/internal/options"
@@ -42,7 +41,7 @@ func main() {
 	go desktopactions.Run()
 	go pwa.Run()
 	go search.Run()
-	go network.Run()
+	//	go network.Run()
 	go watch.Run()
 
 	http.HandleFunc("GET /complete", CompleteHandler)

@@ -50,8 +50,15 @@ type Device struct {
 	Batterylevel     string
 }
 
+
+func (d *Device) OmitFromSearch() bool {
+	return d.Id == "org/freedesktop/UPower" ||
+	       (d.PowerSupply && d.Id != "DisplayDevice");
+	
+}
+
 func deviceTitle(devType, model string) string {
-	// Try to, with the info we have from UPower, make a meaningful Title and Comment
+	// Try to, with the info we have from UPower, make a meaningful Title
 	switch devType {
 	case "Line Power":
 		return "Line Power"

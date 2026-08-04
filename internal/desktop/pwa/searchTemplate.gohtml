@@ -1,0 +1,25 @@
+{{range $l := .}}
+<div class="line">
+	<div class="icon">
+		{{if .Icon}}
+			<img src="{{.Icon}}" height="32" width="32" class="icon">
+		{{end}}
+	</div>
+	<div x-data="{showDetails: false}" @toggleshowdetails="showDetails = !showDetails">
+		<div class="title" {{if .PostAction}}hx-post="{{.PostAction}}" hx-trigger="activate"{{end}} tabindex="0" @toggleshowdetails="showDetails = !showDetails">
+			{{.Title}}
+		</div>
+		<div class="subtitle">
+			{{.Subtitle}}
+		</div>
+		<div class="comment" x-show="showDetails">
+			{{.Details}}
+		</div>
+		{{range .OtherActions}} 
+		<div class="action" hx-post="{{.PostAction}}" hx-trigger="activate" tabindex="0" x-show="showDetails">
+			{{.Title}}
+		</div>
+		{{end}}
+	</div>
+</div>
+{{end}}

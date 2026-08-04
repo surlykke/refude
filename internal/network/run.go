@@ -124,10 +124,6 @@ func setActiveConnections(acPaths []dbus.ObjectPath) {
 		}
 	}
 	Connections.ReplaceAll(activeConnections)
-	fmt.Println("connections now:")
-	for _, conn := range Connections.GetAll() {
-		fmt.Println(conn)
-	}
 }
 
 func setPrimaryConnection(connection dbus.ObjectPath) {
