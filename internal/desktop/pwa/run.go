@@ -36,8 +36,7 @@ func init() {
 
 type View struct {
 	Title        string
-	Subtitle     string
-	Details      string
+	Summary      string
 	Icon         string
 	PostAction   string
 	OtherActions []Action
@@ -50,9 +49,9 @@ type Action struct {
 
 func Make(base entity.Base) View {
 	var v = View{
-		Title:    base.Title,
-		Subtitle: base.Subtitle,
-		Icon:     base.Icon,
+		Title:   base.Title,
+		Summary: base.Summary,
+		Icon:    base.Icon,
 	}
 	if len(base.Actions) > 0 {
 		v.PostAction = base.Path + "?action=" + base.Actions[0].Id

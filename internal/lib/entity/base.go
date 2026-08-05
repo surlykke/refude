@@ -17,15 +17,14 @@ type Servable interface {
 }
 
 type Base struct {
-	Title    string `json:"title"`
-	Subtitle string `json:"subtitle,omitempty"`
-	Comment  string `json:"comment,omitempty"`
-	Icon     string `json:"icon"`
-	Kind     string `json:"type"`
-	Path     string `json:"path"`
-	Links    map[Relation][]Link
-	Keywords []string
-	Actions  []Action `json:"-"`
+	Title       string `json:"title"`
+	Summary     string `json:"summary"`
+	Description string `json:"description"`
+	Icon        string `json:"icon"`
+	Path        string `json:"path"`
+	Links       map[Relation][]Link
+	Keywords    []string
+	Actions     []Action `json:"-"`
 }
 
 type Action struct {
@@ -34,14 +33,12 @@ type Action struct {
 	Icon string
 }
 
-func MakeBase(title string, subtitle string, comment string, icon string, kind string, keywords ...string) *Base {
+func MakeBase(title string, summary string, icon string, keywords ...string) *Base {
 	icon = adjustIcon(icon)
 	return &Base{
 		Title:    translate.Text(title),
-		Subtitle: translate.Text(subtitle),
-		Comment:  comment,
+		Summary:     translate.Text(summary),
 		Icon:     icon,
-		Kind:     kind,
 		Keywords: translate.Texts(keywords),
 		Links:    make(map[Relation][]Link),
 	}

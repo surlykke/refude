@@ -18,12 +18,12 @@ import (
 func collectMimetypes() map[string]*Mimetype {
 	res := make(map[string]*Mimetype)
 
-	for id, comment := range schemeHandlers {
+	for id, _ := range schemeHandlers {
 		var mimetype, err = MakeMimetype(id)
 		if err != nil {
 			log.Print("Problem making mimetype", id)
 		} else {
-			mimetype.Comment = comment
+			mimetype.Title = strings.Split(id, "/")[1] + " handler"
 			res[id] = mimetype
 		}
 	}
@@ -103,7 +103,7 @@ func collectMimetypes() map[string]*Mimetype {
 			}
 			iconName = tmp.Icon.Name
 
-			var mimeType = &Mimetype{Base: *entity.MakeBase(acronym, comment, expandedAcronym, iconName, "Mimetype"), Id: tmp.Type}
+			var mimeType = &Mimetype{Base: *entity.MakeBase(acronym, "Mimetype", iconName, "Mimetype"), Id: tmp.Type}
 
 			for _, tmpAcronym := range tmp.Acronym {
 				if translate.LocaleMatch(tmpAcronym.Lang) || (tmpAcronym.Lang == "" && mimeType.Acronym == "") {

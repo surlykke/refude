@@ -95,10 +95,43 @@ func retrieveDevice(dbusPath dbus.ObjectPath) (string, *Device) {
 	device.Warninglevel = deviceWarningLevel(warnL)
 	var batL, _ = props["BatteryLevel"].(uint32)
 	device.Batterylevel = deviceBatteryLevel(batL)
-	var title = deviceTitle(device.Type, device.Model)
 	var iconName, _ = props["IconName"].(string)
 
-	device.Base = *entity.MakeBase(title, "Power device","", iconName,  "battery")
+	var title string
+	if device.PowerSupply {
+
+		if device.DisplayDevice {
+			title = "Laptop battery"
+		} else if device.Type == "Battery" {
+			title = "Laptop battery " + device.Model
+		} else if device.Type == "Line Power" {
+			title = "Power supply"
+		} else {
+			title = device.Model
+		}
+
+	} else {
+		title = device.Model
+	}
+
+	var summary string
+	if device.Type == "Line Power" {
+		if device.IsPresent {
+			summary = "Connected"
+		} else {
+			summary = "Disconnected"
+		}
+	} else {
+		summary = fmt.Sprintf("%.0f%%", device.Percentage)
+		if device.State == "Charging" {
+			summary += " (+)"
+		} else if device.State == "Discharging" {
+			summary += " (-)"
+		}
+	}
+
+	device.Base = *entity.MakeBase(title, summary, iconName, "battery")
+
 	return device.Id, &device
 }
 

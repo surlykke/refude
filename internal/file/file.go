@@ -77,7 +77,7 @@ func makeFileFromInfo(osPath string, fileInfo os.FileInfo) *File {
 	}
 	var icon = strings.ReplaceAll(mimetype, "/", "-")
 	var f = File{
-		Base:        *entity.MakeBase(fileInfo.Name(), osPath, "", icon, "File"),
+		Base:        *entity.MakeBase(fileInfo.Name(), "file " + osPath, icon, "File"),
 		Name:        fileInfo.Name(),
 		Type:        fileType,
 		Permissions: fileInfo.Mode().String(),

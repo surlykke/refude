@@ -175,23 +175,23 @@ func Notify(
 	var title = sanitize(summary, []string{}, []string{})
 	body = sanitize(body, allowedTags, allowedEscapes)
 	notification := Notification{
-		Base:           *entity.MakeBase(title, app_name+" notification", body, iconName, "Notification"),
+		Base:           *entity.MakeBase(title, app_name+": " + body, iconName, "Notification"),
 		NotificationId: id,
 		Sender:         app_name,
 		Created:        time.Now(),
+		Body:           body,
 		Urgency:        Normal,
 		NActions:       map[string]string{},
 		Hints:          map[string]any{},
 		IconName:       iconName,
 		IconSize:       sizeHint,
 	}
-	notification.Comment = body
 
 	for i := 0; i+1 < len(actions); i = i + 2 {
 		notification.NActions[actions[i]] = actions[i+1]
 		notification.Base.AddAction(actions[i], actions[i+1], "")
 	}
-		
+
 	for name, val := range hints {
 		if name == "urgency" {
 			if b, ok := val.Value().(uint8); ok {
@@ -225,7 +225,7 @@ func Notify(
 	notification.Expires = time.Now().Add(time.Duration(expire_timeout) * time.Millisecond)
 	NotificationMap.Put(id, &notification)
 	ExpiredNotificationsMap.Remove(id)
-	
+
 	return id, nil
 }
 
@@ -342,7 +342,7 @@ func helper(src *string, dest *string, allowedPrefixes []string, endMarker strin
 }
 
 func reaper() {
-	var ticker = time.NewTicker(500*time.Millisecond)
+	var ticker = time.NewTicker(500 * time.Millisecond)
 	for range ticker.C {
 		for _, n := range NotificationMap.GetAll() {
 			if n.Expires.Before(time.Now()) {
@@ -352,7 +352,7 @@ func reaper() {
 			}
 		}
 	}
-}	
+}
 
 func Run(noNotifications bool) {
 	if noNotifications {

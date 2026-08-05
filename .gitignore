@@ -1,6 +1,6 @@
-/refude-server
-/refude-nm
-/refuc
+cmd/refude-server/refude-server
+cmd/refude-nm/refude-nm
+cmd/refuc/refuc
 TODO
 compile_commands.json
 result

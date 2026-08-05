@@ -47,7 +47,7 @@ html, body {
 .title, .title-sub {
 	outline: none;
 }
-.subtitle {
+.kind {
 	font-style: italic;
 	font-size: 0.8em;
 	color: gray;

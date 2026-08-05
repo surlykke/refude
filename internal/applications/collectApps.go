@@ -167,11 +167,9 @@ func readDesktopFile(filePath string, id string) (*DesktopApplication, error) {
 
 		var keywords = utils.Split(group.Entries["Keywords"], ";")
 		var da = DesktopApplication{
-			Base:      *entity.MakeBase(title, group.Entries["GenericName"], group.Entries["Comment"], iconName, "Application", keywords...),
+			Base:      *entity.MakeBase(title, group.Entries["Comment"], iconName, keywords...),
 			DesktopId: id,
 		}
-
-		da.Comment = group.Entries["Comment"]
 		if da.Type = group.Entries["Type"]; da.Type == "" {
 			return nil, errors.New("desktop file invalid, no 'Type' given")
 		}

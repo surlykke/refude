@@ -9,11 +9,8 @@
 		<div class="title" {{if .PostAction}}hx-post="{{.PostAction}}" hx-trigger="activate"{{end}} tabindex="0" @toggleshowdetails="showDetails = !showDetails">
 			{{.Title}}
 		</div>
-		<div class="subtitle">
-			{{.Subtitle}}
-		</div>
-		<div class="comment" x-show="showDetails">
-			{{.Details}}
+		<div class="kind" x-show="! showDetails">
+			{{.Summary}}
 		</div>
 		{{range .OtherActions}} 
 		<div class="action" hx-post="{{.PostAction}}" hx-trigger="activate" tabindex="0" x-show="showDetails">

@@ -41,7 +41,7 @@ func run() {
 func sendNotificationsToGui() {
 	var notificationsAsStrings = make([][]string, 0, 20)
 	for _, n := range notifications.NotificationMap.GetAll() {
-		notificationsAsStrings = append(notificationsAsStrings, []string{n.Title, n.Comment, icons.FindIcon(n.IconName, uint32(64))})
+		notificationsAsStrings = append(notificationsAsStrings, []string{n.Title, n.Body, icons.FindIcon(n.IconName, uint32(64))})
 	}
 
 	var cStrings = make([]*C.char, 0, 100)
