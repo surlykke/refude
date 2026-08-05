@@ -117,7 +117,7 @@ func retrieveDevice(dbusPath dbus.ObjectPath) (string, *Device) {
 
 	var summary string
 	if device.Type == "Line Power" {
-		if device.IsPresent {
+		if device.Online {
 			summary = "Connected"
 		} else {
 			summary = "Disconnected"
