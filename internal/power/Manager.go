@@ -8,6 +8,7 @@ package power
 import (
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/godbus/dbus/v5"
 	"github.com/surlykke/refude/internal/lib/entity"
@@ -123,10 +124,8 @@ func retrieveDevice(dbusPath dbus.ObjectPath) (string, *Device) {
 		}
 	} else {
 		summary = fmt.Sprintf("%.0f%%", device.Percentage)
-		if device.State == "Charging" {
-			summary += " (+)"
-		} else if device.State == "Discharging" {
-			summary += " (-)"
+		if device.State == "Charging" || device.State == "Discharging" {
+			summary = summary + " " + strings.ToLower(device.State)
 		}
 	}
 

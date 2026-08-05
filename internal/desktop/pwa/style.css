@@ -52,6 +52,9 @@ html, body {
 	font-size: 0.8em;
 	color: gray;
 }
+.title:focus + .kind {
+	color: white;
+}
 .title:focus,.action:focus {
 	outline: none;
 	text-decoration: underline;		

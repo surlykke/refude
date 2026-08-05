@@ -5,15 +5,15 @@
 			<img src="{{.Icon}}" height="32" width="32" class="icon">
 		{{end}}
 	</div>
-	<div x-data="{showDetails: false}" @toggleshowdetails="showDetails = !showDetails">
-		<div class="title" {{if .PostAction}}hx-post="{{.PostAction}}" hx-trigger="activate"{{end}} tabindex="0" @toggleshowdetails="showDetails = !showDetails">
+	<div x-data="{details: false}" @toggledetails="console.log('toggle'); details = !details">
+		<div class="title" {{with .FirstAction}}data-post="{{.Href}}"{{end}} {{with .DeleteAction}}data-delete="{{.Href}}"{{end}} tabindex="0">
 			{{.Title}}
 		</div>
-		<div class="kind" x-show="! showDetails">
+		<div class="kind" x-show="! details">
 			{{.Summary}}
 		</div>
-		{{range .OtherActions}} 
-		<div class="action" hx-post="{{.PostAction}}" hx-trigger="activate" tabindex="0" x-show="showDetails">
+		{{range .SecondaryActions}} 
+		<div class="action" data-post="{{.Href}}" tabindex="0" x-show="details">
 			{{.Title}}
 		</div>
 		{{end}}

@@ -54,7 +54,7 @@ func init() {
 
 	for _, data := range datas {
 		var res = StartResource{Base: *entity.MakeBase(data[1], "Desktop action", data[2], "Power action"), dbusMethod: data[3]}
-		res.AddAction("", "", "")
+		res.AddAction("", "", entity.OrgRefudeAction,  "")
 		PowerActions.Put(data[0], &res)
 	}
 }

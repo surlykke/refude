@@ -70,7 +70,7 @@ func makeConnection(title string, primary bool, vpn bool, connType string, path 
 	} else {
 		actionName = "Activate"
 	}
-	c.AddAction("", actionName, "")
+	c.AddAction(actionName, "", entity.OrgRefudeAction, "")
 	c.Keywords = []string{"network"}
 	return c
 }

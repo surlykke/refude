@@ -109,7 +109,7 @@ func receive(conn net.Conn) {
 						d.Title = d.Title[0:60] + "..."
 					}
 					var tab = &Tab{Base: *entity.MakeBase(d.Title, browserName+" tab",  d.Favicon, "Browser tab"), Id: d.Id, BrowserId: browserId, Url: d.Url}
-					tab.AddAction("", "Focus "+browserName+" tab", "")
+					tab.AddAction( "Focus "+browserName+" tab", "", entity.OrgRefudeAction, "")
 					mapOfTabs[d.Id] = tab
 				}
 				TabMap.Replace(mapOfTabs, func(t *Tab) bool { return t.BrowserId == browserId })

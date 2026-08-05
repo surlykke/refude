@@ -77,7 +77,7 @@ func makeFileFromInfo(osPath string, fileInfo os.FileInfo) *File {
 	}
 	var icon = strings.ReplaceAll(mimetype, "/", "-")
 	var f = File{
-		Base:        *entity.MakeBase(fileInfo.Name(), "file " + osPath, icon, "File"),
+		Base:        *entity.MakeBase(fileInfo.Name(), "file "+osPath, icon, "File"),
 		Name:        fileInfo.Name(),
 		Type:        fileType,
 		Permissions: fileInfo.Mode().String(),
@@ -86,7 +86,7 @@ func makeFileFromInfo(osPath string, fileInfo os.FileInfo) *File {
 	}
 
 	for _, app := range applications.GetHandlers(f.Mimetype) {
-		f.AddAction(app.DesktopId, app.Title, app.Icon)
+		f.AddAction(app.Title, app.Icon, entity.OrgRefudeAction, "action="+app.DesktopId)
 	}
 	return &f
 }

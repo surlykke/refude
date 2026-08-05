@@ -144,7 +144,7 @@ func makeWindow(wId uint64, title string, iconName string, appId string, state W
 		AppId: appId,
 		State: state,
 	}
-	ww.AddAction("", "Focus", "")
+	ww.AddAction("Focus", "", entity.OrgRefudeAction,  "")
 	//ww.AddAction("close", title, "Close window", "window-close")
 	return ww
 }
