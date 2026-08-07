@@ -15,6 +15,7 @@ import (
 	"github.com/surlykke/refude/internal/desktopactions"
 	"github.com/surlykke/refude/internal/file"
 	"github.com/surlykke/refude/internal/icons"
+	"github.com/surlykke/refude/internal/lib/resource"
 	"github.com/surlykke/refude/internal/lib/respond"
 	"github.com/surlykke/refude/internal/lib/utils"
 	"github.com/surlykke/refude/internal/notifications"
@@ -22,7 +23,6 @@ import (
 	"github.com/surlykke/refude/internal/options"
 	"github.com/surlykke/refude/internal/power"
 	"github.com/surlykke/refude/internal/search"
-	"github.com/surlykke/refude/internal/watch"
 	"github.com/surlykke/refude/internal/wayland"
 )
 
@@ -33,18 +33,17 @@ func main() {
 	go applications.Run()
 	go notifications.Run(opts.NoNotifications)
 	go notifygui.StartGui(opts.NoNotifications)
-
+	go desktopactions.Run()
 	go icons.Run()
 	go power.Run(opts.NoTrayBattery)
 	go browser.Run()
 	go file.Run()
-	go desktopactions.Run()
 	go pwa.Run()
 	go search.Run()
 	//	go network.Run()
-	go watch.Run()
 
 	http.HandleFunc("GET /complete", CompleteHandler)
+	http.HandleFunc("/", resource.ServeHTTP)
 
 	if err := http.ListenAndServe(":7938", nil); err != nil {
 		log.Print("http.ListenAndServe failed:", err)
@@ -54,23 +53,16 @@ func main() {
 
 func CompleteHandler(w http.ResponseWriter, r *http.Request) {
 	var filtered = make([]string, 0, 1000)
-	var allPaths = [][]string{
-		{"/flash", "/icon?name=", "/desktop/", "/complete?prefix=", "/search?", "/watch"},
-		icons.ThemeMap.GetPaths(),
-		wayland.WindowMap.GetPaths(),
-		applications.AppMap.GetPaths(),
-		applications.MimeMap.GetPaths(),
-		notifications.NotificationMap.GetPaths(),
-		power.DeviceMap.GetPaths(),
-		browser.TabMap.GetPaths(),
-		browser.BookmarkMap.GetPaths(),
-	}
 	var prefix = utils.QueryParam(r, "prefix")
-	for _, pathList := range allPaths {
-		for _, path := range pathList {
-			if strings.HasPrefix(path, prefix) {
-				filtered = append(filtered, path)
-			}
+	for _, path := range resource.GetPaths() {
+		if strings.HasPrefix(path, prefix) {
+			filtered = append(filtered, path)
+		}
+	}
+
+	for _, path := range []string{"/flash", "/icon?name=", "/desktop/", "/complete?prefix=", "/search?", "/watch"} {
+		if strings.HasPrefix(path, prefix) {
+			filtered = append(filtered, path)
 		}
 	}
 

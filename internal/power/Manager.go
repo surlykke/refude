@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/godbus/dbus/v5"
-	"github.com/surlykke/refude/internal/lib/entity"
+	"github.com/surlykke/refude/internal/lib/resource"
 	"github.com/surlykke/refude/internal/lib/utils"
 	"github.com/surlykke/refude/internal/notifications"
 )
@@ -21,6 +21,7 @@ const upowerPath = "/org/freedesktop/UPower"
 const upowerInterface = "org.freedesktop.UPower"
 const devicePrefix = "/org/freedesktop/UPower/devices/"
 const displayDeviceDbusPath = dbus.ObjectPath(devicePrefix + "DisplayDevice")
+const displayDeviceId = "DisplayDevice"
 const upowerDeviceInterface = "org.freedesktop.UPower.Device"
 
 func subscribe() chan *dbus.Signal {
@@ -54,13 +55,12 @@ func retrieveDevicePaths() []dbus.ObjectPath {
 	return append(enumCall.Body[0].([]dbus.ObjectPath), displayDeviceDbusPath)
 }
 
-func retrieveDevice(dbusPath dbus.ObjectPath) (string, *Device) {
-
+func retrieveDevice(dbusPath dbus.ObjectPath) *Device {
 	var device = Device{Id: dbusPath2id(dbusPath)}
 	device.DisplayDevice = dbusPath == displayDeviceDbusPath
 	var props, err = utils.Props(dbusConn, upowerService, dbusPath, upowerDeviceInterface)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 
 	device.NativePath, _ = props["NativePath"].(string)
@@ -129,9 +129,8 @@ func retrieveDevice(dbusPath dbus.ObjectPath) (string, *Device) {
 		}
 	}
 
-	device.Base = *entity.MakeBase(title, summary, iconName, "battery")
-
-	return device.Id, &device
+	device.Base = *resource.MakeBase(devicePathPrefix+device.Id, title, summary, iconName, "battery")
+	return &device
 }
 
 var previousPercentage = float64(101)
@@ -149,7 +148,7 @@ func updateTrayIcon() {
 }
 
 func notifyOnLow() {
-	if displayDevice, ok := DeviceMap.Get(dbusPath2id(displayDeviceDbusPath)); ok {
+	if displayDevice, ok := resource.Get[*Device](devicePathPrefix + displayDeviceId); ok {
 		if displayDevice.State == "Discharging" {
 			if displayDevice.Percentage <= 5 {
 				notifications.Notify("refude", notificationId, "dialog-warning", "Battery critical", fmt.Sprintf("At %.2f%%", displayDevice.Percentage), []string{}, map[string]dbus.Variant{"urgency": dbus.MakeVariant(uint8(2))}, -1)

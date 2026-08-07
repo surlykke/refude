@@ -14,7 +14,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/surlykke/refude/internal/icons"
-	"github.com/surlykke/refude/internal/lib/entity"
+	"github.com/surlykke/refude/internal/lib/resource"
 	"github.com/surlykke/refude/internal/lib/utils"
 	"github.com/surlykke/refude/internal/lib/xdg"
 )
@@ -167,7 +167,7 @@ func readDesktopFile(filePath string, id string) (*DesktopApplication, error) {
 
 		var keywords = utils.Split(group.Entries["Keywords"], ";")
 		var da = DesktopApplication{
-			Base:      *entity.MakeBase(title, group.Entries["Comment"], iconName, keywords...),
+			Base:      *resource.MakeBase(appPathPrefix + id, title, group.Entries["Comment"], iconName, keywords...),
 			DesktopId: id,
 		}
 		if da.Type = group.Entries["Type"]; da.Type == "" {
@@ -190,7 +190,7 @@ func readDesktopFile(filePath string, id string) (*DesktopApplication, error) {
 		da.Url = group.Entries["URL"]
 		da.Mimetypes = utils.Split(group.Entries["MimeType"], ";")
 		da.DesktopFile = filePath
-		da.AddAction("Open", "", entity.OrgRefudeAction, "")
+		da.AddAction("Open", "", resource.OrgRefudeAction, "")
 		da.DesktopActions = []DesktopAction{}
 		var actionNames = utils.Split(group.Entries["Actions"], ";")
 
@@ -211,7 +211,7 @@ func readDesktopFile(filePath string, id string) (*DesktopApplication, error) {
 					Exec: actionGroup.Entries["Exec"],
 					Icon: iconUrl,
 				})
-				da.AddAction(name, iconUrl, entity.OrgRefudeAction, "action=" +  currentAction)
+				da.AddAction(name, iconUrl, resource.OrgRefudeAction, currentAction)
 			}
 		}
 

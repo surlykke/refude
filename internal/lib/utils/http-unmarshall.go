@@ -19,7 +19,6 @@ func QueryParam(r *http.Request, paramName string) string {
 func Convert[T any](strVal string, t *T) error {
 	var val = reflect.ValueOf(t)
 	var kind = val.Elem().Kind()
-	fmt.Println("Attempt conversion of", strVal, "to", kind)
 	switch kind {
 	case reflect.Bool:
 		val.SetBool("true" == strVal)

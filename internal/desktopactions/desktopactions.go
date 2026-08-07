@@ -7,36 +7,31 @@ package desktopactions
 
 import (
 	"log"
-	"sync/atomic"
-	"time"
 
 	"github.com/godbus/dbus/v5"
-	"github.com/surlykke/refude/internal/lib/entity"
+	"github.com/surlykke/refude/internal/lib/resource"
 )
 
-var lastUpdated = atomic.Pointer[time.Time]{}
-
-var actionMethod = map[string]string{
-	"shutdown": "org.freedesktop.login1.Manager.PowerOff",
-	"reboot":   "org.freedesktop.login1.Manager.Reboot",
-	"suspend":  "org.freedesktop.login1.Manager.Suspend",
-}
-
-var PowerActions = entity.MakeMap[string, *StartResource]("/start/")
-
-func Run() {
-	PowerActions.Serve()
-}
-
 type StartResource struct {
-	entity.Base
+	resource.Base
 	dbusMethod string
 }
 
+func makeStartResource(path string, title string, icon string, dbusMethod string) *StartResource {
+	var sr = &StartResource{Base: *resource.MakeBase(path, title, "Desktop action", icon), dbusMethod: dbusMethod}
+	sr.AddAction("", "", resource.OrgRefudeAction, "")
+	return sr
+}
+
+func Run() {
+	resource.Put(makeStartResource("/start/shutdown", "Power off", "system-shutdown", "org.freedesktop.login1.Manager.PowerOff"))
+	resource.Put(makeStartResource("/start/reboot", "Reboot", "system-reboot", "org.freedesktop.login1.Manager.Reboot"))
+	resource.Put(makeStartResource("/start/suspend", "Suspend", "system-suspend", "org.freedesktop.login1.Manager.Suspend"))
+
+}
+
 func (this *StartResource) DoPost(action string) (bool, error) {
-	if action != "" {
-		return false, nil
-	} else if conn, err := dbus.SystemBus(); err != nil {
+	if conn, err := dbus.SystemBus(); err != nil {
 		log.Print(err)
 		return false, err
 	} else {
@@ -44,17 +39,4 @@ func (this *StartResource) DoPost(action string) (bool, error) {
 		return true, nil
 	}
 
-}
-
-func init() {
-	var datas = [][]string{
-		{"shutdown", "Power off", "system-shutdown", "org.freedesktop.login1.Manager.PowerOff"},
-		{"reboot", "Reboot", "system-reboot", "org.freedesktop.login1.Manager.Reboot"},
-		{"suspend", "Suspend", "system-suspend", "org.freedesktop.login1.Manager.Suspend"}}
-
-	for _, data := range datas {
-		var res = StartResource{Base: *entity.MakeBase(data[1], "Desktop action", data[2], "Power action"), dbusMethod: data[3]}
-		res.AddAction("", "", entity.OrgRefudeAction,  "")
-		PowerActions.Put(data[0], &res)
-	}
 }

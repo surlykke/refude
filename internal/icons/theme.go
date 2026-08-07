@@ -12,13 +12,13 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/surlykke/refude/internal/lib/entity"
+	"github.com/surlykke/refude/internal/lib/resource"
 	"github.com/surlykke/refude/internal/lib/utils"
 	"github.com/surlykke/refude/internal/lib/xdg"
 )
 
 type IconTheme struct {
-	entity.Base
+	resource.Base
 	Id       string
 	Inherits []string
 	Dirs     []IconDir
@@ -31,19 +31,21 @@ type IconDir struct {
 	Context string
 }
 
+const themePathPrefix = "/icontheme/"
+
 func collectThemes() {
-	var mapOfThemes = readThemes(xdg.IconBasedirs)
-	if _, ok := mapOfThemes["hicolor"]; !ok {
+	var themes, hicolorFound = readThemes(xdg.IconBasedirs)
+	if !hicolorFound {
 		log.Print("Found no hicolor theme - unable to serve icons")
 		return
 	}
 
-	ThemeMap.ReplaceAll(mapOfThemes)
+	resource.Replace(themes, themePathPrefix)
 }
 
-func readThemes(basedirs []string) map[string]*IconTheme {
-	var themeMap = make(map[string]*IconTheme)
-
+func readThemes(basedirs []string) ([]*IconTheme, bool) {
+	var themes []*IconTheme
+var found = make(map[string]bool)
 	for _, basedir := range basedirs {
 		if indexFilePaths, err := filepath.Glob(basedir + "/*/index.theme"); err != nil {
 			log.Print("Could not look for index.theme files:", err)
@@ -51,13 +53,14 @@ func readThemes(basedirs []string) map[string]*IconTheme {
 			for _, indexFilePath := range indexFilePaths {
 				if theme, ok := readTheme(indexFilePath); !ok {
 					log.Print("Could not read", indexFilePath)
-				} else if _, ok := themeMap[theme.Id]; !ok {
-					themeMap[theme.Id] = theme
+				} else if _, ok := found[theme.Id]; !ok {
+					themes = append(themes,  theme)
+					found[theme.Id] = true
 				}
 			}
 		}
 	}
-	return themeMap
+	return themes, found["hicolor"]
 }
 
 func readTheme(indexThemeFilePath string) (*IconTheme, bool) {
@@ -82,7 +85,7 @@ func readTheme(indexThemeFilePath string) (*IconTheme, bool) {
 
 	themeGroup := iniFile[0]
 
-	theme := IconTheme{Base: *entity.MakeBase(themeGroup.Entries["Name"], "Icon theme", "", "Icon theme")}
+	theme := IconTheme{Base: *resource.MakeBase(themePathPrefix + themeId, themeGroup.Entries["Name"], "Icon theme", "", "icon", "theme")}
 	theme.Id = themeId
 	theme.Inherits = utils.Split(themeGroup.Entries["Inherits"], ",")
 	theme.Dirs = make([]IconDir, 0, 50)
@@ -150,3 +153,4 @@ func readUint32OrFallback(uintAsString string, fallback uint32) uint32 {
 		return fallback
 	}
 }
+

@@ -14,16 +14,12 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/surlykke/refude/internal/lib/entity"
 	"github.com/surlykke/refude/internal/lib/image"
 	"github.com/surlykke/refude/internal/lib/respond"
 	"github.com/surlykke/refude/internal/lib/utils"
 )
 
-var ThemeMap = entity.MakeMap[string, *IconTheme]("/icontheme/")
-
 func Run() {
-	ThemeMap.Serve()
 	http.HandleFunc("GET /icon", GetHandler)
 
 	collectThemes()

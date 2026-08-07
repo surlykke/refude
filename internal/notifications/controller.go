@@ -7,6 +7,7 @@ package notifications
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"reflect"
 	"strings"
@@ -16,8 +17,9 @@ import (
 	"github.com/godbus/dbus/v5/introspect"
 	"github.com/surlykke/refude/internal/file"
 	"github.com/surlykke/refude/internal/icons"
-	"github.com/surlykke/refude/internal/lib/entity"
+	"github.com/surlykke/refude/internal/lib/resource"
 	"github.com/surlykke/refude/internal/lib/image"
+	"github.com/surlykke/refude/pkg/pubsub"
 )
 
 const NOTIFICATIONS_SERVICE = "org.freedesktop.Notifications"
@@ -109,7 +111,7 @@ var acceptableHintTypes = map[string]bool{
 }
 
 const (
-	Expired uint32 = 1
+	Expired uint32 = iota + 1
 	Dismissed
 	Closed
 )
@@ -175,7 +177,7 @@ func Notify(
 	var title = sanitize(summary, []string{}, []string{})
 	body = sanitize(body, allowedTags, allowedEscapes)
 	notification := Notification{
-		Base:           *entity.MakeBase(title, app_name+": "+body, iconName, "Notification"),
+		Base:           *resource.MakeBase(id2Path(id), title, app_name+": "+body, iconName, "Notification"),
 		NotificationId: id,
 		Sender:         app_name,
 		Created:        time.Now(),
@@ -189,7 +191,7 @@ func Notify(
 
 	for i := 0; i+1 < len(actions); i = i + 2 {
 		notification.NActions[actions[i]] = actions[i+1]
-		notification.AddAction(actions[i + 1], "", entity.OrgRefudeAction, "action=" + actions[i])
+		notification.AddAction(actions[i+1], "", resource.OrgRefudeAction, "action="+actions[i])
 	}
 
 	for name, val := range hints {
@@ -223,8 +225,7 @@ func Notify(
 	}
 
 	notification.Expires = time.Now().Add(time.Duration(expire_timeout) * time.Millisecond)
-	NotificationMap.Put(id, &notification)
-	ExpiredNotificationsMap.Remove(id)
+	newNotifications <- &notification
 
 	return id, nil
 }
@@ -299,7 +300,7 @@ func isAnImage(path string) bool {
 }
 
 func CloseNotification(id uint32) {
-	removeNotification(id, Closed)
+	closedNotifications <- id
 }
 
 func GetServerInformation() (string, string, string, string, *dbus.Error) {
@@ -341,27 +342,16 @@ func helper(src *string, dest *string, allowedPrefixes []string, endMarker strin
 	*src = (*src)[endMarkerPos+1:]
 }
 
-func reaper() {
-	var ticker = time.NewTicker(500 * time.Millisecond)
-	for range ticker.C {
-		for _, n := range NotificationMap.GetAll() {
-			if n.Expires.Before(time.Now()) {
-				// Slightly racy - I know
-				removeNotification(n.NotificationId, Expired)
-				ExpiredNotificationsMap.Put(n.NotificationId, n)
-			}
-		}
-	}
-}
+var NotificationEvents = pubsub.MakePublisher[struct{}]()
+var newNotifications = make(chan *Notification)
+var closedNotifications = make(chan uint32)
+var dismissedNotifications = make(chan uint32)
 
 func Run(noNotifications bool) {
 	if noNotifications {
 		return
 	}
 
-	NotificationMap.Serve()
-	ExpiredNotificationsMap.Serve()
-	go reaper()
 	var err error
 	var reply dbus.RequestNameReply
 
@@ -397,15 +387,44 @@ func Run(noNotifications bool) {
 		NOTIFICATIONS_INTERFACE,
 	)
 	_ = conn.Export(introspect.Introspectable(INTROSPECT_XML), NOTIFICATIONS_PATH, INTROSPECT_INTERFACE)
+
+	var ticker = time.NewTicker(500 * time.Millisecond)
+	for {
+		var somethingChanged = false
+		select {
+		case n := <-newNotifications:
+			resource.Put(n)
+			somethingChanged = true
+		case id := <-closedNotifications:
+			if _, ok := resource.Remove(id2Path(id)); ok {
+				conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", id, Closed)
+				somethingChanged = true
+			}
+		case id := <-dismissedNotifications:
+			if _, ok := resource.Remove(id2Path(id)); ok {
+				conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", id, Dismissed)
+				somethingChanged = true
+			}
+		case <-ticker.C:
+			for _, n := range resource.GetByPrefix[*Notification]("/notification/") {
+				if !n.Expired && n.Expires.Before(time.Now()) {
+					var copy = *n
+					copy.Expired = true
+					resource.Put(&copy)
+					conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", copy.NotificationId, Expired)
+
+					somethingChanged = true
+
+				}
+			}
+
+		}
+		if somethingChanged {
+			NotificationEvents.Publish(struct{}{})
+		}
+	}
 }
 
-var NotificationMap = entity.MakeMap[uint32, *Notification]("/notification/")
-var ExpiredNotificationsMap = entity.MakeMap[uint32, *Notification]("/expired_notifications/")
-
-func removeNotification(id uint32, reason uint32) (*Notification, bool) {
-	if n, ok := NotificationMap.Remove(id); ok {
-		conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", id, reason)
-		return n, true
-	}
-	return nil, false
+func id2Path(id uint32) string {
+	return fmt.Sprintf("/notification/%d", id)
 }

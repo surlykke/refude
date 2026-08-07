@@ -10,18 +10,9 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/surlykke/refude/internal/applications"
-	"github.com/surlykke/refude/internal/browser"
-	"github.com/surlykke/refude/internal/desktopactions"
-	"github.com/surlykke/refude/internal/file"
-	"github.com/surlykke/refude/internal/icons"
-	"github.com/surlykke/refude/internal/lib/entity"
+	"github.com/surlykke/refude/internal/lib/resource"
 	"github.com/surlykke/refude/internal/lib/respond"
 	"github.com/surlykke/refude/internal/lib/utils"
-	"github.com/surlykke/refude/internal/network"
-	"github.com/surlykke/refude/internal/notifications"
-	"github.com/surlykke/refude/internal/power"
-	"github.com/surlykke/refude/internal/wayland"
 )
 
 func Run() {
@@ -33,7 +24,7 @@ func Run() {
 const maxRank uint = 1000000
 
 type Ranked struct {
-	entity.Base
+	resource.Base
 	Rank uint `json:"-"`
 }
 
@@ -41,28 +32,22 @@ func Search(term string) []Ranked {
 	var m = makeMatcher(term)
 	var result = make([]Ranked, 0, 1000)
 
-	result = append(result, filter(notifications.NotificationMap.GetForSearch(), m)...)
-	result = append(result, filter(wayland.WindowMap.GetForSearch(), m)...)
-	result = append(result, filter(browser.TabMap.GetForSearch(), m)...)
-
+	var prefixes = []string{"/window/", "/tab/", "/notification/"}
 	if len(m.term) > 0 {
-		result = append(result, filter(applications.AppMap.GetForSearch(), m)...)
+		prefixes = append(prefixes, "/application/")
 	}
 	if len(m.term) > 1 {
-		result = append(result, filter(notifications.ExpiredNotificationsMap.GetForSearch(), m)...)
+		prefixes = append(prefixes, "/expirednotification/")
 	}
 	if len(m.term) > 2 {
-		result = append(result, filter(network.Connections.GetForSearch(), m)...)
-		result = append(result, filter(power.DeviceMap.GetForSearch(), m)...)
-		result = append(result, filter(file.FileMap.GetForSearch(), m)...)
-		result = append(result, filter(browser.BookmarkMap.GetForSearch(), m)...)
-		result = append(result, filter(desktopactions.PowerActions.GetForSearch(), m)...)
+		prefixes = append(prefixes, "/network/", "/device/", "/file/", "/start/") // TODO: /bookmark/
 	}
+	result = filter(resource.GetForSearch(prefixes...), m)
 	sort(result)
 	return result
 }
 
-func filter(bases []entity.Base, m matcher) []Ranked {
+func filter(bases []resource.Base, m matcher) []Ranked {
 	var result = make([]Ranked, 0, len(bases))
 	for _, res := range bases {
 		var rankCalculated = m.match(res.Title)
@@ -89,37 +74,4 @@ func sort(list []Ranked) {
 		return tmp
 	})
 
-}
-
-func SearchByPath(path string) (entity.Base, bool) {
-	var bases []entity.Base
-	if strings.HasPrefix(path, "/window/") {
-		bases = wayland.WindowMap.GetForSearch()
-	} else if strings.HasPrefix(path, "/application/") {
-		bases = applications.AppMap.GetForSearch()
-	} else if strings.HasPrefix(path, "/mimetype/") {
-		bases = applications.MimeMap.GetForSearch()
-	} else if strings.HasPrefix(path, "/notification/") {
-		bases = notifications.NotificationMap.GetForSearch()
-	} else if strings.HasPrefix(path, "/icontheme/") {
-		bases = icons.ThemeMap.GetForSearch()
-	} else if strings.HasPrefix(path, "/device/") {
-		bases = power.DeviceMap.GetForSearch()
-	} else if strings.HasPrefix(path, "/tab/") {
-		bases = browser.TabMap.GetForSearch()
-	} else if strings.HasPrefix(path, "/bookmark/") {
-		bases = browser.BookmarkMap.GetForSearch()
-	} else if strings.HasPrefix(path, "/file/") {
-		bases = file.FileMap.GetForSearch()
-	} else if strings.HasPrefix(path, "/start/") {
-		bases = desktopactions.PowerActions.GetForSearch()
-	}
-
-	for _, b := range bases {
-		if b.Path == path {
-			return b, true
-		}
-	}
-
-	return entity.Base{}, false
 }

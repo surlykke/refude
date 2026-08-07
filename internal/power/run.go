@@ -10,20 +10,21 @@ import (
 
 	"github.com/godbus/dbus/v5"
 
-	"github.com/surlykke/refude/internal/lib/entity"
+	"github.com/surlykke/refude/internal/lib/resource"
+	"github.com/surlykke/refude/pkg/pubsub"
 )
 
-var DeviceMap = entity.MakeMap[string, *Device]("/device/")
+const devicePathPrefix = "/device/"
+var deviceEvents = pubsub.MakePublisher[struct{}]()
 
 func Run(dontShowTrayBattery bool) {
-	DeviceMap.Serve()
 	var signals = subscribe()
 
-	DeviceMap.Put(retrieveDevice(displayDeviceDbusPath))
+	resource.Put(retrieveDevice(displayDeviceDbusPath))
 	showOnDesktop()
 
 	for _, dbusPath := range retrieveDevicePaths() {
-		DeviceMap.Put(retrieveDevice(dbusPath))
+		resource.Put(retrieveDevice(dbusPath))
 	}
 	if !dontShowTrayBattery {
 		go tray_applet_run()
@@ -32,22 +33,23 @@ func Run(dontShowTrayBattery bool) {
 	for signal := range signals {
 		switch signal.Name {
 		case "org.freedesktop.DBus.Properties.PropertiesChanged":
-			var id, device = retrieveDevice(signal.Path)
-			DeviceMap.Put(id, device)
+			var device = retrieveDevice(signal.Path)
+			resource.Put(device)
 			if device.DisplayDevice {
 				showOnDesktop()
 			}
 		case "org.freedesktop.UPower.DeviceAdded":
 			if path, ok := getAddedRemovedPath(signal); ok {
-				DeviceMap.Put(retrieveDevice(path))
+				resource.Put(retrieveDevice(path))
 			}
 		case "org.freedesktop.UPower.DeviceRemoved":
 			if dbusPath, ok := signal.Body[0].(dbus.ObjectPath); ok {
-				DeviceMap.Remove(dbusPath2id(dbusPath))
+				resource.Remove(devicePathPrefix + dbusPath2id(dbusPath))
 			}
 		default:
 			log.Print("Update on unknown device: ", signal.Path)
 		}
+		deviceEvents.Publish(struct{}{})
 	}
 }
 

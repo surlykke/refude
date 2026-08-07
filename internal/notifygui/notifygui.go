@@ -14,6 +14,7 @@ package notifygui
 import "C"
 import (
 	"github.com/surlykke/refude/internal/icons"
+	"github.com/surlykke/refude/internal/lib/resource"
 	"github.com/surlykke/refude/internal/notifications"
 )
 
@@ -30,7 +31,7 @@ func GuiReady() {
 }
 
 func run() {
-	var notificationEvents = notifications.NotificationMap.Events.Subscribe()
+	var notificationEvents = notifications.NotificationEvents.Subscribe()
 	sendNotificationsToGui()
 	for {
 		notificationEvents.Next()
@@ -40,8 +41,10 @@ func run() {
 
 func sendNotificationsToGui() {
 	var notificationsAsStrings = make([][]string, 0, 20)
-	for _, n := range notifications.NotificationMap.GetAll() {
-		notificationsAsStrings = append(notificationsAsStrings, []string{n.Title, n.Body, icons.FindIcon(n.IconName, uint32(64))})
+	for _, n := range resource.GetByPrefix[*notifications.Notification]("/notification/") {
+		if !n.Expired {
+			notificationsAsStrings = append(notificationsAsStrings, []string{n.Title, n.Body, icons.FindIcon(n.IconName, uint32(64))})
+		}
 	}
 
 	var cStrings = make([]*C.char, 0, 100)

@@ -14,34 +14,32 @@ type Collection struct {
 	Mimetypes map[string]*Mimetype
 }
 
-func collect() Collection {
-	var collection = Collection{}
-	var defaultApps map[string][]string
-	collection.Mimetypes = collectMimetypes()
-	collection.Apps, defaultApps = collectApps()
+func collect() (map[string]*DesktopApplication, map[string]*Mimetype) {
+	var apps, defaultApps = collectApps() 
+	var mimetypes =  collectMimetypes()
 
-	for mt, apps := range defaultApps {
-		if mt, ok := collection.Mimetypes[mt]; ok {
-			mt.Applications = apps
+	for mimetypeId, appIds := range defaultApps {
+		if mimetype, ok := mimetypes[mimetypeId]; ok {
+			mimetype.Applications = appIds
 		}
 	}
 
-	for appId, app := range collection.Apps {
+	for appId, app := range apps {
 		for _, mimetypeId := range app.Mimetypes {
-			if mimetype, ok := collection.Mimetypes[mimetypeId]; ok {
+			if mimetype, ok := mimetypes[mimetypeId]; ok {
 				mimetype.Applications = appendIfNotThere(mimetype.Applications, appId)
 			}
 		}
 	}
 
 	// Ensure that if, m1 is a subclass of m2, m1s applications contains all m2s applications
-
+	// FIXME: Wrong?
 	var visited = make(map[string]bool)
 	var getHandlersForSupertypes func(mt *Mimetype)
 	getHandlersForSupertypes = func(mt *Mimetype) {
 		if !visited[mt.Id] {
 			for _, superId := range mt.SubClassOf {
-				if superType, ok := collection.Mimetypes[superId]; ok {
+				if superType, ok := mimetypes[superId]; ok {
 					getHandlersForSupertypes(superType)
 					for _, app := range superType.Applications {
 						mt.Applications = appendIfNotThere(mt.Applications, app)
@@ -53,11 +51,11 @@ func collect() Collection {
 
 	}
 
-	for _, mt := range collection.Mimetypes {
+	for _, mt := range mimetypes {
 		getHandlersForSupertypes(mt)
 	}
 
-	return collection
+	return apps, mimetypes
 }
 
 func appendIfNotThere(list []string, otherList ...string) []string {

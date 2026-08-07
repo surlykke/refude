@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/surlykke/refude/internal/lib/entity"
+	"github.com/surlykke/refude/internal/lib/resource"
 )
 
 type Urgency uint8
@@ -48,22 +48,18 @@ func (ut UnixTime) MarshalJSON() ([]byte, error) {
 }
 
 type Notification struct {
-	entity.Base
+	resource.Base
 	NotificationId uint32
 	Body           string
 	Sender         string
 	Created        time.Time
 	Expires        time.Time
-	Deleted        bool
+	Expired        bool // Set once expiration has been published on dbus
 	Urgency        Urgency
 	NActions       map[string]string `json:"actions"`
 	Hints          map[string]any
 	IconName       string
 	IconSize       uint32 `json:",omitempty"`
-}
-
-func (n *Notification) Expired() bool {
-	return time.Now().After(time.Time(n.Expires))
 }
 
 func (n *Notification) DoPost(action string) (bool, error) {
@@ -80,6 +76,6 @@ func (n *Notification) DoPost(action string) (bool, error) {
 }
 
 func (n *Notification) DoDelete() error {
-	removeNotification(n.NotificationId, Dismissed)
+	dismissedNotifications <- n.NotificationId 
 	return nil
 }

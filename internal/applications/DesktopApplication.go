@@ -11,12 +11,14 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/surlykke/refude/internal/lib/entity"
+	"github.com/surlykke/refude/internal/lib/resource"
 	"github.com/surlykke/refude/internal/lib/xdg"
 )
 
+const appPathPrefix = "/application/"
+
 type DesktopApplication struct {
-	entity.Base
+	resource.Base
 	Type            string
 	Version         string `json:",omitempty"`
 	NoDisplay       bool
@@ -103,3 +105,4 @@ func run(exec string, arg string, inTerminal bool) error {
 
 	return xdg.RunCmd(argv...)
 }
+

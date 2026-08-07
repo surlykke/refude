@@ -6,12 +6,12 @@
 package browser
 
 import (
-	"github.com/surlykke/refude/internal/lib/entity"
+	"github.com/surlykke/refude/internal/lib/resource"
 	"github.com/surlykke/refude/internal/lib/xdg"
 )
 
 type Bookmark struct {
-	entity.Base
+	resource.Base
 	Id          string
 	ExternalUrl string
 }

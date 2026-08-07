@@ -14,7 +14,7 @@ import (
 	"strings"
 
 	"github.com/surlykke/refude/internal/applications"
-	"github.com/surlykke/refude/internal/lib/entity"
+	"github.com/surlykke/refude/internal/lib/resource"
 )
 
 func getFileType(m os.FileMode) string {
@@ -38,7 +38,7 @@ func getFileType(m os.FileMode) string {
 }
 
 type File struct {
-	entity.Base
+	resource.Base
 	Name        string
 	Type        string
 	Permissions string
@@ -47,14 +47,14 @@ type File struct {
 	apps        []string
 }
 
-func makeFileFromPath(path string) (*File, error) {
+func makeFileFromOsPath(path string) (*File, error) {
 	var osPath = filepath.Clean("/" + path)
 	if fileInfo, err := os.Stat(osPath); os.IsNotExist(err) {
 		return nil, nil
 	} else if err != nil {
 		return nil, err
 	} else {
-		return makeFileFromInfo(osPath, fileInfo), nil
+		return makeFileFromOsInfo(osPath, fileInfo), nil
 	}
 }
 
@@ -67,7 +67,7 @@ func MimeType(ospath string) string {
 	}
 }
 
-func makeFileFromInfo(osPath string, fileInfo os.FileInfo) *File {
+func makeFileFromOsInfo(osPath string, fileInfo os.FileInfo) *File {
 	var fileType = getFileType(fileInfo.Mode())
 	var mimetype string
 	if "Directory" == fileType {
@@ -77,7 +77,7 @@ func makeFileFromInfo(osPath string, fileInfo os.FileInfo) *File {
 	}
 	var icon = strings.ReplaceAll(mimetype, "/", "-")
 	var f = File{
-		Base:        *entity.MakeBase(fileInfo.Name(), "file "+osPath, icon, "File"),
+		Base:        *resource.MakeBase("/file"+osPath, fileInfo.Name(), "file "+osPath, icon, "File"),
 		Name:        fileInfo.Name(),
 		Type:        fileType,
 		Permissions: fileInfo.Mode().String(),
@@ -86,7 +86,7 @@ func makeFileFromInfo(osPath string, fileInfo os.FileInfo) *File {
 	}
 
 	for _, app := range applications.GetHandlers(f.Mimetype) {
-		f.AddAction(app.Title, app.Icon, entity.OrgRefudeAction, "action="+app.DesktopId)
+		f.AddAction(app.Title, app.Icon, resource.OrgRefudeAction, app.DesktopId)
 	}
 	return &f
 }

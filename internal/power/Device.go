@@ -9,11 +9,11 @@ import (
 	"strings"
 
 	"github.com/godbus/dbus/v5"
-	"github.com/surlykke/refude/internal/lib/entity"
+	"github.com/surlykke/refude/internal/lib/resource"
 )
 
 type Device struct {
-	entity.Base
+	resource.Base
 	Id string
 
 	// Property of our making

@@ -3,7 +3,7 @@
 // This file is part of the refude project.
 // It is distributed under the GPL v2 license.
 // Please refer to the GPL2 file for a copy of the license.
-package entity
+package resource
 
 import (
 	"strings"
@@ -21,28 +21,19 @@ type Base struct {
 	Summary    string `json:"summary"`
 	Icon       string `json:"icon"`
 	Keywords   []string
-	Action     *Action  `json:"-"`
-	Delete     *Action  `json:"-"`
-	AltActions []Action `json:"-"`
 	Links      map[Relation][]Link
 	Path       string `json:"path"`
 }
 
-type Action struct {
-	Id   string
-	Name string
-	Icon string
-	Url  string
-}
-
-func MakeBase(title string, summary string, icon string, keywords ...string) *Base {
+func MakeBase(path string, title string, summary string, icon string, keywords ...string) *Base {
 	icon = adjustIcon(icon)
 	return &Base{
+		Path:     path,
 		Title:    translate.Text(title),
 		Summary:  translate.Text(summary),
 		Icon:     icon,
 		Keywords: translate.Texts(keywords),
-		Links:    map[Relation][]Link{Self: {Link{}}},
+		Links:    map[Relation][]Link{Self: {Link{Href: path}}},
 	}
 }
 
@@ -65,25 +56,14 @@ func (this *Base) GetBase() *Base {
 	return this
 }
 
-
-func (this *Base) AddAction(title string, icon string, relation Relation, query string) {
-	this.Links[relation] = append(this.Links[relation], Link{Title: title, Icon: icon, query: query})
-}
-
-// Call before serving
-func (this *Base) SetPath(path string) {
-	this.Path = path // TODO: Necessary ?
-	for _, linklist := range this.Links {
-		for i := 0; i < len(linklist); i++ {
-			linklist[i].Href = path
-			if "" == linklist[i].query {
-				linklist[i].Href = path
-			} else {
-				linklist[i].Href = path + "?" + linklist[i].query
-			}
-		}
+func (this *Base) AddAction(title string, icon string, relation Relation, actionId string) {
+	var url = this.Path
+	if "" != actionId {
+		url = url + "?action=" + actionId // TODO: Escape?
 	}
+	this.Links[relation] = append(this.Links[relation], Link{Href: url, Title: title, Icon: icon})
 }
+
 
 func (this *Base) FirstAction() *Link {
 	if len(this.Links[OrgRefudeAction]) > 0 {
@@ -99,7 +79,7 @@ func (this *Base) SecondaryActions() []Link {
 	} else {
 		return nil
 	}
-}	
+}
 
 func (this *Base) DeleteAction() *Link {
 	if len(this.Links[OrgRefudeDelete]) > 0 {
@@ -109,13 +89,10 @@ func (this *Base) DeleteAction() *Link {
 	}
 }
 
-
-
 type Link struct {
-	Href     string   `json:"href"`
-	Title    string   `json:"title,omitempty"`
-	Icon     string   `json:"icon,omitempty"`
-	query    string   
+	Href  string `json:"href"`
+	Title string `json:"title,omitempty"`
+	Icon  string `json:"icon,omitempty"`
 }
 
 type Relation string

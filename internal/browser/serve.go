@@ -16,15 +16,12 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/surlykke/refude/internal/lib/entity"
+	"github.com/surlykke/refude/internal/lib/resource"
 	"github.com/surlykke/refude/internal/lib/respond"
 	"github.com/surlykke/refude/internal/lib/utils"
 	"github.com/surlykke/refude/internal/lib/xdg"
 	"github.com/surlykke/refude/pkg/pubsub"
 )
-
-var TabMap = entity.MakeMap[string, *Tab]("/tab/")
-var BookmarkMap = entity.MakeMap[string, *Bookmark]("/bookmark/")
 
 // Data sent to the browser
 type browserCommand struct {
@@ -63,9 +60,6 @@ type browserData struct {
 }*/
 
 func Run() {
-	TabMap.Serve()
-	BookmarkMap.Serve()
-
 	os.Remove(xdg.NmSocketPath)
 	if listener, err := net.Listen("unix", xdg.NmSocketPath); err != nil {
 		log.Print(err)
@@ -87,8 +81,9 @@ func receive(conn net.Conn) {
 		return
 	} else {
 		var browserId = string(data)
-		defer clean(browserId)
 		var browserName = browserNameFromId(browserId)
+		var pathPrefix = "/tab/" + strings.ToLower(browserName) + "/"
+		defer resource.RemoveByPrefix(pathPrefix)
 		log.Print("Connected to ", browserName)
 		go send(browserId, conn)
 
@@ -103,16 +98,22 @@ func receive(conn net.Conn) {
 			} else if err := json.Unmarshal(data, &brd); err != nil {
 				log.Print("Invalid json:\n", string(data))
 			} else if brd.Type == "tabs" {
-				var mapOfTabs = make(map[string]*Tab, len(brd.List))
+				var tabList = make([]*Tab, 0, len(brd.List))
 				for _, d := range brd.List {
 					if len(d.Title) > 60 { // Shorten title a bit
 						d.Title = d.Title[0:60] + "..."
 					}
-					var tab = &Tab{Base: *entity.MakeBase(d.Title, browserName+" tab",  d.Favicon, "Browser tab"), Id: d.Id, BrowserId: browserId, Url: d.Url}
-					tab.AddAction( "Focus "+browserName+" tab", "", entity.OrgRefudeAction, "")
-					mapOfTabs[d.Id] = tab
+					var tab = &Tab{
+						Base:      *(resource.MakeBase(pathPrefix+d.Id, d.Title, browserName+" tab", d.Favicon, "browser", "tab")),
+						Id:        d.Id,
+						BrowserId: browserId,
+						Url:       d.Url,
+					}
+					tab.AddAction("Focus "+browserName+" tab", "", resource.OrgRefudeAction, "")
+
+					tabList = append(tabList, tab)
 				}
-				TabMap.Replace(mapOfTabs, func(t *Tab) bool { return t.BrowserId == browserId })
+				resource.Replace(tabList, pathPrefix)
 			} // TODO: bookmarks
 		}
 	}
@@ -155,7 +156,7 @@ func browserNameFromId(id string) string {
 		return "Vivaldi"
 	} else {
 		// TODO: chromium, firefox...
-		return id
+		return ""
 	}
 
 }
@@ -184,8 +185,4 @@ func writeMsg(conn net.Conn, msg []byte) error {
 		log.Print(err)
 	}
 	return err
-}
-
-func clean(browserId string) {
-	TabMap.Replace(map[string]*Tab{}, func(t *Tab) bool { return t.BrowserId == browserId })
 }

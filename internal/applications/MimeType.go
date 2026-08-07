@@ -10,9 +10,11 @@ import (
 	"regexp"
 
 	"github.com/pkg/errors"
-	"github.com/surlykke/refude/internal/lib/entity"
+	"github.com/surlykke/refude/internal/lib/resource"
 	"github.com/surlykke/refude/internal/lib/xdg"
 )
+
+const mimetypePathPrefix = "/mimetype/"
 
 var freedesktopOrgXml = ""
 
@@ -26,7 +28,7 @@ func init() {
 }
 
 type Mimetype struct {
-	entity.Base
+	resource.Base
 	Id              string
 	Acronym         string `json:",omitempty"`
 	ExpandedAcronym string `json:",omitempty"`
@@ -45,7 +47,7 @@ func MakeMimetype(id string) (*Mimetype, error) {
 		return nil, errors.New("Incomprehensible mimetype: " + id)
 	} else {
 		var mt = Mimetype{
-			Base:        *entity.MakeBase("",  "", "", "Mimetype"),
+			Base:        *resource.MakeBase("/mimetype/" + id, "",  "", "", "Mimetype"),
 			Id:          id,
 			Aliases:     []string{},
 			Globs:       []string{},
@@ -54,4 +56,8 @@ func MakeMimetype(id string) (*Mimetype, error) {
 		}
 		return &mt, nil
 	}
+}
+
+func mimeTypeId2path(mimeTypeId string) string {
+	return "/mimetype/" + mimeTypeId
 }

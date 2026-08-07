@@ -8,11 +8,11 @@ package browser
 import (
 	"strings"
 
-	"github.com/surlykke/refude/internal/lib/entity"
+	"github.com/surlykke/refude/internal/lib/resource"
 )
 
 type Tab struct {
-	entity.Base
+	resource.Base
 	Id        string
 	BrowserId string
 	Url       string

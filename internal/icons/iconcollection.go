@@ -7,7 +7,6 @@ package icons
 
 import (
 	"errors"
-	"fmt"
 	"log"
 	"os"
 	gopath "path"
@@ -16,6 +15,7 @@ import (
 	"slices"
 	"sync"
 
+	"github.com/surlykke/refude/internal/lib/resource"
 	"github.com/surlykke/refude/internal/lib/xdg"
 )
 
@@ -91,7 +91,7 @@ func collectThemeIcons(collected map[string][]IconPath) {
 
 func collectIconsFromTheme(themeId string) map[string][]IconPath {
 	var iconsFromTheme = make(map[string][]IconPath)
-	var theme, _ = ThemeMap.Get(themeId)
+	var theme, _ = resource.Get[*IconTheme](themePathPrefix + themeId)
 	for _, basedir := range xdg.IconBasedirs {
 		for _, themeDir := range theme.Dirs {
 			var glob = basedir + "/" + themeId + "/" + themeDir.Path + "/*"
@@ -142,7 +142,7 @@ func determineSearchOrder() []string {
 	var walker func(themeId string)
 	walker = func(themeId string) {
 		if themeId != "" && themeId != "hicolor" && !slices.Contains(searchOrder, themeId) {
-			if theme, ok := ThemeMap.Get(themeId); ok {
+			if theme, ok := resource.Get[*IconTheme](themePathPrefix + themeId); ok {
 				searchOrder = append(searchOrder, themeId)
 				for _, parent := range theme.Inherits {
 					walker(parent)
@@ -172,7 +172,6 @@ func determineDefaultThemeId() string {
 
 			if bytes, err := os.ReadFile(iniFile); err == nil {
 				if matches := iconThemeDefPattern.FindStringSubmatch(string(bytes)); matches != nil {
-					fmt.Println("Default icontheme", matches[1], "found in", iniFile)
 					return matches[1]
 				}
 			}

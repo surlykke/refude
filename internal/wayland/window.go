@@ -7,14 +7,12 @@ package wayland
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
-	"sync/atomic"
 
 	"github.com/surlykke/refude/internal/applications"
-	"github.com/surlykke/refude/internal/lib/entity"
+	"github.com/surlykke/refude/internal/lib/resource"
 )
-
-var WindowMap = entity.MakeMap[uint64, *WaylandWindow]("/window/")
 
 var windowUpdates = make(chan windowUpdate)
 var removals = make(chan uint64)
@@ -28,7 +26,6 @@ type windowUpdate struct {
 }
 
 func Run(ignWin map[string]bool) {
-	WindowMap.Serve()
 	ignoredWindows = ignWin
 
 	go setupAndRunAsWaylandClient()
@@ -39,44 +36,38 @@ func Run(ignWin map[string]bool) {
 	for {
 		select {
 		case upd := <-windowUpdates:
-			var (
-				title    string
-				iconName string
-				appId    string
-				state    WindowStateMask
-			)
-
-			if w, ok := WindowMap.Get(upd.wId); ok {
-				title, iconName = w.Title, w.Icon
-				appId, state = w.AppId, w.State
+			var newWin = makeWindow(upd.wId)
+			if oldWin, ok := resource.Get[*WaylandWindow](newWin.Path); ok {
+				newWin.Base, newWin.AppId, newWin.State = oldWin.Base, oldWin.AppId, oldWin.State
 			}
 
 			if upd.title != "" {
-				title = upd.title
+				newWin.Title = upd.title
 			}
 
 			if upd.appId != "" {
-				appId = upd.appId
-				if _, appIconName, ok := applications.GetTitleAndIcon(upd.appId); ok {
-					iconName = appIconName
+				newWin.AppId = upd.appId
+				if appTitle, appIconName, ok := applications.GetTitleAndIcon(upd.appId); ok {
+					newWin.Summary = appTitle + " window"
+					newWin.Icon = appIconName
 				}
 			}
 
 			if upd.state > 0 {
-				state = upd.state - 1
+				newWin.State = upd.state - 1
 			}
-
-			WindowMap.Put(upd.wId, makeWindow(upd.wId, title, iconName, appId, state))
+			resource.Put(&newWin)
 		case id := <-removals:
-			WindowMap.Remove(id)
+			resource.Remove(wId2Path(id))
 		case _ = <-appEvents:
-			for _, w := range WindowMap.GetAll() {
-				var title, iconName = w.Title, w.Icon
-				var appId, state = w.AppId, w.State
-
-				if _, appIconName, ok := applications.GetTitleAndIcon(appId); ok {
-					iconName = appIconName
-					WindowMap.Put(w.Wid, makeWindow(w.Wid, title, iconName, appId, state))
+			for _, w := range resource.GetByPrefix[*WaylandWindow]("/window/") {
+				var copy = *w
+				if "" != copy.AppId {
+					if appTitle, appIcon, ok := applications.GetTitleAndIcon(copy.AppId); ok {
+						copy.Icon = appIcon
+						copy.Summary = appTitle + " window"
+						resource.Put(&copy)
+					}
 				}
 			}
 		}
@@ -84,7 +75,7 @@ func Run(ignWin map[string]bool) {
 }
 
 func watchAppCollections(sink chan struct{}) {
-	var subscription = applications.AppMap.Events.Subscribe()
+	var subscription = applications.AppEvents.Subscribe()
 	for {
 		subscription.Next()
 		sink <- struct{}{}
@@ -131,21 +122,20 @@ func (wsm WindowStateMask) MarshalJSON() ([]byte, error) {
 }
 
 type WaylandWindow struct {
-	entity.Base
+	resource.Base
 	Wid   uint64          `json:"-"`
 	AppId string          `json:"app_id"`
 	State WindowStateMask `json:"state"`
 }
 
-func makeWindow(wId uint64, title string, iconName string, appId string, state WindowStateMask) *WaylandWindow {
-	var ww = &WaylandWindow{
-		Base:  *entity.MakeBase(title, appId+" "+"window", iconName, "Window"),
-		Wid:   wId,
-		AppId: appId,
-		State: state,
+
+func makeWindow(wId uint64) WaylandWindow {
+	var ww = WaylandWindow{
+		Base: *resource.MakeBase(wId2Path(wId), "", "", "", "Window"),
+		Wid:  wId,
 	}
-	ww.AddAction("Focus", "", entity.OrgRefudeAction,  "")
-	//ww.AddAction("close", title, "Close window", "window-close")
+	ww.AddAction("Focus", "", resource.OrgRefudeAction, "")
+	ww.AddAction("close", "window-close", resource.OrgRefudeDelete, "")
 	return ww
 }
 
@@ -167,19 +157,6 @@ func (this *WaylandWindow) DoPost(action string) (bool, error) {
 	}
 }
 
-var remembered atomic.Uint64
-
-func RememberActive() {
-	for _, w := range WindowMap.GetAll() {
-		if w.State.Is(ACTIVATED) {
-			remembered.Store(w.Wid)
-			break
-		}
-	}
-}
-
-func ActivateRememberedActive() {
-	if wId := remembered.Load(); wId > 0 {
-		activate(wId)
-	}
+func wId2Path(wId uint64) string {
+	return fmt.Sprintf("/window/%d", wId)
 }

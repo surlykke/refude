@@ -2,11 +2,13 @@ package power
 
 import (
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/godbus/dbus/v5"
 	"github.com/godbus/dbus/v5/introspect"
 	"github.com/godbus/dbus/v5/prop"
+	"github.com/surlykke/refude/internal/lib/resource"
 )
 
 const WATCHER_SERVICE string = "org.kde.StatusNotifierWatcher"
@@ -48,8 +50,6 @@ func propOf(val string, writeable bool, emit prop.EmitType, callBack func(change
 }
 
 func tray_applet_run() {
-	fmt.Println("tray_applet_run")
-
 	var (
 		err error
 	)
@@ -134,25 +134,28 @@ func tray_applet_run() {
 }
 
 func getIconName() string {
-	var displayDevice, _ = DeviceMap.Get("DisplayDevice")
-	var state, percentage = displayDevice.State, displayDevice.Percentage
-	if state == "Discharging" || state == "Empty" {
-		state = "discharging"
+	if displayDevice, ok := resource.Get[*Device]("/device/DisplayDevice"); ok {
+		var state, percentage = displayDevice.State, displayDevice.Percentage
+		if state == "Discharging" || state == "Empty" {
+			state = "discharging"
+		} else {
+			state = "charging"
+		}
+		return fmt.Sprintf("refude_battery_%s_%d0", state, int(percentage+5)/10)
 	} else {
-		state = "charging"
+		return ""
 	}
-	return fmt.Sprintf("refude_battery_%s_%d0", state, int(percentage+5)/10)
 }
 
 func watchBattery(props *prop.Properties) {
 	var prevIcon = ""
-	var subscription = DeviceMap.Events.Subscribe()
+	var subscription = deviceEvents.Subscribe()
 	for {
 		var iconName = getIconName()
 		if iconName != prevIcon {
 			prevIcon = iconName
 			if err := props.Set(SNI_INTERFACE, "IconName", dbus.MakeVariant(iconName)); err != nil {
-				fmt.Println("Error setting IconName:", err)
+				log.Println("Error setting IconName:", err)
 			}
 		}
 		subscription.Next()

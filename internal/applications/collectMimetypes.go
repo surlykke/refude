@@ -11,7 +11,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/surlykke/refude/internal/lib/entity"
+	"github.com/surlykke/refude/internal/lib/resource"
 	"github.com/surlykke/refude/internal/lib/translate"
 )
 
@@ -24,6 +24,7 @@ func collectMimetypes() map[string]*Mimetype {
 			log.Print("Problem making mimetype", id)
 		} else {
 			mimetype.Title = strings.Split(id, "/")[1] + " handler"
+			mimetype.Path = "/mimetype/" + id
 			res[id] = mimetype
 		}
 	}
@@ -103,8 +104,8 @@ func collectMimetypes() map[string]*Mimetype {
 			}
 			iconName = tmp.Icon.Name
 
-			var mimeType = &Mimetype{Base: *entity.MakeBase(acronym, "Mimetype", iconName, "Mimetype"), Id: tmp.Type}
-
+			var mimeType = &Mimetype{Base: *resource.MakeBase("/mimetype/" + tmp.Type, acronym, "Mimetype", iconName, "Mimetype"), Id: tmp.Type}
+			mimeType.Path = "/mimetype/" + mimeType.Id 
 			for _, tmpAcronym := range tmp.Acronym {
 				if translate.LocaleMatch(tmpAcronym.Lang) || (tmpAcronym.Lang == "" && mimeType.Acronym == "") {
 					mimeType.Acronym = tmpAcronym.Text

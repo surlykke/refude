@@ -11,14 +11,11 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/surlykke/refude/internal/applications"
-	"github.com/surlykke/refude/internal/lib/entity"
+	"github.com/surlykke/refude/internal/lib/resource"
 	"github.com/surlykke/refude/internal/lib/xdg"
 )
 
-var FileMap = entity.MakeMap[string, *File]("/file/")
-
 func Run() {
-	FileMap.Serve()
 	var watchedDirs []string
 
 	watcher, err := fsnotify.NewWatcher()
@@ -40,7 +37,7 @@ func Run() {
 	var scanScheduled = false
 	scanDirs(watchedDirs)
 	go func() {
-		var appSubscription = applications.AppMap.Events.Subscribe()
+		var appSubscription = applications.AppEvents.Subscribe()
 		for {
 			appSubscription.Next()
 			scanEv <- struct{}{}
@@ -64,15 +61,15 @@ func Run() {
 }
 
 func scanDirs(watchedDirs []string) {
-	var collected = make(map[string]*File, 50)
+	var collected = make([]*File, 0, 50)
 	for _, dir := range watchedDirs {
 		for _, entry := range readEntries(dir) {
 			var name = entry.Name()
 			var path = dir + "/" + name
-			if file, err := makeFileFromPath(path); err == nil && file != nil {
-				collected[path[1:]] = file
+			if file, err := makeFileFromOsPath(path); err == nil && file != nil {
+				collected = append(collected, file)
 			}
 		}
 	}
-	FileMap.ReplaceAll(collected)
+	resource.Replace(collected, "/file/")
 }

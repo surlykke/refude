@@ -7,28 +7,28 @@ package applications
 
 import (
 	"log"
+	"maps"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
-	"github.com/surlykke/refude/internal/lib/entity"
+	"github.com/surlykke/refude/internal/lib/resource"
 	"github.com/surlykke/refude/internal/lib/xdg"
+	"github.com/surlykke/refude/pkg/pubsub"
 )
 
-var AppMap = entity.MakeMap[string, *DesktopApplication]("/application/")
-var MimeMap = entity.MakeMap[string, *Mimetype]("/mimetype/")
+var AppEvents = pubsub.MakePublisher[struct{}]()
 
 func Run() {
-	AppMap.Serve()
-	MimeMap.Serve()
 	var desktopFileEvents = make(chan struct{})
 	go watchForDesktopFiles(desktopFileEvents)
 
 	for {
-		var collection Collection = collect()
-		AppMap.ReplaceAll(collection.Apps)
-		MimeMap.ReplaceAll(collection.Mimetypes)
-
+		var apps, mimetypes = collect()
+		resource.Replace(slices.Collect(maps.Values(apps)), "/application/")
+		resource.Replace(slices.Collect(maps.Values(mimetypes)), "/mimetype/")
+		AppEvents.Publish(struct{}{})
 		<-desktopFileEvents
 	}
 
@@ -36,9 +36,9 @@ func Run() {
 
 func GetHandlers(mimetype string) []*DesktopApplication {
 	var apps = make([]*DesktopApplication, 0, 10)
-	if mt, ok := MimeMap.Get(mimetype); ok {
+	if mt, ok := resource.Get[*Mimetype](mimetypePathPrefix + mimetype); ok {
 		for _, appId := range mt.Applications {
-			if app, ok := AppMap.Get(appId); ok {
+			if app, ok := resource.Get[*DesktopApplication](appPathPrefix + appId); ok {
 				apps = append(apps, app)
 			}
 		}
@@ -48,15 +48,15 @@ func GetHandlers(mimetype string) []*DesktopApplication {
 
 func GetTitleAndIcon(appId string) (string, string, bool) {
 	if appId != "" {
-		if da, ok := AppMap.Get(appId); ok {
-			return da.Title, da.Icon, true
+		if app, ok := resource.Get[*DesktopApplication](appPathPrefix + appId); ok {
+			return app.Title, app.Icon, true
 		}
 	}
 	return "", "", false
 }
 
 func OpenFile(appId, filePath string) bool {
-	if app, ok := AppMap.Get(appId); ok {
+	if app, ok := resource.Get[*DesktopApplication](appPathPrefix + appId); ok {
 		app.Run(filePath)
 		return true
 	}
