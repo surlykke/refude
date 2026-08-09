@@ -2,7 +2,7 @@
 //
 // This file is part of the refude project.
 // It is distributed under the GPL v2 license.
-// Please refer to the GPL2 file for a copy of the license.
+// Please refer to the file GPL2 for a copy of the license.
 package wayland
 
 // gtk4-layer-shell is not used here, but in notifygui.c. It needs to be loaded
