@@ -85,7 +85,7 @@ func readTheme(indexThemeFilePath string) (*IconTheme, bool) {
 
 	themeGroup := iniFile[0]
 
-	theme := IconTheme{Base: *resource.MakeBase(themePathPrefix + themeId, themeGroup.Entries["Name"], "Icon theme", "", "icon", "theme")}
+	theme := IconTheme{Base: resource.MakeBase(themePathPrefix + themeId, themeGroup.Entries["Name"], "Icon theme", "", "icon", "theme")}
 	theme.Id = themeId
 	theme.Inherits = utils.Split(themeGroup.Entries["Inherits"], ",")
 	theme.Dirs = make([]IconDir, 0, 50)

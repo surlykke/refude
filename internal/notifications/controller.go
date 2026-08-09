@@ -177,7 +177,7 @@ func Notify(
 	var title = sanitize(summary, []string{}, []string{})
 	body = sanitize(body, allowedTags, allowedEscapes)
 	notification := Notification{
-		Base:           *resource.MakeBase(id2Path(id), title, app_name+": "+body, iconName, "Notification"),
+		Base:           resource.MakeBase(id2Path(id), title, app_name+": "+body, iconName, "Notification"),
 		NotificationId: id,
 		Sender:         app_name,
 		Created:        time.Now(),

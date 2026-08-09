@@ -11,6 +11,7 @@ import (
 	"math"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -28,14 +29,17 @@ func Run() {
 
 func GetHandler(w http.ResponseWriter, r *http.Request) {
 	var name = utils.QueryParam(r, "name")
-	var sizeS = utils.QueryParam(r, "size")
 	var size uint32 = 32
+	var sizeS = utils.QueryParam(r, "size")
 	if sizeS != "" {
-		if err := utils.Convert(sizeS, &size); err != nil {
+		 if val, err := strconv.ParseUint(sizeS, 10, 32); err != nil {
 			respond.UnprocessableEntity(w, err)
 			return
+		} else {
+			size = uint32(val)
 		}
 	}
+
 	var iconFilePath = FindIcon(name, size)
 	if iconFilePath == "" {
 		respond.NotFound(w)

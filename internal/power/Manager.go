@@ -129,7 +129,7 @@ func retrieveDevice(dbusPath dbus.ObjectPath) *Device {
 		}
 	}
 
-	device.Base = *resource.MakeBase(devicePathPrefix+device.Id, title, summary, iconName, "battery")
+	device.Base = resource.MakeBase(devicePathPrefix+device.Id, title, summary, iconName, "battery")
 	return &device
 }
 

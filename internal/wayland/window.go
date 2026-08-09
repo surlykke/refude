@@ -131,7 +131,7 @@ type WaylandWindow struct {
 
 func makeWindow(wId uint64) WaylandWindow {
 	var ww = WaylandWindow{
-		Base: *resource.MakeBase(wId2Path(wId), "", "", "", "Window"),
+		Base: resource.MakeBase(wId2Path(wId), "", "", "", "Window"),
 		Wid:  wId,
 	}
 	ww.AddAction("Focus", "", resource.OrgRefudeAction, "")

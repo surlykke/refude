@@ -104,7 +104,7 @@ func receive(conn net.Conn) {
 						d.Title = d.Title[0:60] + "..."
 					}
 					var tab = &Tab{
-						Base:      *(resource.MakeBase(pathPrefix+d.Id, d.Title, browserName+" tab", d.Favicon, "browser", "tab")),
+						Base:      resource.MakeBase(pathPrefix+d.Id, d.Title, browserName+" tab", d.Favicon, "browser", "tab"),
 						Id:        d.Id,
 						BrowserId: browserId,
 						Url:       d.Url,

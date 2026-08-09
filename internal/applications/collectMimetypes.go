@@ -104,7 +104,7 @@ func collectMimetypes() map[string]*Mimetype {
 			}
 			iconName = tmp.Icon.Name
 
-			var mimeType = &Mimetype{Base: *resource.MakeBase("/mimetype/" + tmp.Type, acronym, "Mimetype", iconName, "Mimetype"), Id: tmp.Type}
+			var mimeType = &Mimetype{Base: resource.MakeBase("/mimetype/" + tmp.Type, acronym, "Mimetype", iconName, "Mimetype"), Id: tmp.Type}
 			mimeType.Path = "/mimetype/" + mimeType.Id 
 			for _, tmpAcronym := range tmp.Acronym {
 				if translate.LocaleMatch(tmpAcronym.Lang) || (tmpAcronym.Lang == "" && mimeType.Acronym == "") {
@@ -156,13 +156,13 @@ func collectMimetypes() map[string]*Mimetype {
 		for _, aliasId := range mt.Aliases {
 			if _, ok := res[aliasId]; !ok {
 				var copy = *mt
+				copy.Base = resource.MakeBase(mimeTypeId2path(aliasId), mt.Title, mt.Summary, mt.Icon, mt.Keywords...)
 				copy.Id = aliasId
 				copy.Aliases = []string{}
 				res[aliasId] = &copy
 			}
 		}
 	}
-
 	return res
 
 }

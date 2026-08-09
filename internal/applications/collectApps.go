@@ -167,7 +167,7 @@ func readDesktopFile(filePath string, id string) (*DesktopApplication, error) {
 
 		var keywords = utils.Split(group.Entries["Keywords"], ";")
 		var da = DesktopApplication{
-			Base:      *resource.MakeBase(appPathPrefix + id, title, group.Entries["Comment"], iconName, keywords...),
+			Base:      resource.MakeBase(appPathPrefix+id, title, group.Entries["Comment"], iconName, keywords...),
 			DesktopId: id,
 		}
 		if da.Type = group.Entries["Type"]; da.Type == "" {

@@ -18,7 +18,7 @@ type StartResource struct {
 }
 
 func makeStartResource(path string, title string, icon string, dbusMethod string) *StartResource {
-	var sr = &StartResource{Base: *resource.MakeBase(path, title, "Desktop action", icon), dbusMethod: dbusMethod}
+	var sr = &StartResource{Base: resource.MakeBase(path, title, "Desktop action", icon), dbusMethod: dbusMethod}
 	sr.AddAction("", "", resource.OrgRefudeAction, "")
 	return sr
 }

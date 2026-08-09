@@ -15,8 +15,8 @@ type Collection struct {
 }
 
 func collect() (map[string]*DesktopApplication, map[string]*Mimetype) {
-	var apps, defaultApps = collectApps() 
-	var mimetypes =  collectMimetypes()
+	var apps, defaultApps = collectApps()
+	var mimetypes = collectMimetypes()
 
 	for mimetypeId, appIds := range defaultApps {
 		if mimetype, ok := mimetypes[mimetypeId]; ok {

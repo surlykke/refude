@@ -25,9 +25,9 @@ type Base struct {
 	Path       string `json:"path"`
 }
 
-func MakeBase(path string, title string, summary string, icon string, keywords ...string) *Base {
+func MakeBase(path string, title string, summary string, icon string, keywords ...string) Base {
 	icon = adjustIcon(icon)
-	return &Base{
+	return Base{
 		Path:     path,
 		Title:    translate.Text(title),
 		Summary:  translate.Text(summary),
