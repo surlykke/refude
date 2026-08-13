@@ -7,110 +7,45 @@ package icons
 
 import (
 	"errors"
-	"log"
+	"fmt"
 	"os"
 	gopath "path"
 	"path/filepath"
 	"regexp"
 	"slices"
-	"sync"
+	"strings"
 
+	"github.com/surlykke/refude/internal/lib/image"
 	"github.com/surlykke/refude/internal/lib/resource"
 	"github.com/surlykke/refude/internal/lib/xdg"
 )
 
-type IconPath struct {
-	Path    string
-	MinSize uint32
-	MaxSize uint32
-}
-
-var sessionIconsDir = xdg.RuntimeDir + "/org.refude.session-icons"
-
-func init() {
-	if err := os.MkdirAll(sessionIconsDir, 0700); err != nil {
-		log.Print("Unable to create ", sessionIconsDir, err)
-	}
-}
-
-var themedIcons = make(map[string][]IconPath)
-var sessionIcons = make(map[string][]IconPath)
-var iconLock sync.Mutex
-
-func getIconPaths(icon string) ([]IconPath, bool) {
-	iconLock.Lock()
-	defer iconLock.Unlock()
-	if iconPaths, ok := themedIcons[icon]; ok {
-		return iconPaths, true
-	} else if iconPaths, ok = sessionIcons[icon]; ok {
-		return iconPaths, true
-	} else {
-		return nil, false
-	}
-
-}
-
-func addSessionIcon(icon string, iconPaths []IconPath) {
-	iconLock.Lock()
-	defer iconLock.Unlock()
-	if _, ok := themedIcons[icon]; !ok {
-		sessionIcons[icon] = iconPaths
-	}
-}
-
-func addSessionIconSinglePath(icon string, path string) {
-	addSessionIcon(icon, []IconPath{{Path: path, MinSize: 1, MaxSize: 1}})
-}
-
-func collectIcons() {
-	var collected = make(map[string][]IconPath, 500)
-	collectThemeIcons(collected)
-	collectOtherIcons(collected)
-	iconLock.Lock()
-	defer iconLock.Unlock()
-	themedIcons = collected
-}
-
-/*
-Somewhat based on https://specifications.freedesktop.org/icon-theme-spec/icon-theme-spec-latest.html#icon_lookup .
-icon scale is ignored (TODO)
-
-We prefer an icon from theme with not-matching size over icon from parent theme with matching size. This should
-give a gui a more consistent look
-*/
-func collectThemeIcons(collected map[string][]IconPath) {
+func collectThemeIcons() {
 	var searchOrder = determineSearchOrder()
 	for _, themeId := range searchOrder {
-		for name, iconPaths := range collectIconsFromTheme(themeId) {
-			if _, ok := collected[name]; !ok {
-				collected[name] = iconPaths
-			}
-		}
+		collectIconsFromTheme(themeId)
 	}
 }
 
-func collectIconsFromTheme(themeId string) map[string][]IconPath {
-	var iconsFromTheme = make(map[string][]IconPath)
+func collectIconsFromTheme(themeId string) {
 	var theme, _ = resource.Get[*IconTheme](themePathPrefix + themeId)
 	for _, basedir := range xdg.IconBasedirs {
 		for _, themeDir := range theme.Dirs {
 			var glob = basedir + "/" + themeId + "/" + themeDir.Path + "/*"
 			if filePathsInThemeDir, err := filepath.Glob(glob); err == nil {
 				for _, filePath := range filePathsInThemeDir {
-					if iconName, path, err := nameAndPath(filePath); err != nil {
+					if !looksLikeAnIconfile(filePath) {
 						continue
 					} else {
-						var iconPath = IconPath{Path: path, MinSize: themeDir.MinSize, MaxSize: themeDir.MaxSize}
-						iconsFromTheme[iconName] = append(iconsFromTheme[iconName], iconPath)
+						addIconPath(iconName(filePath), themeId, filePath, themeDir.MinSize, themeDir.MaxSize)
 					}
 				}
 			}
 		}
 	}
-	return iconsFromTheme
 }
 
-func collectOtherIcons(collected map[string][]IconPath) {
+func collectOtherIcons() {
 	var dirsToLookAt = make([]string, 0, len(xdg.IconBasedirs)+1)
 	dirsToLookAt = append(dirsToLookAt, xdg.IconBasedirs...)
 	dirsToLookAt = append(dirsToLookAt, xdg.PixmapDir)
@@ -118,23 +53,73 @@ func collectOtherIcons(collected map[string][]IconPath) {
 	for _, dir := range dirsToLookAt {
 		if filePathsInDir, err := filepath.Glob(dir + "/*"); err == nil {
 			for _, filePath := range filePathsInDir {
-				if iconName, path, err := nameAndPath(filePath); err != nil {
+				if !looksLikeAnIconfile(filePath) {
 					continue
-				} else if _, ok := collected[iconName]; !ok { // We won't let a non-themed icon shadow a themed icon. cf. above.
-					collected[iconName] = []IconPath{{Path: path, MinSize: 1, MaxSize: 1}}
+				} else {
+					addIconPath(iconName(filePath), "", filePath, 1, 1)
 				}
 			}
 		}
 	}
 }
 
-func nameAndPath(filePath string) (string, string, error) {
-	var fileName, ext = gopath.Base(filePath), gopath.Ext(filePath)
-	if !(ext == ".png" || ext == ".svg" || ext == ".xpm") {
-		return "", "", errors.New("unknown icon format: " + filePath)
+func looksLikeAnIconfile(filePath string) bool {
+	var ext = gopath.Ext(filePath)
+	return ext == ".png" || ext == ".svg" || ext == ".xpm"
+}
+
+func iconName(filePath string) string {
+	return gopath.Base(filePath[:len(filePath)-4])
+}
+
+func addIconPath(name, theme, osPath string, minSize, maxSize uint32) error {
+	if tmp, err := processPath(osPath); err != nil {
+		return err
+	} else {
+		osPath = tmp
 	}
-	fileName = fileName[:len(fileName)-4]
-	return fileName, filePath, nil
+	var icon Icon
+	if tmp, ok := resource.Get[*Icon](iconPrefix + name); !ok {
+		icon =  Icon{Base: resource.MakeBase(iconPrefix+name, name, "", ""), Name: name, Theme: theme}
+	} else if tmp.Theme == theme {
+		icon = *tmp
+	} else {
+		return nil
+	}
+
+	if !icon.HasPath(osPath) {
+		icon.Imgs = append(icon.Imgs, Img{OsPath: osPath, MinSize: minSize, MaxSize: maxSize})
+	}
+	resource.Put(&icon)
+	return nil
+}
+
+func processPath(osPath string) (string, error) {
+	if realPath, err := filepath.EvalSymlinks(osPath); err != nil {
+		return "", err
+	} else if strings.HasSuffix(realPath, ".xpm") {
+		return convertToPng(realPath)
+	} else {
+		return realPath, nil
+	}
+}
+
+func convertToPng(filePath string) (string, error) {
+	if bytes, err := image.Xpmfile2png(filePath); err != nil {
+		return "", err
+	} else {
+		var newPath = fmt.Sprintf("%s/%s.png", xdg.SessionFilesDir, image.HashName(bytes))
+		if _, err := os.Stat(newPath); err == nil {
+			return newPath, nil
+		} else if !errors.Is(err, os.ErrNotExist) {
+			return "", err
+		} else if err := os.WriteFile(newPath, bytes, 0700); err != nil {
+			os.Remove(newPath)
+			return "", err
+		} else {
+			return newPath, nil
+		}
+	}
 }
 
 func determineSearchOrder() []string {
@@ -152,6 +137,7 @@ func determineSearchOrder() []string {
 	}
 	walker(determineDefaultThemeId())
 	searchOrder = append(searchOrder, "hicolor") // hicolor is the general fall back
+	fmt.Println("Icon theme search order:", searchOrder)
 	return searchOrder
 }
 

@@ -39,8 +39,6 @@ const reportTabs = () => {
 			msgType: "bookmarks",
 			data: collectedBookmarks
 		}
-		// FIXME 
-		msg.data = msg.data.length
 		console.log("sending bookmarks:", msg)
 	})
 }*/

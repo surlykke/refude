@@ -6,6 +6,7 @@
 package xdg
 
 import (
+	"log"
 	"os"
 	"os/exec"
 	"path"
@@ -39,6 +40,7 @@ var PicturesDir string
 var VideosDir string
 
 var NmSocketPath string
+var SessionFilesDir string 
 
 func init() {
 	Home = clean(os.Getenv("HOME"))
@@ -78,6 +80,11 @@ func init() {
 	VideosDir = clean(coalesce(userDirs["XDG_VIDEOS_DIR"], Home+"/Videos"))
 
 	NmSocketPath = RuntimeDir + "/org.refude.nm-socket"
+    SessionFilesDir = RuntimeDir + "/org.refude.session-files"
+	if err := os.MkdirAll(SessionFilesDir, 0700); err != nil {
+		log.Print("Unable to create ", SessionFilesDir, err)
+	}
+
 }
 
 func RunCmd(argv ...string) error {

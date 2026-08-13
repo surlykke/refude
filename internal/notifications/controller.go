@@ -9,16 +9,16 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
 	"reflect"
 	"strings"
 	"time"
 
 	"github.com/godbus/dbus/v5"
 	"github.com/godbus/dbus/v5/introspect"
-	"github.com/surlykke/refude/internal/file"
-	"github.com/surlykke/refude/internal/icons"
-	"github.com/surlykke/refude/internal/lib/resource"
 	"github.com/surlykke/refude/internal/lib/image"
+	"github.com/surlykke/refude/internal/lib/resource"
+	"github.com/surlykke/refude/internal/lib/xdg"
 	"github.com/surlykke/refude/pkg/pubsub"
 )
 
@@ -157,20 +157,27 @@ func Notify(
 	// Get image
 
 	var iconName string
-	var ok bool
-
-	var sizeHint uint32
-	if iconName, sizeHint, ok = installRawImageIcon(hints, "image-data"); !ok {
-		if iconName, sizeHint, ok = installRawImageIcon(hints, "image_data"); !ok {
-			if iconName, ok = installFileIcon(hints, "image-path"); !ok {
-				if iconName, ok = installFileIcon(hints, "image_path"); !ok {
-					if "" != app_icon {
-						iconName = app_icon
-					} else {
-						iconName, sizeHint, _ = installRawImageIcon(hints, "icon_data")
-					}
-				}
-			}
+	if variant, ok := hints["image-data"]; ok {
+		if name, ok := installRawImageIcon(variant); ok {
+			iconName = name
+		}
+	} else if variant, ok := hints["image_data"]; ok {
+		if name, ok := installRawImageIcon(variant); ok {
+			iconName = name
+		}
+	} else if variant, ok := hints["image-path"]; ok {
+		if path, ok := variant.Value().(string); ok {
+			iconName = path
+		}
+	} else if variant, ok := hints["image_path"]; ok {
+		if path, ok := variant.Value().(string); ok {
+			iconName = path
+		}
+	} else if app_icon != "" {
+		iconName = app_icon
+	} else if variant, ok := hints["icon_data"]; ok {
+		if name, ok := installRawImageIcon(variant); ok {
+			iconName = name
 		}
 	}
 
@@ -186,7 +193,6 @@ func Notify(
 		NActions:       map[string]string{},
 		Hints:          map[string]any{},
 		IconName:       iconName,
-		IconSize:       sizeHint,
 	}
 
 	for i := 0; i+1 < len(actions); i = i + 2 {
@@ -230,73 +236,52 @@ func Notify(
 	return id, nil
 }
 
-func installRawImageIcon(hints map[string]dbus.Variant, key string) (string, uint32, bool) {
-	if v, ok := hints[key]; !ok {
-		return "", 0, false
-	} else if imageData, err := getRawImage(v); err != nil {
-		log.Print("Error converting variant to image data:", err)
-		return "", 0, false
+func installRawImageIcon(v dbus.Variant) (string, bool) {
+	if path, err := extractRawImageAndSaveAsPng(v); err != nil {
+		log.Println("Unable to install raw image", err)
+		return "", false
 	} else {
-		return icons.AddRawImageIcon(imageData), uint32(imageData.Width), true
+		return path, true
 	}
+
 }
 
-func getRawImage(v dbus.Variant) (image.ImageData, error) {
+func extractRawImageAndSaveAsPng(v dbus.Variant) (string, error) {
 	var id image.ImageData
-	var err error = nil
 
 	// I'll never be a fan of dbus...
 	if v.Signature().String() != "av" {
-		return id, errors.New("Not an array of variants")
+		return "", errors.New("Not an array of variants")
 	} else if ifarray, ok := v.Value().([]any); !ok {
-		return id, errors.New("Value not an array of interface{}")
+		return "", errors.New("Value not an array of interface{}")
 	} else if len(ifarray) != 7 {
-		return id, errors.New("len not 7")
+		return "", errors.New("len not 7")
 	} else if id.Width, ok = ifarray[0].(int32); !ok {
-		return id, errors.New("arr[0] not an int32")
+		return "", errors.New("arr[0] not an int32")
 	} else if id.Height, ok = ifarray[1].(int32); !ok {
-		return id, errors.New("arr[1] not an int32")
+		return "", errors.New("arr[1] not an int32")
 	} else if id.Rowstride, ok = ifarray[2].(int32); !ok {
-		return id, errors.New("arr[2] not an int32")
+		return "", errors.New("arr[2] not an int32")
 	} else if id.HasAlpha, ok = ifarray[3].(bool); !ok {
-		return id, errors.New("arr[3] not a bool")
+		return "", errors.New("arr[3] not a bool")
 	} else if id.BitsPrSample, ok = ifarray[4].(int32); !ok {
-		return id, errors.New("arr[4] not an int32")
+		return "", errors.New("arr[4] not an int32")
 	} else if id.Channels, ok = ifarray[5].(int32); !ok {
-		return id, errors.New("arr[5] not an int32")
+		return "", errors.New("arr[5] not an int32")
 	} else if id.Data, ok = ifarray[6].([]uint8); !ok {
-		return id, errors.New("arr[6] not an []uint8")
+		return "", errors.New("arr[6] not an []uint8")
 	} else {
-		return id, err
-	}
-}
-
-func installFileIcon(hints map[string]dbus.Variant, key string) (string, bool) {
-	if v, ok := hints[key]; !ok {
-		return "", false
-	} else if path, ok := v.Value().(string); !ok {
-		log.Print("Value not a string")
-		return "", true
-	} else if looksLikeAPath(path) {
-		if isAnImage(path) {
-			icons.AddFileIcon(path)
-			return path, true
-		} else {
-			log.Print("Not an image:", path)
-			return "", false
+		var filePath = xdg.SessionFilesDir + "/" + image.ImageDataHashName(id) + ".png"
+		if _, err := os.Stat(filePath); errors.Is(err, os.ErrNotExist) {
+			if bytes, err := id.AsPng(); err != nil {
+				return "", err
+			} else if err := os.WriteFile(filePath, bytes, 0700); err != nil {
+				os.Remove(filePath)
+				return "", err
+			}
 		}
-	} else {
-		return path, true // Take it to be an icon name
+		return filePath, nil
 	}
-}
-
-func looksLikeAPath(path string) bool {
-	return strings.HasPrefix(path, "file:///") || strings.HasPrefix(path, "/")
-}
-
-func isAnImage(path string) bool {
-	var mimeType = file.MimeType(path)
-	return mimeType == "image/png" || mimeType == "image/svg+xml"
 }
 
 func CloseNotification(id uint32) {

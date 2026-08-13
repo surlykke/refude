@@ -122,37 +122,43 @@ func GetPaths() []string {
 	return paths
 }
 
+type serveableList []Servable
+
+func (this serveableList) DoGet(w http.ResponseWriter, r *http.Request, o any) {
+	respond.AsJson(w, o)
+}
+
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if strings.HasSuffix(r.URL.Path, "/") {
-		if "GET" == r.Method {
-			respond.AsJson(w, getByPrefix(r.URL.Path))
+	var path = r.URL.EscapedPath()
+
+	if strings.HasSuffix(path, "/") {
+		if r.Method == "GET" {
+			respond.AsJson(w, getByPrefix(path))
 		} else {
 			respond.NotAllowed(w)
+		}
+		return
+	}
+
+	if res, ok := get(path); !ok {
+		respond.NotFound(w)
+	} else if getable, ok := res.(Getable); ok && "GET" == r.Method {
+		getable.DoGet(w, r, res)
+	} else if postable, ok := res.(Postable); ok && "POST" == r.Method {
+		if ok, err := postable.DoPost(utils.QueryParam(r, "action")); err != nil {
+			respond.ServerError(w, err)
+		} else if !ok {
+			respond.NotFound(w)
+		} else {
+			respond.Accepted(w)
+		}
+	} else if deleteable, ok := res.(Deleteable); ok && "DELETE" == r.Method {
+		if err := deleteable.DoDelete(); err != nil {
+			respond.ServerError(w, err)
+		} else {
+			respond.Accepted(w)
 		}
 	} else {
-		s, ok := get(r.URL.Path)
-		if !ok {
-			respond.NotFound(w)
-			return
-		}
-		if "GET" == r.Method {
-			respond.AsJson(w, s)
-		} else if postable, ok := s.(Postable); ok && "POST" == r.Method {
-			if ok, err := postable.DoPost(utils.QueryParam(r, "action")); err != nil {
-				respond.ServerError(w, err)
-			} else if !ok {
-				respond.NotFound(w)
-			} else {
-				respond.Accepted(w)
-			}
-		} else if deleteable, ok := s.(Deleteable); ok && "DELETE" == r.Method {
-			if err := deleteable.DoDelete(); err != nil {
-				respond.ServerError(w, err)
-			} else {
-				respond.Accepted(w)
-			}
-		} else {
-			respond.NotAllowed(w)
-		}
+		respond.NotAllowed(w)
 	}
 }

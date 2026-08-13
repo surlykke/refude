@@ -6,8 +6,10 @@
 package resource
 
 import (
+	"net/http"
 	"strings"
 
+	"github.com/surlykke/refude/internal/lib/respond"
 	"github.com/surlykke/refude/internal/lib/translate"
 )
 
@@ -17,12 +19,12 @@ type Servable interface {
 }
 
 type Base struct {
-	Title      string `json:"title"`
-	Summary    string `json:"summary"`
-	Icon       string `json:"icon"`
-	Keywords   []string
-	Links      map[Relation][]Link
-	Path       string `json:"path"`
+	Title    string `json:"title"`
+	Summary  string `json:"summary"`
+	Icon     string `json:"icon"`
+	Keywords []string
+	Links    map[Relation][]Link
+	Path     string `json:"path"`
 }
 
 func MakeBase(path string, title string, summary string, icon string, keywords ...string) Base {
@@ -41,10 +43,10 @@ func adjustIcon(icon string) string {
 	icon = strings.TrimSpace(icon)
 	if icon == "" {
 		return ""
-	} else if strings.HasPrefix(icon, "http://") || strings.HasPrefix(icon, "https://") || strings.HasPrefix(icon, "/icon?name=") {
+	} else if strings.HasPrefix(icon, "http://") || strings.HasPrefix(icon, "https://") || strings.HasPrefix(icon, "/") {
 		return icon
 	} else {
-		return "/icon?name=" + icon
+		return "/img/" + icon
 	}
 }
 
@@ -63,7 +65,6 @@ func (this *Base) AddAction(title string, icon string, relation Relation, action
 	}
 	this.Links[relation] = append(this.Links[relation], Link{Href: url, Title: title, Icon: icon})
 }
-
 
 func (this *Base) FirstAction() *Link {
 	if len(this.Links[OrgRefudeAction]) > 0 {
@@ -89,10 +90,15 @@ func (this *Base) DeleteAction() *Link {
 	}
 }
 
+func (this *Base) DoGet(w http.ResponseWriter, r *http.Request, o any) {
+	respond.AsJson(w, o)
+}
+
 type Link struct {
 	Href  string `json:"href"`
 	Title string `json:"title,omitempty"`
 	Icon  string `json:"icon,omitempty"`
+	Type  string `json:"type,omitempty"`
 }
 
 type Relation string
@@ -107,6 +113,10 @@ const (
 )
 
 // -------------- Serve -------------------------
+
+type Getable interface {
+	DoGet(w http.ResponseWriter, r *http.Request, o any)
+}
 
 type Postable interface {
 	DoPost(string) (bool, error)

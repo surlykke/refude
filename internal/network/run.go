@@ -69,7 +69,7 @@ type Connection struct {
 }*/
 
 func makeConnection(title string, primary bool, vpn bool, connType string, path dbus.ObjectPath) *Connection {
-	var c = &Connection{Base: *resource.MakeBase(networkPathPrefix+string(path), title, "Network connection", "", ""), Primary: primary, Vpn: vpn, ObjectPath: path}
+	var c = &Connection{Base: resource.MakeBase(networkPathPrefix+string(path), title, "Network connection", "", ""), Primary: primary, Vpn: vpn, ObjectPath: path}
 	var actionName string
 	if primary {
 		actionName = "Deactivate"

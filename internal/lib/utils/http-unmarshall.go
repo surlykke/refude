@@ -22,6 +22,17 @@ func QueryParam(r *http.Request, paramName string) string {
 	}
 }
 
+func GetUint32(r *http.Request, name string, fallback uint32) uint32 {
+	if len(r.URL.Query()[name]) == 0 {
+		return fallback
+	} else if res64, err := strconv.ParseUint(r.URL.Query()[name][0], 10, 32); err != nil {
+		return fallback
+	} else {
+		return uint32(res64)
+	}
+}
+
+
 func Convert[T any](strVal string, t *T) error {
 	var val = reflect.ValueOf(t)
 	var kind = val.Elem().Kind()

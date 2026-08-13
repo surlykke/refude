@@ -33,7 +33,6 @@ func collect() (map[string]*DesktopApplication, map[string]*Mimetype) {
 	}
 
 	// Ensure that if, m1 is a subclass of m2, m1s applications contains all m2s applications
-	// FIXME: Wrong?
 	var visited = make(map[string]bool)
 	var getHandlersForSupertypes func(mt *Mimetype)
 	getHandlersForSupertypes = func(mt *Mimetype) {

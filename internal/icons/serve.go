@@ -6,190 +6,66 @@
 package icons
 
 import (
+	"errors"
 	"fmt"
-	"log"
-	"math"
 	"net/http"
-	"os"
-	"strconv"
+	"net/url"
 	"strings"
-	"sync"
 
-	"github.com/surlykke/refude/internal/lib/image"
+	"github.com/surlykke/refude/internal/lib/resource"
 	"github.com/surlykke/refude/internal/lib/respond"
 	"github.com/surlykke/refude/internal/lib/utils"
 )
 
 func Run() {
-	http.HandleFunc("GET /icon", GetHandler)
+	http.HandleFunc("GET /img/{iconname}", GetHandler)
 
 	collectThemes()
-	collectIcons()
+	collectThemeIcons()
+	collectOtherIcons()
 }
 
 func GetHandler(w http.ResponseWriter, r *http.Request) {
-	var name = utils.QueryParam(r, "name")
-	var size uint32 = 32
-	var sizeS = utils.QueryParam(r, "size")
-	if sizeS != "" {
-		 if val, err := strconv.ParseUint(sizeS, 10, 32); err != nil {
-			respond.UnprocessableEntity(w, err)
-			return
-		} else {
-			size = uint32(val)
-		}
+	var name = url.PathEscape(r.PathValue("iconname"))
+	fmt.Println("icon name:", name)
+	if name == "" {
+		respond.UnprocessableEntity(w, errors.New("name must be given"))
 	}
+	var size = utils.GetUint32(r, "size", 32)
 
-	var iconFilePath = FindIcon(name, size)
-	if iconFilePath == "" {
+	if iconPath := FindIconPath(name, size); iconPath != "" {
+		http.ServeFile(w, r, iconPath)
+	} else {
 		respond.NotFound(w)
+	}
+}
+
+func FindIconPath(iconName string, size uint32) string {
+	if namedIcon := findNamedIcon(iconName); namedIcon != nil {
+		return namedIcon.GetPath(size)
 	} else {
-
-		var (
-			contentType string = "image/png"
-			bytes       []byte
-			err         error
-		)
-		if strings.HasSuffix(iconFilePath, ".xpm") {
-			if bytes = getPngFromXpm(iconFilePath); bytes == nil {
-				respond.NotFound(w)
-				return
-			}
-		} else if bytes, err = os.ReadFile(iconFilePath); err != nil {
-			respond.NotFound(w)
-			return
-		}
-
-		if strings.HasSuffix(iconFilePath, ".svg") {
-			contentType = "image/svg+xml"
-		}
-		respond.Bytes(w, contentType, bytes)
+		return ""
 	}
 }
 
-func getPngFromXpm(filePath string) []byte {
-	xpmCacheLock.Lock()
-	defer xpmCacheLock.Unlock()
-	var pngBytes []byte
-	var ok bool
-	if pngBytes, ok = xpmCache[filePath]; !ok {
-		var err error
-		if pngBytes, err = image.Xpmfile2png(filePath); err != nil {
-			log.Print("Error converting xpm file:", err)
-			xpmCache[filePath] = nil
-		}
-	}
-	return pngBytes
-}
-
-var xpmCache = make(map[string][]byte)
-var xpmCacheLock sync.Mutex
-
-func FindIcon(iconName string, size uint32) string {
-	var icon = iconName
-	if iconPaths, ok := getIconPaths(icon); ok {
-		return bestSizeMatch(iconPaths, size)
+func findNamedIcon(iconName string) *Icon {
+	if namedIcon, ok := resource.Get[*Icon](iconPrefix + iconName); ok {
+		return namedIcon
 	} else if lastDash := strings.LastIndex(iconName, "-"); lastDash > -1 {
-		/*
-		   By the icon naming specification, dash ('-') seperates 'levels of specificity'. So given an icon name
-		   'input-mouse-usb', the levels of specificy, and the names and order we search will be: 'input-mouse-usb',
-		   'input-mouse' and 'input'. Here we prefer specificy over theme, ie. if 'input-mouse-usb' is found in an inherited theme, that
-		   is preferred over 'input-mouse' in the default theme
-		*/
-		return FindIcon(iconName[0:lastDash], size)
+		return findNamedIcon(iconName[0:lastDash]) /* By the icon naming specification, dash ('-') seperates 'levels of specificity'.
+		                                               So given an icon name 'input-mouse-usb', the levels of specificy, and the names and
+													   order we search will be: 'input-mouse-usb', 'input-mouse' and 'input'. */
 	} else {
-		return ""
+		return nil
 	}
 
 }
 
-func AddARGBIcon(argbIcon image.ARGBIcon) string {
-	var iconName = image.ARGBIconHashName(argbIcon)
-	var iconPaths = make([]IconPath, 0, len(argbIcon.Images))
-	for _, pixMap := range argbIcon.Images {
-		if pixMap.Width == pixMap.Height { // else ignore
-			if png, err := pixMap.AsPng(); err != nil {
-				log.Print("Unable to convert image", err)
-			} else {
-				var (
-					size = pixMap.Width
-					path = fmt.Sprintf("%s/%s_%d.png", sessionIconsDir, iconName, size)
-				)
-				if err := os.WriteFile(path, png, 0700); err != nil {
-					log.Print("Could not write", path, err)
-				} else {
-					iconPaths = append(iconPaths, IconPath{Path: path, MinSize: size, MaxSize: size})
-				}
-			}
-		}
-	}
-	if len(iconPaths) > 0 {
-		addSessionIcon(iconName, iconPaths)
-		return iconName
+func AddFileIcon(osPath string) (string, error) {
+	var name = url.PathEscape(osPath)
+	if err := addIconPath(name, "", osPath, 1, 1); err != nil {
+		return "", err
 	} else {
-		return ""
+		return name, nil
 	}
-}
-
-func AddFileIcon(filePath string) {
-	addSessionIconSinglePath(filePath, filePath)
-}
-
-func AddRawImageIcon(imageData image.ImageData) string {
-	iconName := image.ImageDataHashName(imageData)
-	if png, err := imageData.AsPng(); err != nil {
-		log.Print("Error converting image", err)
-		return ""
-	} else {
-		var path = fmt.Sprintf("%s/%s.png", sessionIconsDir, iconName)
-		if err := os.WriteFile(path, png, 0700); err != nil {
-			log.Print("Could not write", path, err)
-			return ""
-		} else {
-			addSessionIconSinglePath(iconName, path)
-		}
-	}
-	return iconName
-}
-
-func AddPngIcon(png []byte) string {
-	var iconName = image.HashName(png)
-	var path = fmt.Sprintf("%s/%s.png", sessionIconsDir, iconName)
-	if err := os.WriteFile(path, png, 0700); err != nil {
-		log.Print("Could not write", path, err)
-		return ""
-	} else {
-		addSessionIconSinglePath(iconName, path)
-		return iconName
-	}
-}
-
-func AddBasedir(path string) {
-	// FIXME
-}
-
-func bestSizeMatch(iconPaths []IconPath, size uint32) string {
-	var shortestDistanceSoFar = uint32(math.MaxUint32)
-	var path = ""
-	for _, iconPath := range iconPaths {
-		var distance uint32
-
-		if iconPath.MinSize > size {
-			distance = iconPath.MinSize - size
-		} else if iconPath.MaxSize < size {
-			distance = size - iconPath.MaxSize
-		} else {
-			distance = 0
-		}
-
-		if distance < shortestDistanceSoFar {
-			shortestDistanceSoFar = distance
-			path = iconPath.Path
-			shortestDistanceSoFar = distance
-		}
-		if shortestDistanceSoFar == 0 {
-			break
-		}
-	}
-	return path
 }
