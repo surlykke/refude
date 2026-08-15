@@ -19,6 +19,7 @@ import (
 	"github.com/surlykke/refude/internal/lib/image"
 	"github.com/surlykke/refude/internal/lib/resource"
 	"github.com/surlykke/refude/internal/lib/xdg"
+	"github.com/surlykke/refude/internal/rawfile"
 	"github.com/surlykke/refude/pkg/pubsub"
 )
 
@@ -158,13 +159,9 @@ func Notify(
 
 	var iconName string
 	if variant, ok := hints["image-data"]; ok {
-		if name, ok := installRawImageIcon(variant); ok {
-			iconName = name
-		}
+		tryInstallRawImageIcon(&iconName, variant)
 	} else if variant, ok := hints["image_data"]; ok {
-		if name, ok := installRawImageIcon(variant); ok {
-			iconName = name
-		}
+		tryInstallRawImageIcon(&iconName, variant)
 	} else if variant, ok := hints["image-path"]; ok {
 		if path, ok := variant.Value().(string); ok {
 			iconName = path
@@ -176,9 +173,7 @@ func Notify(
 	} else if app_icon != "" {
 		iconName = app_icon
 	} else if variant, ok := hints["icon_data"]; ok {
-		if name, ok := installRawImageIcon(variant); ok {
-			iconName = name
-		}
+		tryInstallRawImageIcon(&iconName, variant)
 	}
 
 	var title = sanitize(summary, []string{}, []string{})
@@ -236,14 +231,12 @@ func Notify(
 	return id, nil
 }
 
-func installRawImageIcon(v dbus.Variant) (string, bool) {
+func tryInstallRawImageIcon(target *string, v dbus.Variant) {
 	if path, err := extractRawImageAndSaveAsPng(v); err != nil {
 		log.Println("Unable to install raw image", err)
-		return "", false
 	} else {
-		return path, true
+		*target = rawfile.RegisterRawFile(path)
 	}
-
 }
 
 func extractRawImageAndSaveAsPng(v dbus.Variant) (string, error) {
@@ -272,6 +265,7 @@ func extractRawImageAndSaveAsPng(v dbus.Variant) (string, error) {
 		return "", errors.New("arr[6] not an []uint8")
 	} else {
 		var filePath = xdg.SessionFilesDir + "/" + image.ImageDataHashName(id) + ".png"
+
 		if _, err := os.Stat(filePath); errors.Is(err, os.ErrNotExist) {
 			if bytes, err := id.AsPng(); err != nil {
 				return "", err
@@ -280,7 +274,8 @@ func extractRawImageAndSaveAsPng(v dbus.Variant) (string, error) {
 				return "", err
 			}
 		}
-		return filePath, nil
+
+		return rawfile.RegisterRawFile(filePath), nil
 	}
 }
 

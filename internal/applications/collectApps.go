@@ -13,10 +13,10 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/surlykke/refude/internal/icons"
 	"github.com/surlykke/refude/internal/lib/resource"
 	"github.com/surlykke/refude/internal/lib/utils"
 	"github.com/surlykke/refude/internal/lib/xdg"
+	"github.com/surlykke/refude/internal/rawfile"
 )
 
 func collectApps() (map[string]*DesktopApplication, map[string][]string) {
@@ -156,7 +156,7 @@ func readDesktopFile(filePath string, id string) (*DesktopApplication, error) {
 
 		var title, iconName = group.Entries["Name"], group.Entries["Icon"]
 		if strings.HasPrefix(string(iconName), "/") {
-			iconName, _ =  icons.AddFileIcon(iconName)
+			iconName = rawfile.RegisterRawFile(iconName)
 		} else if strings.HasSuffix(iconName, ".png") || strings.HasSuffix(iconName, ".svg") || strings.HasSuffix(iconName, ".xpm") {
 			iconName = iconName[:len(iconName)-4]
 		}

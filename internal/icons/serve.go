@@ -21,8 +21,8 @@ func Run() {
 	http.HandleFunc("GET /img/{iconname}", GetHandler)
 
 	collectThemes()
-	collectThemeIcons()
-	collectOtherIcons()
+	//collectThemeIcons()
+	//collectOtherIcons()
 }
 
 func GetHandler(w http.ResponseWriter, r *http.Request) {
@@ -59,13 +59,4 @@ func findNamedIcon(iconName string) *Icon {
 		return nil
 	}
 
-}
-
-func AddFileIcon(osPath string) (string, error) {
-	var name = url.PathEscape(osPath)
-	if err := addIconPath(name, "", osPath, 1, 1); err != nil {
-		return "", err
-	} else {
-		return name, nil
-	}
 }

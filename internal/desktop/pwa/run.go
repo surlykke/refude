@@ -30,13 +30,17 @@ func init() {
 	StaticServer = http.StripPrefix("/desktop/", http.FileServer(http.FS(staticFiles)))
 
 	bytes, _ := searchTemplateFile.ReadFile("searchTemplate.gohtml")
-	searchTemplate = template.Must(template.New("searchTemplate").Parse(string(bytes)))
+
+	var funcMap = template.FuncMap{
+		"safe": func(str string) template.URL { return template.URL(str) },
+	}
+
+	searchTemplate = template.Must(template.New("searchTemplate").Funcs(funcMap).Parse(string(bytes)))
 }
 
 func doSearch(w http.ResponseWriter, r *http.Request) {
 	var term string = utils.QueryParam(r, "term")
 	var rankedList = search.Search(term)
-
 	var b bytes.Buffer
 	if err := searchTemplate.Execute(&b, rankedList); err != nil {
 		log.Println("Error rendering searchTemplate:", err)

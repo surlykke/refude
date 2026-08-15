@@ -22,6 +22,7 @@ import (
 	"github.com/surlykke/refude/internal/notifygui"
 	"github.com/surlykke/refude/internal/options"
 	"github.com/surlykke/refude/internal/power"
+	"github.com/surlykke/refude/internal/rawfile"
 	"github.com/surlykke/refude/internal/search"
 	"github.com/surlykke/refude/internal/wayland"
 )
@@ -38,6 +39,7 @@ func main() {
 	go power.Run(opts.NoTrayBattery)
 	go browser.Run()
 	go file.Run()
+	go rawfile.Run()
 	go pwa.Run()
 	go search.Run()
 	//	go network.Run()

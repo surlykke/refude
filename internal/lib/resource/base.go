@@ -43,7 +43,7 @@ func adjustIcon(icon string) string {
 	icon = strings.TrimSpace(icon)
 	if icon == "" {
 		return ""
-	} else if strings.HasPrefix(icon, "http://") || strings.HasPrefix(icon, "https://") || strings.HasPrefix(icon, "/") {
+	} else if strings.HasPrefix(icon, "http://") || strings.HasPrefix(icon, "https://") || strings.HasPrefix(icon, "data:") || strings.HasPrefix(icon, "/") {
 		return icon
 	} else {
 		return "/img/" + icon

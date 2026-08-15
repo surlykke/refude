@@ -2,7 +2,7 @@
 <div class="line">
 	<div class="icon">
 		{{if .Icon}}
-			<img src="{{.Icon}}" height="32" width="32" class="icon">
+			<img src="{{safe .Icon}}" height="32" width="32" class="icon">
 		{{end}}
 	</div>
 	<div x-data="{details: false}" @toggledetails="console.log('toggle'); details = !details">

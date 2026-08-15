@@ -1,6 +1,6 @@
 module github.com/surlykke/refude
 
-go 1.25.0
+go 1.26
 
 require (
 	github.com/fsnotify/fsnotify v1.9.0
@@ -8,6 +8,7 @@ require (
 	github.com/jessevdk/go-flags v1.6.1
 	github.com/pkg/errors v0.9.1
 	github.com/shirou/gopsutil/v4 v4.25.6
+	go.privatebychoice.com/pbcsvgsanitize v0.1.0
 	golang.org/x/net v0.55.0
 )
 
