@@ -34,11 +34,11 @@ func Run() {
 
 }
 
-func GetHandlers(mimetype string) []*DesktopApplication {
-	var apps = make([]*DesktopApplication, 0, 10)
-	if mt, ok := resource.Get[*Mimetype](mimetypePathPrefix + mimetype); ok {
+func GetHandlers(mimetype string) []DesktopApplication {
+	var apps = make([]DesktopApplication, 0, 10)
+	if mt, ok := resource.Get[Mimetype](mimetypePathPrefix + mimetype); ok {
 		for _, appId := range mt.Applications {
-			if app, ok := resource.Get[*DesktopApplication](appPathPrefix + appId); ok {
+			if app, ok := resource.Get[DesktopApplication](appPathPrefix + appId); ok {
 				apps = append(apps, app)
 			}
 		}
@@ -48,7 +48,7 @@ func GetHandlers(mimetype string) []*DesktopApplication {
 
 func GetTitleAndIcon(appId string) (string, string, bool) {
 	if appId != "" {
-		if app, ok := resource.Get[*DesktopApplication](appPathPrefix + appId); ok {
+		if app, ok := resource.Get[DesktopApplication](appPathPrefix + appId); ok {
 			return app.Title, app.Icon, true
 		}
 	}
@@ -56,7 +56,7 @@ func GetTitleAndIcon(appId string) (string, string, bool) {
 }
 
 func OpenFile(appId, filePath string) bool {
-	if app, ok := resource.Get[*DesktopApplication](appPathPrefix + appId); ok {
+	if app, ok := resource.Get[DesktopApplication](appPathPrefix + appId); ok {
 		app.Run(filePath)
 		return true
 	}

@@ -47,12 +47,10 @@ type File struct {
 	apps        []string
 }
 
-func makeFileFromOsPath(path string) (*File, error) {
+func makeFileFromOsPath(path string) (File, error) {
 	var osPath = filepath.Clean("/" + path)
-	if fileInfo, err := os.Stat(osPath); os.IsNotExist(err) {
-		return nil, nil
-	} else if err != nil {
-		return nil, err
+	if fileInfo, err := os.Stat(osPath);  err != nil {
+		return File{}, err
 	} else {
 		return makeFileFromOsInfo(osPath, fileInfo), nil
 	}
@@ -67,7 +65,7 @@ func MimeType(ospath string) string {
 	}
 }
 
-func makeFileFromOsInfo(osPath string, fileInfo os.FileInfo) *File {
+func makeFileFromOsInfo(osPath string, fileInfo os.FileInfo) File {
 	var fileType = getFileType(fileInfo.Mode())
 	var mimetype string
 	if "Directory" == fileType {
@@ -88,7 +86,7 @@ func makeFileFromOsInfo(osPath string, fileInfo os.FileInfo) *File {
 	for _, app := range applications.GetHandlers(f.Mimetype) {
 		f.AddAction(app.Title, app.Icon, resource.OrgRefudeAction, app.DesktopId)
 	}
-	return &f
+	return f
 }
 
 func readEntries(dir string) []fs.DirEntry {
@@ -103,7 +101,7 @@ func readEntries(dir string) []fs.DirEntry {
 	}
 }
 
-func (f *File) DoPost(action string) (bool, error) {
+func (f File) DoPost(action string) (bool, error) {
 	if applications.OpenFile(action, f.OsPath) {
 		return true, nil
 	} else {

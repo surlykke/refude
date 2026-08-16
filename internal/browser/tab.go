@@ -18,11 +18,11 @@ type Tab struct {
 	Url       string
 }
 
-func (this *Tab) DoPost(action string) (bool, error) {
+func (this Tab) DoPost(action string) (bool, error) {
 	browserCommands.Publish(browserCommand{BrowserId: this.BrowserId, TabId: this.Id, Cmd: "focus"})
 	return true, nil
 }
 
-func (this *Tab) OmitFromSearch() bool {
+func (this Tab) OmitFromSearch() bool {
 	return strings.HasPrefix(this.Url, "http://localhost:7938/desktop")
 }

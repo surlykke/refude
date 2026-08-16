@@ -55,7 +55,7 @@ func retrieveDevicePaths() []dbus.ObjectPath {
 	return append(enumCall.Body[0].([]dbus.ObjectPath), displayDeviceDbusPath)
 }
 
-func retrieveDevice(dbusPath dbus.ObjectPath) *Device {
+func retrieveDevice(dbusPath dbus.ObjectPath) Device {
 	var device = Device{Id: dbusPath2id(dbusPath)}
 	device.DisplayDevice = dbusPath == displayDeviceDbusPath
 	var props, err = utils.Props(dbusConn, upowerService, dbusPath, upowerDeviceInterface)
@@ -130,7 +130,7 @@ func retrieveDevice(dbusPath dbus.ObjectPath) *Device {
 	}
 
 	device.Base = resource.MakeBase(devicePathPrefix+device.Id, title, summary, iconName, "battery")
-	return &device
+	return device
 }
 
 var previousPercentage = float64(101)
@@ -148,7 +148,7 @@ func updateTrayIcon() {
 }
 
 func notifyOnLow() {
-	if displayDevice, ok := resource.Get[*Device](devicePathPrefix + displayDeviceId); ok {
+	if displayDevice, ok := resource.Get[Device](devicePathPrefix + displayDeviceId); ok {
 		if displayDevice.State == "Discharging" {
 			if displayDevice.Percentage <= 5 {
 				notifications.Notify("refude", notificationId, "dialog-warning", "Battery critical", fmt.Sprintf("At %.2f%%", displayDevice.Percentage), []string{}, map[string]dbus.Variant{"urgency": dbus.MakeVariant(uint8(2))}, -1)

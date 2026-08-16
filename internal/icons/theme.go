@@ -43,9 +43,9 @@ func collectThemes() {
 	resource.Replace(themes, themePathPrefix)
 }
 
-func readThemes(basedirs []string) ([]*IconTheme, bool) {
-	var themes []*IconTheme
-var found = make(map[string]bool)
+func readThemes(basedirs []string) ([]IconTheme, bool) {
+	var themes []IconTheme
+	var found = make(map[string]bool)
 	for _, basedir := range basedirs {
 		if indexFilePaths, err := filepath.Glob(basedir + "/*/index.theme"); err != nil {
 			log.Print("Could not look for index.theme files:", err)
@@ -54,7 +54,7 @@ var found = make(map[string]bool)
 				if theme, ok := readTheme(indexFilePath); !ok {
 					log.Print("Could not read", indexFilePath)
 				} else if _, ok := found[theme.Id]; !ok {
-					themes = append(themes,  theme)
+					themes = append(themes, theme)
 					found[theme.Id] = true
 				}
 			}
@@ -63,29 +63,29 @@ var found = make(map[string]bool)
 	return themes, found["hicolor"]
 }
 
-func readTheme(indexThemeFilePath string) (*IconTheme, bool) {
+func readTheme(indexThemeFilePath string) (IconTheme, bool) {
 	// id of a theme is the name of the directory in which its index.theme file resides
 	var themeId = filepath.Base(filepath.Dir(indexThemeFilePath))
 
 	if themeId == "." || themeId == ".." || themeId == "/" {
 		log.Print("Could not figure theme id from path:", indexThemeFilePath)
-		return nil, false
+		return IconTheme{}, false
 	}
 
 	iniFile, err := xdg.ReadIniFile(indexThemeFilePath)
 	if err != nil {
 		log.Print("Error reading theme:", err)
-		return nil, false
+		return IconTheme{}, false
 	}
 
 	if len(iniFile) < 1 || iniFile[0].Name != "Icon Theme" {
 		//log.Warn("Error reading %s , expected 'Icon Theme' at start", indexThemeFilePath)
-		return nil, false
+		return IconTheme{}, false
 	}
 
 	themeGroup := iniFile[0]
 
-	theme := IconTheme{Base: resource.MakeBase(themePathPrefix + themeId, themeGroup.Entries["Name"], "Icon theme", "", "icon", "theme")}
+	theme := IconTheme{Base: resource.MakeBase(themePathPrefix+themeId, themeGroup.Entries["Name"], "Icon theme", "", "icon", "theme")}
 	theme.Id = themeId
 	theme.Inherits = utils.Split(themeGroup.Entries["Inherits"], ",")
 	theme.Dirs = make([]IconDir, 0, 50)
@@ -93,7 +93,7 @@ func readTheme(indexThemeFilePath string) (*IconTheme, bool) {
 	directories := utils.Split(themeGroup.Entries["Directories"], ",")
 	if len(directories) == 0 {
 		log.Print("Ignoring theme ", themeId, " - no directories")
-		return nil, false
+		return IconTheme{}, false
 	}
 	for _, iniGroup := range iniFile[1:] {
 
@@ -138,7 +138,7 @@ func readTheme(indexThemeFilePath string) (*IconTheme, bool) {
 		addedDirs[iniGroup.Name] = true
 	}
 
-	return &theme, true
+	return theme, true
 }
 
 func readUint32(uintAsString string) (uint32, bool) {
@@ -153,4 +153,3 @@ func readUint32OrFallback(uintAsString string, fallback uint32) uint32 {
 		return fallback
 	}
 }
-

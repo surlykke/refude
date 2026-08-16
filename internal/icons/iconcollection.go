@@ -7,12 +7,12 @@ package icons
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"os"
 	"path"
 	"path/filepath"
 	"regexp"
-	"slices"
 
 	"github.com/surlykke/refude/internal/lib/resource"
 	"github.com/surlykke/refude/internal/lib/xdg"
@@ -28,11 +28,18 @@ type Descriptor struct {
 }
 
 func collectIcons() {
-	if defaultTheme := determineDefaultTheme(); defaultTheme != nil {
+	fmt.Println("collectIcons...")
+	if defaultTheme, ok := determineDefaultTheme(); !ok {
 		log.Print("No defaultTheme determinded. Cannot serve icons")
 	} else if themeList, err := themeSearchOrder(defaultTheme); err != nil {
 		log.Print("No theme search order determined. Cannot serve icons")
 	} else {
+		fmt.Println("Default theme:", defaultTheme.Id)
+		fmt.Println("Collection icons from themes:")
+		for _, t := range themeList {
+			fmt.Print(t.Id + " ")
+		}
+		fmt.Println()
 		for desc := range iconPaths(themeList, "svg") {
 			addIconPath(desc.osPath, desc.themeId, desc.minSize, desc.maxSize)
 		}
@@ -41,25 +48,24 @@ func collectIcons() {
 
 func addIconPath(osPath, themeId string, minSize, maxSize uint32) {
 	if realPath, err := filepath.EvalSymlinks(osPath); err != nil {
-		log.Println("Error adding iconPath", osPath, err)
-	} else if iconName := path.Base(realPath[:len(realPath)-4]); iconName == "" {
+		if !errors.Is(err, os.ErrNotExist) { // Plenty of these, so not logging
+			log.Println("Error adding iconPath", osPath, err)
+		}
+	} else if iconName := path.Base(osPath[:len(osPath)-4]); iconName == "" {
 		log.Println("Weird iconName:", osPath)
 	} else {
-		iconPtr, ok := resource.Get[*Icon](iconPrefix + iconName)
-		var icon Icon
-		if ok {
-			icon = *iconPtr
-		} else {
+		icon, ok := resource.Get[Icon](iconPrefix + iconName)
+		if !ok {
 			icon = Icon{Base: resource.MakeBase(iconPrefix+iconName, iconName, "", ""), Name: iconName, Theme: themeId}
 		}
-		if !icon.HasPath(osPath) {
-			icon.Imgs = append(icon.Imgs, Img{OsPath: osPath, MinSize: minSize, MaxSize: maxSize})
+		if !icon.HasPath(realPath) {
+			icon.Imgs = append(icon.Imgs, Img{OsPath: realPath, MinSize: minSize, MaxSize: maxSize})
 		}
-		resource.Put(&icon)
+		resource.Put(icon)
 	}
 }
 
-func iconPaths(themeList []*IconTheme, fileType string) func(func(Descriptor) bool) {
+func iconPaths(themeList []IconTheme, fileType string) func(func(Descriptor) bool) {
 	return func(yield func(Descriptor) bool) {
 		for _, theme := range themeList {
 			var themeId = theme.Id
@@ -88,12 +94,12 @@ func iconPaths(themeList []*IconTheme, fileType string) func(func(Descriptor) bo
 	}
 }
 
-func determineDefaultTheme() *IconTheme {
+func determineDefaultTheme() (IconTheme, bool) {
 	var iconThemeDefPattern = regexp.MustCompile(`gtk-icon-theme-name=(\S+)`)
 
 	if themeId, ok := os.LookupEnv("REFUDE_ICON_THEME"); ok {
-		if theme, ok := resource.Get[*IconTheme](themePathPrefix + themeId); ok {
-			return theme
+		if theme, ok := resource.Get[IconTheme](themePathPrefix + themeId); ok {
+			return theme, true
 		}
 	}
 
@@ -106,31 +112,37 @@ func determineDefaultTheme() *IconTheme {
 	for _, iniFile := range iniFilesToLookAt {
 		if bytes, err := os.ReadFile(iniFile); err == nil {
 			if matches := iconThemeDefPattern.FindStringSubmatch(string(bytes)); matches != nil {
-				if theme, ok := resource.Get[*IconTheme](matches[1]); ok {
-					return theme
+				fmt.Println("defaultTheme candidate:", matches[1])
+				if theme, ok := resource.Get[IconTheme](themePathPrefix + matches[1]); ok {
+					fmt.Println("found defaultTheme", theme.Id)
+					return theme, true
+				} else {
+					fmt.Println("Could not find", themePathPrefix+matches[1])
 				}
 			}
 		}
 	}
-	return nil
+	return IconTheme{}, false
 }
 
-func themeSearchOrder(theme *IconTheme) ([]*IconTheme, error) {
+func themeSearchOrder(theme IconTheme) ([]IconTheme, error) {
 
-	var hicolorTheme, ok = resource.Get[*IconTheme](themePathPrefix + "hicolor")
+	var hicolorTheme, ok = resource.Get[IconTheme](themePathPrefix + "hicolor")
 	if !ok {
 		return nil, errors.New("No hicolortheme found")
 	}
-	var order = make([]*IconTheme, 1, 10)
+	var order = make([]IconTheme, 1, 10)
+	var done = make(map[string]bool, 10)
 	order[0] = theme
 	var pos = 0
 	for pos < len(order) {
 		for _, inheritedId := range order[pos].Inherits {
-			if inheritedTheme, ok := resource.Get[*IconTheme](themePathPrefix + inheritedId); ok && inheritedTheme != hicolorTheme {
-				if !slices.Contains(order, inheritedTheme) {
+			if !done[inheritedId] {
+				if inheritedTheme, ok := resource.Get[IconTheme](themePathPrefix + inheritedId); ok && inheritedTheme.Id != hicolorTheme.Id {
 					order = append(order, inheritedTheme)
 				}
 			}
+			done[inheritedId] = true
 		}
 		pos++
 	}

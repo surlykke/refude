@@ -224,7 +224,7 @@ func Notify(
 	}
 
 	notification.Expires = time.Now().Add(time.Duration(expire_timeout) * time.Millisecond)
-	newNotifications <- &notification
+	newNotifications <- notification
 
 	return id, nil
 }
@@ -312,7 +312,7 @@ func helper(src *string, dest *string, allowedPrefixes []string, endMarker strin
 }
 
 var NotificationEvents = pubsub.MakePublisher[struct{}]()
-var newNotifications = make(chan *Notification)
+var newNotifications = make(chan Notification)
 var closedNotifications = make(chan uint32)
 var dismissedNotifications = make(chan uint32)
 
@@ -375,12 +375,11 @@ func Run(noNotifications bool) {
 				somethingChanged = true
 			}
 		case <-ticker.C:
-			for _, n := range resource.GetByPrefix[*Notification]("/notification/") {
+			for _, n := range resource.GetByPrefix[Notification]("/notification/") {
 				if !n.Expired && n.Expires.Before(time.Now()) {
-					var copy = *n
-					copy.Expired = true
-					resource.Put(&copy)
-					conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", copy.NotificationId, Expired)
+					n.Expired = true
+					resource.Put(n)
+					conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".NotificationClosed", n.NotificationId, Expired)
 
 					somethingChanged = true
 

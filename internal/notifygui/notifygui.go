@@ -41,7 +41,7 @@ func run() {
 
 func sendNotificationsToGui() {
 	var notificationsAsStrings = make([][]string, 0, 20)
-	for _, n := range resource.GetByPrefix[*notifications.Notification]("/notification/") {
+	for _, n := range resource.GetByPrefix[notifications.Notification]("/notification/") {
 		if !n.Expired {
 			notificationsAsStrings = append(notificationsAsStrings, []string{n.Title, n.Body, icons.FindIconPath(n.IconName, uint32(64))})
 		}

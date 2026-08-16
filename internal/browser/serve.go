@@ -98,7 +98,7 @@ func receive(conn net.Conn) {
 			} else if err := json.Unmarshal(data, &brd); err != nil {
 				log.Print("Invalid json:\n", string(data))
 			} else if brd.Type == "tabs" {
-				var tabList = make([]*Tab, 0, len(brd.List))
+				var tabList = make([]Tab, 0, len(brd.List))
 				var favicons = make(map[string]string, 10)
 				for _, d := range brd.List {
 					if len(d.Title) > 60 { // Shorten title a bit
@@ -108,7 +108,7 @@ func receive(conn net.Conn) {
 					if d.Favicon != "" {
 						favicons[tabPath] = d.Favicon
 					}
-					var tab = &Tab{
+					var tab = Tab{
 						Base:      resource.MakeBase(tabPath, d.Title, browserName+" tab", "", "browser", "tab"),
 						Id:        d.Id,
 						BrowserId: browserId,
@@ -142,19 +142,17 @@ func fetchAndSetFavicons(m map[string]string) {
 }
 
 func updateIcon(tabPath string, icon string) {
-	if t, ok := resource.Get[*Tab](tabPath); ok {
-		var copy = *t
-		copy.Icon = icon
-		resource.Put(&copy)
+	if t, ok := resource.Get[Tab](tabPath); ok {
+		t.Icon = icon
+		resource.Put(t)
 	}
 }
 
 func fetchAndSetIconUrl(tabPath string, iconUrl string) {
 	if correctedUrl := installIcon(iconUrl); correctedUrl != "" {
-		if tab, ok := resource.Get[*Tab](tabPath); ok {
-			var copy = *tab
-			copy.Icon = correctedUrl
-			resource.Put(&copy)
+		if tab, ok := resource.Get[Tab](tabPath); ok {
+			tab.Icon = correctedUrl
+			resource.Put(tab)
 		}
 	}
 }

@@ -61,11 +61,11 @@ type Notification struct {
 	IconName       string
 }
 
-func (n *Notification) OmitFromSearch() bool {
+func (n Notification) OmitFromSearch() bool {
 	return n.Expired
 }
 
-func (n *Notification) DoPost(action string) (bool, error) {
+func (n Notification) DoPost(action string) (bool, error) {
 	if _, ok := n.NActions[action]; ok {
 		if err := conn.Emit(NOTIFICATIONS_PATH, NOTIFICATIONS_INTERFACE+".ActionInvoked", n.NotificationId, action); err != nil {
 			return false, err
@@ -77,7 +77,7 @@ func (n *Notification) DoPost(action string) (bool, error) {
 	}
 }
 
-func (n *Notification) DoDelete() error {
+func (n Notification) DoDelete() error {
 	dismissedNotifications <- n.NotificationId 
 	return nil
 }

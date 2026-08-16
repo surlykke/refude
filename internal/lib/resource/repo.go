@@ -105,7 +105,7 @@ func GetForSearch(prefixes ...string) []Base {
 	for p, s := range m {
 		for _, prefix := range prefixes {
 			if strings.HasPrefix(p, prefix) && !s.OmitFromSearch() {
-				bases = append(bases, *s.GetBase())
+				bases = append(bases, s.GetBase())
 			}
 		}
 	}

@@ -36,37 +36,36 @@ func Run(ignWin map[string]bool) {
 	for {
 		select {
 		case upd := <-windowUpdates:
-			var newWin = makeWindow(upd.wId)
-			if oldWin, ok := resource.Get[*WaylandWindow](newWin.Path); ok {
-				newWin.Base, newWin.AppId, newWin.State = oldWin.Base, oldWin.AppId, oldWin.State
+			win, ok := resource.Get[WaylandWindow](wId2Path(upd.wId))
+			if !ok {
+				win = makeWindow(upd.wId)
 			}
-
+				
 			if upd.title != "" {
-				newWin.Title = upd.title
+				win.Title = upd.title
 			}
 
 			if upd.appId != "" {
-				newWin.AppId = upd.appId
+				win.AppId = upd.appId
 				if appTitle, appIconName, ok := applications.GetTitleAndIcon(upd.appId); ok {
-					newWin.Summary = appTitle + " window"
-					newWin.Icon = appIconName
+					win.Summary = appTitle + " window"
+					win.Icon = appIconName
 				}
 			}
 
 			if upd.state > 0 {
-				newWin.State = upd.state - 1
+				win.State = upd.state - 1
 			}
-			resource.Put(&newWin)
+			resource.Put(win)
 		case id := <-removals:
 			resource.Remove(wId2Path(id))
 		case _ = <-appEvents:
-			for _, w := range resource.GetByPrefix[*WaylandWindow]("/window/") {
-				var copy = *w
-				if "" != copy.AppId {
-					if appTitle, appIcon, ok := applications.GetTitleAndIcon(copy.AppId); ok {
-						copy.Icon = appIcon
-						copy.Summary = appTitle + " window"
-						resource.Put(&copy)
+			for _, w := range resource.GetByPrefix[WaylandWindow]("/window/") {
+				if "" != w.AppId {
+					if appTitle, appIcon, ok := applications.GetTitleAndIcon(w.AppId); ok {
+						w.Icon = appIcon
+						w.Summary = appTitle + " window"
+						resource.Put(w)
 					}
 				}
 			}
@@ -139,16 +138,16 @@ func makeWindow(wId uint64) WaylandWindow {
 	return ww
 }
 
-func (this *WaylandWindow) DoDelete() error {
+func (this WaylandWindow) DoDelete() error {
 	close(this.Wid)
 	return nil
 }
 
-func (this *WaylandWindow) OmitFromSearch() bool {
+func (this WaylandWindow) OmitFromSearch() bool {
 	return strings.HasPrefix(this.Title, "Refude desktop") || ignoredWindows[this.AppId]
 }
 
-func (this *WaylandWindow) DoPost(action string) (bool, error) {
+func (this WaylandWindow) DoPost(action string) (bool, error) {
 	if "" == action {
 		activate(this.Wid)
 		return true, nil

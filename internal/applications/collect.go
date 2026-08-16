@@ -10,11 +10,11 @@ import (
 )
 
 type Collection struct {
-	Apps      map[string]*DesktopApplication
-	Mimetypes map[string]*Mimetype
+	Apps      map[string]DesktopApplication
+	Mimetypes map[string]Mimetype
 }
 
-func collect() (map[string]*DesktopApplication, map[string]*Mimetype) {
+func collect() (map[string]DesktopApplication, map[string]Mimetype) {
 	var apps, defaultApps = collectApps()
 	var mimetypes = collectMimetypes()
 
@@ -34,8 +34,8 @@ func collect() (map[string]*DesktopApplication, map[string]*Mimetype) {
 
 	// Ensure that if, m1 is a subclass of m2, m1s applications contains all m2s applications
 	var visited = make(map[string]bool)
-	var getHandlersForSupertypes func(mt *Mimetype)
-	getHandlersForSupertypes = func(mt *Mimetype) {
+	var getHandlersForSupertypes func(mt Mimetype)
+	getHandlersForSupertypes = func(mt Mimetype) {
 		if !visited[mt.Id] {
 			for _, superId := range mt.SubClassOf {
 				if superType, ok := mimetypes[superId]; ok {

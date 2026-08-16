@@ -41,10 +41,10 @@ type Mimetype struct {
 
 var mimetypePattern = regexp.MustCompile(`^([^/]+)/([^/]+)$`)
 
-func MakeMimetype(id string) (*Mimetype, error) {
+func MakeMimetype(id string) (Mimetype, error) {
 
 	if !mimetypePattern.MatchString(id) {
-		return nil, errors.New("Incomprehensible mimetype: " + id)
+		return Mimetype{}, errors.New("Incomprehensible mimetype: " + id)
 	} else {
 		var mt = Mimetype{
 			Base:        resource.MakeBase("/mimetype/" + id, "",  "", "", "Mimetype"),
@@ -54,7 +54,7 @@ func MakeMimetype(id string) (*Mimetype, error) {
 			SubClassOf:  []string{},
 			GenericIcon: "unknown",
 		}
-		return &mt, nil
+		return mt, nil
 	}
 }
 

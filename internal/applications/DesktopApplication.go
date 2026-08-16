@@ -41,11 +41,11 @@ type DesktopApplication struct {
 	DesktopFile     string
 }
 
-func (d *DesktopApplication) OmitFromSearch() bool {
+func (d DesktopApplication) OmitFromSearch() bool {
 	return d.NoDisplay
 }
 
-func (d *DesktopApplication) Run(arg string) error {
+func (d DesktopApplication) Run(arg string) error {
 	return run(d.Exec, arg, d.Terminal)
 }
 
@@ -56,7 +56,7 @@ type DesktopAction struct {
 	Icon string
 }
 
-func (d *DesktopApplication) DoPost(action string) (bool, error) {
+func (d DesktopApplication) DoPost(action string) (bool, error) {
 	if action == "" {
 		return postHelper(d.Exec, d.Terminal)
 	} else {

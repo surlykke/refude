@@ -19,10 +19,10 @@ import (
 	"github.com/surlykke/refude/internal/rawfile"
 )
 
-func collectApps() (map[string]*DesktopApplication, map[string][]string) {
+func collectApps() (map[string]DesktopApplication, map[string][]string) {
 	// ----
 	// Keyed by apps DeskoptId, ie. 'firefox.desktop' not '/application/firefox.desktop'
-	var apps = make(map[string]*DesktopApplication)
+	var apps = make(map[string]DesktopApplication)
 	// Mimetype id (ie. 'text/html' not '/mimetype/text/html') to list of DesktopIds
 	var defaultApps = make(map[string][]string)
 
@@ -40,7 +40,7 @@ func collectApps() (map[string]*DesktopApplication, map[string][]string) {
 	return apps, defaultApps
 }
 
-func collectApplications(applicationsDir string, apps map[string]*DesktopApplication) {
+func collectApplications(applicationsDir string, apps map[string]DesktopApplication) {
 	var visitor = func(filePath string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -96,7 +96,7 @@ func collectApplications(applicationsDir string, apps map[string]*DesktopApplica
 	}
 }
 
-func readMimeappsList(path string, apps map[string]*DesktopApplication, defaultApps map[string][]string) {
+func readMimeappsList(path string, apps map[string]DesktopApplication, defaultApps map[string][]string) {
 	if iniFile, err := xdg.ReadIniFile(path); err == nil {
 		if addedAssociations := iniFile.FindGroup("Added Associations"); addedAssociations != nil {
 			for mimetypeId, appIds := range addedAssociations.Entries {
@@ -146,11 +146,11 @@ func readMimeappsList(path string, apps map[string]*DesktopApplication, defaultA
 
 }
 
-func readDesktopFile(filePath string, id string) (*DesktopApplication, error) {
+func readDesktopFile(filePath string, id string) (DesktopApplication, error) {
 	if iniFile, err := xdg.ReadIniFile(filePath); err != nil {
-		return nil, err
+		return DesktopApplication{}, err
 	} else if len(iniFile) == 0 || iniFile[0].Name != "Desktop Entry" {
-		return nil, errors.New("file must start with '[Desktop Entry]'")
+		return DesktopApplication{}, errors.New("file must start with '[Desktop Entry]'")
 	} else {
 		group := iniFile[0]
 
@@ -162,7 +162,7 @@ func readDesktopFile(filePath string, id string) (*DesktopApplication, error) {
 		}
 
 		if title == "" {
-			return nil, errors.New("desktop file invalid, no 'Name' given")
+			return DesktopApplication{}, errors.New("desktop file invalid, no 'Name' given")
 		}
 
 		var keywords = utils.Split(group.Entries["Keywords"], ";")
@@ -171,7 +171,7 @@ func readDesktopFile(filePath string, id string) (*DesktopApplication, error) {
 			DesktopId: id,
 		}
 		if da.Type = group.Entries["Type"]; da.Type == "" {
-			return nil, errors.New("desktop file invalid, no 'Type' given")
+			return DesktopApplication{}, errors.New("desktop file invalid, no 'Type' given")
 		}
 		da.Version = group.Entries["Version"]
 		da.NoDisplay = group.Entries["NoDisplay"] == "true"
@@ -202,7 +202,7 @@ func readDesktopFile(filePath string, id string) (*DesktopApplication, error) {
 			} else {
 				var name = actionGroup.Entries["Name"]
 				if name == "" {
-					return nil, errors.New("Desktop file invalid, action " + actionGroup.Name + " has no default 'Name'")
+					return DesktopApplication{}, errors.New("Desktop file invalid, action " + actionGroup.Name + " has no default 'Name'")
 				}
 				var iconUrl = actionGroup.Entries["Icon"]
 				da.DesktopActions = append(da.DesktopActions, DesktopAction{
@@ -215,7 +215,7 @@ func readDesktopFile(filePath string, id string) (*DesktopApplication, error) {
 			}
 		}
 
-		return &da, nil
+		return da, nil
 	}
 
 }

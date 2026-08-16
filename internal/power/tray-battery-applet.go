@@ -140,7 +140,7 @@ func tray_applet_run() {
 }
 
 func getIconName() string {
-	if displayDevice, ok := resource.Get[*Device]("/device/DisplayDevice"); ok {
+	if displayDevice, ok := resource.Get[Device]("/device/DisplayDevice"); ok {
 		var state, percentage = displayDevice.State, displayDevice.Percentage
 		if state == "Discharging" || state == "Empty" {
 			state = "discharging"

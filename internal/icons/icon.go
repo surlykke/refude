@@ -21,7 +21,7 @@ type Icon struct {
 	Imgs  []Img
 }
 
-func (this *Icon) HasPath(osPath string) bool {
+func (this Icon) HasPath(osPath string) bool {
 	for _, img := range this.Imgs {
 		if img.OsPath == osPath {
 			return true
@@ -30,7 +30,7 @@ func (this *Icon) HasPath(osPath string) bool {
 	return false
 }
 
-func (this *Icon) GetPath(size uint32) string {
+func (this Icon) GetPath(size uint32) string {
 	var shortestDistanceSoFar = uint32(math.MaxUint32)
 	var path = ""
 	for _, img := range this.Imgs {

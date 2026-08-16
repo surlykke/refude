@@ -17,8 +17,8 @@ type StartResource struct {
 	dbusMethod string
 }
 
-func makeStartResource(path string, title string, icon string, dbusMethod string) *StartResource {
-	var sr = &StartResource{Base: resource.MakeBase(path, title, "Desktop action", icon), dbusMethod: dbusMethod}
+func makeStartResource(path string, title string, icon string, dbusMethod string) StartResource {
+	var sr = StartResource{Base: resource.MakeBase(path, title, "Desktop action", icon), dbusMethod: dbusMethod}
 	sr.AddAction("", "", resource.OrgRefudeAction, "")
 	return sr
 }
@@ -30,7 +30,7 @@ func Run() {
 
 }
 
-func (this *StartResource) DoPost(action string) (bool, error) {
+func (this StartResource) DoPost(action string) (bool, error) {
 	if conn, err := dbus.SystemBus(); err != nil {
 		log.Print(err)
 		return false, err

@@ -48,7 +48,7 @@ type Connection struct {
 	ObjectPath dbus.ObjectPath
 }
 
-/*func (this *Connection) DoPost(action string) bind.Response {
+/*func (this Connection) DoPost(action string) bind.Response {
 	return bind.Accepted()
 	/*var dbusMember string
 	if this.Primary {
@@ -68,8 +68,8 @@ type Connection struct {
 	}
 }*/
 
-func makeConnection(title string, primary bool, vpn bool, connType string, path dbus.ObjectPath) *Connection {
-	var c = &Connection{Base: resource.MakeBase(networkPathPrefix+string(path), title, "Network connection", "", ""), Primary: primary, Vpn: vpn, ObjectPath: path}
+func makeConnection(title string, primary bool, vpn bool, connType string, path dbus.ObjectPath) Connection {
+	var c = Connection{Base: resource.MakeBase(networkPathPrefix+string(path), title, "Network connection", "", ""), Primary: primary, Vpn: vpn, ObjectPath: path}
 	var actionName string
 	if primary {
 		actionName = "Deactivate"
@@ -115,7 +115,7 @@ func watch() {
 }
 
 func setActiveConnections(acPaths []dbus.ObjectPath) {
-	var connections []*Connection
+	var connections []Connection
 	for _, acPath := range acPaths {
 		if props, err := utils.Props(conn(), SERVICE, acPath, NMI+".Connection.Active"); err != nil {
 			log.Println(err)
@@ -134,11 +134,10 @@ func setPrimaryConnection(connection dbus.ObjectPath) {
 	} else {
 		primaryConnection = connection
 	}
-	var copies []*Connection
-	for _, conn := range resource.GetByPrefix[*Connection]("/network/") {
-		var copy = *conn
-		copy.Primary = copy.ObjectPath == primaryConnection
-		copies = append(copies, &copy)
+	var copies []Connection
+	for _, conn := range resource.GetByPrefix[Connection]("/network/") {
+		conn.Primary = conn.ObjectPath == primaryConnection
+		copies = append(copies, conn)
 	}
 	resource.Replace(copies, "/network/")
 }

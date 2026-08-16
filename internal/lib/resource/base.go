@@ -14,7 +14,7 @@ import (
 )
 
 type Servable interface {
-	GetBase() *Base
+	GetBase() Base
 	OmitFromSearch() bool
 }
 
@@ -50,15 +50,15 @@ func adjustIcon(icon string) string {
 	}
 }
 
-func (this *Base) OmitFromSearch() bool {
+func (this Base) OmitFromSearch() bool {
 	return false
 }
 
-func (this *Base) GetBase() *Base {
+func (this Base) GetBase() Base {
 	return this
 }
 
-func (this *Base) AddAction(title string, icon string, relation Relation, actionId string) {
+func (this Base) AddAction(title string, icon string, relation Relation, actionId string) {
 	var url = this.Path
 	if "" != actionId {
 		url = url + "?action=" + actionId // TODO: Escape?
@@ -66,7 +66,7 @@ func (this *Base) AddAction(title string, icon string, relation Relation, action
 	this.Links[relation] = append(this.Links[relation], Link{Href: url, Title: title, Icon: icon})
 }
 
-func (this *Base) FirstAction() *Link {
+func (this Base) FirstAction() *Link {
 	if len(this.Links[OrgRefudeAction]) > 0 {
 		return &this.Links[OrgRefudeAction][0]
 	} else {
@@ -74,7 +74,7 @@ func (this *Base) FirstAction() *Link {
 	}
 }
 
-func (this *Base) SecondaryActions() []Link {
+func (this Base) SecondaryActions() []Link {
 	if len(this.Links[OrgRefudeAction]) > 1 {
 		return this.Links[OrgRefudeAction][1:]
 	} else {
@@ -82,7 +82,7 @@ func (this *Base) SecondaryActions() []Link {
 	}
 }
 
-func (this *Base) DeleteAction() *Link {
+func (this Base) DeleteAction() *Link {
 	if len(this.Links[OrgRefudeDelete]) > 0 {
 		return &this.Links[OrgRefudeDelete][0]
 	} else {
@@ -90,7 +90,7 @@ func (this *Base) DeleteAction() *Link {
 	}
 }
 
-func (this *Base) DoGet(w http.ResponseWriter, r *http.Request, o any) {
+func (this Base) DoGet(w http.ResponseWriter, r *http.Request, o any) {
 	respond.AsJson(w, o)
 }
 

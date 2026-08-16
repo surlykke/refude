@@ -21,8 +21,7 @@ func Run() {
 	http.HandleFunc("GET /img/{iconname}", GetHandler)
 
 	collectThemes()
-	//collectThemeIcons()
-	//collectOtherIcons()
+	collectIcons()
 }
 
 func GetHandler(w http.ResponseWriter, r *http.Request) {
@@ -41,22 +40,25 @@ func GetHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func FindIconPath(iconName string, size uint32) string {
-	if namedIcon := findNamedIcon(iconName); namedIcon != nil {
+	if namedIcon, ok := findNamedIcon(iconName); ok{
 		return namedIcon.GetPath(size)
 	} else {
 		return ""
 	}
 }
 
-func findNamedIcon(iconName string) *Icon {
-	if namedIcon, ok := resource.Get[*Icon](iconPrefix + iconName); ok {
-		return namedIcon
-	} else if lastDash := strings.LastIndex(iconName, "-"); lastDash > -1 {
+func findNamedIcon(iconName string) (Icon, bool) {
+	fmt.Println("Look for", iconPrefix + iconName)
+	if namedIcon, ok := resource.Get[Icon](iconPrefix + iconName); ok {
+		fmt.Println("found")
+		return namedIcon, true
+ 	} else if lastDash := strings.LastIndex(iconName, "-"); lastDash > -1 {
 		return findNamedIcon(iconName[0:lastDash]) /* By the icon naming specification, dash ('-') seperates 'levels of specificity'.
 		                                               So given an icon name 'input-mouse-usb', the levels of specificy, and the names and
 													   order we search will be: 'input-mouse-usb', 'input-mouse' and 'input'. */
 	} else {
-		return nil
+		fmt.Println("NotFound")
+		return Icon{}, false
 	}
 
 }

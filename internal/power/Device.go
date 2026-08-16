@@ -51,7 +51,7 @@ type Device struct {
 }
 
 
-func (d *Device) OmitFromSearch() bool {
+func (d Device) OmitFromSearch() bool {
 	return d.Id == "org/freedesktop/UPower" ||
 	       (d.PowerSupply && d.Id != "DisplayDevice");
 	
