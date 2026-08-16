@@ -126,10 +126,6 @@ type ImageData struct {
 	Data         []uint8
 }
 
-func ImageDataHashName(id ImageData) string {
-	return HashName(id.Data)
-}
-
 func (id ImageData) AsPng() ([]byte, error) {
 	if id.Channels != 3 && id.Channels != 4 {
 		return nil, fmt.Errorf("Don't know how to deal with %d", id.Channels)
@@ -162,8 +158,3 @@ func (id ImageData) AsPng() ([]byte, error) {
 	}
 }
 
-func HashName(bytes []byte) string {
-	var hasher = sha256.New()
-	hasher.Write(bytes)
-	return fmt.Sprintf("%x", hasher.Sum(nil))
-}

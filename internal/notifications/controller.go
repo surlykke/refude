@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"os"
 	"reflect"
 	"strings"
 	"time"
@@ -18,7 +17,6 @@ import (
 	"github.com/godbus/dbus/v5/introspect"
 	"github.com/surlykke/refude/internal/lib/image"
 	"github.com/surlykke/refude/internal/lib/resource"
-	"github.com/surlykke/refude/internal/lib/xdg"
 	"github.com/surlykke/refude/internal/rawfile"
 	"github.com/surlykke/refude/pkg/pubsub"
 )
@@ -263,19 +261,10 @@ func extractRawImageAndSaveAsPng(v dbus.Variant) (string, error) {
 		return "", errors.New("arr[5] not an int32")
 	} else if id.Data, ok = ifarray[6].([]uint8); !ok {
 		return "", errors.New("arr[6] not an []uint8")
+	} else if png, err := id.AsPng(); err != nil {
+		return "", err
 	} else {
-		var filePath = xdg.SessionFilesDir + "/" + image.ImageDataHashName(id) + ".png"
-
-		if _, err := os.Stat(filePath); errors.Is(err, os.ErrNotExist) {
-			if bytes, err := id.AsPng(); err != nil {
-				return "", err
-			} else if err := os.WriteFile(filePath, bytes, 0700); err != nil {
-				os.Remove(filePath)
-				return "", err
-			}
-		}
-
-		return rawfile.RegisterRawFile(filePath), nil
+		return rawfile.InstallAndRegisterBytes(png, "png"), nil
 	}
 }
 

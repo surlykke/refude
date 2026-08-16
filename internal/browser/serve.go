@@ -99,12 +99,17 @@ func receive(conn net.Conn) {
 				log.Print("Invalid json:\n", string(data))
 			} else if brd.Type == "tabs" {
 				var tabList = make([]*Tab, 0, len(brd.List))
+				var favicons = make(map[string]string, 10)
 				for _, d := range brd.List {
 					if len(d.Title) > 60 { // Shorten title a bit
 						d.Title = d.Title[0:60] + "..."
 					}
+					var tabPath = pathPrefix + d.Id
+					if d.Favicon != "" {
+						favicons[tabPath] = d.Favicon
+					}
 					var tab = &Tab{
-						Base:      resource.MakeBase(pathPrefix+d.Id, d.Title, browserName+" tab", d.Favicon, "browser", "tab"),
+						Base:      resource.MakeBase(tabPath, d.Title, browserName+" tab", "", "browser", "tab"),
 						Id:        d.Id,
 						BrowserId: browserId,
 						Url:       d.Url,
@@ -114,7 +119,42 @@ func receive(conn net.Conn) {
 					tabList = append(tabList, tab)
 				}
 				resource.Replace(tabList, pathPrefix)
+				fetchAndSetFavicons(favicons)
 			} // TODO: bookmarks
+		}
+	}
+}
+
+func fetchAndSetFavicons(m map[string]string) {
+	faviconCacheLock.Lock()
+	defer faviconCacheLock.Unlock()
+	for tabPath, faviconUrl := range m {
+		rawfilePath, ok := faviconCache[faviconUrl]
+		if !ok {
+			rawfilePath = installIcon(faviconUrl)
+			faviconCache[faviconUrl] = rawfilePath
+		}
+		if rawfilePath != "" {
+			updateIcon(tabPath, rawfilePath)
+		}
+	}
+	flushFaviconCache()
+}
+
+func updateIcon(tabPath string, icon string) {
+	if t, ok := resource.Get[*Tab](tabPath); ok {
+		var copy = *t
+		copy.Icon = icon
+		resource.Put(&copy)
+	}
+}
+
+func fetchAndSetIconUrl(tabPath string, iconUrl string) {
+	if correctedUrl := installIcon(iconUrl); correctedUrl != "" {
+		if tab, ok := resource.Get[*Tab](tabPath); ok {
+			var copy = *tab
+			copy.Icon = correctedUrl
+			resource.Put(&copy)
 		}
 	}
 }

@@ -2,11 +2,15 @@ package rawfile
 
 import (
 	"fmt"
+	"log"
 	"net/http"
+	"os"
 	"path/filepath"
 	"sync"
 
 	"github.com/surlykke/refude/internal/lib/respond"
+	"github.com/surlykke/refude/internal/lib/utils"
+	"github.com/surlykke/refude/internal/lib/xdg"
 )
 
 func Run() {
@@ -14,32 +18,51 @@ func Run() {
 }
 
 const rawfilePathPrefix = "/rawfile"
-
-var rawFiles = make(map[string]bool, 20)
-var rawFileLock sync.Mutex
-
-func RegisterRawFile(osPath string) string {
-	osPath = filepath.Clean(osPath)
-	var path = rawfilePathPrefix + osPath
-	rawFileLock.Lock()
-	defer rawFileLock.Unlock()
-	rawFiles[path] = true
-	return path
-}
-
-func isRegistered(path string) bool {
-	rawFileLock.Lock()
-	defer rawFileLock.Unlock()
-	return rawFiles[path]
-}
-
+const cacheHeader = "max-age=31536000"
 func RawFileHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("rawfile:", r.URL.EscapedPath())
-	if !isRegistered(r.URL.EscapedPath()) {
+	if !get(r.URL.EscapedPath()) {
 		respond.NotFound(w)
 	} else {
+		w.Header().Add("Cache-Control", cacheHeader)
 		var filePath = r.URL.EscapedPath()[len(rawfilePathPrefix):]
 		fmt.Println("Serving:", filePath)
 		http.ServeFile(w, r, filePath)
 	}
+}
+
+func RegisterRawFile(osPath string) string {
+	osPath = filepath.Clean(osPath)
+	var path = rawfilePathPrefix + osPath
+	put(path)
+	return path
+}
+
+func InstallAndRegisterBytes(bytes []byte, fileType string) string {
+	var osPath = xdg.RefudeCacheDir + "/" + utils.HashName(bytes) + "." + fileType
+	var path = rawfilePathPrefix + osPath
+	if !get(path) {
+		if err := os.WriteFile(osPath, bytes, 0600); err != nil {
+			log.Print("Error saving", osPath, err)
+			return ""
+		}
+	}
+	put(path)
+	return path
+
+}
+
+var reg = make(map[string]bool, 20)
+var regLock sync.Mutex
+
+func put(path string) {
+	regLock.Lock()
+	defer regLock.Unlock()
+	reg[path] = true
+}
+
+func get(path string) bool {
+	regLock.Lock()
+	defer regLock.Unlock()
+	return reg[path]
 }

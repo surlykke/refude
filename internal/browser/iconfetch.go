@@ -1,59 +1,73 @@
 package browser
 
 import (
-	"encoding/base64"
+	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strings"
+	"time"
 
+	"github.com/pkg/errors"
+	"github.com/surlykke/refude/internal/lib/utils"
+	"github.com/surlykke/refude/internal/rawfile"
 	svgsanitize "go.privatebychoice.com/pbcsvgsanitize"
-
 )
 
 func installIcon(iconUrl string) string {
-	if strings.HasPrefix(iconUrl, "data:image") {
-		return installImage(iconUrl)
-	} else if strings.HasPrefix(iconUrl, "https") {
-		installRemote(iconUrl)
-	}
-	return ""
-}
-
-func installImage(img string) string {
-	if strings.HasPrefix(img, "data:image/png;base64,") {
-		var imgAsBase64 = []byte(strings.Replace(img, "data:image/png;base64,", "", 1))
-		var decoded = make([]byte, base64.StdEncoding.DecodedLen(len(imgAsBase64)))
-		if _, err := base64.StdEncoding.Decode(decoded, imgAsBase64); err != nil {
-			return ""
-		}
-		return installPng(decoded)
-	} else {
-		// TODO: Other formats?
+	if iconUrl == "" {
 		return ""
-	}
-}
-
-func installRemote(url string) string {
-	if r, err := getter.Get(url); err != nil {
-		return ""
-	} else if bytes, err := io.ReadAll(r.Body); err != nil  {
-		return ""
-	} else if mimetype := r.Header.Get("content-type"); mimetype == "image/svg+xml" {
-		if sanitized, _, err := svgsanitize.Sanitize(bytes); err != nil {
+	} else if strings.HasPrefix(iconUrl, "data:image/png;base64,") {
+		fmt.Println("Installing data:image...")
+		if decodedBytes := utils.Base64Decode([]byte(iconUrl[22:])); decodedBytes == nil {
 			return ""
 		} else {
-			
-
+			return rawfile.InstallAndRegisterBytes(decodedBytes, "png")
+		}
+	} else if strings.HasPrefix(iconUrl, "https") {
+		fmt.Println("Installing:", iconUrl)
+		if bytes, err := fetch(iconUrl); err != nil {
+			log.Println(err)
+			return ""
+		} else if len(bytes) == 0 {
+			log.Println("Empty body received")
+			return ""
+		} else {
+			var mimetype = http.DetectContentType(bytes)  // Slightly more reliable than looking at 'content-type' 
+			switch mimetype {
+			case "image/svg+xml": 
+				if sanitized, _, err := svgsanitize.Sanitize(bytes); err != nil {
+					return ""
+				} else {
+					return rawfile.InstallAndRegisterBytes(sanitized, "svg")
+				}
+			case "image/png":
+				return rawfile.InstallAndRegisterBytes(bytes, "png")
+			case "image/x-icon":
+				return rawfile.InstallAndRegisterBytes(bytes, "ico")
+			default:
+				log.Println("Can't handle mimetype:", mimetype)
+				return ""
+			}
+		}
+	} else {
+		log.Println("installIcon not handling url", iconUrl)
+		return ""
 	}
-	return ""
 }
 
-func installPng(png []byte) string {
-	return ""
+func fetch(url string) ([]byte, error) {
+	if resp, err := getter.Get(url); err != nil {
+		return nil, err
+	} else if bytes, err := io.ReadAll(resp.Body); err != nil {
+		return nil, err
+	} else {
+		return bytes, nil
+	}
 }
 
-func installSvg(svg []byte) string {
-	return ""
-}
+var getter = http.Client{CheckRedirect: noRedirects, Timeout: 200 * time.Millisecond}
 
-var getter = http.Client{CheckRedirect:  func(*http.Request, []*http.Request) error { return errors.New("No redirects allowed")}}
+func noRedirects(*http.Request, []*http.Request) error {
+	return errors.New("No redirects allowed")
+}
