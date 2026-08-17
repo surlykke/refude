@@ -20,6 +20,7 @@ import (
 	"github.com/surlykke/refude/internal/lib/respond"
 	"github.com/surlykke/refude/internal/lib/utils"
 	"github.com/surlykke/refude/internal/lib/xdg"
+	"github.com/surlykke/refude/internal/rawfile"
 	"github.com/surlykke/refude/pkg/pubsub"
 )
 
@@ -131,12 +132,14 @@ func fetchAndSetFavicons(m map[string]string) {
 	for tabPath, faviconUrl := range m {
 		rawfilePath, ok := faviconCache[faviconUrl]
 		if !ok {
-			rawfilePath = installIcon(faviconUrl)
-			faviconCache[faviconUrl] = rawfilePath
+			if osPath, err := installIcon(faviconUrl); err != nil {
+				log.Println("Error installing", faviconUrl, err)
+			} else {
+				rawfilePath = rawfile.Register(osPath)
+			}
 		}
-		if rawfilePath != "" {
-			updateIcon(tabPath, rawfilePath)
-		}
+		updateIcon(tabPath, rawfilePath)
+		faviconCache[faviconUrl] = rawfilePath
 	}
 	flushFaviconCache()
 }
@@ -145,15 +148,6 @@ func updateIcon(tabPath string, icon string) {
 	if t, ok := resource.Get[Tab](tabPath); ok {
 		t.Icon = icon
 		resource.Put(t)
-	}
-}
-
-func fetchAndSetIconUrl(tabPath string, iconUrl string) {
-	if correctedUrl := installIcon(iconUrl); correctedUrl != "" {
-		if tab, ok := resource.Get[Tab](tabPath); ok {
-			tab.Icon = correctedUrl
-			resource.Put(tab)
-		}
 	}
 }
 

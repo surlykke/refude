@@ -156,7 +156,7 @@ func readDesktopFile(filePath string, id string) (DesktopApplication, error) {
 
 		var title, iconName = group.Entries["Name"], group.Entries["Icon"]
 		if strings.HasPrefix(string(iconName), "/") {
-			iconName = rawfile.RegisterRawFile(iconName)
+			iconName = rawfile.Register(iconName)
 		} else if strings.HasSuffix(iconName, ".png") || strings.HasSuffix(iconName, ".svg") || strings.HasSuffix(iconName, ".xpm") {
 			iconName = iconName[:len(iconName)-4]
 		}

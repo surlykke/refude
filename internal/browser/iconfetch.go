@@ -3,62 +3,56 @@
 // This file is part of the refude project.
 // It is distributed under the GPL v2 license.
 // Please refer to the file GPL2 for a copy of the license.
-//
 package browser
 
 import (
-	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/surlykke/refude/internal/lib/utils"
-	"github.com/surlykke/refude/internal/rawfile"
+	"github.com/surlykke/refude/internal/lib/encode"
 	svgsanitize "go.privatebychoice.com/pbcsvgsanitize"
 )
 
-func installIcon(iconUrl string) string {
-	if iconUrl == "" {
-		return ""
-	} else if strings.HasPrefix(iconUrl, "data:image/png;base64,") {
-		fmt.Println("Installing data:image...")
-		if decodedBytes := utils.Base64Decode([]byte(iconUrl[22:])); decodedBytes == nil {
-			return ""
-		} else {
-			return rawfile.InstallAndRegisterBytes(decodedBytes, "png")
-		}
-	} else if strings.HasPrefix(iconUrl, "https") {
-		fmt.Println("Installing:", iconUrl)
-		if bytes, err := fetch(iconUrl); err != nil {
-			log.Println(err)
-			return ""
-		} else if len(bytes) == 0 {
-			log.Println("Empty body received")
-			return ""
-		} else {
-			var mimetype = http.DetectContentType(bytes)  // Slightly more reliable than looking at 'content-type' 
-			switch mimetype {
-			case "image/svg+xml": 
-				if sanitized, _, err := svgsanitize.Sanitize(bytes); err != nil {
-					return ""
-				} else {
-					return rawfile.InstallAndRegisterBytes(sanitized, "svg")
-				}
-			case "image/png":
-				return rawfile.InstallAndRegisterBytes(bytes, "png")
-			case "image/x-icon":
-				return rawfile.InstallAndRegisterBytes(bytes, "ico")
-			default:
-				log.Println("Can't handle mimetype:", mimetype)
-				return ""
-			}
-		}
+func installIcon(iconUrl string) (osPath string, err error) {
+	if bytes, err := getBytes(iconUrl); err != nil {
+		return "", err
 	} else {
-		log.Println("installIcon not handling url", iconUrl)
-		return ""
+		var fileType string
+		mimetype := http.DetectContentType(bytes)
+		if mimetype == "image/svg+xml" {
+			if tmp, _, err := svgsanitize.Sanitize(bytes); err != nil {
+				return "", err
+			} else {
+				bytes, fileType = tmp, "svg"
+			}
+		} else if mimetype == "image/png" {
+			fileType = "png"
+		} else if mimetype == "image/x-icon" {
+			fileType = "ico"
+		}
+
+		if fileType == "" {
+			return "", errors.New("No handling for mimetype " + mimetype)
+		} else if osPath, err := encode.WriteCasheFile(bytes, fileType); err != nil {
+			return "", err
+		} else {
+			return osPath, nil
+		}
+	}
+
+}
+
+func getBytes(iconUrl string) ([]byte, error) {
+	const pngDataPrefix = "data:image/png;base64,"
+	if strings.HasPrefix(iconUrl, pngDataPrefix) {
+		return encode.Base64Decode([]byte(iconUrl[len(pngDataPrefix):]))
+	} else if strings.HasPrefix(iconUrl, "https") {
+		return fetch(iconUrl)
+	} else {
+		return nil, errors.New("No handling for url " + iconUrl)
 	}
 }
 
@@ -72,7 +66,7 @@ func fetch(url string) ([]byte, error) {
 	}
 }
 
-var getter = http.Client{CheckRedirect: noRedirects, Timeout: 200 * time.Millisecond}
+var getter = http.Client{CheckRedirect: noRedirects, Timeout: 500 * time.Millisecond}
 
 func noRedirects(*http.Request, []*http.Request) error {
 	return errors.New("No redirects allowed")

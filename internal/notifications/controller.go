@@ -15,6 +15,7 @@ import (
 
 	"github.com/godbus/dbus/v5"
 	"github.com/godbus/dbus/v5/introspect"
+	"github.com/surlykke/refude/internal/lib/encode"
 	"github.com/surlykke/refude/internal/lib/image"
 	"github.com/surlykke/refude/internal/lib/resource"
 	"github.com/surlykke/refude/internal/rawfile"
@@ -233,7 +234,7 @@ func tryInstallRawImageIcon(target *string, v dbus.Variant) {
 	if path, err := extractRawImageAndSaveAsPng(v); err != nil {
 		log.Println("Unable to install raw image", err)
 	} else {
-		*target = rawfile.RegisterRawFile(path)
+		*target = rawfile.Register(path)
 	}
 }
 
@@ -263,8 +264,10 @@ func extractRawImageAndSaveAsPng(v dbus.Variant) (string, error) {
 		return "", errors.New("arr[6] not an []uint8")
 	} else if png, err := id.AsPng(); err != nil {
 		return "", err
+	} else if osPath, err := encode.WriteCasheFile(png, "png"); err != nil {
+		return "", err
 	} else {
-		return rawfile.InstallAndRegisterBytes(png, "png"), nil
+		return rawfile.Register(osPath), nil
 	}
 }
 
