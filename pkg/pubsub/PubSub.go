@@ -3,7 +3,6 @@
 // This file is part of the refude project.
 // It is distributed under the GPL v2 license.
 // Please refer to the file GPL2 for a copy of the license.
-//
 package pubsub
 
 import "sync"
@@ -18,7 +17,7 @@ type Publisher[T any] struct {
 func MakePublisher[T any]() *Publisher[T] {
 	var lock = &sync.Mutex{}
 	return &Publisher[T]{
-		ev: &dataHolder[T]{},
+		ev:   &dataHolder[T]{},
 		lock: lock,
 		cond: sync.NewCond(lock),
 	}
@@ -38,17 +37,17 @@ func (this *Publisher[T]) Publish(data T) {
 func (this *Publisher[T]) Subscribe() *Subscription[T] {
 	this.lock.Lock()
 	defer this.lock.Unlock()
-	return &Subscription[T] {
+	return &Subscription[T]{
 		lock: this.lock,
 		cond: this.cond,
-		ev: this.ev,
+		ev:   this.ev,
 	}
 }
 
 type Subscription[T any] struct {
 	lock *sync.Mutex
 	cond *sync.Cond
-	ev *dataHolder[T]
+	ev   *dataHolder[T]
 }
 
 func (s *Subscription[T]) Next() T {
@@ -66,4 +65,3 @@ type dataHolder[T any] struct {
 	data T
 }
 
-var Desktop = MakePublisher[struct{}]()

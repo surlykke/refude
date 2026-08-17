@@ -1,3 +1,9 @@
+// Copyright (c) Christian Surlykke
+//
+// This file is part of the refude project.
+// It is distributed under the GPL v2 license.
+// Please refer to the file GPL2 for a copy of the license.
+//
 package browser
 
 import (
@@ -21,7 +27,6 @@ func init() {
 }
 
 func flushFaviconCache() {
-	log.Println("Flushing faviconCache to", faviconCachePath)
 	if bytes, err := json.Marshal(faviconCache); err != nil {
 		log.Println("Unable to marshal faviconCache:", err)
 	} else if err = os.WriteFile(faviconCachePath, bytes, 0600); err != nil {
