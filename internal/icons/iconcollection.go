@@ -7,7 +7,6 @@ package icons
 
 import (
 	"errors"
-	"fmt"
 	"log"
 	"os"
 	"path"
@@ -15,6 +14,7 @@ import (
 	"regexp"
 
 	"github.com/surlykke/refude/internal/lib/resource"
+	"github.com/surlykke/refude/internal/lib/utils"
 	"github.com/surlykke/refude/internal/lib/xdg"
 )
 
@@ -28,18 +28,12 @@ type Descriptor struct {
 }
 
 func collectIcons() {
-	fmt.Println("collectIcons...")
 	if defaultTheme, ok := determineDefaultTheme(); !ok {
 		log.Print("No defaultTheme determinded. Cannot serve icons")
 	} else if themeList, err := themeSearchOrder(defaultTheme); err != nil {
 		log.Print("No theme search order determined. Cannot serve icons")
 	} else {
-		fmt.Println("Default theme:", defaultTheme.Id)
-		fmt.Println("Collection icons from themes:")
-		for _, t := range themeList {
-			fmt.Print(t.Id + " ")
-		}
-		fmt.Println()
+		log.Println("Scanning themes: ", utils.Map(themeList, func(t IconTheme) string { return t.Id }))
 		for desc := range iconPaths(themeList, "svg") {
 			addIconPath(desc.osPath, desc.themeId, desc.minSize, desc.maxSize)
 		}
@@ -112,12 +106,10 @@ func determineDefaultTheme() (IconTheme, bool) {
 	for _, iniFile := range iniFilesToLookAt {
 		if bytes, err := os.ReadFile(iniFile); err == nil {
 			if matches := iconThemeDefPattern.FindStringSubmatch(string(bytes)); matches != nil {
-				fmt.Println("defaultTheme candidate:", matches[1])
 				if theme, ok := resource.Get[IconTheme](themePathPrefix + matches[1]); ok {
-					fmt.Println("found defaultTheme", theme.Id)
 					return theme, true
 				} else {
-					fmt.Println("Could not find", themePathPrefix+matches[1])
+					log.Println("Could not find", themePathPrefix+matches[1])
 				}
 			}
 		}

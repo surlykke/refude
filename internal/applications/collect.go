@@ -21,6 +21,7 @@ func collect() (map[string]DesktopApplication, map[string]Mimetype) {
 	for mimetypeId, appIds := range defaultApps {
 		if mimetype, ok := mimetypes[mimetypeId]; ok {
 			mimetype.Applications = appIds
+			mimetypes[mimetypeId] = mimetype
 		}
 	}
 
@@ -28,6 +29,7 @@ func collect() (map[string]DesktopApplication, map[string]Mimetype) {
 		for _, mimetypeId := range app.Mimetypes {
 			if mimetype, ok := mimetypes[mimetypeId]; ok {
 				mimetype.Applications = appendIfNotThere(mimetype.Applications, appId)
+				mimetypes[mimetypeId] = mimetype
 			}
 		}
 	}

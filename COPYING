@@ -1,7 +1,7 @@
 This is the RefudeServices project.
 The project is licensed under the GPL v2 license. See the file ./GPL2
 
-The file lib/image/NamedColors.go contains color names for the xpm2 format. I assume that information is in the public domain. See the file for details.
+The file ./internal/lib/image/NamedColors.go contains color names for the xpm2 format. I assume that information is in the public domain. See the file for details.
 
 The file ./internal/desktop/pwa/htmx.2.0.10.min.js is from the htmx project (https://htmx.org). It is distributed under the zero-clause BSD licence 
 

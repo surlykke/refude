@@ -58,6 +58,7 @@ func (this Base) GetBase() Base {
 	return this
 }
 
+// Actually works because this.Links is a map
 func (this Base) AddAction(title string, icon string, relation Relation, actionId string) {
 	var url = this.Path
 	if "" != actionId {

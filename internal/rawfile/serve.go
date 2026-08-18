@@ -6,7 +6,6 @@
 package rawfile
 
 import (
-	"fmt"
 	"net/http"
 	"sync"
 
@@ -22,7 +21,6 @@ func Run() {
 
 func RawFileHandler(w http.ResponseWriter, r *http.Request) {
 	var osPath = r.URL.Path[len(Prefix):]
-	fmt.Println("rawfile:", osPath)
 	if !isRegistered(osPath) {
 		respond.NotFound(w)
 	} else {
@@ -46,6 +44,3 @@ func isRegistered(path string) bool {
 
 var reg = make(map[string]bool, 20)
 var regLock sync.Mutex
-
-
-
