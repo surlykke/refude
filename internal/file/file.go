@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/gabriel-vasile/mimetype"
 	"github.com/surlykke/refude/internal/applications"
 	"github.com/surlykke/refude/internal/lib/resource"
 )
@@ -49,7 +50,7 @@ type File struct {
 
 func makeFileFromOsPath(path string) (File, error) {
 	var osPath = filepath.Clean("/" + path)
-	if fileInfo, err := os.Stat(osPath);  err != nil {
+	if fileInfo, err := os.Stat(osPath); err != nil {
 		return File{}, err
 	} else {
 		return makeFileFromOsInfo(osPath, fileInfo), nil
@@ -58,11 +59,16 @@ func makeFileFromOsPath(path string) (File, error) {
 
 func MimeType(ospath string) string {
 	var ext = filepath.Ext(ospath)
-	if ext != "" {
-		return mime.TypeByExtension(ext)
-	} else {
-		return ""
+	var mt = mime.TypeByExtension(ext)
+	if mt == "" {
+		if tmp, err := mimetype.DetectFile(ospath); err == nil {
+			mt = tmp.String()
+		}
 	}
+	if semicolonpos := strings.Index(mt, ";"); semicolonpos > -1 {
+		mt = mt[0:semicolonpos]
+	}
+	return mt
 }
 
 func makeFileFromOsInfo(osPath string, fileInfo os.FileInfo) File {
