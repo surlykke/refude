@@ -1,0 +1,17 @@
+<div class="line" hx-on::after-settle="afterActionsSettle(this)">
+	<div class="icon">
+		{{if .Icon}}
+		<img src="{{.Icon}}" height="32" width="32" class="icon">
+		{{end}}
+	</div>
+	<div>
+		<div class="title">
+			{{.Title}}
+		</div>
+		{{range .Actions}}
+		<div class="action" data-post="{{.Href}}" tabindex="0">
+			{{.Title}}
+		</div>
+		{{end}}
+	</div>
+</div>

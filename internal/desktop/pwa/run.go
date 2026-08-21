@@ -12,6 +12,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/surlykke/refude/internal/lib/resource"
 	"github.com/surlykke/refude/internal/lib/respond"
 	"github.com/surlykke/refude/internal/lib/utils"
 	"github.com/surlykke/refude/internal/search"
@@ -23,19 +24,24 @@ var staticFiles embed.FS
 //go:embed searchTemplate.gohtml
 var searchTemplateFile embed.FS
 
+//go:embed searchActionsTemplate.gohtml
+var searchActionsTemplateFile embed.FS
+
 var searchTemplate *template.Template
+var searchActionsTemplate *template.Template
 var StaticServer http.Handler
 
 func init() {
 	StaticServer = http.StripPrefix("/desktop/", http.FileServer(http.FS(staticFiles)))
 
 	bytes, _ := searchTemplateFile.ReadFile("searchTemplate.gohtml")
-
 	var funcMap = template.FuncMap{
 		"safe": func(str string) template.URL { return template.URL(str) },
 	}
-
 	searchTemplate = template.Must(template.New("searchTemplate").Funcs(funcMap).Parse(string(bytes)))
+
+	bytes, _ = searchActionsTemplateFile.ReadFile("searchActionsTemplate.gohtml")
+	searchActionsTemplate = template.Must(template.New("searchActionsTemplate").Parse(string(bytes)))	
 }
 
 func doSearch(w http.ResponseWriter, r *http.Request) {
@@ -50,7 +56,20 @@ func doSearch(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func doActions(w http.ResponseWriter, r *http.Request) {
+	var path = utils.QueryParam(r, "path")
+	var b bytes.Buffer
+	if servable, ok := resource.Get[resource.Servable](path); !ok {
+		respond.NotFound(w)
+	} else  if err := searchActionsTemplate.Execute(&b, servable); err != nil {
+		respond.ServerError(w, err)
+	} else {
+		respond.AsHtml(w, string(b.Bytes()))
+	}
+}
+
 func Run() {
 	http.HandleFunc("GET /desktop/search", doSearch)
+	http.HandleFunc("GET /desktop/actions", doActions)
 	http.Handle("GET /desktop/", StaticServer)
 }

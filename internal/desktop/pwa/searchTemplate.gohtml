@@ -1,22 +1,17 @@
 {{range $l := .}}
-<div class="line">
+<div class="line"  hx-get="/desktop/actions?path={{.Path}}" hx-trigger="getdetails" hx-swap="outerHTML" hx-on::after-swap="console.log('swapped')" hx-on::after-settle="console.log('settled')">
 	<div class="icon">
 		{{if .Icon}}
-			<img src="{{safe .Icon}}" height="32" width="32" class="icon">
+			<img src="{{.Icon}}" height="32" width="32" class="icon">
 		{{end}}
 	</div>
-	<div x-data="{details: false}" @toggledetails="console.log('toggle'); details = !details">
+	<div>
 		<div class="title" {{with .FirstAction}}data-post="{{.Href}}"{{end}} {{with .DeleteAction}}data-delete="{{.Href}}"{{end}} tabindex="0">
 			{{.Title}}
 		</div>
-		<div class="kind" x-show="! details">
+		<div class="kind">
 			{{.Summary}}
 		</div>
-		{{range .SecondaryActions}} 
-		<div class="action" data-post="{{.Href}}" tabindex="0" x-show="details">
-			{{.Title}}
-		</div>
-		{{end}}
 	</div>
 </div>
 {{end}}

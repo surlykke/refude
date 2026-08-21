@@ -75,6 +75,10 @@ func (this Base) FirstAction() *Link {
 	}
 }
 
+func (this Base) Actions() []Link {
+	return this.Links[OrgRefudeAction]
+}
+
 func (this Base) SecondaryActions() []Link {
 	if len(this.Links[OrgRefudeAction]) > 1 {
 		return this.Links[OrgRefudeAction][1:]
